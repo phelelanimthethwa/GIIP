@@ -4,108 +4,1589 @@
     box-sizing: border-box;
 }
 
-/* Base Styles */
 body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
-    background-color: #f8f9fa;
 }
 
-/* Admin Dashboard Styles */
-.admin-grid {
+.navbar {
+    background-color: #333;
+    padding: 1rem;
+    color: white;
+}
+
+.logo h1 {
+    margin-bottom: 1rem;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.nav-links a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+}
+
+.nav-links a:hover {
+    background-color: #555;
+    border-radius: 4px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nav-links {
+        flex-direction: column;
+    }
+    
+    .container {
+        padding: 1rem;
+    }
+} 
+
+.hero {
+    text-align: center;
+    padding: 3rem 0;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.conference-info {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.date-location, .highlights {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.date-location h2, .highlights h2 {
+    color: #333;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.date-location ul, .highlights ul {
+    list-style-position: inside;
+    margin-left: 1rem;
+}
+
+.date-location li, .highlights li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+@media (max-width: 768px) {
+    .conference-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: block;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .nav-links.show {
+        display: flex;
+    }
+} 
+
+.about-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.about-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.about-content section {
+    margin-bottom: 3rem;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.about-content h2 {
+    color: #333;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.objectives ul {
+    list-style-type: disc;
+    margin-left: 2rem;
+}
+
+.objectives li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.committee-members {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.member {
+    text-align: center;
+    padding: 1rem;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.member h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.member p {
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+/* Call for Papers Styles */
+.cfp-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.cfp-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.cfp-section section {
+    background: white;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.topic-area {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 4px;
+}
+
+.topic-area h3 {
+    color: #333;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.topic-area ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+}
+
+.topic-area li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.dates-table {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.date-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.date-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.date-value {
+    color: #666;
+}
+
+.guidelines-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.guidelines-content h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.guidelines-content ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+}
+
+.submission-button {
+    text-align: center;
     margin-top: 2rem;
 }
 
-.admin-card {
+.btn-submit {
+    display: inline-block;
+    padding: 1rem 2rem;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.btn-submit:hover {
+    background-color: #0056b3;
+}
+
+@media (max-width: 768px) {
+    .date-item {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .topic-grid {
+        grid-template-columns: 1fr;
+    }
+} 
+
+/* Paper Submission Styles */
+.submission-section {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.submission-section h1 {
+    color: #333;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.submission-form {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.submission-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.submission-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.submission-form input[type="text"],
+.submission-form input[type="email"],
+.submission-form input[type="tel"],
+.submission-form select,
+.submission-form textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.submission-form input[readonly] {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.submission-form select {
+    background-color: white;
+}
+
+.submission-form input[type="file"] {
+    padding: 0.5rem 0;
+}
+
+.submission-form .btn-submit {
+    width: 100%;
+    padding: 1rem;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.submission-form .btn-submit:hover {
+    background-color: #218838;
+}
+
+.contact-info {
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.contact-info p {
+    margin: 0;
+    color: #666;
+}
+
+.contact-info a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.contact-info a:hover {
+    text-decoration: underline;
+}
+
+/* Alert Messages */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .submission-section {
+        padding: 1rem;
+    }
+    
+    .submission-form {
+        padding: 1.5rem;
+    }
+} 
+
+/* Registration Page Styles */
+.registration-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.registration-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.registration-info {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.fee-table {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.fee-category {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 4px;
+}
+
+.fee-category h3 {
+    color: #333;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.fee-category ul {
+    list-style: none;
+}
+
+.fee-category li {
+    margin-bottom: 0.5rem;
+    color: #555;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 4px;
+}
+
+.registration-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.registration-form h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #333;
+}
+
+.registration-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+    .fee-table {
+        grid-template-columns: 1fr;
+    }
+    
+    .registration-buttons {
+        flex-direction: column;
+    }
+    
+    .registration-buttons button {
+        width: 100%;
+    }
+} 
+
+/* Venue Page Styles */
+.venue-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.venue-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.venue-section section {
+    background: white;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.venue-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.venue-text h3 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.contact-info {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.venue-map {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.hotel-grid, .transport-options, .attractions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.hotel-card, .transport-card, .attraction-card {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 4px;
+}
+
+.hotel-card h3, .transport-card h3, .attraction-card h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.hotel-type {
+    color: #666;
+    font-style: italic;
+    margin-bottom: 1rem;
+}
+
+.hotel-card ul, .transport-card ul, .attraction-card ul {
+    list-style: none;
+    margin: 1rem 0;
+}
+
+.hotel-card li, .transport-card li, .attraction-card li {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.hotel-card li:before, .transport-card li:before, .attraction-card li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #007bff;
+}
+
+.btn-book {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.btn-book:hover {
+    background-color: #0056b3;
+}
+
+@media (max-width: 768px) {
+    .venue-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .venue-map {
+        margin-top: 1rem;
+    }
+    
+    .hotel-grid, .transport-options, .attractions-grid {
+        grid-template-columns: 1fr;
+    }
+} 
+
+/* Author Guidelines Styles */
+.guidelines-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.guidelines-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.guidelines-section section {
+    background: white;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.guidelines-section h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.format-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.format-item h3 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.format-item ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.format-item li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.template-download {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.btn-download {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.btn-download:hover {
+    background-color: #218838;
+}
+
+.process-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.step {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.step h3 {
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+.step p {
+    color: #555;
+}
+
+.ethics-content ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+}
+
+.ethics-content li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+@media (max-width: 768px) {
+    .template-download {
+        flex-direction: column;
+    }
+    
+    .template-download a {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .process-steps {
+        grid-template-columns: 1fr;
+    }
+} 
+
+/* Video Conference Page Styles */
+.video-conference-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.video-conference-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.intro-section {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.intro-text {
+    font-size: 1.2rem;
+    color: #555;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.steps-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.step-card {
     background: white;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.admin-card h2 {
+.step-card h3 {
+    color: #007bff;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.step-card ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+}
+
+.step-card li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.step-card a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.step-card a:hover {
+    text-decoration: underline;
+}
+
+.notes-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.note-item {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.note-item h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.note-item p {
+    color: #555;
+}
+
+.support-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.support-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.support-card h3 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.support-card p {
+    color: #555;
+    margin-bottom: 1.5rem;
+}
+
+.how-it-works h2, .important-notes h2, .technical-support h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .steps-container, .notes-content, .support-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .intro-text {
+        font-size: 1.1rem;
+    }
+    
+    .video-conference-section {
+        padding: 1rem;
+    }
+} 
+
+/* Additional Author Guidelines Styles */
+.presentation-format {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.presentation-format h3 {
+    color: #333;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5rem;
+}
+
+.presentation-format p {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.presentation-format ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.presentation-format li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.link-primary {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.link-primary:hover {
+    text-decoration: underline;
+}
+
+.abstract-guidelines .guidelines-content {
+    background: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.abstract-guidelines ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.abstract-guidelines li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+/* Alert Messages */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Total Amount Section */
+.total-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+    text-align: right;
+}
+
+.total-section h3 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.total-section #total-amount {
+    font-size: 1.5rem;
+    color: #28a745;
+    font-weight: bold;
+}
+
+/* Update registration form styles */
+.registration-form {
+    max-width: 800px;
+    margin: 0 auto;
+} 
+
+/* Authentication Pages Styles */
+.auth-section {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.auth-section h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.auth-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.auth-buttons {
+    margin-top: 2rem;
+}
+
+.auth-buttons button {
+    width: 100%;
+}
+
+.auth-links {
+    margin-top: 1.5rem;
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid #ddd;
+}
+
+.auth-links a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+/* Dashboard Styles */
+.dashboard-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.dashboard-section h1 {
+    margin-bottom: 2rem;
+    color: #333;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.dashboard-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dashboard-card h2 {
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.card-content {
+    margin-top: 1rem;
+}
+
+.card-content p {
+    margin-bottom: 0.5rem;
+}
+
+.registration-item {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.status-pending {
+    color: #ffc107;
+}
+
+.status-paid {
+    color: #28a745;
+}
+
+.status-cancelled {
+    color: #dc3545;
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .auth-section {
+        padding: 1rem;
+    }
+} 
+
+/* Tentative Venue Styles */
+.tentative-notice {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    margin: 1rem 0;
+}
+
+.tentative-notice p {
+    color: #555;
+    margin-bottom: 1rem;
+}
+
+.tentative-notice p:last-child {
+    margin-bottom: 0;
+}
+
+.map-placeholder {
+    background: #f8f9fa;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}
+
+.map-placeholder p {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.tentative-sections .info-card {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 2rem 0;
+}
+
+.tentative-sections .info-card h2 {
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.tentative-sections .info-card p {
+    color: #555;
+    margin-bottom: 1rem;
+}
+
+.tentative-sections .info-card a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.tentative-sections .info-card a:hover {
+    text-decoration: underline;
+} 
+
+/* Admin Venue Management Styles */
+.admin-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.admin-section h1 {
+    color: #333;
+    margin-bottom: 2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.admin-form-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.venue-form .form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.venue-form .form-section:last-child {
+    border-bottom: none;
+}
+
+.venue-form .form-section h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.venue-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.venue-form .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.venue-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.venue-form input[type="text"],
+.venue-form input[type="tel"],
+.venue-form input[type="email"],
+.venue-form input[type="url"] {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.venue-form input[type="text"]:focus,
+.venue-form input[type="tel"]:focus,
+.venue-form input[type="email"]:focus,
+.venue-form input[type="url"]:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.venue-form small {
+    display: block;
+    margin-top: 0.5rem;
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.dynamic-list {
+    margin-bottom: 1rem;
+}
+
+.list-item {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.list-item input {
+    flex: 1;
+}
+
+.btn-remove {
+    padding: 0.5rem 1rem;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn-remove:hover {
+    background-color: #c82333;
+}
+
+.btn-add {
+    padding: 0.5rem 1rem;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-top: 0.5rem;
+}
+
+.btn-add:hover {
+    background-color: #218838;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #f0f0f0;
+}
+
+.form-actions .btn-submit {
+    padding: 0.8rem 2rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.form-actions .btn-submit:hover {
+    background-color: #0056b3;
+}
+
+.form-actions .btn-secondary {
+    padding: 0.8rem 2rem;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.form-actions .btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+@media (max-width: 768px) {
+    .admin-section {
+        padding: 1rem;
+    }
+    
+    .admin-form-container {
+        padding: 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn-submit,
+    .form-actions .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+} 
+
+/* Registration Fee Tables */
+.fee-tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.fee-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.fee-section h2 {
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.deadline {
+    color: #dc3545;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+}
+
+.fee-table {
+    margin-bottom: 1.5rem;
+}
+
+.fee-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.fee-row:last-child {
+    border-bottom: none;
+}
+
+.fee-type {
+    color: #555;
+}
+
+.fee-amount {
+    font-weight: 600;
+    color: #28a745;
+}
+
+.btn-register {
+    display: block;
+    width: 100%;
+    padding: 0.8rem;
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.btn-register:hover {
+    background-color: #0056b3;
+}
+
+.registration-includes {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 2rem 0;
+}
+
+.registration-includes h2 {
     color: #333;
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid #f0f0f0;
 }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 1.5rem;
-    text-align: center;
+.registration-includes ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
 }
 
-.stat-item {
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-    transition: transform 0.3s;
-}
-
-.stat-item:hover {
-    transform: translateY(-5px);
-}
-
-.stat-item h3 {
-    color: #666;
-    font-size: 1rem;
+.registration-includes li {
+    color: #555;
     margin-bottom: 0.5rem;
 }
 
-.stat-number {
-    color: #007bff;
-    font-size: 2rem;
-    font-weight: bold;
+.additional-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
 }
 
-.settings-grid {
+.info-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-card h3 {
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.info-card ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+}
+
+.info-card li {
+    color: #555;
+    margin-bottom: 0.5rem;
+}
+
+.payment-methods {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 2rem 0;
+}
+
+.payment-methods h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.bank-details {
+    margin: 2rem 0;
+}
+
+.bank-details table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.bank-details th,
+.bank-details td {
+    padding: 0.8rem;
+    border: 1px solid #dee2e6;
+}
+
+.bank-details th {
+    background: #f8f9fa;
+    font-weight: 500;
+    text-align: left;
+    width: 200px;
+}
+
+.bank-transfer-notice {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.bank-transfer-notice a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.bank-transfer-notice a:hover {
+    text-decoration: underline;
+}
+
+.registration-types {
+    margin-top: 2rem;
+}
+
+.registration-buttons {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
+    margin-top: 1rem;
 }
 
-.settings-item {
+.btn-type {
     display: block;
-    padding: 1.5rem;
-    background: #f8f9fa;
-    border-radius: 8px;
+    padding: 1rem;
+    background-color: #6c757d;
+    color: white;
+    text-align: center;
     text-decoration: none;
-    transition: all 0.3s;
+    border-radius: 4px;
+    transition: background-color 0.3s;
 }
 
-.settings-item:hover {
-    background: #e9ecef;
-    transform: translateY(-3px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.settings-item h3 {
-    color: #333;
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-}
-
-.settings-item p {
-    color: #666;
-    font-size: 0.9rem;
-    margin: 0;
+.btn-type:hover {
+    background-color: #5a6268;
 }
 
 @media (max-width: 768px) {
-    .admin-grid {
+    .fee-tables {
         grid-template-columns: 1fr;
     }
     
-    .settings-grid {
+    .additional-info {
         grid-template-columns: 1fr;
     }
     
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .registration-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .bank-details th {
+        width: 150px;
     }
 } 
