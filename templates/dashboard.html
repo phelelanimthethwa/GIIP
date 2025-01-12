@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="dashboard-section">
+    <h1>Welcome, {{ current_user.full_name }}!</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="dashboard-grid">
+        <div class="dashboard-card">
+            <h2>My Profile</h2>
+            <div class="card-content">
+                <p><strong>Email:</strong> {{ current_user.email }}</p>
+                <a href="{{ url_for('profile') }}" class="btn-secondary">Edit Profile</a>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <h2>My Registrations</h2>
+            <div class="card-content">
+                {% if registrations %}
+                    {% for reg_id, reg in registrations.items() %}
+                        <div class="registration-item">
+                            <p><strong>Registration Type:</strong> {{ reg.registration_type }}</p>
+                            <p><strong>Total Amount:</strong> ${{ reg.total_amount }}</p>
+                            <p><strong>Status:</strong> <span class="status-{{ reg.payment_status }}">{{ reg.payment_status }}</span></p>
+                            {% if reg.paper_id %}
+                                <p><strong>Paper ID:</strong> {{ reg.paper_id }}</p>
+                            {% endif %}
+                            <p><strong>Additional Options:</strong></p>
+                            <ul>
+                                {% if reg.workshop %}
+                                    <li>Workshop</li>
+                                {% endif %}
+                                {% if reg.banquet %}
+                                    <li>Conference Banquet</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No registrations found.</p>
+                    <a href="{{ url_for('registration') }}" class="btn-submit">Register Now</a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if current_user.is_admin %}
+        <div class="dashboard-card">
+            <h2>Admin Panel</h2>
+            <div class="card-content">
+                <a href="#" class="btn-secondary">Manage Users</a>
+                <a href="#" class="btn-secondary">View All Registrations</a>
+                <a href="#" class="btn-secondary">System Settings</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

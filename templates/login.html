@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="auth-section">
+    <h1>Login</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="auth-form">
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="remember" name="remember">
+                <label for="remember">Remember me</label>
+            </div>
+
+            <div class="auth-buttons">
+                <button type="submit" class="btn-submit">Login</button>
+            </div>
+        </form>
+
+        <div class="auth-links">
+            <p>Don't have an account? <a href="{{ url_for('register_account') }}">Register here</a></p>
+            <p><a href="#">Forgot your password?</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %} 

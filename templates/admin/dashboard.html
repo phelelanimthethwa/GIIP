@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="dashboard-section">
+    <h1>Admin Dashboard</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-grid">
+        <!-- Quick Stats Card -->
+        <div class="admin-card">
+            <h2>Quick Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>Users</h3>
+                    <p class="stat-number">{{ users|length }}</p>
+                </div>
+                <div class="stat-item">
+                    <h3>Registrations</h3>
+                    <p class="stat-number">{{ registrations|length }}</p>
+                </div>
+                <div class="stat-item">
+                    <h3>Paper Submissions</h3>
+                    <p class="stat-number">{{ submissions|length if submissions else 0 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conference Settings -->
+        <div class="admin-card">
+            <h2>Conference Settings</h2>
+            <div class="settings-grid">
+                <a href="{{ url_for('admin_registration_fees') }}" class="settings-item">
+                    <h3>Registration Fees</h3>
+                    <p>Manage registration fees, deadlines, and payment details</p>
+                </a>
+                <a href="{{ url_for('admin_venue') }}" class="settings-item">
+                    <h3>Venue Details</h3>
+                    <p>Update venue information, accommodation, and transport options</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Important Dates</h3>
+                    <p>Set submission deadlines and conference dates</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- User Management -->
+        <div class="admin-card">
+            <h2>User Management</h2>
+            <div class="settings-grid">
+                <a href="{{ url_for('admin_users') }}" class="settings-item">
+                    <h3>Manage Users</h3>
+                    <p>View and manage user accounts and permissions</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Registration List</h3>
+                    <p>View and manage conference registrations</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Paper Submissions</h3>
+                    <p>Review and manage paper submissions</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Content Management -->
+        <div class="admin-card">
+            <h2>Content Management</h2>
+            <div class="settings-grid">
+                <a href="#" class="settings-item">
+                    <h3>Call for Papers</h3>
+                    <p>Update topics and submission guidelines</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Author Guidelines</h3>
+                    <p>Manage submission and presentation guidelines</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Conference Program</h3>
+                    <p>Manage conference schedule and sessions</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Communication -->
+        <div class="admin-card">
+            <h2>Communication</h2>
+            <div class="settings-grid">
+                <a href="#" class="settings-item">
+                    <h3>Email Templates</h3>
+                    <p>Manage automated email notifications</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Announcements</h3>
+                    <p>Post updates and announcements</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Contact Messages</h3>
+                    <p>View and respond to contact form submissions</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div class="admin-card">
+            <h2>System Settings</h2>
+            <div class="settings-grid">
+                <a href="#" class="settings-item">
+                    <h3>Email Settings</h3>
+                    <p>Configure email server settings</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Payment Gateway</h3>
+                    <p>Configure payment processing settings</p>
+                </a>
+                <a href="#" class="settings-item">
+                    <h3>Security Settings</h3>
+                    <p>Manage security and access controls</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any dashboard-specific JavaScript here
+});
+</script>
+{% endblock %} 

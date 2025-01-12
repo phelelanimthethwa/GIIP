@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Venue - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="admin-section">
+    <h1>Manage Venue Details</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-form-container">
+        <form method="POST" class="venue-form">
+            <div class="form-section">
+                <h2>Basic Information</h2>
+                <div class="form-group">
+                    <label for="name">Venue Name *</label>
+                    <input type="text" id="name" name="name" value="{{ venue_details.name if venue_details else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Address *</label>
+                    <input type="text" id="address" name="address" value="{{ venue_details.address if venue_details else '' }}" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">City *</label>
+                        <input type="text" id="city" name="city" value="{{ venue_details.city if venue_details else '' }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="country">Country *</label>
+                        <input type="text" id="country" name="country" value="{{ venue_details.country if venue_details else '' }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="postal_code">Postal Code *</label>
+                        <input type="text" id="postal_code" name="postal_code" value="{{ venue_details.postal_code if venue_details else '' }}" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone">Phone *</label>
+                        <input type="tel" id="phone" name="phone" value="{{ venue_details.phone if venue_details else '' }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" value="{{ venue_details.email if venue_details else '' }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="map_url">Google Maps Embed URL</label>
+                    <input type="url" id="map_url" name="map_url" value="{{ venue_details.map_url if venue_details else '' }}" placeholder="https://www.google.com/maps/embed?...">
+                    <small>Get the embed URL from Google Maps by clicking 'Share' and selecting 'Embed a map'</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h2>Transportation</h2>
+                <div class="form-group" id="airport-transport">
+                    <label>Airport Transportation Options</label>
+                    <div class="dynamic-list">
+                        {% if venue_details and venue_details.airport_transport %}
+                            {% for option in venue_details.airport_transport %}
+                                <div class="list-item">
+                                    <input type="text" name="airport_transport" value="{{ option }}">
+                                    <button type="button" class="btn-remove">Remove</button>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-item">
+                                <input type="text" name="airport_transport" placeholder="e.g., Taxi: 30 minutes, approx. $40">
+                                <button type="button" class="btn-remove">Remove</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="btn-add">Add Transportation Option</button>
+                </div>
+
+                <div class="form-group" id="local-transport">
+                    <label>Local Transportation Options</label>
+                    <div class="dynamic-list">
+                        {% if venue_details and venue_details.local_transport %}
+                            {% for option in venue_details.local_transport %}
+                                <div class="list-item">
+                                    <input type="text" name="local_transport" value="{{ option }}">
+                                    <button type="button" class="btn-remove">Remove</button>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="list-item">
+                                <input type="text" name="local_transport" placeholder="e.g., Metro station: 5 minutes walk">
+                                <button type="button" class="btn-remove">Remove</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <button type="button" class="btn-add">Add Transportation Option</button>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Save Venue Details</button>
+                <a href="{{ url_for('venue') }}" class="btn-secondary">View Public Page</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle dynamic lists (airport and local transport)
+    document.querySelectorAll('.dynamic-list').forEach(list => {
+        const addBtn = list.nextElementSibling;
+        const inputName = list.querySelector('input').name;
+
+        addBtn.addEventListener('click', () => {
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.innerHTML = `
+                <input type="text" name="${inputName}">
+                <button type="button" class="btn-remove">Remove</button>
+            `;
+            list.appendChild(item);
+        });
+
+        list.addEventListener('click', e => {
+            if (e.target.classList.contains('btn-remove')) {
+                const items = list.querySelectorAll('.list-item');
+                if (items.length > 1) {
+                    e.target.closest('.list-item').remove();
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

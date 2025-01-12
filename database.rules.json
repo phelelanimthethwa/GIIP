@@ -1,0 +1,39 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "users": {
+      ".indexOn": ["email", "is_admin"],
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true)"
+      }
+    },
+    "registrations": {
+      ".indexOn": ["email"],
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$registration_id": {
+        ".read": "auth != null && (data.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+        ".write": "auth != null && (newData.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)"
+      }
+    },
+    "submissions": {
+      ".indexOn": ["email", "status"],
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$submission_id": {
+        ".read": "auth != null && (data.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+        ".write": "auth != null && (newData.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)"
+      }
+    },
+    "registration_fees": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+    },
+    "venue": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+    }
+  }
+} 

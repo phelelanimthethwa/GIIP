@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="admin-section">
+    <h1>Manage Users</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-card">
+        <h2>User List</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Created At</th>
+                        <th>Admin Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_id, user in users.items() %}
+                    <tr>
+                        <td>{{ user.full_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.created_at }}</td>
+                        <td>
+                            <span class="status-{% if user.is_admin %}admin{% else %}user{% endif %}">
+                                {% if user.is_admin %}Admin{% else %}User{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('toggle_admin', user_id=user_id) }}" style="display: inline;">
+                                <button type="submit" class="btn-action">
+                                    {% if user.is_admin %}Remove Admin{% else %}Make Admin{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin-actions" style="margin-top: 1rem;">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Call for Papers - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="cfp-section">
+    <h1>Call for Papers</h1>
+    
+    <section class="topics">
+        <h2>Topics of Interest</h2>
+        <p>We invite high-quality original research papers in the following areas (but not limited to):</p>
+        <div class="topic-grid">
+            <div class="topic-area">
+                <h3>Area 1</h3>
+                <ul>
+                    <li>Topic 1</li>
+                    <li>Topic 2</li>
+                    <li>Topic 3</li>
+                </ul>
+            </div>
+            <div class="topic-area">
+                <h3>Area 2</h3>
+                <ul>
+                    <li>Topic 4</li>
+                    <li>Topic 5</li>
+                    <li>Topic 6</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="important-dates">
+        <h2>Important Dates</h2>
+        <div class="dates-table">
+            <div class="date-item">
+                <span class="date-label">Paper Submission Deadline:</span>
+                <span class="date-value">March 15, 2024</span>
+            </div>
+            <div class="date-item">
+                <span class="date-label">Notification of Acceptance:</span>
+                <span class="date-value">April 30, 2024</span>
+            </div>
+            <div class="date-item">
+                <span class="date-label">Camera-ready Submission:</span>
+                <span class="date-value">May 15, 2024</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="submission-guidelines">
+        <h2>Submission Guidelines</h2>
+        <div class="guidelines-content">
+            <h3>Paper Format</h3>
+            <ul>
+                <li>Papers must be written in English</li>
+                <li>Maximum length: 8 pages including figures and references</li>
+                <li>Format: PDF</li>
+                <li>Template: IEEE Conference format</li>
+            </ul>
+            
+            <h3>Review Process</h3>
+            <p>All submissions will undergo a double-blind peer review process by at least three reviewers.</p>
+            
+            <div class="submission-button">
+                <a href="{{ url_for('paper_submission') }}" class="btn-submit">Submit Your Paper</a>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %} 
