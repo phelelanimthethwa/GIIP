@@ -1,26 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}Venue - Conference 2024{% endblock %}
+{% block title %}Venue - GIIR Conference 2024{% endblock %}
 
 {% block content %}
-<div class="venue-section">
+<div class="page-header">
     <h1>Conference Venue</h1>
-    
-    <section class="venue-info">
+    <p>Join us at our carefully selected venue for an enriching conference experience</p>
+</div>
+
+<div class="content-section">
+    <section class="venue-main">
         <h2>{% if venue_details %}Main Conference Venue{% else %}Tentative Conference Venue{% endif %}</h2>
-        <div class="venue-details">
-            <div class="venue-text">
+        <div class="venue-info">
+            <div class="venue-details">
                 {% if venue_details %}
-                <h3>{{ venue_details.name }}</h3>
-                <p>{{ venue_details.address }}<br>{{ venue_details.city }}, {{ venue_details.country }} {{ venue_details.postal_code }}</p>
-                <div class="contact-info">
-                    <p><strong>Phone:</strong> {{ venue_details.phone }}</p>
-                    <p><strong>Email:</strong> {{ venue_details.email }}</p>
+                <div class="venue-card">
+                    <div class="venue-header">
+                        <i class="fas fa-building"></i>
+                        <h3>{{ venue_details.name }}</h3>
+                    </div>
+                    <div class="venue-address">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <p>{{ venue_details.address }}<br>{{ venue_details.city }}, {{ venue_details.country }} {{ venue_details.postal_code }}</p>
+                    </div>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <p><strong>Phone:</strong> {{ venue_details.phone }}</p>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <p><strong>Email:</strong> {{ venue_details.email }}</p>
+                        </div>
+                    </div>
                 </div>
                 {% else %}
                 <div class="tentative-notice">
-                    <p>The conference venue will be announced soon. Please check back later for updates.</p>
-                    <p>For any inquiries about the venue, please contact the conference organizers.</p>
+                    <i class="fas fa-info-circle"></i>
+                    <div class="notice-content">
+                        <p>The conference venue will be announced soon. Please check back later for updates.</p>
+                        <p>For any inquiries about the venue, please contact the conference organizers.</p>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -29,13 +49,14 @@
                 <iframe 
                     src="{{ venue_details.map_url }}"
                     width="100%" 
-                    height="300" 
+                    height="400" 
                     style="border:0;" 
                     allowfullscreen="" 
                     loading="lazy">
                 </iframe>
                 {% else %}
                 <div class="map-placeholder">
+                    <i class="fas fa-map"></i>
                     <p>Map will be available once the venue is confirmed</p>
                 </div>
                 {% endif %}
@@ -49,16 +70,21 @@
         <div class="hotel-grid">
             {% for hotel in venue_details.hotels %}
             <div class="hotel-card">
-                <h3>{{ hotel.name }}</h3>
+                <div class="hotel-header">
+                    <i class="fas fa-hotel"></i>
+                    <h3>{{ hotel.name }}</h3>
+                </div>
                 <p class="hotel-type">{{ hotel.type }}</p>
-                <ul>
-                    <li>{{ hotel.rate }}</li>
-                    <li>{{ hotel.distance }}</li>
+                <ul class="hotel-features">
+                    <li><i class="fas fa-tag"></i> {{ hotel.rate }}</li>
+                    <li><i class="fas fa-walking"></i> {{ hotel.distance }}</li>
                     {% for amenity in hotel.amenities %}
-                    <li>{{ amenity }}</li>
+                    <li><i class="fas fa-check"></i> {{ amenity }}</li>
                     {% endfor %}
                 </ul>
-                <a href="{{ hotel.booking_url }}" class="btn-book" target="_blank">Book Now</a>
+                <a href="{{ hotel.booking_url }}" class="btn btn-primary" target="_blank">
+                    <i class="fas fa-calendar-check"></i> Book Now
+                </a>
             </div>
             {% endfor %}
         </div>
@@ -66,20 +92,26 @@
 
     <section class="transportation">
         <h2>Transportation</h2>
-        <div class="transport-options">
+        <div class="transport-grid">
             <div class="transport-card">
-                <h3>From Airport</h3>
-                <ul>
+                <div class="transport-header">
+                    <i class="fas fa-plane-arrival"></i>
+                    <h3>From Airport</h3>
+                </div>
+                <ul class="transport-list">
                     {% for option in venue_details.airport_transport %}
-                    <li>{{ option }}</li>
+                    <li><i class="fas fa-chevron-right"></i> {{ option }}</li>
                     {% endfor %}
                 </ul>
             </div>
             <div class="transport-card">
-                <h3>Local Transportation</h3>
-                <ul>
+                <div class="transport-header">
+                    <i class="fas fa-bus"></i>
+                    <h3>Local Transportation</h3>
+                </div>
+                <ul class="transport-list">
                     {% for option in venue_details.local_transport %}
-                    <li>{{ option }}</li>
+                    <li><i class="fas fa-chevron-right"></i> {{ option }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -91,11 +123,14 @@
         <div class="attractions-grid">
             {% for attraction in venue_details.attractions %}
             <div class="attraction-card">
-                <h3>{{ attraction.name }}</h3>
-                <p>{{ attraction.distance }}</p>
-                <ul>
+                <div class="attraction-header">
+                    <i class="fas fa-landmark"></i>
+                    <h3>{{ attraction.name }}</h3>
+                </div>
+                <p class="attraction-distance"><i class="fas fa-map-marker-alt"></i> {{ attraction.distance }}</p>
+                <ul class="attraction-features">
                     {% for feature in attraction.features %}
-                    <li>{{ feature }}</li>
+                    <li><i class="fas fa-star"></i> {{ feature }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -105,9 +140,14 @@
     {% else %}
     <section class="tentative-sections">
         <div class="info-card">
-            <h2>Additional Information</h2>
-            <p>Details about accommodation, transportation, and local attractions will be provided once the conference venue is confirmed.</p>
-            <p>For early planning purposes, please contact: <a href="mailto:conference@example.com">conference@example.com</a></p>
+            <div class="info-header">
+                <i class="fas fa-info-circle"></i>
+                <h2>Additional Information</h2>
+            </div>
+            <div class="info-content">
+                <p>Details about accommodation, transportation, and local attractions will be provided once the conference venue is confirmed.</p>
+                <p>For early planning purposes, please contact: <a href="mailto:conference@example.com">conference@example.com</a></p>
+            </div>
         </div>
     </section>
     {% endif %}

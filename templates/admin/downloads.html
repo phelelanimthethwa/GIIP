@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Downloads - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-section">
+    <h1>Manage Downloads</h1>
+
+    <div class="admin-form-container">
+        <form method="POST" enctype="multipart/form-data" class="upload-form">
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" required class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="type">Document Type</label>
+                <select id="type" name="type" class="form-control">
+                    <option value="pdf">PDF</option>
+                    <option value="doc">Word Document</option>
+                    <option value="xls">Excel Spreadsheet</option>
+                    <option value="ppt">PowerPoint</option>
+                    <option value="zip">ZIP Archive</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="file">File</label>
+                <input type="file" id="file" name="file" required class="form-control">
+                <small class="form-text text-muted">
+                    Allowed file types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP (Max size: 16MB)
+                </small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Upload Document</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="downloads-list">
+        <h2>Uploaded Documents</h2>
+        {% if downloads %}
+            <div class="downloads-grid">
+                {% for id, download in downloads.items() %}
+                <div class="download-card">
+                    <div class="download-icon">
+                        <i class="fas fa-file-{{ download.type }}"></i>
+                    </div>
+                    <div class="download-info">
+                        <h3>{{ download.title }}</h3>
+                        <p>{{ download.description }}</p>
+                        <div class="download-meta">
+                            <span class="file-type">{{ download.file_type }}</span>
+                            <span class="file-size">{{ download.file_size }}</span>
+                        </div>
+                        <div class="download-actions">
+                            <a href="{{ download.file_url }}" class="btn-download" download>
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                            <form method="POST" action="{{ url_for('delete_download', download_id=id) }}" class="delete-form">
+                                <button type="submit" class="btn-delete" onclick="return confirm('Are you sure you want to delete this document?')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-downloads">
+                <p>No documents have been uploaded yet.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.upload-form {
+    margin-bottom: 3rem;
+}
+
+.downloads-list h2 {
+    margin: 2rem 0;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.download-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.btn-delete {
+    padding: 0.8rem;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}
+
+.btn-delete i {
+    margin-right: 0.5rem;
+}
+
+.delete-form {
+    flex: 1;
+}
+</style>
+{% endblock %} 

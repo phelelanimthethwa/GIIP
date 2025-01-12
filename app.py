@@ -32,6 +32,14 @@ login_manager.login_view = 'login'
 # Initialize Flask-Mail
 mail = Mail(app)
 
+# Add this configuration after other app configurations
+app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 class User(UserMixin):
     def __init__(self, uid, email, full_name, is_admin=False):
         self.id = uid
@@ -79,7 +87,10 @@ def send_confirmation_email(registration_data):
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    # Get downloads from Firebase
+    downloads_ref = db.reference('downloads')
+    downloads = downloads_ref.get()
+    return render_template('home.html', downloads=downloads)
 
 @app.route('/about')
 def about():
@@ -516,6 +527,92 @@ def admin_registration_fees():
     # Get current registration fees
     fees = db.reference('registration_fees').get()
     return render_template('admin_registration_fees.html', fees=fees)
+
+@app.route('/admin/downloads', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_downloads():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file selected', 'error')
+            return redirect(request.url)
+            
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(request.url)
+            
+        if file and allowed_file(file.filename):
+            try:
+                # Create upload folder if it doesn't exist
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                
+                # Secure the filename and generate unique name
+                filename = secure_filename(file.filename)
+                unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                
+                # Save file locally
+                file.save(file_path)
+                
+                # Get file size
+                file_size = os.path.getsize(file_path)
+                file_size_str = f"{file_size/1024:.1f} KB" if file_size < 1024*1024 else f"{file_size/(1024*1024):.1f} MB"
+                
+                # Store file information in Firebase
+                downloads_ref = db.reference('downloads')
+                new_download = {
+                    'title': request.form.get('title'),
+                    'description': request.form.get('description'),
+                    'file_url': f"/static/uploads/documents/{unique_filename}",
+                    'file_type': filename.rsplit('.', 1)[1].lower(),
+                    'file_size': file_size_str,
+                    'uploaded_at': datetime.now().isoformat(),
+                    'type': request.form.get('type', 'pdf')  # Default to pdf if not specified
+                }
+                downloads_ref.push(new_download)
+                
+                flash('File uploaded successfully!', 'success')
+                return redirect(url_for('admin_downloads'))
+                
+            except Exception as e:
+                flash(f'Error uploading file: {str(e)}', 'error')
+                return redirect(request.url)
+        else:
+            flash('Invalid file type', 'error')
+            return redirect(request.url)
+    
+    # Get all downloads for display
+    downloads_ref = db.reference('downloads')
+    downloads = downloads_ref.get()
+    return render_template('admin/downloads.html', downloads=downloads)
+
+@app.route('/admin/downloads/delete/<download_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_download(download_id):
+    try:
+        # Get download info
+        downloads_ref = db.reference(f'downloads/{download_id}')
+        download = downloads_ref.get()
+        
+        if download:
+            # Delete file from storage
+            file_path = os.path.join(app.root_path, download['file_url'].lstrip('/'))
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # Delete from Firebase
+            downloads_ref.delete()
+            
+            flash('Download deleted successfully!', 'success')
+        else:
+            flash('Download not found', 'error')
+            
+    except Exception as e:
+        flash(f'Error deleting download: {str(e)}', 'error')
+        
+    return redirect(url_for('admin_downloads'))
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

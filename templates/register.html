@@ -1,56 +1,89 @@
 {% extends "base.html" %}
 
-{% block title %}Register Account - Conference 2024{% endblock %}
+{% block title %}Register Account - GIIR Conference 2024{% endblock %}
 
 {% block content %}
-<div class="auth-section">
+<div class="page-header">
     <h1>Create Account</h1>
+    <p>Join the GIIR Conference community and stay updated with the latest developments</p>
+</div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
-                    {{ message }}
+<div class="content-section">
+    <div class="auth-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="auth-form">
+            <form method="POST" action="{{ url_for('register_account') }}" class="register-form">
+                <div class="form-group">
+                    <label for="full_name">
+                        <i class="fas fa-user"></i>
+                        Full Name <span class="required">*</span>
+                    </label>
+                    <input type="text" id="full_name" name="full_name" required 
+                           placeholder="Enter your full name">
                 </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
 
-    <div class="auth-form">
-        <form method="POST" action="{{ url_for('register_account') }}">
-            <div class="form-group">
-                <label for="full_name">Full Name *</label>
-                <input type="text" id="full_name" name="full_name" required>
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Email Address <span class="required">*</span>
+                    </label>
+                    <input type="email" id="email" name="email" required
+                           placeholder="Enter your email address">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Password <span class="required">*</span>
+                    </label>
+                    <div class="password-input">
+                        <input type="password" id="password" name="password" required minlength="8"
+                               placeholder="Enter your password">
+                        <i class="fas fa-eye password-toggle" onclick="togglePassword('password')"></i>
+                    </div>
+                    <small class="form-text">Password must be at least 8 characters long</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">
+                        <i class="fas fa-lock"></i>
+                        Confirm Password <span class="required">*</span>
+                    </label>
+                    <div class="password-input">
+                        <input type="password" id="confirm_password" name="confirm_password" required
+                               placeholder="Confirm your password">
+                        <i class="fas fa-eye password-toggle" onclick="togglePassword('confirm_password')"></i>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="terms" name="terms" required>
+                        <span class="checkbox-custom"></span>
+                        <span class="label-text">I agree to the <a href="#" class="terms-link">terms and conditions</a> <span class="required">*</span></span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+                </div>
+            </form>
+
+            <div class="auth-links">
+                <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
             </div>
-
-            <div class="form-group">
-                <label for="email">Email Address *</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password *</label>
-                <input type="password" id="password" name="password" required minlength="8">
-                <small>Password must be at least 8 characters long</small>
-            </div>
-
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password *</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <input type="checkbox" id="terms" name="terms" required>
-                <label for="terms">I agree to the terms and conditions *</label>
-            </div>
-
-            <div class="auth-buttons">
-                <button type="submit" class="btn-submit">Create Account</button>
-            </div>
-        </form>
-
-        <div class="auth-links">
-            <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
         </div>
     </div>
 </div>
@@ -70,5 +103,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = input.nextElementSibling;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
 </script>
 {% endblock %} 
