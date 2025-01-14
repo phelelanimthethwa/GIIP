@@ -1,61 +1,451 @@
 {% extends "base.html" %}
 
-{% block title %}Manage Users - Conference 2024{% endblock %}
+{% block title %}Manage Users - Admin{% endblock %}
 
 {% block content %}
-<div class="admin-section">
-    <h1>Manage Users</h1>
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-users-cog"></i> Manage Users</h1>
+            <p>View and manage user accounts</p>
+        </div>
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
+                <div class="alert alert-{{ category }} fade-in">
                     {{ message }}
+                    <button type="button" class="close-alert" onclick="this.parentElement.remove();">×</button>
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="admin-card">
-        <h2>User List</h2>
-        <div class="table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Created At</th>
-                        <th>Admin Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user_id, user in users.items() %}
-                    <tr>
-                        <td>{{ user.full_name }}</td>
-                        <td>{{ user.email }}</td>
-                        <td>{{ user.created_at }}</td>
-                        <td>
-                            <span class="status-{% if user.is_admin %}admin{% else %}user{% endif %}">
-                                {% if user.is_admin %}Admin{% else %}User{% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            <form method="POST" action="{{ url_for('toggle_admin', user_id=user_id) }}" style="display: inline;">
-                                <button type="submit" class="btn-action">
-                                    {% if user.is_admin %}Remove Admin{% else %}Make Admin{% endif %}
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="content-section">
+        <div class="users-container">
+            <div class="users-header">
+                <div class="users-filters">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search users...">
+                    </div>
+                    <select id="roleFilter" class="form-control">
+                        <option value="all">All Roles</option>
+                        <option value="admin">Admins</option>
+                        <option value="user">Regular Users</option>
+                    </select>
+                </div>
+                <div class="users-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-users"></i>
+                        <span id="totalUsers">0 Users</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-user-shield"></i>
+                        <span id="adminCount">0 Admins</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <div class="th-content">
+                                    <span>Name</span>
+                                    <i class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-content">
+                                    <span>Email</span>
+                                    <i class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-content">
+                                    <span>Created At</span>
+                                    <i class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="th-content">
+                                    <span>Role</span>
+                                    <i class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if users %}
+                            {% for user_id, user in users.items() %}
+                                <tr class="user-row" 
+                                    data-name="{{ user.full_name|lower }}"
+                                    data-email="{{ user.email|lower }}"
+                                    data-role="{{ 'admin' if user.is_admin else 'user' }}">
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="user-avatar">{{ user.full_name[:2].upper() }}</div>
+                                            <span>{{ user.full_name }}</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.created_at|datetime }}</td>
+                                    <td>
+                                        <span class="role-badge {{ 'admin' if user.is_admin else 'user' }}">
+                                            <i class="fas {{ 'fa-user-shield' if user.is_admin else 'fa-user' }}"></i>
+                                            {{ 'Admin' if user.is_admin else 'User' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <form method="POST" action="{{ url_for('toggle_admin', user_id=user_id) }}" class="action-form">
+                                                <button type="submit" class="btn-action {{ 'remove-admin' if user.is_admin else 'make-admin' }}" title="{{ 'Remove admin privileges' if user.is_admin else 'Grant admin privileges' }}">
+                                                    <i class="fas {{ 'fa-user-minus' if user.is_admin else 'fa-user-plus' }}"></i>
+                                                    {{ 'Remove Admin' if user.is_admin else 'Make Admin' }}
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="no-data">
+                                    <div class="no-data-content">
+                                        <i class="fas fa-users"></i>
+                                        <p>No users found</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-
-    <div class="admin-actions" style="margin-top: 1rem;">
-        <a href="{{ url_for('admin_dashboard') }}" class="btn-secondary">Back to Dashboard</a>
-    </div>
 </div>
+
+<style>
+.users-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.users-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex: 1;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+}
+
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+}
+
+.search-box input {
+    padding-left: 35px;
+    border-radius: 8px;
+}
+
+.users-stats {
+    display: flex;
+    gap: 1rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.users-table th {
+    background: #f8f9fa;
+    padding: 1rem;
+    font-weight: 600;
+    color: #333;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.th-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.th-content i {
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.users-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    background: #e9ecef;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.role-badge.admin {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.role-badge.user {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-action.make-admin {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.btn-action.make-admin:hover {
+    background: #9ec5fe;
+}
+
+.btn-action.remove-admin {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.btn-action.remove-admin:hover {
+    background: #f1aeb5;
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem;
+}
+
+.no-data-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: #666;
+}
+
+.no-data-content i {
+    font-size: 3rem;
+    color: #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .users-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .users-filters {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .users-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .users-table th, .users-table td {
+        white-space: nowrap;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize filters
+    const searchInput = document.getElementById('searchInput');
+    const roleFilter = document.getElementById('roleFilter');
+    
+    searchInput.addEventListener('input', filterUsers);
+    roleFilter.addEventListener('change', filterUsers);
+
+    // Initialize sorting
+    document.querySelectorAll('.th-content').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.querySelector('span').textContent.toLowerCase();
+            sortTable(column);
+        });
+    });
+
+    // Update user counts
+    updateUserCounts();
+});
+
+function updateUserCounts() {
+    const rows = document.querySelectorAll('.user-row');
+    const adminRows = document.querySelectorAll('.user-row[data-role="admin"]');
+    
+    document.getElementById('totalUsers').textContent = `${rows.length} User${rows.length !== 1 ? 's' : ''}`;
+    document.getElementById('adminCount').textContent = `${adminRows.length} Admin${adminRows.length !== 1 ? 's' : ''}`;
+}
+
+function filterUsers() {
+    const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    const roleFilter = document.getElementById('roleFilter').value;
+    const rows = document.querySelectorAll('.user-row');
+    let visibleCount = 0;
+    let adminCount = 0;
+
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        const email = row.dataset.email;
+        const role = row.dataset.role;
+        
+        const matchesSearch = !searchQuery || 
+            name.includes(searchQuery) || 
+            email.includes(searchQuery);
+        const matchesRole = roleFilter === 'all' || role === roleFilter;
+
+        const isVisible = matchesSearch && matchesRole;
+        row.style.display = isVisible ? '' : 'none';
+        
+        if (isVisible) {
+            visibleCount++;
+            if (role === 'admin') adminCount++;
+        }
+    });
+
+    // Update counts
+    document.getElementById('totalUsers').textContent = 
+        `${visibleCount} User${visibleCount !== 1 ? 's' : ''} ${searchQuery ? 'found' : ''}`;
+    document.getElementById('adminCount').textContent = 
+        `${adminCount} Admin${adminCount !== 1 ? 's' : ''}`;
+}
+
+function sortTable(column) {
+    const table = document.querySelector('.users-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr.user-row'));
+    
+    // Get the current sort direction
+    const currentDir = tbody.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+    tbody.dataset.sortDir = currentDir;
+    
+    // Sort the rows
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch(column) {
+            case 'name':
+                aVal = a.dataset.name;
+                bVal = b.dataset.name;
+                break;
+            case 'email':
+                aVal = a.dataset.email;
+                bVal = b.dataset.email;
+                break;
+            case 'role':
+                aVal = a.dataset.role;
+                bVal = b.dataset.role;
+                break;
+            case 'created at':
+                aVal = a.querySelector('td:nth-child(3)').textContent;
+                bVal = b.querySelector('td:nth-child(3)').textContent;
+                break;
+            default:
+                return 0;
+        }
+        
+        if (currentDir === 'asc') {
+            return aVal.localeCompare(bVal);
+        } else {
+            return bVal.localeCompare(aVal);
+        }
+    });
+    
+    // Reorder the rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+</script>
 {% endblock %} 

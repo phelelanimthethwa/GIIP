@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -31,6 +31,18 @@ login_manager.login_view = 'login'
 
 # Initialize Flask-Mail
 mail = Mail(app)
+
+# Add datetime filter for Jinja templates
+@app.template_filter('datetime')
+def format_datetime(value):
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError:
+            return value
+    else:
+        dt = value
+    return dt.strftime('%B %d, %Y %I:%M %p')
 
 # Add this configuration after other app configurations
 app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
@@ -613,6 +625,630 @@ def delete_download(download_id):
         flash(f'Error deleting download: {str(e)}', 'error')
         
     return redirect(url_for('admin_downloads'))
+
+@app.route('/admin/registrations')
+@login_required
+@admin_required
+def admin_registrations():
+    try:
+        # Get all registrations from Firebase
+        registrations_ref = db.reference('registrations')
+        registrations = registrations_ref.get()
+        return render_template('admin/registrations.html', registrations=registrations or {})
+    except Exception as e:
+        flash(f'Error loading registrations: {str(e)}', 'error')
+        return render_template('admin/registrations.html', registrations={})
+
+@app.route('/admin/registrations/<registration_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def update_registration_status(registration_id):
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if new_status not in ['approved', 'rejected']:
+            return jsonify({'success': False, 'error': 'Invalid status'}), 400
+        
+        # Update registration status in Firebase
+        reg_ref = db.reference(f'registrations/{registration_id}')
+        registration = reg_ref.get()
+        
+        if not registration:
+            return jsonify({'success': False, 'error': 'Registration not found'}), 404
+        
+        # Update the status
+        reg_ref.update({
+            'payment_status': new_status,
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': current_user.email
+        })
+        
+        # Send email notification to user
+        try:
+            msg = Message(
+                f'Registration {new_status.title()}',
+                recipients=[registration['email']]
+            )
+            if new_status == 'approved':
+                msg.body = f"""
+                Dear {registration['full_name']},
+                
+                Your registration for Conference 2024 has been approved.
+                
+                Registration Details:
+                - Registration Type: {registration['registration_type']}
+                - Total Amount: ${registration['total_amount']}
+                
+                Thank you for registering for our conference.
+                
+                Best regards,
+                Conference Team
+                """
+            else:
+                msg.body = f"""
+                Dear {registration['full_name']},
+                
+                Unfortunately, your registration for Conference 2024 has been rejected.
+                
+                If you have any questions, please contact us at support@conference2024.com.
+                
+                Best regards,
+                Conference Team
+                """
+            mail.send(msg)
+        except Exception as e:
+            print(f"Error sending email: {str(e)}")
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/submissions')
+@login_required
+@admin_required
+def admin_submissions():
+    try:
+        # Get all submissions from Firebase
+        submissions_ref = db.reference('submissions')
+        submissions = submissions_ref.get()
+        return render_template('admin/submissions.html', submissions=submissions or {})
+    except Exception as e:
+        flash(f'Error loading submissions: {str(e)}', 'error')
+        return render_template('admin/submissions.html', submissions={})
+
+@app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def update_submission_status(submission_id):
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        comments = data.get('comments', '')
+        
+        if new_status not in ['accepted', 'rejected', 'revision']:
+            return jsonify({'success': False, 'error': 'Invalid status'}), 400
+        
+        # Update submission status in Firebase
+        sub_ref = db.reference(f'submissions/{submission_id}')
+        submission = sub_ref.get()
+        
+        if not submission:
+            return jsonify({'success': False, 'error': 'Submission not found'}), 404
+        
+        # Update the status and comments
+        sub_ref.update({
+            'status': new_status,
+            'review_comments': comments,
+            'updated_at': datetime.now().isoformat(),
+            'reviewed_by': current_user.email
+        })
+        
+        # Send email notification to author
+        try:
+            msg = Message(
+                f'Paper Submission {new_status.title()}',
+                recipients=[submission['email']]
+            )
+            
+            status_messages = {
+                'accepted': """
+                Congratulations! Your paper submission has been accepted.
+                
+                Paper Details:
+                Title: {title}
+                Category: {category}
+                
+                Please prepare your camera-ready version following the conference guidelines.
+                """,
+                'rejected': """
+                Thank you for your submission to our conference.
+                
+                Unfortunately, after careful review, we regret to inform you that your paper was not accepted.
+                
+                Paper Details:
+                Title: {title}
+                Category: {category}
+                
+                We encourage you to consider our feedback for future submissions.
+                """,
+                'revision': """
+                Thank you for your submission to our conference.
+                
+                Your paper requires revisions before it can be accepted.
+                
+                Paper Details:
+                Title: {title}
+                Category: {category}
+                
+                Review Comments:
+                {comments}
+                
+                Please submit your revised version through the conference system.
+                """
+            }
+            
+            msg.body = status_messages[new_status].format(
+                title=submission['title'],
+                category=submission['category'],
+                comments=comments
+            )
+            
+            mail.send(msg)
+        except Exception as e:
+            print(f"Error sending email: {str(e)}")
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/submissions/<submission_id>/comments', methods=['POST'])
+@login_required
+@admin_required
+def save_submission_comments(submission_id):
+    try:
+        data = request.get_json()
+        comments = data.get('comments', '')
+        
+        # Update comments in Firebase
+        sub_ref = db.reference(f'submissions/{submission_id}')
+        submission = sub_ref.get()
+        
+        if not submission:
+            return jsonify({'success': False, 'error': 'Submission not found'}), 404
+        
+        # Update the comments
+        sub_ref.update({
+            'review_comments': comments,
+            'updated_at': datetime.now().isoformat(),
+            'reviewed_by': current_user.email
+        })
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/announcements')
+@login_required
+@admin_required
+def admin_announcements():
+    try:
+        # Get all announcements from Firebase
+        announcements_ref = db.reference('announcements')
+        announcements = announcements_ref.get()
+        
+        # Sort announcements by pinned status and date
+        if announcements:
+            sorted_announcements = dict(sorted(
+                announcements.items(),
+                key=lambda x: (not x[1].get('is_pinned', False), x[1].get('created_at', '')),
+                reverse=True
+            ))
+        else:
+            sorted_announcements = {}
+            
+        return render_template('admin/announcements.html', announcements=sorted_announcements)
+    except Exception as e:
+        flash(f'Error loading announcements: {str(e)}', 'error')
+        return render_template('admin/announcements.html', announcements={})
+
+@app.route('/admin/announcements', methods=['POST'])
+@login_required
+@admin_required
+def create_announcement():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title', 'content', 'type']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Create new announcement
+        announcement = {
+            'title': data['title'],
+            'content': data['content'],
+            'type': data['type'],
+            'is_pinned': data.get('is_pinned', False),
+            'created_at': datetime.now().isoformat(),
+            'created_by': current_user.email,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Save to Firebase
+        announcements_ref = db.reference('announcements')
+        new_announcement = announcements_ref.push(announcement)
+        
+        # Send email notification for important announcements
+        if data['type'] == 'important':
+            try:
+                # Get all user emails
+                users_ref = db.reference('users')
+                users = users_ref.get()
+                if users:
+                    recipient_emails = [user['email'] for user in users.values() if user.get('email')]
+                    
+                    msg = Message(
+                        'Important Conference Announcement',
+                        recipients=recipient_emails,
+                        body=f"""
+                        Important Announcement: {data['title']}
+                        
+                        {data['content']}
+                        
+                        Best regards,
+                        Conference Team
+                        """
+                    )
+                    mail.send(msg)
+            except Exception as e:
+                print(f"Error sending email notification: {str(e)}")
+        
+        return jsonify({'success': True, 'id': new_announcement.key})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/announcements/<announcement_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_announcement(announcement_id):
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title', 'content', 'type']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Update announcement
+        announcement_ref = db.reference(f'announcements/{announcement_id}')
+        current_announcement = announcement_ref.get()
+        
+        if not current_announcement:
+            return jsonify({'success': False, 'error': 'Announcement not found'}), 404
+        
+        update_data = {
+            'title': data['title'],
+            'content': data['content'],
+            'type': data['type'],
+            'is_pinned': data.get('is_pinned', False),
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': current_user.email
+        }
+        
+        announcement_ref.update(update_data)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/announcements/<announcement_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_announcement(announcement_id):
+    try:
+        # Delete announcement from Firebase
+        announcement_ref = db.reference(f'announcements/{announcement_id}')
+        announcement = announcement_ref.get()
+        
+        if not announcement:
+            return jsonify({'success': False, 'error': 'Announcement not found'}), 404
+        
+        announcement_ref.delete()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Conference schedule configuration
+SCHEDULE_DAYS = [
+    'Day 1 - January 15, 2024',
+    'Day 2 - January 16, 2024',
+    'Day 3 - January 17, 2024'
+]
+
+TRACKS = [
+    'Main Hall',
+    'Room A',
+    'Room B',
+    'Room C',
+    'Workshop Room'
+]
+
+@app.route('/admin/schedule')
+@login_required
+@admin_required
+def admin_schedule():
+    try:
+        # Get all schedule sessions from Firebase
+        schedule_ref = db.reference('schedule')
+        schedule = schedule_ref.get()
+        
+        # Group sessions by day
+        grouped_schedule = {}
+        if schedule:
+            for session_id, session in schedule.items():
+                day = session['day']
+                if day not in grouped_schedule:
+                    grouped_schedule[day] = {}
+                grouped_schedule[day][session_id] = session
+            
+            # Sort sessions within each day by start time
+            for day in grouped_schedule:
+                grouped_schedule[day] = dict(sorted(
+                    grouped_schedule[day].items(),
+                    key=lambda x: x[1]['start_time']
+                ))
+        
+        return render_template('admin/schedule.html',
+                             schedule=grouped_schedule,
+                             schedule_days=SCHEDULE_DAYS,
+                             tracks=TRACKS)
+    except Exception as e:
+        flash(f'Error loading schedule: {str(e)}', 'error')
+        return render_template('admin/schedule.html',
+                             schedule={},
+                             schedule_days=SCHEDULE_DAYS,
+                             tracks=TRACKS)
+
+@app.route('/admin/schedule', methods=['POST'])
+@login_required
+@admin_required
+def create_session():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['day', 'track', 'start_time', 'end_time', 'title', 'type']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Validate time format
+        try:
+            start_time = datetime.strptime(data['start_time'], '%H:%M').strftime('%H:%M')
+            end_time = datetime.strptime(data['end_time'], '%H:%M').strftime('%H:%M')
+            if end_time <= start_time:
+                return jsonify({'success': False, 'error': 'End time must be after start time'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid time format'}), 400
+        
+        # Create new session
+        session = {
+            'day': data['day'],
+            'track': data['track'],
+            'start_time': start_time,
+            'end_time': end_time,
+            'title': data['title'],
+            'type': data['type'],
+            'speakers': data.get('speakers', ''),
+            'description': data.get('description', ''),
+            'created_at': datetime.now().isoformat(),
+            'created_by': current_user.email,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Save to Firebase
+        schedule_ref = db.reference('schedule')
+        new_session = schedule_ref.push(session)
+        
+        return jsonify({'success': True, 'id': new_session.key})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/schedule/<session_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_session(session_id):
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['day', 'track', 'start_time', 'end_time', 'title', 'type']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Validate time format
+        try:
+            start_time = datetime.strptime(data['start_time'], '%H:%M').strftime('%H:%M')
+            end_time = datetime.strptime(data['end_time'], '%H:%M').strftime('%H:%M')
+            if end_time <= start_time:
+                return jsonify({'success': False, 'error': 'End time must be after start time'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid time format'}), 400
+        
+        # Update session
+        session_ref = db.reference(f'schedule/{session_id}')
+        current_session = session_ref.get()
+        
+        if not current_session:
+            return jsonify({'success': False, 'error': 'Session not found'}), 404
+        
+        update_data = {
+            'day': data['day'],
+            'track': data['track'],
+            'start_time': start_time,
+            'end_time': end_time,
+            'title': data['title'],
+            'type': data['type'],
+            'speakers': data.get('speakers', ''),
+            'description': data.get('description', ''),
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': current_user.email
+        }
+        
+        session_ref.update(update_data)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/schedule/<session_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_session(session_id):
+    try:
+        # Delete session from Firebase
+        session_ref = db.reference(f'schedule/{session_id}')
+        session = session_ref.get()
+        
+        if not session:
+            return jsonify({'success': False, 'error': 'Session not found'}), 404
+        
+        session_ref.delete()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/email-templates')
+@login_required
+@admin_required
+def admin_email_templates():
+    try:
+        # Get all email templates from Firebase
+        templates_ref = db.reference('email_templates')
+        templates = templates_ref.get()
+        
+        # Sort templates by category and last updated
+        if templates:
+            sorted_templates = dict(sorted(
+                templates.items(),
+                key=lambda x: (x[1].get('category', ''), x[1].get('updated_at', '')),
+                reverse=True
+            ))
+        else:
+            sorted_templates = {}
+            
+        return render_template('admin/email_templates.html', templates=sorted_templates)
+    except Exception as e:
+        flash(f'Error loading email templates: {str(e)}', 'error')
+        return render_template('admin/email_templates.html', templates={})
+
+@app.route('/admin/email-templates', methods=['POST'])
+@login_required
+@admin_required
+def create_email_template():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'category', 'subject', 'body']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Create new template
+        template = {
+            'name': data['name'],
+            'category': data['category'],
+            'subject': data['subject'],
+            'body': data['body'],
+            'created_at': datetime.now().isoformat(),
+            'created_by': current_user.email,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Save to Firebase
+        templates_ref = db.reference('email_templates')
+        new_template = templates_ref.push(template)
+        
+        return jsonify({'success': True, 'id': new_template.key})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/email-templates/<template_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_email_template(template_id):
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['name', 'category', 'subject', 'body']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        
+        # Update template
+        template_ref = db.reference(f'email_templates/{template_id}')
+        current_template = template_ref.get()
+        
+        if not current_template:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+        
+        update_data = {
+            'name': data['name'],
+            'category': data['category'],
+            'subject': data['subject'],
+            'body': data['body'],
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': current_user.email
+        }
+        
+        template_ref.update(update_data)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/email-templates/<template_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_email_template(template_id):
+    try:
+        # Delete template from Firebase
+        template_ref = db.reference(f'email_templates/{template_id}')
+        template = template_ref.get()
+        
+        if not template:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+        
+        template_ref.delete()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Helper function to render email with template
+def render_email_template(template_id, context):
+    try:
+        template_ref = db.reference(f'email_templates/{template_id}')
+        template = template_ref.get()
+        
+        if not template:
+            return None, None
+            
+        # Replace variables in subject and body
+        subject = template['subject']
+        body = template['body']
+        
+        for key, value in context.items():
+            placeholder = '{{' + key + '}}'
+            subject = subject.replace(placeholder, str(value))
+            body = body.replace(placeholder, str(value))
+            
+        return subject, body
+    except Exception as e:
+        print(f"Error rendering email template: {str(e)}")
+        return None, None
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Submissions - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-file-alt"></i> Manage Submissions</h1>
+            <p>Review and manage conference paper submissions</p>
+        </div>
+        <div class="quick-actions">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search submissions...">
+            </div>
+            <select id="filterStatus" class="filter-select">
+                <option value="all">All Status</option>
+                <option value="pending">Pending Review</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+                <option value="revision">Needs Revision</option>
+            </select>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} fade-in">
+                    {{ message }}
+                    <button type="button" class="close-alert" onclick="this.parentElement.remove();">×</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="stats-overview">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-details">
+                <h3>Total Submissions</h3>
+                <p class="stat-number">{{ submissions|length }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #28a745;">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-details">
+                <h3>Accepted</h3>
+                <p class="stat-number">{{ submissions|selectattr('status', 'equalto', 'accepted')|list|length }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #ffc107;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-details">
+                <h3>Pending Review</h3>
+                <p class="stat-number">{{ submissions|selectattr('status', 'equalto', 'pending')|list|length }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="color: #dc3545;">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-details">
+                <h3>Rejected</h3>
+                <p class="stat-number">{{ submissions|selectattr('status', 'equalto', 'rejected')|list|length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if submissions %}
+                        {% for id, submission in submissions.items() %}
+                        <tr class="submission-row" data-status="{{ submission.status }}">
+                            <td>{{ submission.title }}</td>
+                            <td>{{ submission.author_name }}</td>
+                            <td>{{ submission.category }}</td>
+                            <td>
+                                <span class="status-badge status-{{ submission.status }}">
+                                    {{ submission.status|title }}
+                                </span>
+                            </td>
+                            <td>{{ submission.created_at|datetime }}</td>
+                            <td class="actions">
+                                <button class="btn-icon" onclick="viewDetails('{{ id }}')" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-icon" onclick="downloadPaper('{{ submission.file_url }}')" title="Download Paper">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                {% if submission.status == 'pending' %}
+                                <button class="btn-icon approve" onclick="updateStatus('{{ id }}', 'accepted')" title="Accept">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn-icon warning" onclick="updateStatus('{{ id }}', 'revision')" title="Request Revision">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                                <button class="btn-icon reject" onclick="updateStatus('{{ id }}', 'rejected')" title="Reject">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="no-data">No submissions found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Submission Details Modal -->
+<div id="detailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Submission Details</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="details-grid">
+                <div class="detail-group">
+                    <label>Paper Title</label>
+                    <p id="modalTitle"></p>
+                </div>
+                <div class="detail-group">
+                    <label>Author Name</label>
+                    <p id="modalAuthor"></p>
+                </div>
+                <div class="detail-group">
+                    <label>Email</label>
+                    <p id="modalEmail"></p>
+                </div>
+                <div class="detail-group">
+                    <label>Category</label>
+                    <p id="modalCategory"></p>
+                </div>
+                <div class="detail-group">
+                    <label>Status</label>
+                    <p id="modalStatus"></p>
+                </div>
+                <div class="detail-group">
+                    <label>Submission Date</label>
+                    <p id="modalDate"></p>
+                </div>
+                <div class="detail-group full-width">
+                    <label>Abstract</label>
+                    <p id="modalAbstract"></p>
+                </div>
+                <div class="detail-group full-width">
+                    <label>Keywords</label>
+                    <p id="modalKeywords"></p>
+                </div>
+                {% if current_user.is_admin %}
+                <div class="detail-group full-width">
+                    <label>Review Comments</label>
+                    <textarea id="reviewComments" class="form-control" rows="4" placeholder="Add your review comments here..."></textarea>
+                    <button onclick="saveReviewComments()" class="btn btn-primary mt-2">Save Comments</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Additional styles for submission management */
+.btn-icon.warning {
+    color: #ffc107;
+}
+
+.btn-icon.warning:hover {
+    background: #ffc107;
+    color: white;
+}
+
+.status-revision {
+    background: #fff3cd;
+    color: #856404;
+}
+
+#reviewComments {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+</style>
+
+<script>
+(function() {
+    // Global variables initialized from server-side data
+    window.submissionsData = JSON.parse('{{ submissions|tojson|safe }}');
+    window.currentSubmissionId = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('input', filterSubmissions);
+
+        // Status filter
+        const filterStatus = document.getElementById('filterStatus');
+        filterStatus.addEventListener('change', filterSubmissions);
+
+        // Initialize animations
+        const elements = document.querySelectorAll('.stat-card, .submission-row');
+        elements.forEach((element, index) => {
+            element.style.animation = `fadeIn 0.3s ease forwards ${index * 0.1}s`;
+            element.style.opacity = '0';
+        });
+    });
+})();
+
+function filterSubmissions() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const statusFilter = filterStatus.value;
+    const rows = document.querySelectorAll('.submission-row');
+
+    rows.forEach(row => {
+        const title = row.children[0].textContent.toLowerCase();
+        const author = row.children[1].textContent.toLowerCase();
+        const status = row.dataset.status;
+        
+        const matchesSearch = title.includes(searchTerm) || author.includes(searchTerm);
+        const matchesStatus = statusFilter === 'all' || status === statusFilter;
+
+        row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+    });
+}
+
+function viewDetails(id) {
+    window.currentSubmissionId = id;
+    const submission = window.submissionsData[id];
+    if (submission) {
+        document.getElementById('modalTitle').textContent = submission.title;
+        document.getElementById('modalAuthor').textContent = submission.author_name;
+        document.getElementById('modalEmail').textContent = submission.email;
+        document.getElementById('modalCategory').textContent = submission.category;
+        document.getElementById('modalStatus').textContent = submission.status;
+        document.getElementById('modalDate').textContent = new Date(submission.created_at).toLocaleDateString();
+        document.getElementById('modalAbstract').textContent = submission.abstract;
+        document.getElementById('modalKeywords').textContent = submission.keywords.join(', ');
+        
+        const reviewComments = document.getElementById('reviewComments');
+        if (reviewComments) {
+            reviewComments.value = submission.review_comments || '';
+        }
+        
+        const modal = document.getElementById('detailsModal');
+        modal.style.display = 'block';
+    }
+}
+
+function updateStatus(id, status) {
+    const statusText = status === 'revision' ? 'request revision for' : status;
+    const comments = document.getElementById('reviewComments')?.value || '';
+    
+    if (confirm(`Are you sure you want to ${statusText} this submission?`)) {
+        fetch(`/admin/submissions/${id}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                status: status,
+                comments: comments
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Error updating status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating status: ' + error.message);
+        });
+    }
+}
+
+function downloadPaper(fileUrl) {
+    if (!fileUrl) {
+        alert('File URL not available');
+        return;
+    }
+    window.open(fileUrl, '_blank');
+}
+
+function saveReviewComments() {
+    if (!window.currentSubmissionId) {
+        alert('No submission selected');
+        return;
+    }
+
+    const comments = document.getElementById('reviewComments').value;
+    
+    fetch(`/admin/submissions/${window.currentSubmissionId}/comments`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comments: comments })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('Comments saved successfully');
+            // Update the local data
+            window.submissionsData[window.currentSubmissionId].review_comments = comments;
+        } else {
+            alert(data.error || 'Error saving comments');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving comments: ' + error.message);
+    });
+}
+
+// Modal close functionality
+document.querySelector('.close-modal').addEventListener('click', () => {
+    document.getElementById('detailsModal').style.display = 'none';
+    window.currentSubmissionId = null;
+});
+
+window.onclick = function(event) {
+    const modal = document.getElementById('detailsModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+        window.currentSubmissionId = null;
+    }
+}
+</script>
+{% endblock %} 

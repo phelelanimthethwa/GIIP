@@ -1,0 +1,651 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Email Templates - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-envelope"></i> Email Templates</h1>
+            <p>Manage notification templates for different events</p>
+        </div>
+        <div class="quick-actions">
+            <button class="btn btn-primary" onclick="openNewTemplateModal()">
+                <i class="fas fa-plus"></i> Add Template
+            </button>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} fade-in">
+                    {{ message }}
+                    <button type="button" class="close-alert" onclick="this.parentElement.remove();">×</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="content-section">
+        <div class="templates-container">
+            <div class="templates-header">
+                <div class="templates-filters">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search templates...">
+                    </div>
+                    <select id="categoryFilter" class="form-control">
+                        <option value="all">All Categories</option>
+                        <option value="registration">Registration</option>
+                        <option value="submission">Paper Submission</option>
+                        <option value="announcement">Announcements</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div class="templates-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-envelope"></i>
+                        <span id="totalTemplates">0 Templates</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="templates-grid">
+                {% if templates %}
+                    {% for id, template in templates.items() %}
+                        <div class="template-card" 
+                             data-id="{{ id }}"
+                             data-category="{{ template.category }}"
+                             data-name="{{ template.name|lower }}"
+                             data-subject="{{ template.subject|lower }}">
+                            <div class="template-header">
+                                <h3>{{ template.name }}</h3>
+                                <div class="template-actions">
+                                    <button class="btn-icon preview" onclick="previewTemplate('{{ id }}')" title="Preview">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn-icon" onclick="editTemplate('{{ id }}')" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon delete" onclick="deleteTemplate('{{ id }}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="template-details">
+                                <span class="template-category {{ template.category }}">
+                                    <i class="fas fa-tag"></i> {{ template.category|title }}
+                                </span>
+                            </div>
+                            <div class="template-preview">
+                                {{ template.subject }}
+                            </div>
+                            <div class="template-meta">
+                                <span>
+                                    <i class="fas fa-clock"></i> 
+                                    Last updated: {{ template.updated_at|datetime }}
+                                </span>
+                                <span>
+                                    <i class="fas fa-user"></i>
+                                    {{ template.updated_by or template.created_by }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-data">
+                        <i class="fas fa-envelope"></i>
+                        <p>No email templates created yet</p>
+                        <button class="btn btn-primary" onclick="openNewTemplateModal()">Create First Template</button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template Modal -->
+<div id="templateModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">New Email Template</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="templateForm">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="name">Template Name</label>
+                        <input type="text" id="name" name="name" class="form-control" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="category">Category</label>
+                        <select id="category" name="category" class="form-control" required>
+                            <option value="registration">Registration</option>
+                            <option value="submission">Paper Submission</option>
+                            <option value="announcement">Announcements</option>
+                            <option value="general">General</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="subject">Email Subject</label>
+                    <input type="text" id="subject" name="subject" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="body">Email Body</label>
+                    <div class="template-variables">
+                        <div class="variables-section">
+                            <h4>User Variables</h4>
+                            <span class="variable" onclick="insertVariable('{{name}}')">{name}</span>
+                            <span class="variable" onclick="insertVariable('{{email}}')">{email}</span>
+                            <span class="variable" onclick="insertVariable('{{full_name}}')">{full_name}</span>
+                        </div>
+                        <div class="variables-section">
+                            <h4>Conference Variables</h4>
+                            <span class="variable" onclick="insertVariable('{{conference_name}}')">{conference_name}</span>
+                            <span class="variable" onclick="insertVariable('{{conference_date}}')">{conference_date}</span>
+                            <span class="variable" onclick="insertVariable('{{venue}}')">{venue}</span>
+                        </div>
+                        <div class="variables-section">
+                            <h4>Registration Variables</h4>
+                            <span class="variable" onclick="insertVariable('{{registration_type}}')">{registration_type}</span>
+                            <span class="variable" onclick="insertVariable('{{amount}}')">{amount}</span>
+                            <span class="variable" onclick="insertVariable('{{payment_status}}')">{payment_status}</span>
+                        </div>
+                        <div class="variables-section">
+                            <h4>Submission Variables</h4>
+                            <span class="variable" onclick="insertVariable('{{paper_title}}')">{paper_title}</span>
+                            <span class="variable" onclick="insertVariable('{{submission_status}}')">{submission_status}</span>
+                            <span class="variable" onclick="insertVariable('{{review_comments}}')">{review_comments}</span>
+                        </div>
+                    </div>
+                    <textarea id="body" name="body" class="form-control" rows="12" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Template</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Template Preview</h2>
+            <button class="close-modal" onclick="closePreviewModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="preview-section">
+                <h3>Subject</h3>
+                <div id="previewSubject" class="preview-content"></div>
+            </div>
+            <div class="preview-section">
+                <h3>Body</h3>
+                <div id="previewBody" class="preview-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.templates-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.templates-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.templates-filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex: 1;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+}
+
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+}
+
+.search-box input {
+    padding-left: 35px;
+    border-radius: 8px;
+}
+
+.templates-stats {
+    display: flex;
+    gap: 1rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.template-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e9ecef;
+}
+
+.template-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.template-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.template-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.template-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.2s ease;
+}
+
+.btn-icon:hover {
+    color: #333;
+}
+
+.btn-icon.preview:hover {
+    color: #0d6efd;
+}
+
+.btn-icon.delete:hover {
+    color: #dc3545;
+}
+
+.template-details {
+    margin-bottom: 1rem;
+}
+
+.template-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.template-category.registration {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.template-category.submission {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.template-category.announcement {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.template-category.general {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.template-preview {
+    color: #666;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    display: -moz-box;
+    display: box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 2.6em;
+}
+
+.template-meta {
+    display: flex;
+    justify-content: space-between;
+    color: #666;
+    font-size: 0.75rem;
+}
+
+.template-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.template-variables {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.variables-section {
+    margin-bottom: 1rem;
+}
+
+.variables-section:last-child {
+    margin-bottom: 0;
+}
+
+.variables-section h4 {
+    font-size: 0.875rem;
+    color: #666;
+    margin: 0 0 0.5rem 0;
+}
+
+.variable {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: #e9ecef;
+    border-radius: 4px;
+    margin: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.875rem;
+    color: #333;
+}
+
+.variable:hover {
+    background: #dee2e6;
+}
+
+.preview-section {
+    margin-bottom: 1.5rem;
+}
+
+.preview-section h3 {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.preview-content {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    white-space: pre-wrap;
+}
+
+.no-data {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+}
+
+.no-data i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .templates-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .templates-filters {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .templates-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+(function() {
+    window.templatesData = JSON.parse('{{ templates|tojson|safe }}' || '{}');
+    window.currentTemplateId = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('templateForm');
+        form.addEventListener('submit', handleSubmit);
+
+        // Initialize filters
+        const categoryFilter = document.getElementById('categoryFilter');
+        const searchInput = document.getElementById('searchInput');
+        
+        categoryFilter.addEventListener('change', filterTemplates);
+        searchInput.addEventListener('input', filterTemplates);
+
+        // Initialize animations
+        const elements = document.querySelectorAll('.template-card');
+        elements.forEach((element, index) => {
+            element.style.animation = `fadeIn 0.3s ease forwards ${index * 0.1}s`;
+            element.style.opacity = '0';
+        });
+
+        // Update templates count
+        updateTemplatesCount();
+    });
+})();
+
+function updateTemplatesCount() {
+    const totalTemplates = document.querySelectorAll('.template-card').length;
+    document.getElementById('totalTemplates').textContent = `${totalTemplates} Template${totalTemplates !== 1 ? 's' : ''}`;
+}
+
+function filterTemplates() {
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+    const templates = document.querySelectorAll('.template-card');
+    let visibleCount = 0;
+
+    templates.forEach(template => {
+        const categoryValue = template.dataset.category;
+        const templateName = template.dataset.name;
+        const templateSubject = template.dataset.subject;
+        
+        const matchesCategory = categoryFilter === 'all' || categoryValue === categoryFilter;
+        const matchesSearch = !searchQuery || 
+            templateName.includes(searchQuery) || 
+            templateSubject.includes(searchQuery);
+
+        const isVisible = matchesCategory && matchesSearch;
+        template.style.display = isVisible ? '' : 'none';
+        if (isVisible) visibleCount++;
+    });
+
+    // Update templates count
+    document.getElementById('totalTemplates').textContent = 
+        `${visibleCount} Template${visibleCount !== 1 ? 's' : ''} ${searchQuery ? 'found' : ''}`;
+}
+
+function previewTemplate(id) {
+    const template = window.templatesData[id];
+    
+    document.getElementById('previewSubject').textContent = template.subject;
+    document.getElementById('previewBody').textContent = template.body;
+    
+    document.getElementById('previewModal').style.display = 'block';
+}
+
+function openNewTemplateModal() {
+    window.currentTemplateId = null;
+    document.getElementById('modalTitle').textContent = 'New Email Template';
+    document.getElementById('templateForm').reset();
+    document.getElementById('templateModal').style.display = 'block';
+}
+
+function editTemplate(id) {
+    window.currentTemplateId = id;
+    const template = window.templatesData[id];
+    
+    document.getElementById('modalTitle').textContent = 'Edit Email Template';
+    document.getElementById('name').value = template.name;
+    document.getElementById('category').value = template.category;
+    document.getElementById('subject').value = template.subject;
+    document.getElementById('body').value = template.body;
+    
+    document.getElementById('templateModal').style.display = 'block';
+}
+
+function deleteTemplate(id) {
+    if (confirm('Are you sure you want to delete this template?')) {
+        fetch(`/admin/email-templates/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.error || 'Error deleting template');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting template: ' + error.message);
+        });
+    }
+}
+
+function handleSubmit(event) {
+    event.preventDefault();
+    
+    const formData = {
+        name: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        subject: document.getElementById('subject').value,
+        body: document.getElementById('body').value
+    };
+
+    const url = window.currentTemplateId 
+        ? `/admin/email-templates/${window.currentTemplateId}`
+        : '/admin/email-templates';
+    
+    const method = window.currentTemplateId ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Error saving template');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving template: ' + error.message);
+    });
+}
+
+function insertVariable(variable) {
+    const bodyTextarea = document.getElementById('body');
+    const cursorPos = bodyTextarea.selectionStart;
+    const textBefore = bodyTextarea.value.substring(0, cursorPos);
+    const textAfter = bodyTextarea.value.substring(cursorPos);
+    bodyTextarea.value = textBefore + variable + textAfter;
+    bodyTextarea.focus();
+}
+
+function closeModal() {
+    document.getElementById('templateModal').style.display = 'none';
+    window.currentTemplateId = null;
+}
+
+function closePreviewModal() {
+    document.getElementById('previewModal').style.display = 'none';
+}
+
+// Modal close functionality
+document.querySelectorAll('.close-modal').forEach(button => {
+    button.addEventListener('click', function() {
+        this.closest('.modal').style.display = 'none';
+        if (this.closest('#templateModal')) {
+            window.currentTemplateId = null;
+        }
+    });
+});
+
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+        if (event.target.id === 'templateModal') {
+            window.currentTemplateId = null;
+        }
+    }
+}
+</script>
+{% endblock %} 
