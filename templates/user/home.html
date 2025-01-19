@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Welcome to Conference 2024</h1>
+    <p>Join us for the premier conference in [Your Field]</p>
+    <div class="conference-info">
+        <div class="date-location">
+            <h2>Important Dates</h2>
+            <ul>
+                <li>Paper Submission Deadline: [Date]</li>
+                <li>Notification of Acceptance: [Date]</li>
+                <li>Conference Dates: [Dates]</li>
+            </ul>
+        </div>
+        <div class="highlights">
+            <h2>Conference Highlights</h2>
+            <ul>
+                <li>Keynote Speakers</li>
+                <li>Technical Sessions</li>
+                <li>Workshops</li>
+                <li>Networking Events</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="about-section">
+    <div class="vision">
+        <h2>Vision</h2>
+        <p>The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform</p>
+    </div>
+
+    <div class="mission">
+        <h2>Mission</h2>
+        <p>GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences</p>
+    </div>
+
+    <div class="objective">
+        <h2>Objective</h2>
+        <ul>
+            <li>To provide a world class platform for researchers to share their research findings by organizing International and National Conferences.</li>
+            <li>To encourage researchers to identify significant research issues in the identified key areas in Social, Economic, Information Technology, Education and Management.</li>
+            <li>To help in the dissemination of researcher's work through publications in accredited journals and / or conference proceedings or books.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="downloads-section">
+    <h2>Downloads</h2>
+    <div class="downloads-grid">
+        {% if downloads %}
+            {% for download in downloads %}
+            <div class="download-card">
+                <div class="download-icon">
+                    <i class="fas fa-file-{{ download.type }}"></i>
+                </div>
+                <div class="download-info">
+                    <h3>{{ download.title }}</h3>
+                    <p>{{ download.description }}</p>
+                    <div class="download-meta">
+                        <span class="file-type">{{ download.file_type }}</span>
+                        <span class="file-size">{{ download.file_size }}</span>
+                    </div>
+                    <a href="{{ download.file_url }}" class="btn-download" download>
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-downloads">
+                <p>No documents available for download at this time.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

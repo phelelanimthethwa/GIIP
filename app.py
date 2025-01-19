@@ -102,15 +102,15 @@ def home():
     # Get downloads from Firebase
     downloads_ref = db.reference('downloads')
     downloads = downloads_ref.get()
-    return render_template('home.html', downloads=downloads)
+    return render_template('user/home.html', downloads=downloads)
 
 @app.route('/about')
 def about():
-    return render_template('about.html')
+    return render_template('user/about.html')
 
 @app.route('/call-for-papers')
 def call_for_papers():
-    return render_template('call_for_papers.html')
+    return render_template('user/call_for_papers.html')
 
 @app.route('/paper-submission', methods=['GET', 'POST'])
 @login_required
@@ -196,27 +196,27 @@ def paper_submission():
             flash(f'Error submitting paper: {str(e)}', 'error')
             return redirect(url_for('paper_submission'))
 
-    return render_template('paper_submission.html', recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
+    return render_template('user/paper_submission.html', recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
 
 @app.route('/author-guidelines')
 def author_guidelines():
-    return render_template('author_guidelines.html')
+    return render_template('user/author_guidelines.html')
 
 @app.route('/venue')
 def venue():
     # Get venue details from Firebase
     venue_ref = db.reference('venue')
     venue_details = venue_ref.get()
-    return render_template('venue.html', venue_details=venue_details)
+    return render_template('user/venue.html', venue_details=venue_details)
 
 @app.route('/video-conference')
 def video_conference():
-    return render_template('video_conference.html')
+    return render_template('user/video_conference.html')
 
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html')
+    return render_template('user/profile.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -241,7 +241,7 @@ def login():
             return redirect(url_for('dashboard'))
         except:
             flash('Invalid email or password', 'error')
-    return render_template('login.html')
+    return render_template('user/login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_account():
@@ -254,11 +254,11 @@ def register_account():
 
         if not terms:
             flash('You must accept the terms and conditions.', 'error')
-            return render_template('register.html')
+            return render_template('user/register_account.html')
 
         if password != confirm_password:
             flash('Passwords do not match.', 'error')
-            return render_template('register.html')
+            return render_template('user/register_account.html')
 
         try:
             # Create user in Firebase Authentication
@@ -279,9 +279,9 @@ def register_account():
             return redirect(url_for('login'))
         except Exception as e:
             flash(f'Error creating account: {str(e)}', 'error')
-            return render_template('register.html')
+            return render_template('user/register_account.html')
     
-    return render_template('register.html')
+    return render_template('user/register_account.html')
 
 @app.route('/logout')
 @login_required
@@ -356,7 +356,7 @@ def registration():
         except Exception as e:
             flash(f'Error processing registration: {str(e)}', 'error')
     
-    return render_template('registration.html', fees=fees)
+    return render_template('user/registration.html', fees=fees)
 
 @app.route('/dashboard')
 @login_required
@@ -365,10 +365,10 @@ def dashboard():
         # Get user's registrations from Firebase
         ref = db.reference('registrations')
         registrations = ref.order_by_child('email').equal_to(current_user.email).get()
-        return render_template('dashboard.html', registrations=registrations or {})
+        return render_template('user/dashboard.html', registrations=registrations or {})
     except Exception as e:
         flash(f'Error loading dashboard: {str(e)}', 'error')
-        return render_template('dashboard.html', registrations={})
+        return render_template('user/dashboard.html', registrations={})
 
 def admin_required(f):
     @wraps(f)
@@ -489,7 +489,7 @@ def admin_venue():
     # Get current venue details
     venue_ref = db.reference('venue')
     venue_details = venue_ref.get()
-    return render_template('admin_venue.html', venue_details=venue_details)
+    return render_template('admin/admin_venue.html', venue_details=venue_details)
 
 @app.route('/admin/registration-fees', methods=['GET', 'POST'])
 @admin_required
@@ -538,7 +538,7 @@ def admin_registration_fees():
     
     # Get current registration fees
     fees = db.reference('registration_fees').get()
-    return render_template('admin_registration_fees.html', fees=fees)
+    return render_template('admin/admin_registration_fees.html', fees=fees)
 
 @app.route('/admin/downloads', methods=['GET', 'POST'])
 @login_required

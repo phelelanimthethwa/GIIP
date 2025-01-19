@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "admin/base_admin.html" %}
 
 {% block title %}Admin Dashboard - Conference 2024{% endblock %}
 
@@ -13,7 +13,7 @@
             <a href="{{ url_for('admin_downloads') }}" class="btn btn-primary">
                 <i class="fas fa-upload"></i> Upload Document
             </a>
-            <a href="#" class="btn btn-secondary">
+            <a href="#" class="btn btn-secondary notification-btn">
                 <i class="fas fa-bell"></i>
                 <span class="notification-badge">3</span>
             </a>
@@ -41,6 +41,9 @@
                 <p class="stat-number">{{ users|length }}</p>
                 <span class="stat-label">Active accounts</span>
             </div>
+            <div class="stat-chart">
+                <canvas id="usersChart"></canvas>
+            </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">
@@ -50,6 +53,9 @@
                 <h3>Registrations</h3>
                 <p class="stat-number">{{ registrations|length }}</p>
                 <span class="stat-label">Conference attendees</span>
+            </div>
+            <div class="stat-chart">
+                <canvas id="registrationsChart"></canvas>
             </div>
         </div>
         <div class="stat-card">
@@ -61,6 +67,9 @@
                 <p class="stat-number">{{ submissions|length if submissions else 0 }}</p>
                 <span class="stat-label">Paper submissions</span>
             </div>
+            <div class="stat-chart">
+                <canvas id="submissionsChart"></canvas>
+            </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon">
@@ -70,6 +79,9 @@
                 <h3>Downloads</h3>
                 <p class="stat-number">{{ downloads|length if downloads else 0 }}</p>
                 <span class="stat-label">Available documents</span>
+            </div>
+            <div class="stat-chart">
+                <canvas id="downloadsChart"></canvas>
             </div>
         </div>
     </div>
@@ -210,6 +222,8 @@
 .admin-dashboard {
     padding: 2rem;
     margin-top: 4rem;
+    background: #f8f9fa;
+    min-height: calc(100vh - 4rem);
 }
 
 .dashboard-header {
@@ -229,6 +243,7 @@
     gap: 1rem;
     color: #333;
     margin-bottom: 0.5rem;
+    font-size: 1.8rem;
 }
 
 .header-content p {
@@ -241,20 +256,58 @@
     gap: 1rem;
 }
 
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: #f8f9fa;
+    color: #333;
+    border: 1px solid #dee2e6;
+    position: relative;
+}
+
+.btn-secondary:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.notification-btn {
+    position: relative;
+}
+
 .notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
     background: #dc3545;
     color: white;
     padding: 0.2rem 0.5rem;
     border-radius: 50%;
     font-size: 0.8rem;
-    position: absolute;
-    top: -5px;
-    right: -5px;
 }
 
 .stats-overview {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -265,13 +318,15 @@
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: flex;
-    align-items: center;
     gap: 1.5rem;
-    transition: transform 0.3s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .stat-card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
 .stat-icon {
@@ -284,6 +339,16 @@
     justify-content: center;
     font-size: 1.5rem;
     color: #007bff;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    background: #007bff;
+    color: white;
+}
+
+.stat-details {
+    flex: 1;
 }
 
 .stat-details h3 {
@@ -304,6 +369,20 @@
     font-size: 0.9rem;
 }
 
+.stat-chart {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100px;
+    height: 40px;
+    opacity: 0.2;
+    transition: opacity 0.3s ease;
+}
+
+.stat-card:hover .stat-chart {
+    opacity: 0.6;
+}
+
 .dashboard-grid {
     display: grid;
     gap: 2rem;
@@ -322,6 +401,7 @@
     display: flex;
     align-items: center;
     gap: 0.8rem;
+    font-size: 1.4rem;
 }
 
 .action-grid {
@@ -335,34 +415,37 @@
     align-items: center;
     padding: 1.5rem;
     background: #f8f9fa;
-    border-radius: 8px;
+    border-radius: 12px;
     text-decoration: none;
     color: inherit;
     gap: 1.5rem;
     transition: all 0.3s ease;
+    border: 1px solid transparent;
 }
 
 .action-card:hover {
     background: #007bff;
     color: white;
     transform: translateY(-2px);
-}
-
-.action-card:hover .action-icon {
-    background: rgba(255,255,255,0.2);
+    border-color: #0056b3;
 }
 
 .action-icon {
     width: 45px;
     height: 45px;
     background: white;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
     color: #007bff;
     transition: all 0.3s ease;
+}
+
+.action-card:hover .action-icon {
+    background: rgba(255,255,255,0.2);
+    color: white;
 }
 
 .action-content {
@@ -372,6 +455,7 @@
 .action-content h3 {
     font-size: 1.1rem;
     margin-bottom: 0.25rem;
+    font-weight: 600;
 }
 
 .action-content p {
@@ -392,9 +476,23 @@
 
 .alert {
     margin-bottom: 2rem;
+    padding: 1rem;
+    border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 
 .close-alert {
@@ -449,11 +547,59 @@
     .action-grid {
         grid-template-columns: 1fr;
     }
+
+    .stat-chart {
+        display: none;
+    }
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize mini charts
+    const chartOptions = {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                data: [12, 19, 3, 5, 2, 3],
+                borderColor: '#007bff',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    display: false
+                },
+                y: {
+                    display: false
+                }
+            },
+            elements: {
+                point: {
+                    radius: 0
+                }
+            }
+        }
+    };
+
+    // Create charts for each stat card
+    new Chart(document.getElementById('usersChart'), chartOptions);
+    new Chart(document.getElementById('registrationsChart'), chartOptions);
+    new Chart(document.getElementById('submissionsChart'), chartOptions);
+    new Chart(document.getElementById('downloadsChart'), chartOptions);
+
     // Add animation to stat cards
     const statCards = document.querySelectorAll('.stat-card');
     statCards.forEach((card, index) => {

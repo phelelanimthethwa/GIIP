@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Call for Papers - GIIR Conference 2024{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Call for Papers</h1>
+    <p>Submit your research to be part of the Global Institute on Innovative Research Conference 2024</p>
+</div>
+
+<div class="content-section">
+    <section class="topics">
+        <h2>Topics of Interest</h2>
+        <p class="section-intro">We invite high-quality original research papers in the following areas (but not limited to):</p>
+        
+        <div class="topics-grid">
+            <div class="topic-card">
+                <h3>Artificial Intelligence & Machine Learning</h3>
+                <ul>
+                    <li>Deep Learning and Neural Networks</li>
+                    <li>Natural Language Processing</li>
+                    <li>Computer Vision and Pattern Recognition</li>
+                    <li>Reinforcement Learning</li>
+                    <li>AI Ethics and Fairness</li>
+                </ul>
+            </div>
+            
+            <div class="topic-card">
+                <h3>Data Science & Analytics</h3>
+                <ul>
+                    <li>Big Data Analytics</li>
+                    <li>Predictive Analytics</li>
+                    <li>Data Mining</li>
+                    <li>Business Intelligence</li>
+                    <li>Statistical Analysis</li>
+                </ul>
+            </div>
+            
+            <div class="topic-card">
+                <h3>Internet of Things & Edge Computing</h3>
+                <ul>
+                    <li>IoT Architectures</li>
+                    <li>Edge Computing Solutions</li>
+                    <li>Smart Systems</li>
+                    <li>Sensor Networks</li>
+                    <li>IoT Security</li>
+                </ul>
+            </div>
+            
+            <div class="topic-card">
+                <h3>Cybersecurity & Privacy</h3>
+                <ul>
+                    <li>Network Security</li>
+                    <li>Privacy-Preserving Technologies</li>
+                    <li>Blockchain Applications</li>
+                    <li>Security Protocols</li>
+                    <li>Threat Detection</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="important-dates">
+        <h2>Important Dates</h2>
+        <div class="dates-grid">
+            <div class="date-card">
+                <div class="date-icon">
+                    <i class="fas fa-paper-plane"></i>
+                </div>
+                <h3>Paper Submission</h3>
+                <p class="date">March 15, 2024</p>
+                <p class="time">23:59 GMT</p>
+            </div>
+            
+            <div class="date-card">
+                <div class="date-icon">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <h3>Notification of Acceptance</h3>
+                <p class="date">April 30, 2024</p>
+                <p class="time">23:59 GMT</p>
+            </div>
+            
+            <div class="date-card">
+                <div class="date-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>Camera-ready Submission</h3>
+                <p class="date">May 15, 2024</p>
+                <p class="time">23:59 GMT</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="submission-guidelines">
+        <h2>Submission Guidelines</h2>
+        <div class="guidelines-grid">
+            <div class="guideline-card">
+                <h3>Paper Format</h3>
+                <ul>
+                    <li>Papers must be written in English</li>
+                    <li>Maximum length: 8 pages including figures and references</li>
+                    <li>Format: PDF</li>
+                    <li>Template: IEEE Conference format</li>
+                    <li>Font: Times New Roman, 10pt</li>
+                    <li>Double column layout</li>
+                </ul>
+            </div>
+            
+            <div class="guideline-card">
+                <h3>Review Process</h3>
+                <ul>
+                    <li>Double-blind peer review</li>
+                    <li>Minimum three reviewers per paper</li>
+                    <li>Evaluation based on originality, significance, and clarity</li>
+                    <li>Decisions: Accept, Minor Revision, Major Revision, or Reject</li>
+                </ul>
+            </div>
+            
+            <div class="guideline-card">
+                <h3>Publication</h3>
+                <ul>
+                    <li>Accepted papers will be published in conference proceedings</li>
+                    <li>Indexed in major academic databases</li>
+                    <li>Selected papers will be invited for journal special issues</li>
+                    <li>Copyright form submission required</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="submission-cta">
+            <a href="{{ url_for('paper_submission') }}" class="btn btn-primary">
+                <i class="fas fa-upload"></i> Submit Your Paper
+            </a>
+            <a href="#" class="btn btn-secondary">
+                <i class="fas fa-download"></i> Download Template
+            </a>
+        </div>
+    </section>
+</div>
+{% endblock %} 
