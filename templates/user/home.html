@@ -3,7 +3,8 @@
 {% block title %}Home - Conference 2024{% endblock %}
 
 {% block content %}
-<div class="hero">
+<div class="hero {% if site_design.hero_image %}has-custom-bg{% endif %}" 
+     {% if site_design.hero_image %}style="--hero-image: url('{{ site_design.hero_image }}');"{% endif %}>
     <h1>Welcome to Conference 2024</h1>
     <p>Join us for the premier conference in [Your Field]</p>
     <div class="conference-info">

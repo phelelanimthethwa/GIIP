@@ -8,13 +8,13 @@
 body {
     font-family: 'Poppins', Arial, sans-serif;
     line-height: 1.6;
-    background-color: #f8f9fa;
-    color: #333;
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 /* Navigation Styles */
 .navbar {
-    background-color: #fff;
+    background-color: var(--header-background);
     padding: 1rem 2rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     position: fixed;
@@ -34,7 +34,7 @@ body {
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #007bff;
+    color: var(--primary-color);
     text-decoration: none;
 }
 
@@ -45,7 +45,7 @@ body {
 }
 
 .nav-links a {
-    color: #333;
+    color: var(--text-color);
     text-decoration: none;
     font-weight: 500;
     padding: 0.5rem 1rem;
@@ -54,17 +54,24 @@ body {
 }
 
 .nav-links a:hover {
-    color: #007bff;
-    background-color: #f8f9fa;
+    color: var(--primary-color);
+    background-color: var(--background-color);
 }
 
 /* Hero Section */
 .hero {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
+    background-image: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/uploads/design/default-hero.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: var(--hero-text-color);
     padding: 8rem 2rem 4rem;
     text-align: center;
     margin-bottom: 4rem;
+}
+
+.hero.has-custom-bg {
+    background-image: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.7)), var(--hero-image);
 }
 
 .hero h1 {
@@ -135,17 +142,17 @@ body {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .vision:hover, .mission:hover, .objective:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 12px rgba(var(--primary-color), 0.15);
 }
 
 .vision h2, .mission h2, .objective h2 {
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1.5rem;
     font-size: 1.8rem;
     position: relative;
@@ -159,7 +166,7 @@ body {
     left: 0;
     width: 50px;
     height: 3px;
-    background: #007bff;
+    background: var(--primary-color);
 }
 
 .vision p, .mission p {
@@ -183,7 +190,7 @@ body {
 
 .objective li:before {
     content: "→";
-    color: #007bff;
+    color: var(--primary-color);
     position: absolute;
     left: 0;
     top: 0;
@@ -213,7 +220,7 @@ body {
     transform: translateX(-50%);
     width: 100px;
     height: 3px;
-    background: #007bff;
+    background: var(--primary-color);
 }
 
 .downloads-grid {
@@ -226,14 +233,14 @@ body {
 .download-card {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     overflow: hidden;
 }
 
 .download-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 12px rgba(var(--primary-color), 0.15);
 }
 
 .download-icon {
@@ -245,7 +252,7 @@ body {
 
 .download-icon i {
     font-size: 2.5rem;
-    color: #007bff;
+    color: var(--primary-color);
 }
 
 .download-info {
@@ -283,7 +290,7 @@ body {
     display: inline-block;
     width: 100%;
     padding: 0.8rem;
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: white;
     text-align: center;
     text-decoration: none;
@@ -292,7 +299,7 @@ body {
 }
 
 .btn-download:hover {
-    background-color: #0056b3;
+    background-color: var(--secondary-color);
     transform: translateY(-2px);
 }
 
@@ -311,9 +318,9 @@ body {
 
 /* Footer */
 footer {
-    background-color: #333;
-    color: white;
-    padding: 3rem 2rem;
+    background-color: var(--footer-background);
+    color: #fff;
+    padding: 3rem 2rem 1rem;
     margin-top: 4rem;
 }
 
@@ -424,7 +431,7 @@ footer {
 }
 
 .social-links a:hover {
-    color: #007bff;
+    color: var(--primary-color);
 }
 
 /* Footer Quick Links */
@@ -470,14 +477,14 @@ footer {
 }
 
 .alert-success {
-    background-color: #d4edda;
-    color: #155724;
+    background-color: var(--accent-color);
+    color: var(--hero-text-color);
     border: 1px solid #c3e6cb;
 }
 
 .alert-error {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: var(--secondary-color);
+    color: var(--hero-text-color);
     border: 1px solid #f5c6cb;
 }
 
@@ -528,9 +535,9 @@ footer {
 }
 
 .form-control:focus {
-    border-color: #007bff;
+    border-color: var(--primary-color);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color), 0.25);
 }
 
 textarea.form-control {
@@ -560,17 +567,17 @@ textarea.form-control {
 }
 
 .btn-primary {
-    background-color: #007bff;
+    background-color: var(--primary-color);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #0056b3;
+    background-color: var(--secondary-color);
     transform: translateY(-2px);
 }
 
 .btn-secondary {
-    background-color: #6c757d;
+    background-color: var(--secondary-color);
     color: white;
 }
 
@@ -591,8 +598,8 @@ textarea.form-control {
 
 /* Page Header Styles */
 .page-header {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: var(--hero-text-color);
     padding: 8rem 2rem 4rem;
     text-align: center;
     margin-bottom: 4rem;
@@ -618,11 +625,11 @@ textarea.form-control {
     padding: 2rem;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .content-section h2 {
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1.5rem;
     font-size: 1.8rem;
     position: relative;
@@ -636,7 +643,7 @@ textarea.form-control {
     left: 0;
     width: 50px;
     height: 3px;
-    background: #007bff;
+    background: var(--primary-color);
 }
 
 /* Call for Papers Styles */
@@ -648,9 +655,10 @@ textarea.form-control {
 }
 
 .topic-card {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 8px;
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     transition: transform 0.3s ease;
 }
 
@@ -678,7 +686,7 @@ textarea.form-control {
 
 .topic-card li:before {
     content: "•";
-    color: #007bff;
+    color: var(--primary-color);
     position: absolute;
     left: 0;
 }
@@ -695,18 +703,18 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     text-align: center;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .pricing-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 12px rgba(var(--primary-color), 0.15);
 }
 
 .pricing-card h3 {
-    color: #007bff;
+    color: var(--primary-color);
     font-size: 1.5rem;
     margin-bottom: 1rem;
 }
@@ -776,11 +784,11 @@ textarea.form-control {
     background: white;
     padding: 1.5rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .hotel-card h3 {
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1rem;
 }
 
@@ -802,13 +810,14 @@ textarea.form-control {
 }
 
 .guideline-card {
-    background: #f8f9fa;
+    background: white;
     padding: 1.5rem;
     border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .guideline-card h3 {
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1rem;
 }
 
@@ -826,7 +835,7 @@ textarea.form-control {
 
 .guideline-card li:before {
     content: "→";
-    color: #007bff;
+    color: var(--primary-color);
     position: absolute;
     left: 0;
 }
@@ -843,11 +852,11 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .dashboard-card h3 {
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid #eee;
@@ -862,13 +871,13 @@ textarea.form-control {
 }
 
 .status-pending {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--accent-color);
+    color: var(--hero-text-color);
 }
 
 .status-approved {
-    background: #d4edda;
-    color: #155724;
+    background: var(--primary-color);
+    color: var(--hero-text-color);
 }
 
 .status-rejected {
@@ -898,13 +907,13 @@ textarea.form-control {
 }
 
 .data-table th {
-    background: #f8f9fa;
+    background: var(--background-color);
     font-weight: 600;
-    color: #333;
+    color: var(--text-color);
 }
 
 .data-table tr:hover {
-    background: #f8f9fa;
+    background: var(--background-color);
 }
 
 /* Admin Styles */
@@ -925,7 +934,7 @@ textarea.form-control {
     background: white;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(var(--primary-color), 0.1);
     text-align: center;
 }
 
@@ -936,7 +945,7 @@ textarea.form-control {
 }
 
 .stat-card .number {
-    color: #007bff;
+    color: var(--primary-color);
     font-size: 2rem;
     font-weight: 700;
 }
@@ -993,7 +1002,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     text-align: center;
     transition: transform 0.3s ease;
 }
@@ -1004,7 +1013,7 @@ textarea.form-control {
 
 .date-icon {
     font-size: 2rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1rem;
 }
 
@@ -1015,7 +1024,7 @@ textarea.form-control {
 }
 
 .date-card .date {
-    color: #007bff;
+    color: var(--primary-color);
     font-size: 1.3rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
@@ -1091,7 +1100,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     text-align: center;
     transition: transform 0.3s ease;
 }
@@ -1102,7 +1111,7 @@ textarea.form-control {
 
 .objective-icon {
     font-size: 2.5rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1.5rem;
 }
 
@@ -1127,7 +1136,7 @@ textarea.form-control {
 .committee-card {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     overflow: hidden;
     transition: transform 0.3s ease;
 }
@@ -1137,7 +1146,7 @@ textarea.form-control {
 }
 
 .member-photo {
-    background: linear-gradient(135deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     padding: 2rem;
     text-align: center;
 }
@@ -1152,7 +1161,7 @@ textarea.form-control {
 }
 
 .member-info h3 {
-    color: #007bff;
+    color: var(--primary-color);
     font-size: 1.2rem;
     margin-bottom: 0.5rem;
 }
@@ -1194,7 +1203,7 @@ textarea.form-control {
     background: white;
     padding: 1.5rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     text-align: center;
     transition: transform 0.3s ease;
 }
@@ -1206,7 +1215,7 @@ textarea.form-control {
 .timeline-item .year {
     font-size: 1.8rem;
     font-weight: 700;
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 0.5rem;
 }
 
@@ -1245,7 +1254,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .venue-header {
@@ -1256,7 +1265,7 @@ textarea.form-control {
 
 .venue-header i {
     font-size: 2rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1273,7 +1282,7 @@ textarea.form-control {
 }
 
 .venue-address i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
     margin-top: 0.3rem;
 }
@@ -1295,7 +1304,7 @@ textarea.form-control {
 }
 
 .contact-item i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1337,7 +1346,7 @@ textarea.form-control {
 
 .map-placeholder i {
     font-size: 3rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-bottom: 1rem;
 }
 
@@ -1352,7 +1361,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .transport-header {
@@ -1363,7 +1372,7 @@ textarea.form-control {
 
 .transport-header i {
     font-size: 1.8rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1385,7 +1394,7 @@ textarea.form-control {
 }
 
 .transport-list li i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 0.8rem;
     margin-top: 0.3rem;
 }
@@ -1404,7 +1413,7 @@ textarea.form-control {
 }
 
 .hotel-features li i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 0.8rem;
     width: 16px;
 }
@@ -1426,7 +1435,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     transition: transform 0.3s ease;
 }
 
@@ -1442,7 +1451,7 @@ textarea.form-control {
 
 .attraction-header i {
     font-size: 1.5rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1459,7 +1468,7 @@ textarea.form-control {
 }
 
 .attraction-distance i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 0.5rem;
 }
 
@@ -1477,7 +1486,7 @@ textarea.form-control {
 }
 
 .attraction-features li i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 0.8rem;
 }
 
@@ -1485,7 +1494,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .info-header {
@@ -1496,7 +1505,7 @@ textarea.form-control {
 
 .info-header i {
     font-size: 1.8rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1511,7 +1520,7 @@ textarea.form-control {
 }
 
 .info-content a {
-    color: #007bff;
+    color: var(--primary-color);
     text-decoration: none;
 }
 
@@ -1553,7 +1562,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
 }
 
 .form-group {
@@ -1570,7 +1579,7 @@ textarea.form-control {
 }
 
 .form-group label i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 0.5rem;
     width: 20px;
 }
@@ -1585,8 +1594,8 @@ textarea.form-control {
 }
 
 .form-group input:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color), 0.25);
     outline: none;
 }
 
@@ -1605,7 +1614,7 @@ textarea.form-control {
 }
 
 .password-toggle:hover {
-    color: #007bff;
+    color: var(--primary-color);
 }
 
 .form-text {
@@ -1646,8 +1655,8 @@ textarea.form-control {
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
-    background: #007bff;
-    border-color: #007bff;
+    background: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkbox-custom:after {
@@ -1668,7 +1677,7 @@ textarea.form-control {
 }
 
 .terms-link {
-    color: #007bff;
+    color: var(--primary-color);
     text-decoration: none;
 }
 
@@ -1693,7 +1702,7 @@ textarea.form-control {
 }
 
 .auth-links a {
-    color: #007bff;
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: 500;
 }
@@ -1733,14 +1742,14 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     position: relative;
     overflow: hidden;
 }
 
 .pricing-card.highlight {
-    border: 2px solid #007bff;
+    border: 2px solid var(--primary-color);
 }
 
 .pricing-card.highlight:before {
@@ -1748,7 +1757,7 @@ textarea.form-control {
     position: absolute;
     top: 1.5rem;
     right: -2rem;
-    background: #007bff;
+    background: var(--primary-color);
     color: white;
     padding: 0.3rem 3rem;
     transform: rotate(45deg);
@@ -1758,7 +1767,7 @@ textarea.form-control {
 
 .pricing-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 12px rgba(var(--primary-color), 0.15);
 }
 
 .pricing-header {
@@ -1771,7 +1780,7 @@ textarea.form-control {
 
 .pricing-header i {
     font-size: 1.8rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1806,7 +1815,7 @@ textarea.form-control {
 }
 
 .pricing-features i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 0.8rem;
 }
 
@@ -1838,7 +1847,7 @@ textarea.form-control {
 }
 
 .benefit-card i {
-    color: #007bff;
+    color: var(--primary-color);
     font-size: 1.2rem;
     margin-top: 0.2rem;
 }
@@ -1870,7 +1879,7 @@ textarea.form-control {
 }
 
 .info-list li i {
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
     min-width: 20px;
 }
@@ -1879,7 +1888,7 @@ textarea.form-control {
     background: white;
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(var(--primary-color), 0.1);
     margin-bottom: 2rem;
 }
 
@@ -1893,7 +1902,7 @@ textarea.form-control {
 
 .card-header i {
     font-size: 1.8rem;
-    color: #007bff;
+    color: var(--primary-color);
     margin-right: 1rem;
 }
 
@@ -1939,7 +1948,7 @@ textarea.form-control {
 }
 
 .payment-notice i {
-    color: #007bff;
+    color: var(--primary-color);
     font-size: 1.2rem;
     margin-top: 0.2rem;
 }
@@ -1950,7 +1959,7 @@ textarea.form-control {
 }
 
 .payment-notice a {
-    color: #007bff;
+    color: var(--primary-color);
     text-decoration: none;
 }
 

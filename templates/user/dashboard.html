@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Conference 2024{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Welcome, {{ current_user.full_name }}!</h1>
+    <p>Manage your conference participation</p>
+</div>
+
+<div class="content-section">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="dashboard-grid">
+        <!-- Profile Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <i class="fas fa-user-circle"></i>
+                <h2>My Profile</h2>
+            </div>
+            <div class="card-content">
+                <p><strong>Email:</strong> {{ current_user.email }}</p>
+                <a href="{{ url_for('profile') }}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+
+        <!-- Registrations Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <i class="fas fa-ticket-alt"></i>
+                <h2>My Registrations</h2>
+            </div>
+            <div class="card-content">
+                {% if registrations %}
+                    {% for reg_id, reg in registrations.items() %}
+                        <div class="registration-item">
+                            <div class="reg-details">
+                                <p><strong>Type:</strong> {{ reg.registration_type }}</p>
+                                <p><strong>Amount:</strong> ${{ reg.total_amount }}</p>
+                                <p><strong>Status:</strong> 
+                                    <span class="status-badge status-{{ reg.payment_status }}">
+                                        {{ reg.payment_status }}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="reg-options">
+                                {% if reg.workshop %}
+                                    <span class="option-badge">Workshop</span>
+                                {% endif %}
+                                {% if reg.banquet %}
+                                    <span class="option-badge">Banquet</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-data">No registrations found.</p>
+                    <a href="{{ url_for('registration') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Register Now
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Links Card -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <i class="fas fa-link"></i>
+                <h2>Quick Links</h2>
+            </div>
+            <div class="card-content">
+                <div class="quick-links">
+                    <a href="{{ url_for('paper_submission') }}" class="quick-link">
+                        <i class="fas fa-file-upload"></i>
+                        Submit Paper
+                    </a>
+                    <a href="{{ url_for('downloads') }}" class="quick-link">
+                        <i class="fas fa-download"></i>
+                        Downloads
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.card-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.card-header i {
+    font-size: 1.5rem;
+}
+
+.card-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.card-content {
+    padding: 1.5rem;
+}
+
+.registration-item {
+    border-bottom: 1px solid #eee;
+    padding: 1rem 0;
+}
+
+.registration-item:last-child {
+    border-bottom: none;
+}
+
+.status-badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: var(--accent-color);
+    color: white;
+}
+
+.status-approved {
+    background: var(--primary-color);
+    color: white;
+}
+
+.option-badge {
+    background: var(--secondary-color);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+}
+
+.quick-links {
+    display: grid;
+    gap: 1rem;
+}
+
+.quick-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--background-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.quick-link:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateX(5px);
+}
+
+.no-data {
+    color: #666;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %} 

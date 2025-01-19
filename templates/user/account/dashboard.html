@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if current_user.is_admin %}
+        Admin Dashboard - GIIR Conference 2024
+    {% else %}
+        My Dashboard - GIIR Conference 2024
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>
+            {% if current_user.is_admin %}
+                Admin Dashboard
+            {% else %}
+                Welcome, {{ current_user.full_name }}
+            {% endif %}
+        </h1>
+        <p class="user-email">{{ current_user.email }}</p>
+    </div>
+
+    {% if current_user.is_admin %}
+        <!-- Admin Dashboard -->
+        <div class="dashboard-grid admin-grid">
+            <!-- Quick Stats -->
+            <div class="dashboard-card">
+                <h2>Quick Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <i class="fas fa-users"></i>
+                        <span class="stat-value">{{ registrations|length }}</span>
+                        <span class="stat-label">Registrations</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-file-alt"></i>
+                        <span class="stat-value">{{ submissions|default(0) }}</span>
+                        <span class="stat-label">Paper Submissions</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="stat-value">{{ pending_approvals|default(0) }}</span>
+                        <span class="stat-label">Pending Approvals</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            <div class="dashboard-card">
+                <h2>Admin Actions</h2>
+                <div class="admin-actions">
+                    <a href="{{ url_for('admin_registrations') }}" class="action-button">
+                        <i class="fas fa-clipboard-list"></i>
+                        Manage Registrations
+                    </a>
+                    <a href="{{ url_for('admin_submissions') }}" class="action-button">
+                        <i class="fas fa-file-upload"></i>
+                        Review Papers
+                    </a>
+                    <a href="{{ url_for('admin_schedule') }}" class="action-button">
+                        <i class="fas fa-calendar-alt"></i>
+                        Manage Schedule
+                    </a>
+                    <a href="{{ url_for('admin_users') }}" class="action-button">
+                        <i class="fas fa-user-cog"></i>
+                        Manage Users
+                    </a>
+                    <a href="{{ url_for('admin_announcements') }}" class="action-button">
+                        <i class="fas fa-bullhorn"></i>
+                        Announcements
+                    </a>
+                    <a href="{{ url_for('admin_downloads') }}" class="action-button">
+                        <i class="fas fa-download"></i>
+                        Manage Downloads
+                    </a>
+                    <a href="{{ url_for('admin_venue') }}" class="action-button">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Venue Settings
+                    </a>
+                    <a href="{{ url_for('admin_design') }}" class="action-button">
+                        <i class="fas fa-paint-brush"></i>
+                        Site Design
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="dashboard-card full-width">
+                <h2>Recent Activity</h2>
+                <div class="activity-list">
+                    {% if recent_activity %}
+                        {% for activity in recent_activity %}
+                            <div class="activity-item">
+                                <span class="activity-time">{{ activity.timestamp|datetime }}</span>
+                                <span class="activity-type">{{ activity.type }}</span>
+                                <span class="activity-description">{{ activity.description }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-activity">No recent activity to display</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <!-- User Dashboard -->
+        <div class="dashboard-grid">
+            <!-- Registration Status -->
+            <div class="dashboard-card">
+                <h2>My Registrations</h2>
+                {% if registrations %}
+                    {% for reg_id, reg in registrations.items() %}
+                        <div class="registration-item">
+                            <div class="registration-header">
+                                <h3>{{ reg.registration_type|title }} Registration</h3>
+                                <span class="status-badge {{ reg.payment_status }}">
+                                    {{ reg.payment_status|title }}
+                                </span>
+                            </div>
+                            <div class="registration-details">
+                                <p><strong>Date:</strong> {{ reg.created_at|datetime }}</p>
+                                <p><strong>Total Amount:</strong> ${{ reg.total_amount }}</p>
+                                {% if reg.workshop %}
+                                    <p><span class="badge">Workshop Included</span></p>
+                                {% endif %}
+                                {% if reg.banquet %}
+                                    <p><span class="badge">Banquet Included</span></p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-plus"></i>
+                        <p>You haven't registered for the conference yet.</p>
+                        <a href="{{ url_for('registration') }}" class="btn btn-primary">Register Now</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="dashboard-card">
+                <h2>Quick Actions</h2>
+                <div class="quick-actions">
+                    <a href="{{ url_for('paper_submission') }}" class="action-button">
+                        <i class="fas fa-file-upload"></i>
+                        Submit Paper
+                    </a>
+                    <a href="{{ url_for('schedule') }}" class="action-button">
+                        <i class="fas fa-calendar-alt"></i>
+                        View Schedule
+                    </a>
+                    <a href="{{ url_for('venue') }}" class="action-button">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Venue Info
+                    </a>
+                    <a href="{{ url_for('downloads') }}" class="action-button">
+                        <i class="fas fa-download"></i>
+                        Downloads
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .dashboard-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--secondary-color);
+    }
+
+    .dashboard-header h1 {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .user-email {
+        color: var(--secondary-color);
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .admin-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .dashboard-card.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .dashboard-card h2 {
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+    }
+
+    /* Stats Styles */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: var(--background-color);
+        border-radius: 8px;
+    }
+
+    .stat-item i {
+        font-size: 2rem;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--text-color);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--secondary-color);
+    }
+
+    /* Activity List Styles */
+    .activity-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        gap: 1rem;
+        padding: 0.75rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .activity-time {
+        color: var(--secondary-color);
+        font-size: 0.875rem;
+    }
+
+    .activity-type {
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+
+    .no-activity {
+        text-align: center;
+        color: var(--secondary-color);
+        padding: 2rem;
+    }
+
+    /* Admin Actions Styles */
+    .admin-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+    }
+
+    /* Existing styles */
+    .registration-item,
+    .registration-header,
+    .registration-details,
+    .status-badge,
+    .badge,
+    .empty-state,
+    .quick-actions,
+    .action-button {
+        /* Keep existing styles */
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .admin-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-actions,
+        .admin-actions {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .activity-item {
+            grid-template-columns: 1fr;
+            gap: 0.25rem;
+        }
+
+        .quick-actions,
+        .admin-actions,
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %} 

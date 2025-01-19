@@ -62,9 +62,15 @@
         /* Content Styles */
         #content {
             margin-left: 250px;
+            width: calc(100% - 250px);
             padding: 20px;
             min-height: 100vh;
             transition: all 0.3s;
+        }
+
+        #content.active {
+            margin-left: 0;
+            width: 100%;
         }
 
         .admin-card {
@@ -101,9 +107,43 @@
             }
             #content {
                 margin-left: 0;
+                width: 100%;
             }
             #content.active {
                 margin-left: 250px;
+                width: calc(100% - 250px);
+            }
+        }
+
+        .dashboard-content {
+            width: 100%;
+            padding: 1rem;
+        }
+
+        .row {
+            margin-right: 0;
+            margin-left: 0;
+        }
+
+        .stats-card {
+            height: 100%;
+            min-height: 120px;
+        }
+
+        .action-card {
+            height: 100%;
+            min-height: 300px;
+        }
+
+        /* Ensure proper padding on mobile */
+        @media (max-width: 768px) {
+            .dashboard-content {
+                padding: 0.5rem;
+            }
+            
+            .row {
+                margin-right: -0.5rem;
+                margin-left: -0.5rem;
             }
         }
     </style>
@@ -166,6 +206,11 @@
                 <li {% if request.endpoint == 'admin_email_templates' %}class="active"{% endif %}>
                     <a href="{{ url_for('admin_email_templates') }}">
                         <i class="fas fa-envelope me-2"></i> Email Templates
+                    </a>
+                </li>
+                <li {% if request.endpoint == 'admin_design' %}class="active"{% endif %}>
+                    <a href="{{ url_for('admin_design') }}">
+                        <i class="fas fa-palette me-2"></i> Site Design
                     </a>
                 </li>
             </ul>

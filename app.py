@@ -49,8 +49,26 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'}
 
+# Add these constants near the top of the file
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+DEFAULT_THEME = {
+    'primary_color': '#007bff',
+    'secondary_color': '#6c757d',
+    'accent_color': '#28a745',
+    'text_color': '#333333',
+    'background_color': '#ffffff',
+    'header_background': '#f8f9fa',
+    'footer_background': '#343a40',
+    'hero_text_color': '#ffffff',
+    'hero_image': '/static/uploads/design/default-hero.jpg'  # Add default hero image
+}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_image_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 class User(UserMixin):
     def __init__(self, uid, email, full_name, is_admin=False):
@@ -97,20 +115,24 @@ def send_confirmation_email(registration_data):
         print(f"Error sending email: {str(e)}")
         return False
 
+# Add this helper function near the top of the file
+def get_site_design():
+    design_ref = db.reference('site_design')
+    return design_ref.get() or DEFAULT_THEME
+
 @app.route('/')
 def home():
-    # Get downloads from Firebase
     downloads_ref = db.reference('downloads')
     downloads = downloads_ref.get()
-    return render_template('user/home.html', downloads=downloads)
+    return render_template('user/home.html', downloads=downloads, site_design=get_site_design())
 
 @app.route('/about')
 def about():
-    return render_template('user/about.html')
+    return render_template('user/about.html', site_design=get_site_design())
 
 @app.route('/call-for-papers')
 def call_for_papers():
-    return render_template('user/call_for_papers.html')
+    return render_template('user/call_for_papers.html', site_design=get_site_design())
 
 @app.route('/paper-submission', methods=['GET', 'POST'])
 @login_required
@@ -196,18 +218,18 @@ def paper_submission():
             flash(f'Error submitting paper: {str(e)}', 'error')
             return redirect(url_for('paper_submission'))
 
-    return render_template('user/paper_submission.html', recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
+    return render_template('user/papers/submit.html', site_design=get_site_design(), recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
 
 @app.route('/author-guidelines')
 def author_guidelines():
-    return render_template('user/author_guidelines.html')
+    return render_template('user/papers/guidelines.html')
 
 @app.route('/venue')
 def venue():
     # Get venue details from Firebase
     venue_ref = db.reference('venue')
     venue_details = venue_ref.get()
-    return render_template('user/venue.html', venue_details=venue_details)
+    return render_template('user/conference/venue.html', site_design=get_site_design(), venue_details=venue_details)
 
 @app.route('/video-conference')
 def video_conference():
@@ -216,7 +238,7 @@ def video_conference():
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('user/profile.html')
+    return render_template('user/account/profile.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -241,7 +263,7 @@ def login():
             return redirect(url_for('dashboard'))
         except:
             flash('Invalid email or password', 'error')
-    return render_template('user/login.html')
+    return render_template('user/auth/login.html', site_design=get_site_design())
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_account():
@@ -254,11 +276,11 @@ def register_account():
 
         if not terms:
             flash('You must accept the terms and conditions.', 'error')
-            return render_template('user/register_account.html')
+            return render_template('user/auth/register.html', site_design=get_site_design())
 
         if password != confirm_password:
             flash('Passwords do not match.', 'error')
-            return render_template('user/register_account.html')
+            return render_template('user/auth/register.html', site_design=get_site_design())
 
         try:
             # Create user in Firebase Authentication
@@ -279,9 +301,9 @@ def register_account():
             return redirect(url_for('login'))
         except Exception as e:
             flash(f'Error creating account: {str(e)}', 'error')
-            return render_template('user/register_account.html')
+            return render_template('user/auth/register.html', site_design=get_site_design())
     
-    return render_template('user/register_account.html')
+    return render_template('user/auth/register.html', site_design=get_site_design())
 
 @app.route('/logout')
 @login_required
@@ -356,19 +378,25 @@ def registration():
         except Exception as e:
             flash(f'Error processing registration: {str(e)}', 'error')
     
-    return render_template('user/registration.html', fees=fees)
+    return render_template('user/registration.html', site_design=get_site_design(), fees=fees)
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
     try:
-        # Get user's registrations from Firebase
-        ref = db.reference('registrations')
-        registrations = ref.order_by_child('email').equal_to(current_user.email).get()
-        return render_template('user/dashboard.html', registrations=registrations or {})
+        # Get user's registrations
+        registrations_ref = db.reference(f'registrations').order_by_child('user_id').equal_to(current_user.id)
+        registrations = registrations_ref.get()
+        return render_template('user/account/dashboard.html', registrations=registrations or {}, site_design=get_site_design())
     except Exception as e:
         flash(f'Error loading dashboard: {str(e)}', 'error')
-        return render_template('user/dashboard.html', registrations={})
+        return render_template('user/account/dashboard.html', registrations={}, site_design=get_site_design())
+
+@app.route('/schedule')
+def schedule():
+    schedule_ref = db.reference('schedule')
+    schedule = schedule_ref.get()
+    return render_template('user/conference/schedule.html', schedule=schedule, site_design=get_site_design())
 
 def admin_required(f):
     @wraps(f)
@@ -489,7 +517,7 @@ def admin_venue():
     # Get current venue details
     venue_ref = db.reference('venue')
     venue_details = venue_ref.get()
-    return render_template('admin/admin_venue.html', venue_details=venue_details)
+    return render_template('admin/admin_venue.html', site_design=get_site_design(), venue_details=venue_details)
 
 @app.route('/admin/registration-fees', methods=['GET', 'POST'])
 @admin_required
@@ -538,7 +566,7 @@ def admin_registration_fees():
     
     # Get current registration fees
     fees = db.reference('registration_fees').get()
-    return render_template('admin/admin_registration_fees.html', fees=fees)
+    return render_template('admin/admin_registration_fees.html', site_design=get_site_design(), fees=fees)
 
 @app.route('/admin/downloads', methods=['GET', 'POST'])
 @login_required
@@ -597,7 +625,7 @@ def admin_downloads():
     # Get all downloads for display
     downloads_ref = db.reference('downloads')
     downloads = downloads_ref.get()
-    return render_template('admin/downloads.html', downloads=downloads)
+    return render_template('admin/downloads.html', site_design=get_site_design(), downloads=downloads)
 
 @app.route('/admin/downloads/delete/<download_id>', methods=['POST'])
 @login_required
@@ -634,10 +662,10 @@ def admin_registrations():
         # Get all registrations from Firebase
         registrations_ref = db.reference('registrations')
         registrations = registrations_ref.get()
-        return render_template('admin/registrations.html', registrations=registrations or {})
+        return render_template('admin/registrations.html', site_design=get_site_design(), registrations=registrations or {})
     except Exception as e:
         flash(f'Error loading registrations: {str(e)}', 'error')
-        return render_template('admin/registrations.html', registrations={})
+        return render_template('admin/registrations.html', site_design=get_site_design(), registrations={})
 
 @app.route('/admin/registrations/<registration_id>/status', methods=['POST'])
 @login_required
@@ -712,10 +740,10 @@ def admin_submissions():
         # Get all submissions from Firebase
         submissions_ref = db.reference('submissions')
         submissions = submissions_ref.get()
-        return render_template('admin/submissions.html', submissions=submissions or {})
+        return render_template('admin/submissions.html', site_design=get_site_design(), submissions=submissions or {})
     except Exception as e:
         flash(f'Error loading submissions: {str(e)}', 'error')
-        return render_template('admin/submissions.html', submissions={})
+        return render_template('admin/submissions.html', site_design=get_site_design(), submissions={})
 
 @app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
 @login_required
@@ -847,10 +875,10 @@ def admin_announcements():
         else:
             sorted_announcements = {}
             
-        return render_template('admin/announcements.html', announcements=sorted_announcements)
+        return render_template('admin/announcements.html', site_design=get_site_design(), announcements=sorted_announcements)
     except Exception as e:
         flash(f'Error loading announcements: {str(e)}', 'error')
-        return render_template('admin/announcements.html', announcements={})
+        return render_template('admin/announcements.html', site_design=get_site_design(), announcements={})
 
 @app.route('/admin/announcements', methods=['POST'])
 @login_required
@@ -1000,13 +1028,13 @@ def admin_schedule():
                     key=lambda x: x[1]['start_time']
                 ))
         
-        return render_template('admin/schedule.html',
+        return render_template('admin/schedule.html', site_design=get_site_design(),
                              schedule=grouped_schedule,
                              schedule_days=SCHEDULE_DAYS,
                              tracks=TRACKS)
     except Exception as e:
         flash(f'Error loading schedule: {str(e)}', 'error')
-        return render_template('admin/schedule.html',
+        return render_template('admin/schedule.html', site_design=get_site_design(),
                              schedule={},
                              schedule_days=SCHEDULE_DAYS,
                              tracks=TRACKS)
@@ -1139,10 +1167,10 @@ def admin_email_templates():
         else:
             sorted_templates = {}
             
-        return render_template('admin/email_templates.html', templates=sorted_templates)
+        return render_template('admin/email_templates.html', site_design=get_site_design(), templates=sorted_templates)
     except Exception as e:
         flash(f'Error loading email templates: {str(e)}', 'error')
-        return render_template('admin/email_templates.html', templates={})
+        return render_template('admin/email_templates.html', site_design=get_site_design(), templates={})
 
 @app.route('/admin/email-templates', methods=['POST'])
 @login_required
@@ -1249,6 +1277,65 @@ def render_email_template(template_id, context):
     except Exception as e:
         print(f"Error rendering email template: {str(e)}")
         return None, None
+
+@app.route('/admin/design', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_design():
+    if request.method == 'POST':
+        try:
+            # Handle theme colors
+            theme_data = {
+                'primary_color': request.form.get('primary_color', DEFAULT_THEME['primary_color']),
+                'secondary_color': request.form.get('secondary_color', DEFAULT_THEME['secondary_color']),
+                'accent_color': request.form.get('accent_color', DEFAULT_THEME['accent_color']),
+                'text_color': request.form.get('text_color', DEFAULT_THEME['text_color']),
+                'background_color': request.form.get('background_color', DEFAULT_THEME['background_color']),
+                'header_background': request.form.get('header_background', DEFAULT_THEME['header_background']),
+                'footer_background': request.form.get('footer_background', DEFAULT_THEME['footer_background']),
+                'hero_text_color': request.form.get('hero_text_color', DEFAULT_THEME['hero_text_color']),
+                'hero_image': DEFAULT_THEME['hero_image']  # Set default initially
+            }
+            
+            # Handle hero image upload
+            if 'hero_image' in request.files:
+                file = request.files['hero_image']
+                if file and file.filename != '' and allowed_image_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    
+                    # Create uploads directory if it doesn't exist
+                    upload_path = os.path.join(app.static_folder, 'uploads', 'design')
+                    os.makedirs(upload_path, exist_ok=True)
+                    
+                    file_path = os.path.join(upload_path, unique_filename)
+                    file.save(file_path)
+                    
+                    # Update theme data with new image path
+                    theme_data['hero_image'] = f"/static/uploads/design/{unique_filename}"
+            
+            # Save theme data to Firebase
+            design_ref = db.reference('site_design')
+            design_ref.set(theme_data)
+            
+            flash('Site design updated successfully!', 'success')
+            return redirect(url_for('admin_design'))
+            
+        except Exception as e:
+            flash(f'Error updating site design: {str(e)}', 'error')
+            return redirect(url_for('admin_design'))
+    
+    # Get current design settings
+    design_ref = db.reference('site_design')
+    current_design = design_ref.get() or DEFAULT_THEME
+    
+    return render_template('admin/design.html', site_design=get_site_design(), design=current_design)
+
+@app.route('/downloads')
+def downloads():
+    downloads_ref = db.reference('downloads')
+    downloads = downloads_ref.get()
+    return render_template('user/conference/downloads.html', downloads=downloads, site_design=get_site_design())
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
