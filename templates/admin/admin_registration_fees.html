@@ -2,204 +2,906 @@
 
 {% block title %}Manage Registration Fees - Admin Dashboard{% endblock %}
 
+{% block head %}
+<!-- Add Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<!-- Add custom CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_registration.css') }}">
+<style>
+    :root {
+        --primary-color: #1a73e8;
+        --primary-color-dark: #1557b0;
+        --primary-color-rgb: 26, 115, 232;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="admin-section">
+    <div class="section-header">
     <h1>Manage Registration Fees</h1>
+        <div class="header-actions">
+            <button type="button" class="btn-secondary" onclick="resetForm()">
+                <i class="fas fa-undo"></i> Reset Changes
+            </button>
+            <a href="{{ url_for('registration') }}" class="btn-secondary" target="_blank">
+                <i class="fas fa-external-link-alt"></i> View Public Page
+            </a>
+        </div>
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
+                <div class="alert alert-{{ category }} alert-dismissible">
                     {{ message }}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="admin-form-container">
-        <form method="POST" class="registration-fees-form">
+    <form method="POST" class="registration-fees-form" id="registrationForm">
+        <div class="bento-grid">
             <!-- Early Bird Registration -->
-            <div class="form-section">
-                <h2>Early Bird Registration</h2>
+            <div class="bento-item bento-item-large">
+                <div class="form-section" id="early-bird-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-star"></i> Early Bird Registration</h2>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="early_bird_enabled" name="early_bird_enabled" {% if fees and fees.early_bird %}checked{% endif %}>
+                            <label class="form-check-label" for="early_bird_enabled">Enable Early Bird Registration</label>
+                        </div>
+                    </div>
+                    <div class="section-content" id="early-bird-content">
+                        <!-- Add Seats Management Section -->
+                        <div class="seats-management mb-4">
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label for="early_bird_seats">Total Available Seats</label>
+                                    <div class="input-group">
+                                        <input type="text" id="early_bird_seats" name="early_bird_seats" 
+                                               class="form-control"
+                                               value="{{ fees.early_bird.seats if fees and fees.early_bird else '' }}"
+                                               placeholder="e.g., 1,000">
+                                        <button type="button" class="btn btn-outline-primary" id="update-seats">
+                                            <i class="fas fa-sync-alt"></i> Update
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Use commas for large numbers (e.g., 1,000)</small>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="early_bird_seats_remaining">Remaining Seats</label>
+                                    <div class="input-group">
+                                        <input type="text" id="early_bird_seats_remaining" name="early_bird_seats_remaining" 
+                                               class="form-control"
+                                               value="{{ fees.early_bird.seats_remaining if fees and fees.early_bird else '' }}"
+                                               placeholder="e.g., 500">
+                                        <div class="input-group-append">
+                                            <div class="form-check form-switch ms-2 mt-2">
+                                                <input class="form-check-input" type="checkbox" id="show_seats" name="show_seats"
+                                                       {% if fees and fees.early_bird and fees.early_bird.show_seats %}checked{% endif %}>
+                                                <label class="form-check-label" for="show_seats">Show to Users</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Manually set remaining seats available</small>
+                                </div>
+                            </div>
+                        </div>
+
                 <div class="form-group">
                     <label for="early_bird_deadline">Deadline</label>
-                    <input type="date" id="early_bird_deadline" name="early_bird_deadline" value="{{ fees.early_bird.deadline if fees and fees.early_bird else '' }}">
+                            <input type="date" id="early_bird_deadline" name="early_bird_deadline" 
+                                   value="{{ fees.early_bird.deadline if fees and fees.early_bird else '' }}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="early_bird_student">Authors (Students)</label>
-                        <input type="number" id="early_bird_student" name="early_bird_student" value="{{ fees.early_bird.student_author if fees and fees.early_bird else '' }}" step="0.01">
+                                <div class="input-group">
+                                    <span class="currency">R</span>
+                                    <input type="number" id="early_bird_student" name="early_bird_student" 
+                                           value="{{ fees.early_bird.student_author if fees and fees.early_bird else '' }}" 
+                                           step="0.01" min="0">
+                                </div>
                     </div>
                     <div class="form-group">
                         <label for="early_bird_regular">Authors (Regular)</label>
-                        <input type="number" id="early_bird_regular" name="early_bird_regular" value="{{ fees.early_bird.regular_author if fees and fees.early_bird else '' }}" step="0.01">
+                                <div class="input-group">
+                                    <span class="currency">R</span>
+                                    <input type="number" id="early_bird_regular" name="early_bird_regular" 
+                                           value="{{ fees.early_bird.regular_author if fees and fees.early_bird else '' }}" 
+                                           step="0.01" min="0">
+                                </div>
                     </div>
                     <div class="form-group">
                         <label for="early_bird_listener">Listener</label>
-                        <input type="number" id="early_bird_listener" name="early_bird_listener" value="{{ fees.early_bird.listener if fees and fees.early_bird else '' }}" step="0.01">
+                                <div class="input-group">
+                                    <span class="currency">R</span>
+                                    <input type="number" id="early_bird_listener" name="early_bird_listener" 
+                                           value="{{ fees.early_bird.listener if fees and fees.early_bird else '' }}" 
+                                           step="0.01" min="0">
+                                </div>
                     </div>
                     <div class="form-group">
                         <label for="early_bird_virtual">Virtual Delegate</label>
-                        <input type="number" id="early_bird_virtual" name="early_bird_virtual" value="{{ fees.early_bird.virtual if fees and fees.early_bird else '' }}" step="0.01">
+                                <div class="input-group">
+                                    <span class="currency">R</span>
+                                    <input type="number" id="early_bird_virtual" name="early_bird_virtual" 
+                                           value="{{ fees.early_bird.virtual if fees and fees.early_bird else '' }}" 
+                                           step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Early Bird Benefits -->
+                        <div class="form-group mt-4">
+                            <label class="form-label"><i class="fas fa-list-check"></i> Package Benefits</label>
+                            <div class="benefits-container" id="early-bird-benefits">
+                                {% if fees and fees.early_bird and fees.early_bird.benefits %}
+                                    {% for benefit in fees.early_bird.benefits %}
+                                    <div class="benefit-item input-group mb-2">
+                                        <input type="text" class="form-control" name="early_bird_benefits[]" value="{{ benefit }}" placeholder="Enter a benefit">
+                                        <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                                <div class="benefit-item input-group mb-2">
+                                    <input type="text" class="form-control" name="early_bird_benefits[]" placeholder="Enter a benefit">
+                                    <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm add-benefit" data-target="early-bird-benefits">
+                                <i class="fas fa-plus"></i> Add Benefit
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Early Registration -->
+            <div class="bento-item bento-item-medium">
             <div class="form-section">
-                <h2>Early Registration</h2>
+                    <div class="section-header">
+                        <h2><i class="fas fa-calendar-alt"></i> Early Registration</h2>
+                    </div>
                 <div class="form-group">
                     <label for="early_deadline">Deadline</label>
-                    <input type="date" id="early_deadline" name="early_deadline" value="{{ fees.early.deadline if fees and fees.early else '' }}">
+                        <input type="date" id="early_deadline" name="early_deadline" 
+                               value="{{ fees.early.deadline if fees and fees.early else '' }}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="early_student">Authors (Students)</label>
-                        <input type="number" id="early_student" name="early_student" value="{{ fees.early.student_author if fees and fees.early else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="early_student" name="early_student" 
+                                       value="{{ fees.early.student_author if fees and fees.early else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
                     </div>
                     <div class="form-group">
                         <label for="early_regular">Authors (Regular)</label>
-                        <input type="number" id="early_regular" name="early_regular" value="{{ fees.early.regular_author if fees and fees.early else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="early_regular" name="early_regular" 
+                                       value="{{ fees.early.regular_author if fees and fees.early else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
                     </div>
+                    <div class="form-row">
                     <div class="form-group">
                         <label for="early_listener">Listener</label>
-                        <input type="number" id="early_listener" name="early_listener" value="{{ fees.early.listener if fees and fees.early else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="early_listener" name="early_listener" 
+                                       value="{{ fees.early.listener if fees and fees.early else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
                     </div>
                     <div class="form-group">
                         <label for="early_virtual">Virtual Delegate</label>
-                        <input type="number" id="early_virtual" name="early_virtual" value="{{ fees.early.virtual if fees and fees.early else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="early_virtual" name="early_virtual" 
+                                       value="{{ fees.early.virtual if fees and fees.early else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Early Registration Benefits -->
+                    <div class="form-group mt-4">
+                        <label class="form-label"><i class="fas fa-list-check"></i> Package Benefits</label>
+                        <div class="benefits-container" id="early-benefits">
+                            {% if fees and fees.early and fees.early.benefits %}
+                                {% for benefit in fees.early.benefits %}
+                                <div class="benefit-item input-group mb-2">
+                                    <input type="text" class="form-control" name="early_benefits[]" value="{{ benefit }}" placeholder="Enter a benefit">
+                                    <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            <div class="benefit-item input-group mb-2">
+                                <input type="text" class="form-control" name="early_benefits[]" placeholder="Enter a benefit">
+                                <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm add-benefit" data-target="early-benefits">
+                            <i class="fas fa-plus"></i> Add Benefit
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Late Registration -->
+            <div class="bento-item bento-item-medium">
             <div class="form-section">
-                <h2>Late Registration</h2>
+                    <div class="section-header">
+                        <h2><i class="fas fa-hourglass-half"></i> Late Registration</h2>
+                    </div>
                 <div class="form-group">
                     <label for="late_deadline">Deadline</label>
-                    <input type="date" id="late_deadline" name="late_deadline" value="{{ fees.late.deadline if fees and fees.late else '' }}">
+                        <input type="date" id="late_deadline" name="late_deadline" 
+                               value="{{ fees.late.deadline if fees and fees.late else '' }}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="late_student">Authors (Students)</label>
-                        <input type="number" id="late_student" name="late_student" value="{{ fees.late.student_author if fees and fees.late else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="late_student" name="late_student" 
+                                       value="{{ fees.late.student_author if fees and fees.late else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
                     </div>
                     <div class="form-group">
                         <label for="late_regular">Authors (Regular)</label>
-                        <input type="number" id="late_regular" name="late_regular" value="{{ fees.late.regular_author if fees and fees.late else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="late_regular" name="late_regular" 
+                                       value="{{ fees.late.regular_author if fees and fees.late else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
                     </div>
+                    <div class="form-row">
                     <div class="form-group">
                         <label for="late_listener">Listener</label>
-                        <input type="number" id="late_listener" name="late_listener" value="{{ fees.late.listener if fees and fees.late else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="late_listener" name="late_listener" 
+                                       value="{{ fees.late.listener if fees and fees.late else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
                     </div>
                     <div class="form-group">
                         <label for="late_virtual">Virtual Delegate</label>
-                        <input type="number" id="late_virtual" name="late_virtual" value="{{ fees.late.virtual if fees and fees.late else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="late_virtual" name="late_virtual" 
+                                       value="{{ fees.late.virtual if fees and fees.late else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Late Registration Benefits -->
+                    <div class="form-group mt-4">
+                        <label class="form-label"><i class="fas fa-list-check"></i> Package Benefits</label>
+                        <div class="benefits-container" id="late-benefits">
+                            {% if fees and fees.late and fees.late.benefits %}
+                                {% for benefit in fees.late.benefits %}
+                                <div class="benefit-item input-group mb-2">
+                                    <input type="text" class="form-control" name="late_benefits[]" value="{{ benefit }}" placeholder="Enter a benefit">
+                                    <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            <div class="benefit-item input-group mb-2">
+                                <input type="text" class="form-control" name="late_benefits[]" placeholder="Enter a benefit">
+                                <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm add-benefit" data-target="late-benefits">
+                            <i class="fas fa-plus"></i> Add Benefit
+                        </button>
                     </div>
                 </div>
             </div>
 
             <!-- Additional Fees -->
+            <div class="bento-item bento-item-small">
             <div class="form-section">
-                <h2>Additional Fees</h2>
+                    <div class="section-header">
+                        <h2><i class="fas fa-plus-circle"></i> Additional Fees</h2>
+                    </div>
+                    <div class="form-row">
                 <div class="form-group">
                     <label for="extra_paper_fee">Extra Paper Fee</label>
-                    <input type="number" id="extra_paper_fee" name="extra_paper_fee" value="{{ fees.extra_paper_fee if fees else '' }}" step="0.01">
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="extra_paper_fee" name="extra_paper_fee" 
+                                       value="{{ fees.extra_paper_fee if fees else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="workshop_fee">Workshop Fee</label>
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="workshop_fee" name="workshop_fee" 
+                                       value="{{ fees.workshop_fee if fees else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="banquet_fee">Banquet Fee</label>
+                            <div class="input-group">
+                                <span class="currency">R</span>
+                                <input type="number" id="banquet_fee" name="banquet_fee" 
+                                       value="{{ fees.banquet_fee if fees else '' }}" 
+                                       step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Registration Includes -->
+            <div class="bento-item bento-item-medium">
             <div class="form-section">
-                <h2>Registration Includes</h2>
+                    <div class="section-header">
+                        <h2><i class="fas fa-list-check"></i> Registration Includes</h2>
+                    </div>
                 <div class="dynamic-list" id="registration-includes">
                     {% if fees and fees.includes %}
                         {% for item in fees.includes %}
                             <div class="list-item">
-                                <input type="text" name="registration_includes" value="{{ item }}">
-                                <button type="button" class="btn-remove">Remove</button>
+                                    <input type="text" name="registration_includes" value="{{ item }}" placeholder="e.g., Conference Programme Booklet">
+                                    <button type="button" class="btn-remove" title="Remove Item">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                             </div>
                         {% endfor %}
                     {% else %}
                         <div class="list-item">
                             <input type="text" name="registration_includes" placeholder="e.g., Conference Programme Booklet">
-                            <button type="button" class="btn-remove">Remove</button>
+                                <button type="button" class="btn-remove" title="Remove Item">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                         </div>
                     {% endif %}
+                    </div>
+                    <button type="button" class="btn-add">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
                 </div>
-                <button type="button" class="btn-add">Add Item</button>
             </div>
 
             <!-- Payment Details -->
+            <div class="bento-item bento-item-large">
             <div class="form-section">
-                <h2>Payment Details</h2>
+                    <div class="section-header">
+                        <h2><i class="fas fa-university"></i> Payment Details</h2>
+                    </div>
+                    
+                    <!-- Local Bank Details (South Africa) -->
+                    <div class="payment-section">
+                        <h3><i class="fas fa-landmark"></i> South African Bank Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="account_name">Account Name</label>
+                                <input type="text" id="account_name" name="account_name" 
+                                       value="{{ fees.payment_details.account_name if fees and fees.payment_details else '' }}"
+                                       placeholder="e.g., GIIR Conference">
+                            </div>
+                            <div class="form-group">
+                                <label for="account_number">Account Number</label>
+                                <input type="text" id="account_number" name="account_number" 
+                                       value="{{ fees.payment_details.account_number if fees and fees.payment_details else '' }}"
+                                       placeholder="e.g., 1234567890">
+                            </div>
+                        </div>
+                        <div class="form-row">
                 <div class="form-group">
-                    <label for="beneficiary">Beneficiary Name</label>
-                    <input type="text" id="beneficiary" name="beneficiary" value="{{ fees.payment_details.beneficiary if fees and fees.payment_details else '' }}">
+                                <label for="bank_name">Bank Name</label>
+                                <input type="text" id="bank_name" name="bank_name" 
+                                       value="{{ fees.payment_details.bank_name if fees and fees.payment_details else '' }}"
+                                       placeholder="e.g., Standard Bank, FNB, ABSA, Nedbank">
                 </div>
                 <div class="form-group">
-                    <label for="iban">IBAN</label>
-                    <input type="text" id="iban" name="iban" value="{{ fees.payment_details.iban if fees and fees.payment_details else '' }}">
+                                <label for="universal_branch_code">Universal Branch Code</label>
+                                <input type="text" id="universal_branch_code" name="universal_branch_code" 
+                                       value="{{ fees.payment_details.universal_branch_code if fees and fees.payment_details else '' }}"
+                                       placeholder="e.g., 051001">
+                            </div>
                 </div>
                 <div class="form-group">
-                    <label for="bic">BIC</label>
-                    <input type="text" id="bic" name="bic" value="{{ fees.payment_details.bic if fees and fees.payment_details else '' }}">
+                            <label for="account_type">Account Type</label>
+                            <input type="text" id="account_type" name="account_type" 
+                                   value="{{ fees.payment_details.account_type if fees and fees.payment_details else '' }}"
+                                   placeholder="e.g., Current Account/Cheque Account">
+                        </div>
+                    </div>
+
+                    <!-- International Payment Details -->
+                    <div class="payment-section">
+                        <h3><i class="fas fa-globe"></i> International Payment Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="swift_code">SWIFT/BIC Code</label>
+                                <input type="text" id="swift_code" name="swift_code" 
+                                       value="{{ fees.payment_details.swift_code if fees and fees.payment_details else '' }}"
+                                       placeholder="e.g., SBZAZAJJ">
                 </div>
                 <div class="form-group">
-                    <label for="beneficiary_address">Beneficiary Address</label>
-                    <input type="text" id="beneficiary_address" name="beneficiary_address" value="{{ fees.payment_details.beneficiary_address if fees and fees.payment_details else '' }}">
+                                <label for="iban">IBAN (If applicable)</label>
+                                <input type="text" id="iban" name="iban" 
+                                       value="{{ fees.payment_details.iban if fees and fees.payment_details else '' }}">
+                            </div>
                 </div>
                 <div class="form-group">
-                    <label for="bank_name">Bank Name</label>
-                    <input type="text" id="bank_name" name="bank_name" value="{{ fees.payment_details.bank_name if fees and fees.payment_details else '' }}">
+                            <label for="bank_address">Bank Address (For International Transfers)</label>
+                            <input type="text" id="bank_address" name="bank_address" 
+                                   value="{{ fees.payment_details.bank_address if fees and fees.payment_details else '' }}"
+                                   placeholder="Complete bank address for international transfers">
                 </div>
                 <div class="form-group">
-                    <label for="bank_address">Bank Address</label>
-                    <input type="text" id="bank_address" name="bank_address" value="{{ fees.payment_details.bank_address if fees and fees.payment_details else '' }}">
+                            <label for="intermediary_bank">Intermediary Bank Details (If Required)</label>
+                            <textarea id="intermediary_bank" name="intermediary_bank" rows="3" 
+                                      placeholder="Include any necessary intermediary bank information for international transfers">{{ fees.payment_details.intermediary_bank if fees and fees.payment_details else '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Additional Payment Information -->
+                    <div class="payment-section">
+                        <h3><i class="fas fa-info-circle"></i> Additional Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reference_format">Payment Reference Format</label>
+                                <input type="text" id="reference_format" name="reference_format" 
+                                       placeholder="e.g., GIIR2024_[Your Name]"
+                                       value="{{ fees.payment_details.reference_format if fees and fees.payment_details else '' }}">
                 </div>
                 <div class="form-group">
-                    <label for="intermediary_bic">Intermediary BIC</label>
-                    <input type="text" id="intermediary_bic" name="intermediary_bic" value="{{ fees.payment_details.intermediary_bic if fees and fees.payment_details else '' }}">
+                                <label for="contact_email">Finance Contact Email</label>
+                                <input type="email" id="contact_email" name="contact_email" 
+                                       value="{{ fees.payment_details.contact_email if fees and fees.payment_details else '' }}"
+                                       placeholder="e.g., finance@giirconference.com">
+                            </div>
                 </div>
                 <div class="form-group">
-                    <label for="contact_email">Contact Email</label>
-                    <input type="email" id="contact_email" name="contact_email" value="{{ fees.payment_details.contact_email if fees and fees.payment_details else '' }}">
+                            <label for="payment_instructions">Special Instructions</label>
+                            <textarea id="payment_instructions" name="payment_instructions" rows="3" 
+                                      placeholder="Any additional payment instructions or notes">{{ fees.payment_details.payment_instructions if fees and fees.payment_details else '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn-submit">Save Registration Fees</button>
-                <a href="{{ url_for('registration') }}" class="btn-secondary">View Public Page</a>
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-save"></i> Save Registration Fees
+            </button>
             </div>
         </form>
-    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle dynamic list for registration includes
-    const includesList = document.querySelector('#registration-includes');
-    const addBtn = includesList.nextElementSibling;
+class RegistrationFeesManager {
+    constructor() {
+        this.form = document.getElementById('registrationForm');
+        this.earlyBirdToggle = document.getElementById('early_bird_enabled');
+        this.earlyBirdContent = document.getElementById('early-bird-content');
+        this.totalSeats = document.getElementById('early_bird_seats');
+        this.remainingSeats = document.getElementById('early_bird_seats_remaining');
+        this.showSeatsToggle = document.getElementById('show_seats');
+        this.updateSeatsBtn = document.getElementById('update-seats');
+        this.setupEventListeners();
+        this.setupFormValidation();
+        this.setupDynamicInputs();
+        this.setupSeatsManagement();
+    }
 
-    addBtn.addEventListener('click', () => {
-        const item = document.createElement('div');
-        item.className = 'list-item';
-        item.innerHTML = `
-            <input type="text" name="registration_includes">
-            <button type="button" class="btn-remove">Remove</button>
-        `;
-        includesList.appendChild(item);
-    });
-
-    includesList.addEventListener('click', e => {
-        if (e.target.classList.contains('btn-remove')) {
-            const items = includesList.querySelectorAll('.list-item');
-            if (items.length > 1) {
-                e.target.closest('.list-item').remove();
-            }
+    setupSeatsManagement() {
+        // Initialize seats if available
+        if (this.totalSeats.value) {
+            this.remainingSeats.value = this.remainingSeats.value || this.totalSeats.value;
         }
-    });
+
+        // Update seats button handler
+        this.updateSeatsBtn?.addEventListener('click', () => {
+            this.updateSeats();
+        });
+
+        // Show/hide seats toggle handler
+        this.showSeatsToggle?.addEventListener('change', () => {
+            this.toggleSeatsVisibility();
+        });
+
+        // Format seats input
+        this.totalSeats?.addEventListener('input', (e) => {
+            this.formatSeatsNumber(e.target);
+        });
+
+        this.remainingSeats?.addEventListener('input', (e) => {
+            this.formatSeatsNumber(e.target);
+        });
+    }
+
+    formatSeatsNumber(input) {
+        // Remove any characters that aren't numbers or commas
+        let value = input.value.replace(/[^\d,]/g, '');
+        
+        // Remove multiple consecutive commas
+        value = value.replace(/,+/g, ',');
+        
+        // Remove commas from start and end
+        value = value.replace(/^,+|,+$/g, '');
+        
+        // Format number with commas
+        value = value.split(',').map(part => {
+            // Remove leading zeros from each part
+            return part.replace(/^0+/, '') || '0';
+        }).join(',');
+
+        input.value = value;
+    }
+
+    parseSeatsNumber(value) {
+        // Remove commas and convert to number
+        return parseInt(value.replace(/,/g, '')) || 0;
+    }
+
+    updateSeats() {
+        const currentTotal = this.parseSeatsNumber(this.totalSeats.value);
+        const currentRemaining = this.parseSeatsNumber(this.remainingSeats.value);
+        
+        if (currentTotal === 0) {
+            this.showToast('Total seats cannot be zero', 'error');
+            return;
+        }
+
+        if (currentRemaining > currentTotal) {
+            this.showToast('Remaining seats cannot be more than total seats', 'warning');
+            return;
+        }
+
+        // Format both numbers with commas
+        this.totalSeats.value = this.formatNumberWithCommas(currentTotal);
+        this.remainingSeats.value = this.formatNumberWithCommas(currentRemaining);
+
+        this.showToast('Seats updated successfully', 'success');
+    }
+
+    formatNumberWithCommas(number) {
+        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    toggleSeatsVisibility() {
+        const isVisible = this.showSeatsToggle.checked;
+        this.showToast(
+            isVisible ? 'Remaining seats will be visible to users' : 'Remaining seats will be hidden from users',
+            'info'
+        );
+    }
+
+    toggleEarlyBird() {
+        const isEnabled = this.earlyBirdToggle.checked;
+        this.earlyBirdContent.classList.toggle('disabled', !isEnabled);
+        
+        const inputs = this.earlyBirdContent.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.disabled = !isEnabled;
+            if (!isEnabled) {
+                input.value = '';
+            }
+        });
+
+        // Reset seats when early bird is disabled
+        if (!isEnabled) {
+            this.totalSeats.value = '';
+            this.remainingSeats.value = '';
+            this.showSeatsToggle.checked = false;
+        }
+
+        this.showToast(isEnabled ? 'Early Bird Registration enabled' : 'Early Bird Registration disabled');
+    }
+
+    setupEventListeners() {
+        // Early Bird Toggle
+        this.earlyBirdToggle?.addEventListener('change', () => {
+            this.toggleEarlyBird();
+        });
+
+        // Dynamic Lists
+        document.querySelectorAll('.add-benefit').forEach(button => {
+            button.addEventListener('click', (e) => this.addBenefitItem(e));
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-benefit')) {
+                this.removeBenefitItem(e);
+            }
+        });
+
+        // Auto-resize textareas
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('input', () => this.autoResizeTextarea(textarea));
+        });
+
+        // Form reset handler
+        document.querySelector('.btn-secondary')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.confirmReset();
+        });
+    }
+
+    setupFormValidation() {
+        this.form?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (this.validateForm()) {
+                this.submitForm();
+            }
+        });
+
+        // Real-time validation
+        const inputs = this.form?.querySelectorAll('input[required]');
+        inputs?.forEach(input => {
+            input.addEventListener('blur', () => this.validateInput(input));
+            input.addEventListener('input', () => this.validateInput(input));
+        });
+    }
+
+    setupDynamicInputs() {
+        // Currency formatting for number inputs
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', (e) => this.formatCurrency(e.target));
+        });
+
+        // Date validation
+        this.setupDateValidation();
+    }
+
+    addBenefitItem(e) {
+        const containerId = e.target.closest('.add-benefit').dataset.target;
+        const container = document.getElementById(containerId);
+        const newItem = document.createElement('div');
+        newItem.className = 'benefit-item input-group mb-2';
+        newItem.innerHTML = `
+            <input type="text" class="form-control" name="${containerId}[]" placeholder="Enter a benefit">
+            <button type="button" class="btn btn-outline-danger remove-benefit">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        container.appendChild(newItem);
+        newItem.querySelector('input').focus();
+    }
+
+    removeBenefitItem(e) {
+        const item = e.target.closest('.benefit-item');
+        const container = item.parentElement;
+        
+        if (container.querySelectorAll('.benefit-item').length > 1) {
+            item.remove();
+        } else {
+            item.querySelector('input').value = '';
+        }
+    }
+
+    autoResizeTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
+
+    validateForm() {
+        let isValid = true;
+        const requiredFields = this.form.querySelectorAll('input[required]');
+        
+        requiredFields.forEach(field => {
+            if (!this.validateInput(field)) {
+                isValid = false;
+            }
+        });
+
+        if (!isValid) {
+            this.showToast('Please fill in all required fields', 'error');
+        }
+
+        return isValid;
+    }
+
+    validateInput(input) {
+        const isValid = input.value.trim() !== '';
+        input.classList.toggle('error', !isValid);
+        
+        const errorMessage = input.nextElementSibling?.classList.contains('error-message') 
+            ? input.nextElementSibling 
+            : null;
+            
+        if (!isValid && !errorMessage) {
+            const error = document.createElement('div');
+            error.className = 'error-message';
+            error.textContent = `${input.labels[0]?.textContent || 'This field'} is required`;
+            input.parentNode.insertBefore(error, input.nextSibling);
+        } else if (isValid && errorMessage) {
+            errorMessage.remove();
+        }
+        
+        return isValid;
+    }
+
+    setupDateValidation() {
+        const dateInputs = {
+            earlyBird: document.getElementById('early_bird_deadline'),
+            early: document.getElementById('early_deadline'),
+            late: document.getElementById('late_deadline')
+        };
+
+        Object.values(dateInputs).forEach(input => {
+            if (input) {
+                input.addEventListener('change', () => this.validateDates(dateInputs));
+            }
+        });
+    }
+
+    validateDates(inputs) {
+        const dates = {
+            earlyBird: inputs.earlyBird?.value ? new Date(inputs.earlyBird.value) : null,
+            early: inputs.early?.value ? new Date(inputs.early.value) : null,
+            late: inputs.late?.value ? new Date(inputs.late.value) : null
+        };
+
+        let isValid = true;
+
+        if (dates.earlyBird && dates.early && dates.earlyBird >= dates.early) {
+            this.showToast('Early bird deadline must be before early registration deadline', 'error');
+            inputs.earlyBird.classList.add('error');
+            isValid = false;
+        }
+
+        if (dates.early && dates.late && dates.early >= dates.late) {
+            this.showToast('Early registration deadline must be before late registration deadline', 'error');
+            inputs.early.classList.add('error');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    formatCurrency(input) {
+        let value = input.value.replace(/[^\d.]/g, '');
+        if (value) {
+            value = parseFloat(value).toFixed(2);
+            input.value = value;
+        }
+    }
+
+    confirmReset() {
+        if (confirm('Are you sure you want to reset all changes? This cannot be undone.')) {
+            this.form.reset();
+            this.showToast('Form has been reset');
+            
+            // Clear all error states
+            this.form.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            this.form.querySelectorAll('.error-message').forEach(el => el.remove());
+        }
+    }
+
+    submitForm() {
+        const submitBtn = this.form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        this.form.submit();
+    }
+
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} alert-dismissible fade show`;
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        document.querySelector('.admin-section').insertBefore(
+            toast, 
+            document.querySelector('.registration-fees-form')
+        );
+
+        setTimeout(() => {
+            toast.classList.add('fade');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+}
+
+// Initialize the manager when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new RegistrationFeesManager();
 });
 </script>
+
+<style>
+/* Additional styles for enhanced functionality */
+.error {
+    border-color: var(--danger-color) !important;
+    background-color: rgba(234, 67, 53, 0.05);
+}
+
+.error-message {
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    animation: slideIn 0.2s ease-out;
+}
+
+.fade {
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.fade.show {
+    opacity: 1;
+}
+
+/* Loading state styles */
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.fa-spin {
+    animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Additional styles for seats management */
+.seats-management .input-group {
+    display: flex;
+    align-items: center;
+}
+
+.seats-management .form-switch {
+    display: flex;
+    align-items: center;
+    margin-left: 1rem;
+}
+
+.seats-management .btn-outline-primary {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 1rem;
+}
+
+.seats-management input[readonly] {
+    background-color: var(--background-secondary);
+}
+
+.seats-management small {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .seats-management .form-row {
+        flex-direction: column;
+    }
+    
+    .seats-management .form-group {
+        margin-bottom: 1rem;
+    }
+}
+</style>
 {% endblock %} 

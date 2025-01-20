@@ -1,142 +1,314 @@
 {% extends "base.html" %}
 
-{% block title %}Abstract / Paper Submission - Conference 2024{% endblock %}
+{% block title %}Paper Submission - GIIR Conference 2024{% endblock %}
 
 {% block content %}
-<div class="submission-section">
-    <h1>Abstract / Paper Submission</h1>
+<div class="page-header">
+    <h1>Paper Submission</h1>
+    <p>Submit your paper for GIIR Conference 2024</p>
+</div>
 
+<div class="content-section">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
+                </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <form method="POST" enctype="multipart/form-data" class="submission-form">
-        <!-- Personal Information -->
-        <div class="form-group">
-            <label for="name">Name</label>
-            <input type="text" id="name" name="name" required>
+    <form method="POST" enctype="multipart/form-data" id="paperSubmissionForm" class="paper-form">
+        <div class="form-sections">
+            <!-- Conference Details -->
+            <div class="form-section">
+                <h2><i class="fas fa-info-circle"></i> Conference Details</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="conference_name">Conference Name</label>
+                        <input type="text" id="conference_name" name="conference_name" 
+                               value="International Conference on Arts Education and Creativity (ICOAEC-25)" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="conference_date">Conference Date</label>
+                        <input type="text" id="conference_date" name="conference_date" 
+                               value="5th - 6th March 2025" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="conference_venue">Conference Venue</label>
+                        <input type="text" id="conference_venue" name="conference_venue" 
+                               value="Alexandria, Egypt" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Author Details -->
+            <div class="form-section">
+                <h2><i class="fas fa-user"></i> Author Details</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="author_name">Author Name *</label>
+                        <input type="text" id="author_name" name="author_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="coauthor_name">Co-author Name</label>
+                        <input type="text" id="coauthor_name" name="coauthor_name">
+                    </div>
+                    <div class="form-group">
+                        <label for="author_email">Email *</label>
+                        <input type="email" id="author_email" name="author_email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="country_code">Country Code *</label>
+                        <input type="text" id="country_code" name="country_code" required placeholder="e.g., +27">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone_number">Phone Number *</label>
+                        <input type="tel" id="phone_number" name="phone_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="university">University/Institute/Organization Name *</label>
+                        <input type="text" id="university" name="university" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="department">Department *</label>
+                        <input type="text" id="department" name="department" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paper Details -->
+            <div class="form-section">
+                <h2><i class="fas fa-file-alt"></i> Paper Details</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="submission_type">Submission Type *</label>
+                        <select id="submission_type" name="submission_type" required>
+                            <option value="">-- Select Any one --</option>
+                            <option value="full_paper">Full Paper</option>
+                            <option value="abstract">Abstract Only</option>
+                            <option value="extended_abstract">Extended Abstract</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="paper_title">Paper Title *</label>
+                        <input type="text" id="paper_title" name="paper_title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="presentation_type">Presentation Type *</label>
+                        <select id="presentation_type" name="presentation_type" required>
+                            <option value="">--select--</option>
+                            <option value="oral">Oral Presentation</option>
+                            <option value="virtual">Virtual Presentation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="journal_publication">Journal Publication *</label>
+                        <select id="journal_publication" name="journal_publication" required>
+                            <option value="">--select--</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="abstract">Abstract *</label>
+                        <textarea id="abstract" name="abstract" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="keywords">Keywords * <small>(comma-separated)</small></label>
+                        <input type="text" id="keywords" name="keywords" required 
+                               placeholder="e.g., Arts Education, Creativity, Innovation">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="message">Additional Message</label>
+                        <textarea id="message" name="message" rows="3" 
+                                 placeholder="Type your message"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="paper_file">Paper File * <small>(PDF only)</small></label>
+                        <input type="file" id="paper_file" name="paper_file" accept=".pdf" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="conference_source">How did you get to know about the Conference? *</label>
+                        <select id="conference_source" name="conference_source" required>
+                            <option value="">--select--</option>
+                            <option value="website">Conference Website</option>
+                            <option value="social_media">Social Media</option>
+                            <option value="colleague">Colleague/Friend</option>
+                            <option value="email">Email Notification</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Submit Paper
+            </button>
         </div>
-
-        <div class="form-group">
-            <label for="country_code">Country Code</label>
-            <select id="country_code" name="country_code" required>
-                <option value="">Select Country Code</option>
-                <!-- Add country codes dynamically via JavaScript -->
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="mobile">Mobile Number</label>
-            <input type="tel" id="mobile" name="mobile" required>
-        </div>
-
-        <!-- Paper Information -->
-        <div class="form-group">
-            <label for="paper_title">Abstract / Paper Title</label>
-            <input type="text" id="paper_title" name="paper_title" required>
-        </div>
-
-        <div class="form-group">
-            <label for="university">University/Institute</label>
-            <input type="text" id="university" name="university" required>
-        </div>
-
-        <!-- Conference Details -->
-        <div class="form-group">
-            <label for="conference_name">Conference Name</label>
-            <input type="text" id="conference_name" name="conference_name" value="Conference 2024" readonly>
-        </div>
-
-        <div class="form-group">
-            <label for="conference_date">Date of Conference</label>
-            <input type="text" id="conference_date" name="conference_date" value="1st - 1st January 1970" readonly>
-        </div>
-
-        <div class="form-group">
-            <label for="conference_city">Conference City</label>
-            <input type="text" id="conference_city" name="conference_city" required>
-        </div>
-
-        <div class="form-group">
-            <label for="conference_country">Conference Country</label>
-            <input type="text" id="conference_country" name="conference_country" required>
-        </div>
-
-        <!-- Presentation Details -->
-        <div class="form-group">
-            <label for="presentation_mode">Presentation Mode</label>
-            <select id="presentation_mode" name="presentation_mode" required>
-                <option value="">--Select Presentation Mode--</option>
-                <option value="oral">Oral Presentation</option>
-                <option value="poster">Poster Presentation</option>
-                <option value="virtual">Virtual Presentation</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="journal">Journal Publication</label>
-            <select id="journal" name="journal" required>
-                <option value="">--Select--</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-            </select>
-        </div>
-
-        <!-- Additional Information -->
-        <div class="form-group">
-            <label for="comments">Comments</label>
-            <textarea id="comments" name="comments" rows="4"></textarea>
-        </div>
-
-        <!-- File Upload -->
-        <div class="form-group">
-            <label for="paper_file">Upload Paper</label>
-            <input type="file" id="paper_file" name="paper_file" accept=".pdf,.doc,.docx" required>
-        </div>
-
-        <!-- reCAPTCHA -->
-        <div class="form-group">
-            <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
-        </div>
-
-        <button type="submit" class="btn-submit">Submit</button>
     </form>
-
-    <div class="contact-info">
-        <p>For any queries related to abstract submission, acceptance letter, registration fee, or presentation, please contact us at <a href="mailto:submissions@conf.org">submissions@conf.org</a> and +91 9949952552</p>
-    </div>
 </div>
 {% endblock %}
 
+{% block styles %}
+<style>
+.paper-form {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.form-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.form-section {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.form-section h2 {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-section h2 i {
+    color: var(--primary-color);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-group input[readonly] {
+    background-color: var(--background-secondary);
+    cursor: not-allowed;
+}
+
+.form-group input[type="file"] {
+    padding: 0.5rem;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--background-secondary);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+}
+
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-section {
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
 {% block scripts %}
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Country codes data
-    const countryCodes = [
-        {code: '+1', country: 'USA'},
-        {code: '+44', country: 'UK'},
-        {code: '+91', country: 'India'},
-        // Add more country codes as needed
-    ];
-
-    // Populate country codes dropdown
-    const countrySelect = document.getElementById('country_code');
-    countryCodes.forEach(country => {
-        const option = document.createElement('option');
-        option.value = country.code;
-        option.textContent = `${country.country} (${country.code})`;
-        countrySelect.appendChild(option);
+    // Form validation
+    document.getElementById('paperSubmissionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (validateForm()) {
+            this.submit();
+        }
     });
 });
+
+function validateForm() {
+    const paperFile = document.getElementById('paper_file').files[0];
+    
+    if (!paperFile) {
+        alert('Please upload your paper file');
+        return false;
+    }
+    
+    if (!paperFile.name.toLowerCase().endsWith('.pdf')) {
+        alert('Paper file must be in PDF format');
+        return false;
+    }
+    
+    return true;
+}
 </script>
 {% endblock %} 

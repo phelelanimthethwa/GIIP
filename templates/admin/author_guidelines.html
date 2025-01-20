@@ -1,0 +1,195 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Manage Author Guidelines - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-book"></i> Manage Author Guidelines</h1>
+            <p>Update submission and presentation guidelines for authors</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} fade-in">
+                    {{ message }}
+                    <button type="button" class="close-alert" onclick="this.parentElement.remove();">×</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="guidelines-form" enctype="multipart/form-data">
+        <!-- Abstract Guidelines -->
+        <div class="form-section">
+            <h2><i class="fas fa-file-alt"></i> Abstract Guidelines</h2>
+            <div class="form-group">
+                <label for="abstract_guidelines">Abstract Guidelines</label>
+                <textarea id="abstract_guidelines" name="abstract_guidelines" class="form-control rich-editor" rows="6">{{ guidelines.abstract_guidelines if guidelines else '' }}</textarea>
+                <small class="form-text text-muted">Specify format requirements, word limits, and submission process for abstracts.</small>
+            </div>
+            <div class="form-group">
+                <label for="abstract_template">Abstract Template</label>
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="abstract_template" name="abstract_template">
+                    <label class="custom-file-label" for="abstract_template">Choose file</label>
+                </div>
+                {% if guidelines and guidelines.abstract_template %}
+                    <small class="form-text text-success">Current file: {{ guidelines.abstract_template }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Full Paper Guidelines -->
+        <div class="form-section">
+            <h2><i class="fas fa-file-pdf"></i> Full Paper Guidelines</h2>
+            <div class="form-group">
+                <label for="paper_guidelines">Full Paper Guidelines</label>
+                <textarea id="paper_guidelines" name="paper_guidelines" class="form-control rich-editor" rows="8">{{ guidelines.paper_guidelines if guidelines else '' }}</textarea>
+                <small class="form-text text-muted">Specify format, length requirements, and review process for full papers.</small>
+            </div>
+            <div class="form-group">
+                <label for="paper_template">Paper Template</label>
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="paper_template" name="paper_template">
+                    <label class="custom-file-label" for="paper_template">Choose file</label>
+                </div>
+                {% if guidelines and guidelines.paper_template %}
+                    <small class="form-text text-success">Current file: {{ guidelines.paper_template }}</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Oral Presentation Guidelines -->
+        <div class="form-section">
+            <h2><i class="fas fa-microphone"></i> Oral Presentation Guidelines</h2>
+            <div class="form-group">
+                <label for="oral_guidelines">Oral Presentation Guidelines</label>
+                <textarea id="oral_guidelines" name="oral_guidelines" class="form-control rich-editor" rows="6">{{ guidelines.oral_guidelines if guidelines else '' }}</textarea>
+                <small class="form-text text-muted">Specify time limits, slide format, and presentation requirements.</small>
+            </div>
+        </div>
+
+        <!-- Virtual Presentation Guidelines -->
+        <div class="form-section">
+            <h2><i class="fas fa-video"></i> Virtual Presentation Guidelines</h2>
+            <div class="form-group">
+                <label for="virtual_guidelines">Virtual Presentation Guidelines</label>
+                <textarea id="virtual_guidelines" name="virtual_guidelines" class="form-control rich-editor" rows="6">{{ guidelines.virtual_guidelines if guidelines else '' }}</textarea>
+                <small class="form-text text-muted">Specify virtual presentation format, technical requirements, and submission process.</small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .guidelines-form {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-section h2 {
+        color: var(--primary-color);
+        font-size: 1.4rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .rich-editor {
+        width: 100%;
+        min-height: 150px;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .custom-file {
+        margin-bottom: 0.5rem;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 2rem;
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .guidelines-form {
+            padding: 1rem;
+        }
+
+        .form-section {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize rich text editors
+    const editors = document.querySelectorAll('.rich-editor');
+    editors.forEach(editor => {
+        ClassicEditor
+            .create(editor)
+            .catch(error => {
+                console.error(error);
+            });
+    });
+
+    // Update file input labels
+    document.querySelectorAll('.custom-file-input').forEach(input => {
+        input.addEventListener('change', function(e) {
+            const fileName = e.target.files[0].name;
+            const label = e.target.nextElementSibling;
+            label.textContent = fileName;
+        });
+    });
+});
+</script>
+{% endblock %} 

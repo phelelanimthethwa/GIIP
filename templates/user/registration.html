@@ -22,40 +22,80 @@
     <!-- Registration Fee Tables -->
     <section class="registration-options">
         <h2>Registration Packages</h2>
+        <div class="info-card mb-4">
+            <div class="info-header">
+                <i class="fas fa-info-circle"></i>
+                <h3>Registration Process</h3>
+            </div>
+            <ol class="process-steps">
+                <li>Select your registration package below</li>
+                <li>Complete the registration form and submit payment proof</li>
+                <li>Authors will be redirected to submit their paper after registration is complete</li>
+            </ol>
+        </div>
         <div class="pricing-grid">
             <!-- Early Bird Registration -->
+            {% if fees and fees.early_bird %}
             <div class="pricing-card highlight">
                 <div class="pricing-header">
                     <i class="fas fa-star"></i>
                     <h3>Early Bird Registration</h3>
+                    {% if fees.early_bird.show_seats and fees.early_bird.seats_remaining %}
+                    <div class="seats-info">
+                        <i class="fas fa-chair"></i>
+                        <span class="seats-count">{{ fees.early_bird.seats_remaining }} seats remaining</span>
+                    </div>
+                    {% endif %}
                 </div>
-                <p class="deadline">Deadline: {{ fees.early_bird.deadline if fees and fees.early_bird else 'TBA' }}</p>
+                <p class="deadline">Deadline: {{ fees.early_bird.deadline }}</p>
                 <ul class="pricing-features">
                     <li>
                         <i class="fas fa-user-graduate"></i>
                         <span class="feature-label">Authors (Students)</span>
-                        <span class="price">{% if fees and fees.early_bird and fees.early_bird.student_author %}${{ fees.early_bird.student_author }}{% else %}TBA{% endif %}</span>
+                        <span class="price">R {{ fees.early_bird.student_author }}</span>
                     </li>
                     <li>
                         <i class="fas fa-user"></i>
                         <span class="feature-label">Authors (Regular)</span>
-                        <span class="price">{% if fees and fees.early_bird and fees.early_bird.regular_author %}${{ fees.early_bird.regular_author }}{% else %}TBA{% endif %}</span>
+                        <span class="price">R {{ fees.early_bird.regular_author }}</span>
                     </li>
                     <li>
                         <i class="fas fa-headphones"></i>
                         <span class="feature-label">Listener</span>
-                        <span class="price">{% if fees and fees.early_bird and fees.early_bird.listener %}${{ fees.early_bird.listener }}{% else %}TBA{% endif %}</span>
+                        <span class="price">R {{ fees.early_bird.listener }}</span>
                     </li>
                     <li>
                         <i class="fas fa-laptop"></i>
                         <span class="feature-label">Virtual Delegate</span>
-                        <span class="price">{% if fees and fees.early_bird and fees.early_bird.virtual %}${{ fees.early_bird.virtual }}{% else %}TBA{% endif %}</span>
+                        <span class="price">R {{ fees.early_bird.virtual }}</span>
                     </li>
                 </ul>
-                <a href="{{ url_for('registration') }}" class="btn btn-primary">
-                    <i class="fas fa-ticket-alt"></i> Register Now
-                </a>
+                {% if fees.early_bird.benefits %}
+                <div class="package-benefits">
+                    <h4>Package Benefits</h4>
+                    <ul class="benefits-list">
+                        {% for benefit in fees.early_bird.benefits %}
+                        <li><i class="fas fa-check"></i> {{ benefit }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <div class="registration-buttons">
+                    <a href="{{ url_for('registration_form', period='early_bird', type='student_author') }}" class="btn btn-primary">
+                        <i class="fas fa-user-graduate"></i> Register as Student Author
+                    </a>
+                    <a href="{{ url_for('registration_form', period='early_bird', type='regular_author') }}" class="btn btn-primary">
+                        <i class="fas fa-user"></i> Register as Regular Author
+                    </a>
+                    <a href="{{ url_for('registration_form', period='early_bird', type='listener') }}" class="btn btn-primary">
+                        <i class="fas fa-headphones"></i> Register as Listener
+                    </a>
+                    <a href="{{ url_for('registration_form', period='early_bird', type='virtual') }}" class="btn btn-primary">
+                        <i class="fas fa-laptop"></i> Register as Virtual Delegate
+                    </a>
+                </div>
             </div>
+            {% endif %}
 
             <!-- Early Registration -->
             <div class="pricing-card">
@@ -68,27 +108,48 @@
                     <li>
                         <i class="fas fa-user-graduate"></i>
                         <span class="feature-label">Authors (Students)</span>
-                        <span class="price">{% if fees and fees.early and fees.early.student_author %}${{ fees.early.student_author }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.early and fees.early.student_author %}R {{ fees.early.student_author }}{% else %}TBA{% endif %}</span>
                     </li>
                     <li>
                         <i class="fas fa-user"></i>
                         <span class="feature-label">Authors (Regular)</span>
-                        <span class="price">{% if fees and fees.early and fees.early.regular_author %}${{ fees.early.regular_author }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.early and fees.early.regular_author %}R {{ fees.early.regular_author }}{% else %}TBA{% endif %}</span>
                     </li>
                     <li>
                         <i class="fas fa-headphones"></i>
                         <span class="feature-label">Listener</span>
-                        <span class="price">{% if fees and fees.early and fees.early.listener %}${{ fees.early.listener }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.early and fees.early.listener %}R {{ fees.early.listener }}{% else %}TBA{% endif %}</span>
                     </li>
                     <li>
                         <i class="fas fa-laptop"></i>
                         <span class="feature-label">Virtual Delegate</span>
-                        <span class="price">{% if fees and fees.early and fees.early.virtual %}${{ fees.early.virtual }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.early and fees.early.virtual %}R {{ fees.early.virtual }}{% else %}TBA{% endif %}</span>
                     </li>
                 </ul>
-                <a href="{{ url_for('registration') }}" class="btn btn-primary">
-                    <i class="fas fa-ticket-alt"></i> Register Now
-                </a>
+                {% if fees and fees.early and fees.early.benefits %}
+                <div class="package-benefits">
+                    <h4>Package Benefits</h4>
+                    <ul class="benefits-list">
+                        {% for benefit in fees.early.benefits %}
+                        <li><i class="fas fa-check"></i> {{ benefit }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <div class="registration-buttons">
+                    <a href="{{ url_for('registration_form', period='early', type='student_author') }}" class="btn btn-primary">
+                        <i class="fas fa-user-graduate"></i> Register as Student Author
+                    </a>
+                    <a href="{{ url_for('registration_form', period='early', type='regular_author') }}" class="btn btn-primary">
+                        <i class="fas fa-user"></i> Register as Regular Author
+                    </a>
+                    <a href="{{ url_for('registration_form', period='early', type='listener') }}" class="btn btn-primary">
+                        <i class="fas fa-headphones"></i> Register as Listener
+                    </a>
+                    <a href="{{ url_for('registration_form', period='early', type='virtual') }}" class="btn btn-primary">
+                        <i class="fas fa-laptop"></i> Register as Virtual Delegate
+                    </a>
+                </div>
             </div>
 
             <!-- Late Registration -->
@@ -102,27 +163,70 @@
                     <li>
                         <i class="fas fa-user-graduate"></i>
                         <span class="feature-label">Authors (Students)</span>
-                        <span class="price">{% if fees and fees.late and fees.late.student_author %}${{ fees.late.student_author }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.late and fees.late.student_author %}R {{ fees.late.student_author }}{% else %}TBA{% endif %}</span>
                     </li>
                     <li>
                         <i class="fas fa-user"></i>
                         <span class="feature-label">Authors (Regular)</span>
-                        <span class="price">{% if fees and fees.late and fees.late.regular_author %}${{ fees.late.regular_author }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.late and fees.late.regular_author %}R {{ fees.late.regular_author }}{% else %}TBA{% endif %}</span>
                     </li>
                     <li>
                         <i class="fas fa-headphones"></i>
                         <span class="feature-label">Listener</span>
-                        <span class="price">{% if fees and fees.late and fees.late.listener %}${{ fees.late.listener }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.late and fees.late.listener %}R {{ fees.late.listener }}{% else %}TBA{% endif %}</span>
                     </li>
                     <li>
                         <i class="fas fa-laptop"></i>
                         <span class="feature-label">Virtual Delegate</span>
-                        <span class="price">{% if fees and fees.late and fees.late.virtual %}${{ fees.late.virtual }}{% else %}TBA{% endif %}</span>
+                        <span class="price">{% if fees and fees.late and fees.late.virtual %}R {{ fees.late.virtual }}{% else %}TBA{% endif %}</span>
                     </li>
                 </ul>
-                <a href="{{ url_for('registration') }}" class="btn btn-primary">
-                    <i class="fas fa-ticket-alt"></i> Register Now
-                </a>
+                {% if fees and fees.late and fees.late.benefits %}
+                <div class="package-benefits">
+                    <h4>Package Benefits</h4>
+                    <ul class="benefits-list">
+                        {% for benefit in fees.late.benefits %}
+                        <li><i class="fas fa-check"></i> {{ benefit }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <div class="registration-buttons">
+                    <a href="{{ url_for('registration_form', period='late', type='student_author') }}" class="btn btn-primary">
+                        <i class="fas fa-user-graduate"></i> Register as Student Author
+                    </a>
+                    <a href="{{ url_for('registration_form', period='late', type='regular_author') }}" class="btn btn-primary">
+                        <i class="fas fa-user"></i> Register as Regular Author
+                    </a>
+                    <a href="{{ url_for('registration_form', period='late', type='listener') }}" class="btn btn-primary">
+                        <i class="fas fa-headphones"></i> Register as Listener
+                    </a>
+                    <a href="{{ url_for('registration_form', period='late', type='virtual') }}" class="btn btn-primary">
+                        <i class="fas fa-laptop"></i> Register as Virtual Delegate
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Additional Fees -->
+    <section class="additional-fees">
+        <h2>Additional Fees</h2>
+        <div class="fees-grid">
+            <div class="fee-card">
+                <i class="fas fa-file-alt"></i>
+                <h4>Extra Paper</h4>
+                <p class="price">{% if fees and fees.extra_paper_fee %}R {{ fees.extra_paper_fee }}{% else %}TBA{% endif %}</p>
+            </div>
+            <div class="fee-card">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <h4>Workshop</h4>
+                <p class="price">{% if fees and fees.workshop_fee %}R {{ fees.workshop_fee }}{% else %}TBA{% endif %}</p>
+            </div>
+            <div class="fee-card">
+                <i class="fas fa-glass-cheers"></i>
+                <h4>Banquet</h4>
+                <p class="price">{% if fees and fees.banquet_fee %}R {{ fees.banquet_fee }}{% else %}TBA{% endif %}</p>
             </div>
         </div>
     </section>
@@ -147,80 +251,102 @@
         </div>
     </section>
 
-    <!-- Additional Information -->
-    <section class="additional-info">
-        <div class="info-grid">
-            <div class="info-card">
-                <div class="info-header">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <h3>Important Notice</h3>
-                </div>
-                <ul class="info-list">
-                    <li><i class="fas fa-plus-circle"></i> Extra paper fee: {% if fees and fees.extra_paper_fee %}${{ fees.extra_paper_fee }}{% else %}TBA{% endif %}</li>
-                    <li><i class="fas fa-clock"></i> Fees apply ONLY to payments received by the indicated deadlines.</li>
-                    <li><i class="fas fa-info-circle"></i> Conference fee does not include accommodation and airport transfer.</li>
-                </ul>
-            </div>
-
-            <div class="info-card">
-                <div class="info-header">
-                    <i class="fas fa-ban"></i>
-                    <h3>Cancellation Policy</h3>
-                </div>
-                <p>In the case of non-attendance, the registration fee will not be refunded.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Payment Methods -->
+    <!-- Payment Information -->
     <section class="payment-section">
-        <h2>Payment Methods</h2>
-        <p class="section-intro">Use the form below to register and pay ONLINE with credit card or PayPal or you can pay your registration fee through a bank transfer as per given information below:</p>
-
+        <h2>Payment Information</h2>
+        
         {% if fees and fees.payment_details %}
         <div class="payment-details">
+            <!-- South African Bank Details -->
             <div class="bank-details-card">
                 <div class="card-header">
                     <i class="fas fa-university"></i>
-                    <h3>Bank Transfer Details</h3>
+                    <h3>South African Bank Details</h3>
                 </div>
                 <div class="bank-info">
                     <div class="info-row">
-                        <span class="label">Beneficiary</span>
-                        <span class="value">{{ fees.payment_details.beneficiary }}</span>
+                        <span class="label">Account Name</span>
+                        <span class="value">{{ fees.payment_details.account_name }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">IBAN</span>
-                        <span class="value">{{ fees.payment_details.iban }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">BIC</span>
-                        <span class="value">{{ fees.payment_details.bic }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Beneficiary Address</span>
-                        <span class="value">{{ fees.payment_details.beneficiary_address }}</span>
+                        <span class="label">Account Number</span>
+                        <span class="value">{{ fees.payment_details.account_number }}</span>
                     </div>
                     <div class="info-row">
                         <span class="label">Bank Name</span>
                         <span class="value">{{ fees.payment_details.bank_name }}</span>
                     </div>
                     <div class="info-row">
+                        <span class="label">Universal Branch Code</span>
+                        <span class="value">{{ fees.payment_details.universal_branch_code }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label">Account Type</span>
+                        <span class="value">{{ fees.payment_details.account_type }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- International Payment Details -->
+            <div class="bank-details-card">
+                <div class="card-header">
+                    <i class="fas fa-globe"></i>
+                    <h3>International Payment Details</h3>
+                </div>
+                <div class="bank-info">
+                    {% if fees.payment_details.swift_code %}
+                    <div class="info-row">
+                        <span class="label">SWIFT/BIC Code</span>
+                        <span class="value">{{ fees.payment_details.swift_code }}</span>
+                    </div>
+                    {% endif %}
+                    {% if fees.payment_details.iban %}
+                    <div class="info-row">
+                        <span class="label">IBAN</span>
+                        <span class="value">{{ fees.payment_details.iban }}</span>
+                    </div>
+                    {% endif %}
+                    {% if fees.payment_details.bank_address %}
+                    <div class="info-row">
                         <span class="label">Bank Address</span>
                         <span class="value">{{ fees.payment_details.bank_address }}</span>
                     </div>
-                    {% if fees.payment_details.intermediary_bic %}
+                    {% endif %}
+                    {% if fees.payment_details.intermediary_bank %}
                     <div class="info-row">
-                        <span class="label">Intermediary BIC</span>
-                        <span class="value">{{ fees.payment_details.intermediary_bic }}</span>
+                        <span class="label">Intermediary Bank Details</span>
+                        <span class="value">{{ fees.payment_details.intermediary_bank }}</span>
                     </div>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="payment-notice">
-                <i class="fas fa-info-circle"></i>
-                <p>After sending your registration payment by bank wire transfer, scan the bank receipt and attach the PDF file in an email to: <a href="mailto:{{ fees.payment_details.contact_email }}">{{ fees.payment_details.contact_email }}</a></p>
+            <!-- Payment Instructions -->
+            <div class="payment-instructions">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>Payment Instructions</h3>
+                </div>
+                <div class="instructions-content">
+                    {% if fees.payment_details.reference_format %}
+                    <div class="info-row">
+                        <span class="label">Payment Reference Format</span>
+                        <span class="value">{{ fees.payment_details.reference_format }}</span>
+                    </div>
+                    {% endif %}
+                    {% if fees.payment_details.payment_instructions %}
+                    <div class="info-row">
+                        <span class="label">Additional Instructions</span>
+                        <span class="value">{{ fees.payment_details.payment_instructions }}</span>
+                    </div>
+                    {% endif %}
+                    {% if fees.payment_details.contact_email %}
+                    <div class="info-row">
+                        <span class="label">Payment Support</span>
+                        <span class="value">Email: <a href="mailto:{{ fees.payment_details.contact_email }}">{{ fees.payment_details.contact_email }}</a></span>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endif %}
@@ -228,13 +354,13 @@
         <div class="registration-types">
             <h3>Choose Your Registration Type</h3>
             <div class="registration-buttons">
-                <a href="{{ url_for('registration', registration_type='oral') }}" class="btn btn-primary">
+                <a href="{{ url_for('registration_form', type='author') }}" class="btn btn-primary">
                     <i class="fas fa-microphone"></i> Oral / Poster Registration
                 </a>
-                <a href="{{ url_for('registration', registration_type='listener') }}" class="btn btn-primary">
+                <a href="{{ url_for('registration_form', type='listener') }}" class="btn btn-primary">
                     <i class="fas fa-headphones"></i> Listener Registration
                 </a>
-                <a href="{{ url_for('registration', registration_type='virtual') }}" class="btn btn-primary">
+                <a href="{{ url_for('registration_form', type='virtual') }}" class="btn btn-primary">
                     <i class="fas fa-laptop"></i> Virtual Registration
                 </a>
             </div>
@@ -246,39 +372,142 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function calculateTotal() {
-        let total = 0;
-        const type = document.getElementById('registration_type').value;
-        const isEarlyBird = new Date() < new Date('2024-03-31');
-        
-        // Base registration fee
-        if (type === 'regular') {
-            total += isEarlyBird ? 500 : 600;
-        } else if (type === 'student') {
-            total += isEarlyBird ? 300 : 400;
-        } else if (type === 'ieee') {
-            total += isEarlyBird ? 450 : 550;
-        }
-
-        // Additional options
-        if (document.getElementById('workshop').checked) {
-            total += 100;
-        }
-        if (document.getElementById('banquet').checked) {
-            total += 50;
-        }
-
-        document.getElementById('total-amount').textContent = `$${total}`;
-    }
-
-    // Add event listeners for form changes
-    const registrationType = document.getElementById('registration_type');
-    const workshop = document.getElementById('workshop');
-    const banquet = document.getElementById('banquet');
-    
-    if (registrationType) registrationType.addEventListener('change', calculateTotal);
-    if (workshop) workshop.addEventListener('change', calculateTotal);
-    if (banquet) banquet.addEventListener('change', calculateTotal);
+    // Add any necessary JavaScript functionality here
 });
 </script>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.package-benefits {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.package-benefits h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.benefits-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.benefits-list li {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.benefits-list li i {
+    color: var(--accent-color);
+    margin-right: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+.pricing-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.pricing-card .btn {
+    margin-top: auto;
+}
+
+@media (max-width: 768px) {
+    .package-benefits {
+        padding: 0.8rem;
+    }
+
+    .benefits-list li {
+        font-size: 0.9rem;
+    }
+}
+
+.seats-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    animation: pulse 2s infinite;
+}
+
+.seats-info i {
+    font-size: 1rem;
+}
+
+.seats-count {
+    font-weight: 500;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.pricing-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--background-secondary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    position: relative;
+}
+
+.process-steps {
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+}
+
+.process-steps li {
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.registration-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.registration-buttons .btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .registration-buttons {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 {% endblock %} 

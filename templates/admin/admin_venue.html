@@ -2,6 +2,118 @@
 
 {% block title %}Manage Venue - Admin Dashboard{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    .admin-section {
+        max-width: 1400px;
+        margin: 2rem auto;
+        padding: 2rem;
+    }
+
+    .admin-form-container {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+    }
+
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .form-section h2 {
+        color: var(--primary-color);
+        font-size: 1.6rem;
+        margin-bottom: 2rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    input, textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+
+    input:focus, textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 2rem;
+    }
+
+    .btn-submit {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        text-decoration: none;
+    }
+
+    small {
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        .admin-section {
+            padding: 1rem;
+        }
+
+        .form-section {
+            padding: 1.5rem;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="admin-section">
     <h1>Manage Venue Details</h1>
@@ -17,9 +129,9 @@
     {% endwith %}
 
     <div class="admin-form-container">
-        <form method="POST" class="venue-form">
+        <form method="POST" action="{{ url_for('admin_venue') }}" class="venue-form">
             <div class="form-section">
-                <h2>Basic Information</h2>
+                <h2><i class="fas fa-building"></i> Basic Information</h2>
                 <div class="form-group">
                     <label for="name">Venue Name *</label>
                     <input type="text" id="name" name="name" value="{{ venue_details.name if venue_details else '' }}" required>
@@ -60,52 +172,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="map_url">Google Maps Embed URL</label>
-                    <input type="url" id="map_url" name="map_url" value="{{ venue_details.map_url if venue_details else '' }}" placeholder="https://www.google.com/maps/embed?...">
-                    <small>Get the embed URL from Google Maps by clicking 'Share' and selecting 'Embed a map'</small>
-                </div>
-            </div>
-
-            <div class="form-section">
-                <h2>Transportation</h2>
-                <div class="form-group" id="airport-transport">
-                    <label>Airport Transportation Options</label>
-                    <div class="dynamic-list">
-                        {% if venue_details and venue_details.airport_transport %}
-                            {% for option in venue_details.airport_transport %}
-                                <div class="list-item">
-                                    <input type="text" name="airport_transport" value="{{ option }}">
-                                    <button type="button" class="btn-remove">Remove</button>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="list-item">
-                                <input type="text" name="airport_transport" placeholder="e.g., Taxi: 30 minutes, approx. $40">
-                                <button type="button" class="btn-remove">Remove</button>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <button type="button" class="btn-add">Add Transportation Option</button>
-                </div>
-
-                <div class="form-group" id="local-transport">
-                    <label>Local Transportation Options</label>
-                    <div class="dynamic-list">
-                        {% if venue_details and venue_details.local_transport %}
-                            {% for option in venue_details.local_transport %}
-                                <div class="list-item">
-                                    <input type="text" name="local_transport" value="{{ option }}">
-                                    <button type="button" class="btn-remove">Remove</button>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="list-item">
-                                <input type="text" name="local_transport" placeholder="e.g., Metro station: 5 minutes walk">
-                                <button type="button" class="btn-remove">Remove</button>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <button type="button" class="btn-add">Add Transportation Option</button>
+                    <label for="map_url">Map URL</label>
+                    <input type="text" class="form-control" id="map_url" name="map_url" 
+                           value="{{ venue_details.map_url if venue_details else '' }}"
+                           placeholder="Enter map URL (e.g., https://www.openstreetmap.org/export/embed.html?...)">
+                    <small class="form-text text-muted">
+                        Enter the URL for the map iframe. You can use any map service that provides an embed URL.
+                        If left blank, a default OpenStreetMap will be used.
+                    </small>
                 </div>
             </div>
 
@@ -121,28 +195,11 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle dynamic lists (airport and local transport)
-    document.querySelectorAll('.dynamic-list').forEach(list => {
-        const addBtn = list.nextElementSibling;
-        const inputName = list.querySelector('input').name;
-
-        addBtn.addEventListener('click', () => {
-            const item = document.createElement('div');
-            item.className = 'list-item';
-            item.innerHTML = `
-                <input type="text" name="${inputName}">
-                <button type="button" class="btn-remove">Remove</button>
-            `;
-            list.appendChild(item);
-        });
-
-        list.addEventListener('click', e => {
-            if (e.target.classList.contains('btn-remove')) {
-                const items = list.querySelectorAll('.list-item');
-                if (items.length > 1) {
-                    e.target.closest('.list-item').remove();
-                }
-            }
+    // Auto-resize textareas
+    document.querySelectorAll('textarea').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
         });
     });
 });

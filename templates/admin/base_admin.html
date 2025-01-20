@@ -3,285 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Admin Dashboard{% endblock %} - Conference Admin</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Admin Custom CSS -->
+    <title>{% block title %}Admin - GIIR Conference 2024{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --admin-primary: #2c3e50;
-            --admin-secondary: #34495e;
-            --admin-accent: #3498db;
+            --sidebar-width: 250px;
+            --header-height: 60px;
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
+            min-height: 100vh;
+            background: #f8f9fa;
         }
 
-        /* Sidebar Styles */
-        #sidebar {
-            min-width: 250px;
-            max-width: 250px;
-            min-height: 100vh;
-            background: var(--admin-primary);
-            color: #fff;
-            transition: all 0.3s;
+        /* Sidebar */
+        .admin-sidebar {
             position: fixed;
-            z-index: 100;
-        }
-
-        #sidebar .sidebar-header {
-            padding: 20px;
-            background: var(--admin-secondary);
-        }
-
-        #sidebar ul.components {
-            padding: 20px 0;
-        }
-
-        #sidebar ul li a {
-            padding: 10px 20px;
-            font-size: 1.1em;
-            display: block;
-            color: #fff;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-
-        #sidebar ul li a:hover {
-            background: var(--admin-accent);
-        }
-
-        #sidebar ul li.active > a {
-            background: var(--admin-accent);
-        }
-
-        /* Content Styles */
-        #content {
-            margin-left: 250px;
-            width: calc(100% - 250px);
-            padding: 20px;
-            min-height: 100vh;
-            transition: all 0.3s;
-        }
-
-        #content.active {
-            margin-left: 0;
-            width: 100%;
-        }
-
-        .admin-card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            padding: 20px;
-        }
-
-        .stats-card {
-            background: linear-gradient(45deg, var(--admin-primary), var(--admin-accent));
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: #2c3e50;
             color: white;
+            z-index: 1000;
+            transition: all 0.3s ease;
         }
 
-        .navbar {
-            background: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 15px 20px;
-        }
-
-        .breadcrumb {
-            margin: 0;
-            background: transparent;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            #sidebar {
-                margin-left: -250px;
-            }
-            #sidebar.active {
-                margin-left: 0;
-            }
-            #content {
-                margin-left: 0;
-                width: 100%;
-            }
-            #content.active {
-                margin-left: 250px;
-                width: calc(100% - 250px);
-            }
-        }
-
-        .dashboard-content {
-            width: 100%;
+        .sidebar-header {
+            height: var(--header-height);
             padding: 1rem;
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.1);
         }
 
-        .row {
-            margin-right: 0;
-            margin-left: 0;
+        .sidebar-header h1 {
+            font-size: 1.2rem;
+            margin: 0;
         }
 
-        .stats-card {
-            height: 100%;
-            min-height: 120px;
+        .sidebar-nav {
+            padding: 1rem 0;
         }
 
-        .action-card {
-            height: 100%;
-            min-height: 300px;
+        .nav-item {
+            padding: 0.5rem 1rem;
         }
 
-        /* Ensure proper padding on mobile */
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-link.active {
+            color: white;
+            background: var(--primary-color);
+        }
+
+        /* Main Content */
+        .admin-main {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            padding-top: var(--header-height);
+        }
+
+        .admin-header {
+            position: fixed;
+            top: 0;
+            left: var(--sidebar-width);
+            right: 0;
+            height: var(--header-height);
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 900;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .user-menu:hover {
+            background: #f8f9fa;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #495057;
+        }
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            .dashboard-content {
-                padding: 0.5rem;
+            .admin-sidebar {
+                transform: translateX(-100%);
             }
-            
-            .row {
-                margin-right: -0.5rem;
-                margin-left: -0.5rem;
+
+            .admin-sidebar.active {
+                transform: translateX(0);
             }
+
+            .admin-main {
+                margin-left: 0;
+            }
+
+            .admin-header {
+                left: 0;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+        }
+
+        /* Common Components */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
     </style>
-    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="wrapper d-flex">
-        <!-- Sidebar -->
-        <nav id="sidebar">
-            <div class="sidebar-header">
-                <h3>Conference Admin</h3>
+    <!-- Sidebar -->
+    <div class="admin-sidebar">
+        <div class="sidebar-header">
+            <h1>Admin Panel</h1>
+        </div>
+        <nav class="sidebar-nav">
+            {% for item in admin_menu %}
+            <div class="nav-item">
+                <a href="{{ url_for(item.url) }}" class="nav-link {% if request.endpoint == item.url %}active{% endif %}">
+                    <i class="fas fa-{{ item.icon }}"></i>
+                    <span>{{ item.text }}</span>
+                </a>
             </div>
-
-            <ul class="list-unstyled components">
-                <li {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_dashboard') }}">
-                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_users' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_users') }}">
-                        <i class="fas fa-users me-2"></i> Users
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_registrations' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_registrations') }}">
-                        <i class="fas fa-clipboard-list me-2"></i> Registrations
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_submissions' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_submissions') }}">
-                        <i class="fas fa-file-alt me-2"></i> Submissions
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_schedule' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_schedule') }}">
-                        <i class="fas fa-calendar-alt me-2"></i> Schedule
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_venue' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_venue') }}">
-                        <i class="fas fa-map-marker-alt me-2"></i> Venue
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_registration_fees' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_registration_fees') }}">
-                        <i class="fas fa-dollar-sign me-2"></i> Registration Fees
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_announcements' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_announcements') }}">
-                        <i class="fas fa-bullhorn me-2"></i> Announcements
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_downloads' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_downloads') }}">
-                        <i class="fas fa-download me-2"></i> Downloads
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_email_templates' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_email_templates') }}">
-                        <i class="fas fa-envelope me-2"></i> Email Templates
-                    </a>
-                </li>
-                <li {% if request.endpoint == 'admin_design' %}class="active"{% endif %}>
-                    <a href="{{ url_for('admin_design') }}">
-                        <i class="fas fa-palette me-2"></i> Site Design
-                    </a>
-                </li>
-            </ul>
+            {% endfor %}
         </nav>
+    </div>
 
-        <!-- Content -->
-        <div id="content">
-            <!-- Top Navigation -->
-            <nav class="navbar navbar-expand-lg">
-                <div class="container-fluid">
-                    <button type="button" id="sidebarCollapse" class="btn btn-primary d-md-none">
-                        <i class="fas fa-bars"></i>
-                    </button>
-
-                    <div class="d-flex align-items-center ms-auto">
-                        <div class="dropdown">
-                            <button class="btn btn-link dropdown-toggle text-dark text-decoration-none" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-user-circle me-1"></i>
-                                {{ current_user.full_name }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('home') }}"><i class="fas fa-home me-2"></i>Main Site</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-                            </ul>
-                        </div>
+    <!-- Main Content -->
+    <div class="admin-main">
+        <!-- Header -->
+        <header class="admin-header">
+            <button class="mobile-toggle d-md-none btn btn-light">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="header-actions">
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
                     </div>
+                    <span>{{ current_user.full_name }}</span>
                 </div>
-            </nav>
+                <a href="{{ url_for('logout') }}" class="btn btn-light">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </header>
 
-            <!-- Breadcrumb -->
-            <nav aria-label="breadcrumb" class="mb-4">
-                <ol class="breadcrumb">
-                    {% block breadcrumb %}
-                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Admin</a></li>
-                    <li class="breadcrumb-item active">Dashboard</li>
-                    {% endblock %}
-                </ol>
-            </nav>
-
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages p-3">
                     {% for category, message in messages %}
                         <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                             {{ message }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endfor %}
-                {% endif %}
-            {% endwith %}
+                </div>
+            {% endif %}
+        {% endwith %}
 
-            <!-- Main Content -->
-            <div class="container-fluid px-0">
-                {% block content %}{% endblock %}
-            </div>
-        </div>
+        <!-- Page Content -->
+        <main class="admin-content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Custom Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        $(document).ready(function() {
-            $('#sidebarCollapse').on('click', function() {
-                $('#sidebar, #content').toggleClass('active');
-            });
+        // Mobile sidebar toggle
+        document.querySelector('.mobile-toggle').addEventListener('click', function() {
+            document.querySelector('.admin-sidebar').classList.toggle('active');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            const sidebar = document.querySelector('.admin-sidebar');
+            const toggle = document.querySelector('.mobile-toggle');
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(e.target) && 
+                !toggle.contains(e.target) &&
+                sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+            }
         });
     </script>
-    {% block extra_js %}{% endblock %}
+    {% block scripts %}{% endblock %}
 </body>
 </html> 

@@ -1,120 +1,117 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}Admin Dashboard - Conference 2024{% endblock %}
+{% block title %}Admin Dashboard - GIIR Conference 2024{% endblock %}
 
 {% block content %}
 <div class="admin-dashboard">
     <div class="dashboard-header">
-        <div class="header-content">
-            <h1><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h1>
-            <p>Welcome back, {{ current_user.full_name }}</p>
+        <h1><i class="fas fa-tachometer-alt"></i> Admin Dashboard</h1>
+        <p>Welcome back, {{ current_user.full_name }}</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-label">Total Users</span>
+                <h3>{{ stats.total_users }}</h3>
+            </div>
         </div>
-        <div class="quick-actions">
-            <a href="{{ url_for('admin_downloads') }}" class="btn btn-primary">
-                <i class="fas fa-upload"></i> Upload Document
-            </a>
-            <a href="#" class="btn btn-secondary notification-btn">
-                <i class="fas fa-bell"></i>
-                <span class="notification-badge">3</span>
-            </a>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-ticket-alt"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-label">Total Registrations</span>
+                <h3>{{ stats.total_registrations }}</h3>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-label">Total Submissions</span>
+                <h3>{{ stats.total_submissions }}</h3>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-label">Pending Registrations</span>
+                <h3>{{ stats.pending_registrations }}</h3>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-content">
+                <span class="stat-label">Pending Submissions</span>
+                <h3>{{ stats.pending_submissions }}</h3>
+            </div>
         </div>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} fade-in">
-                    {{ message }}
-                    <button type="button" class="close-alert" onclick="this.parentElement.remove();">×</button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="dashboard-content">
-        <!-- Stats Cards -->
-        <div class="row g-4">
-            <!-- Registration Stats -->
-            <div class="col-xl-3 col-lg-4 col-md-6">
-                <div class="stats-card">
-                    <div class="stats-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3>{{ stats.registrations }}</h3>
-                        <p>Total Registrations</p>
-                    </div>
-                </div>
-            </div>
-            <!-- Paper Submissions -->
-            <div class="col-xl-3 col-lg-4 col-md-6">
-                <div class="stats-card">
-                    <div class="stats-icon">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3>{{ stats.submissions }}</h3>
-                        <p>Total Submissions</p>
-                    </div>
-                </div>
-            </div>
-            <!-- Downloads -->
-            <div class="col-xl-3 col-lg-4 col-md-6">
-                <div class="stats-card">
-                    <div class="stats-icon">
-                        <i class="fas fa-download"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3>{{ stats.downloads }}</h3>
-                        <p>Total Downloads</p>
-                    </div>
-                </div>
-            </div>
-            <!-- Announcements -->
-            <div class="col-xl-3 col-lg-4 col-md-6">
-                <div class="stats-card">
-                    <div class="stats-icon">
-                        <i class="fas fa-bullhorn"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3>{{ stats.announcements }}</h3>
-                        <p>Total Announcements</p>
-                    </div>
-                </div>
-            </div>
+    <!-- Recent Activity -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h2><i class="fas fa-history"></i> Recent Activity</h2>
         </div>
-
-        <!-- Action Cards -->
-        <div class="row mt-4 g-4">
-            <!-- Quick Actions -->
-            <div class="col-lg-6">
-                <div class="action-card">
-                    <div class="action-icon">
-                        <i class="fas fa-dollar-sign"></i>
+        <div class="activity-grid">
+            <!-- Recent Registrations -->
+            <div class="activity-card">
+                <h3>Recent Registrations</h3>
+                {% if registrations %}
+                    <div class="activity-list">
+                        {% for reg_id, reg in registrations.items()[:5] %}
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                <div class="activity-details">
+                                    <h4>{{ reg.full_name }}</h4>
+                                    <p>{{ reg.registration_type }} - {{ reg.payment_status }}</p>
+                                    <small>{{ reg.created_at|datetime }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
-                    <div class="action-content">
-                        <h3>Registration Fees</h3>
-                        <p>Manage fees and payment settings</p>
-                    </div>
-                    <div class="action-arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
+                {% else %}
+                    <p class="no-data">No recent registrations</p>
+                {% endif %}
             </div>
-            <!-- Recent Activity -->
-            <div class="col-lg-6">
-                <div class="action-card">
-                    <div class="action-icon">
-                        <i class="fas fa-clipboard-list"></i>
+
+            <!-- Recent Users -->
+            <div class="activity-card">
+                <h3>Recent Users</h3>
+                {% if users %}
+                    <div class="activity-list">
+                        {% for user_id, user in users.items()[:5] %}
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="activity-details">
+                                    <h4>{{ user.full_name }}</h4>
+                                    <p>{{ user.email }}</p>
+                                    <small>{{ user.created_at|datetime }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
-                    <div class="action-content">
-                        <h3>Registrations</h3>
-                        <p>Manage conference registrations</p>
-                    </div>
-                    <div class="action-arrow">
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                </div>
+                {% else %}
+                    <p class="no-data">No recent users</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -123,93 +120,22 @@
 <style>
 .admin-dashboard {
     padding: 2rem;
-    margin-top: 4rem;
-    background: #f8f9fa;
-    min-height: calc(100vh - 4rem);
 }
 
 .dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 2rem;
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.header-content h1 {
+.dashboard-header h1 {
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: #333;
-    margin-bottom: 0.5rem;
-    font-size: 1.8rem;
-}
-
-.header-content p {
-    color: #666;
-    font-size: 1.1rem;
-}
-
-.quick-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn {
-    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    text-decoration: none;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-    border: none;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-    transform: translateY(-2px);
-}
-
-.btn-secondary {
-    background: #f8f9fa;
     color: #333;
-    border: 1px solid #dee2e6;
-    position: relative;
 }
 
-.btn-secondary:hover {
-    background: #e9ecef;
-    transform: translateY(-2px);
-}
-
-.notification-btn {
-    position: relative;
-}
-
-.notification-badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #dc3545;
-    color: white;
-    padding: 0.2rem 0.5rem;
-    border-radius: 50%;
-    font-size: 0.8rem;
-}
-
-.stats-overview {
+.stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -220,210 +146,128 @@
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: flex;
-    gap: 1.5rem;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    align-items: center;
+    gap: 1rem;
 }
 
 .stat-icon {
-    background: #f8f9fa;
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
+    background: var(--primary-color);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    color: #007bff;
-    transition: all 0.3s ease;
 }
 
-.stat-card:hover .stat-icon {
-    background: #007bff;
-    color: white;
-}
-
-.stat-details {
+.stat-content {
     flex: 1;
 }
 
-.stat-details h3 {
+.stat-label {
+    display: block;
+    font-size: 0.875rem;
     color: #666;
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.stat-number {
-    color: #333;
-    font-size: 1.8rem;
-    font-weight: 700;
     margin-bottom: 0.25rem;
 }
 
-.stat-label {
-    color: #666;
-    font-size: 0.9rem;
-}
-
-.stat-chart {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 100px;
-    height: 40px;
-    opacity: 0.2;
-    transition: opacity 0.3s ease;
-}
-
-.stat-card:hover .stat-chart {
-    opacity: 0.6;
-}
-
-.dashboard-grid {
-    display: grid;
-    gap: 2rem;
+.stat-content h3 {
+    font-size: 1.5rem;
+    color: #333;
+    margin: 0;
 }
 
 .dashboard-section {
     background: white;
-    padding: 2rem;
     border-radius: 12px;
+    padding: 1.5rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.dashboard-section h2 {
-    color: #333;
-    margin-bottom: 1.5rem;
+.section-header {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    font-size: 1.4rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
 }
 
-.action-grid {
+.section-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: #333;
+}
+
+.activity-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
 }
 
-.action-card {
+.activity-card {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.activity-card h3 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.activity-item {
     display: flex;
     align-items: center;
-    padding: 1.5rem;
-    background: #f8f9fa;
-    border-radius: 12px;
-    text-decoration: none;
-    color: inherit;
-    gap: 1.5rem;
-    transition: all 0.3s ease;
-    border: 1px solid transparent;
-}
-
-.action-card:hover {
-    background: #007bff;
-    color: white;
-    transform: translateY(-2px);
-    border-color: #0056b3;
-}
-
-.action-icon {
-    width: 45px;
-    height: 45px;
+    gap: 1rem;
+    padding: 1rem;
     background: white;
-    border-radius: 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--primary-color);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
-    color: #007bff;
-    transition: all 0.3s ease;
+    font-size: 1.25rem;
 }
 
-.action-card:hover .action-icon {
-    background: rgba(255,255,255,0.2);
-    color: white;
-}
-
-.action-content {
+.activity-details {
     flex: 1;
 }
 
-.action-content h3 {
-    font-size: 1.1rem;
-    margin-bottom: 0.25rem;
-    font-weight: 600;
+.activity-details h4 {
+    margin: 0;
+    color: #333;
 }
 
-.action-content p {
-    font-size: 0.9rem;
-    opacity: 0.8;
+.activity-details p {
+    margin: 0.25rem 0;
+    color: #666;
 }
 
-.action-arrow {
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: all 0.3s ease;
+.activity-details small {
+    color: #999;
 }
 
-.action-card:hover .action-arrow {
-    opacity: 1;
-    transform: translateX(0);
-}
-
-.alert {
-    margin-bottom: 2rem;
-    padding: 1rem;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.alert-success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.alert-danger {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.close-alert {
-    background: none;
-    border: none;
-    color: inherit;
-    font-size: 1.2rem;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-}
-
-.close-alert:hover {
-    opacity: 1;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.fade-in {
-    animation: fadeIn 0.3s ease forwards;
+.no-data {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
 }
 
 @media (max-width: 768px) {
@@ -431,90 +275,14 @@
         padding: 1rem;
     }
 
-    .dashboard-header {
-        flex-direction: column;
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 1rem;
-        text-align: center;
     }
 
-    .quick-actions {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .stats-overview {
+    .activity-grid {
         grid-template-columns: 1fr;
-    }
-
-    .action-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .stat-chart {
-        display: none;
     }
 }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize mini charts
-    const chartOptions = {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                data: [12, 19, 3, 5, 2, 3],
-                borderColor: '#007bff',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                x: {
-                    display: false
-                },
-                y: {
-                    display: false
-                }
-            },
-            elements: {
-                point: {
-                    radius: 0
-                }
-            }
-        }
-    };
-
-    // Create charts for each stat card
-    new Chart(document.getElementById('usersChart'), chartOptions);
-    new Chart(document.getElementById('registrationsChart'), chartOptions);
-    new Chart(document.getElementById('submissionsChart'), chartOptions);
-    new Chart(document.getElementById('downloadsChart'), chartOptions);
-
-    // Add animation to stat cards
-    const statCards = document.querySelectorAll('.stat-card');
-    statCards.forEach((card, index) => {
-        card.style.animation = `fadeIn 0.3s ease forwards ${index * 0.1}s`;
-        card.style.opacity = '0';
-    });
-
-    // Add animation to action cards
-    const actionCards = document.querySelectorAll('.action-card');
-    actionCards.forEach((card, index) => {
-        card.style.animation = `fadeIn 0.3s ease forwards ${index * 0.1}s`;
-        card.style.opacity = '0';
-    });
-});
-</script>
 {% endblock %} 

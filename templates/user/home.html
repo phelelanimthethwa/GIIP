@@ -1,59 +1,122 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Conference 2024{% endblock %}
+{% block title %}{{ home_content.welcome.title|default('Welcome') }} - GIIR Conference 2024{% endblock %}
 
 {% block content %}
-<div class="hero {% if site_design.hero_image %}has-custom-bg{% endif %}" 
-     {% if site_design.hero_image %}style="--hero-image: url('{{ site_design.hero_image }}');"{% endif %}>
-    <h1>Welcome to Conference 2024</h1>
-    <p>Join us for the premier conference in [Your Field]</p>
-    <div class="conference-info">
-        <div class="date-location">
-            <h2>Important Dates</h2>
-            <ul>
-                <li>Paper Submission Deadline: [Date]</li>
-                <li>Notification of Acceptance: [Date]</li>
-                <li>Conference Dates: [Dates]</li>
-            </ul>
+<!-- Title Section -->
+<div class="title-section">
+    <h1>{{ home_content.welcome.title|default('Welcome to GIIR Conference 2024') }}</h1>
+</div>
+
+<!-- Hero Slider Section with Conference Info -->
+<div class="hero-section">
+    <div class="hero-slider">
+        <div class="slider-container">
+            {% if home_content.hero.images %}
+                {% for image in home_content.hero.images %}
+                <div class="slide">
+                    <img src="{{ image.url }}" alt="Conference image {{ loop.index }}">
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="slide">
+                    <img src="{{ url_for('static', filename='images/default-hero.jpg') }}" alt="Default conference image">
+                </div>
+            {% endif %}
         </div>
-        <div class="highlights">
-            <h2>Conference Highlights</h2>
+        <div class="slider-nav">
+            <button class="prev-slide"><i class="fas fa-chevron-left"></i></button>
+            <button class="next-slide"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="slider-dots"></div>
+
+        <!-- Conference Info Overlay -->
+        <div class="conference-info-overlay">
+            <div class="conference-info-content">
+                <h2>{{ home_content.hero.conference.name|default('GIIR Conference 2024') }}</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>{{ home_content.hero.conference.date|default('TBA') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ home_content.hero.conference.time|default('TBA') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ home_content.hero.conference.city|default('TBA') }}</span>
+                    </div>
+                </div>
+                <div class="conference-highlights">
+                    <h3>Conference Highlights</h3>
+                    <ul>
+                        {% if home_content.hero.conference.highlights %}
+                            {% for highlight in home_content.hero.conference.highlights.split('\n') %}
+                                {% if highlight.strip() %}
+                                    <li>{{ highlight.strip() }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <li>Keynote Speakers</li>
+                            <li>Technical Sessions</li>
+                            <li>Workshops</li>
+                            <li>Networking Events</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Welcome Message Section -->
+<div class="welcome-section">
+    <div class="container">
+        <div class="welcome-message">
+            {{ home_content.welcome.message|default('Join us for the premier conference in innovative research') }}
+        </div>
+    </div>
+</div>
+
+<!-- Vision, Mission & Objectives -->
+<div class="vmo-section">
+    <div class="vmo-grid">
+        <div class="vmo-card vision">
+            <h2>Vision</h2>
+            <p>{{ home_content.vmo.vision|default('The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform') }}</p>
+        </div>
+
+        <div class="vmo-card mission">
+            <h2>Mission</h2>
+            <p>{{ home_content.vmo.mission|default('GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences') }}</p>
+        </div>
+
+        <div class="vmo-card objectives">
+            <h2>Objectives</h2>
             <ul>
-                <li>Keynote Speakers</li>
-                <li>Technical Sessions</li>
-                <li>Workshops</li>
-                <li>Networking Events</li>
+                {% if home_content.vmo.objectives %}
+                    {% for objective in home_content.vmo.objectives.split('\n') %}
+                        {% if objective.strip() %}
+                            <li>{{ objective.strip() }}</li>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <li>To provide a world class platform for researchers to share their research findings.</li>
+                    <li>To encourage researchers to identify significant research issues.</li>
+                    <li>To help in the dissemination of researcher's work.</li>
+                {% endif %}
             </ul>
         </div>
     </div>
 </div>
 
-<div class="about-section">
-    <div class="vision">
-        <h2>Vision</h2>
-        <p>The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform</p>
-    </div>
-
-    <div class="mission">
-        <h2>Mission</h2>
-        <p>GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences</p>
-    </div>
-
-    <div class="objective">
-        <h2>Objective</h2>
-        <ul>
-            <li>To provide a world class platform for researchers to share their research findings by organizing International and National Conferences.</li>
-            <li>To encourage researchers to identify significant research issues in the identified key areas in Social, Economic, Information Technology, Education and Management.</li>
-            <li>To help in the dissemination of researcher's work through publications in accredited journals and / or conference proceedings or books.</li>
-        </ul>
-    </div>
-</div>
-
+<!-- Downloads Section -->
 <div class="downloads-section">
-    <h2>Downloads</h2>
+    <h2>Important Downloads</h2>
     <div class="downloads-grid">
-        {% if downloads %}
-            {% for download in downloads %}
+        {% if home_content.downloads %}
+            {% for download in home_content.downloads %}
             <div class="download-card">
                 <div class="download-icon">
                     <i class="fas fa-file-{{ download.type }}"></i>
@@ -78,4 +141,559 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Supporters Section -->
+{% if home_content.supporters %}
+<section class="supporters-section">
+    <div class="container">
+        <h2 class="section-title text-center">Our Supporters</h2>
+        <div class="supporters-grid">
+            {% for supporter in home_content.supporters %}
+            <div class="supporter-logo">
+                <img src="{{ supporter.logo }}" alt="Supporter">
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<style>
+.supporters-section {
+    padding: 2rem 0;
+    background: #fff;
+    text-align: center;
+}
+
+.section-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    position: relative;
+    display: inline-block;
+}
+
+.section-title:after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: var(--primary-color);
+}
+
+.supporters-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    margin: 2rem auto;
+    max-width: 1200px;
+    padding: 0 1rem;
+}
+
+.supporter-logo {
+    width: 100px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+.supporter-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.supporter-logo:hover img {
+    filter: grayscale(0);
+    opacity: 1;
+}
+</style>
+{% endif %}
+
+<style>
+/* Title Section */
+.title-section {
+    text-align: center;
+    padding: 2rem;
+    background: var(--primary-color);
+    color: white;
+}
+
+.title-section h1 {
+    font-size: 2.8rem;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Hero Section */
+.hero-section {
+    position: relative;
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+.hero-slider {
+    position: relative;
+    height: 80vh;
+    min-height: 600px;
+    overflow: hidden;
+}
+
+.slider-container {
+    height: 100%;
+    display: flex;
+    transition: transform 0.5s ease;
+}
+
+.slide {
+    min-width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.slider-nav button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.slider-nav button:hover {
+    background: rgba(0,0,0,0.8);
+}
+
+.prev-slide {
+    left: 1rem;
+}
+
+.next-slide {
+    right: 1rem;
+}
+
+/* Conference Info Overlay */
+.conference-info-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4), transparent);
+    color: white;
+    padding: 3rem;
+    z-index: 5;
+}
+
+.conference-info-content {
+    max-width: 800px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding-left: 2rem;
+}
+
+.conference-info-content h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 2rem;
+    margin-bottom: 2rem;
+    justify-content: start;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.3rem;
+    white-space: nowrap;
+}
+
+.info-item i {
+    font-size: 1.8rem;
+    opacity: 0.9;
+}
+
+.conference-highlights {
+    text-align: left;
+    max-width: 600px;
+    margin-top: 1rem;
+}
+
+.conference-highlights h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.conference-highlights ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(250px, 1fr));
+    gap: 1.5rem;
+    list-style: none;
+    padding: 0;
+    justify-content: start;
+}
+
+.conference-highlights li {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.2rem;
+}
+
+.conference-highlights li:before {
+    content: '•';
+    color: var(--accent-color);
+}
+
+/* Welcome Section */
+.welcome-section {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    color: var(--text-color);
+}
+
+.welcome-message {
+    font-size: 1.5rem;
+    font-weight: 600;
+    max-width: 1000px;
+    margin: 0 auto;
+    line-height: 1.6;
+    color: var(--primary-color);
+    text-align: center;
+    padding: 2rem;
+    border-left: 4px solid var(--primary-color);
+    border-right: 4px solid var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.05);
+}
+
+/* VMO Section */
+.vmo-section {
+    padding: 4rem 2rem;
+    background: var(--background-color);
+}
+
+.vmo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.vmo-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.vmo-card:hover {
+    transform: translateY(-5px);
+}
+
+.vmo-card h2 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.vmo-card h2:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background: var(--primary-color);
+}
+
+/* Downloads Section */
+.downloads-section {
+    padding: 4rem 2rem;
+    background: white;
+}
+
+.downloads-section h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    /* Title Section */
+    .title-section {
+        padding: 1.5rem 1rem;
+    }
+
+    .title-section h1 {
+        font-size: 1.8rem;
+    }
+
+    /* Hero Section */
+    .hero-slider {
+        height: 50vh;
+        min-height: 350px;
+    }
+
+    .conference-info-overlay {
+        padding: 1.5rem;
+    }
+
+    .conference-info-content {
+        padding-left: 0;
+    }
+
+    .conference-info-content h2 {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-item {
+        font-size: 1rem;
+    }
+
+    .info-item i {
+        font-size: 1.4rem;
+    }
+
+    .conference-highlights h3 {
+        font-size: 1.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .conference-highlights ul {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+    }
+
+    .conference-highlights li {
+        font-size: 1rem;
+    }
+
+    /* Welcome Section */
+    .welcome-section {
+        padding: 2rem 1rem;
+    }
+
+    .welcome-message {
+        font-size: 1.1rem;
+        padding: 1.2rem;
+        border-width: 2px;
+    }
+
+    /* VMO Section */
+    .vmo-section {
+        padding: 2rem 1rem;
+    }
+
+    .vmo-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .vmo-card {
+        padding: 1.5rem;
+    }
+
+    .vmo-card h2 {
+        font-size: 1.4rem;
+    }
+
+    /* Downloads Section */
+    .downloads-section {
+        padding: 2rem 1rem;
+    }
+
+    .downloads-section h2 {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .downloads-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .download-card {
+        padding: 1rem;
+    }
+
+    /* Supporters Section */
+    .supporters-section {
+        padding: 2rem 1rem;
+    }
+
+    .section-title {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .supporters-grid {
+        gap: 1.5rem;
+        margin: 1rem auto;
+    }
+
+    .supporter-logo {
+        width: 80px;
+        height: 60px;
+        padding: 6px;
+    }
+
+    /* Navigation */
+    .slider-nav button {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .prev-slide {
+        left: 0.5rem;
+    }
+
+    .next-slide {
+        right: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Even smaller screens */
+    .title-section h1 {
+        font-size: 1.5rem;
+    }
+
+    .conference-info-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .welcome-message {
+        font-size: 1rem;
+        padding: 1rem;
+    }
+
+    .supporter-logo {
+        width: 70px;
+        height: 50px;
+        padding: 4px;
+    }
+
+    .supporters-grid {
+        gap: 1rem;
+    }
+
+    .section-title:after {
+        width: 40px;
+        height: 2px;
+        bottom: -8px;
+    }
+}
+
+/* Add smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Improve touch interactions */
+@media (hover: none) {
+    .vmo-card:hover {
+        transform: none;
+    }
+
+    .supporter-logo img {
+        filter: grayscale(0);
+        opacity: 1;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const slider = document.querySelector('.slider-container');
+    const slides = document.querySelectorAll('.slide');
+    const dotsContainer = document.querySelector('.slider-dots');
+    let currentSlide = 0;
+    
+    // Create dots
+    slides.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        if (index === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(index));
+        dotsContainer.appendChild(dot);
+    });
+    
+    // Update dots
+    function updateDots() {
+        document.querySelectorAll('.dot').forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+    }
+    
+    // Go to specific slide
+    function goToSlide(n) {
+        currentSlide = n;
+        slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+        updateDots();
+    }
+    
+    // Next slide
+    function nextSlide() {
+        currentSlide = (currentSlide + 1) % slides.length;
+        goToSlide(currentSlide);
+    }
+    
+    // Previous slide
+    function prevSlide() {
+        currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+        goToSlide(currentSlide);
+    }
+    
+    // Add click handlers
+    document.querySelector('.next-slide').addEventListener('click', nextSlide);
+    document.querySelector('.prev-slide').addEventListener('click', prevSlide);
+    
+    // Auto advance slides
+    if (slides.length > 1) {
+        setInterval(nextSlide, 5000);
+    }
+});
+</script>
 {% endblock %} 

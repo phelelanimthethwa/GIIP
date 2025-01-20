@@ -74,6 +74,10 @@
                         <i class="fas fa-download"></i>
                         Manage Downloads
                     </a>
+                    <a href="{{ url_for('admin_author_guidelines') }}" class="action-button">
+                        <i class="fas fa-book"></i>
+                        Author Guidelines
+                    </a>
                     <a href="{{ url_for('admin_venue') }}" class="action-button">
                         <i class="fas fa-map-marker-alt"></i>
                         Venue Settings
@@ -292,8 +296,18 @@
     .empty-state,
     .quick-actions,
     .action-button {
-        /* Keep existing styles */
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
     }
+     
+    
 
     /* Responsive Design */
     @media (max-width: 1024px) {

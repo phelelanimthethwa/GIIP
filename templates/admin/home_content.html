@@ -1,0 +1,725 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Manage Home Page - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-home"></i> Manage Home Page</h1>
+            <p>Customize the content displayed on the main home page</p>
+        </div>
+        <div class="quick-actions">
+            <a href="{{ url_for('home') }}" class="btn btn-secondary" target="_blank">
+                <i class="fas fa-external-link-alt"></i> Preview Home Page
+            </a>
+            <button type="button" class="btn btn-primary" id="saveAllChanges">
+                <i class="fas fa-save"></i> Save All Changes
+            </button>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <form id="homeContentForm" method="POST" enctype="multipart/form-data">
+            <!-- Welcome Message Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-comment-alt"></i> Welcome Message</h2>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="welcomeTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="welcomeTitle" name="welcome[title]" 
+                               value="{{ home_content.welcome.title }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="welcomeMessage" class="form-label">Message</label>
+                        <textarea class="form-control" id="welcomeMessage" name="welcome[message]" rows="3" 
+                                  required>{{ home_content.welcome.message }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hero Slider Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-images"></i> Hero Slider</h2>
+                <div class="card-body">
+                    <div class="hero-images mb-4">
+                        <h3>Slider Images</h3>
+                        <div class="image-grid" id="heroImages">
+                            {% if home_content.hero.images %}
+                                {% for image in home_content.hero.images %}
+                                <div class="image-item" data-id="{{ loop.index }}">
+                                    <img src="{{ image.url }}" alt="{{ image.alt }}">
+                                    <div class="image-actions">
+                                        <button type="button" class="btn btn-sm btn-danger delete-image">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            <div class="image-upload-box">
+                                <input type="file" id="heroImageUpload" name="hero_images" accept="image/*" multiple>
+                                <label for="heroImageUpload">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Add Image</span>
+                                    <small>(Max 10 images)</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="conference-details">
+                        <h3>Conference Details</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceName" class="form-label">Conference Name</label>
+                                    <input type="text" class="form-control" id="conferenceName" name="conference[name]"
+                                           value="{{ home_content.hero.conference.name }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceDate" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="conferenceDate" name="conference[date]"
+                                           value="{{ home_content.hero.conference.date }}" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceTime" class="form-label">Time</label>
+                                    <input type="time" class="form-control" id="conferenceTime" name="conference[time]"
+                                           value="{{ home_content.hero.conference.time }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceCity" class="form-label">City</label>
+                                    <input type="text" class="form-control" id="conferenceCity" name="conference[city]"
+                                           value="{{ home_content.hero.conference.city }}" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="conferenceHighlights" class="form-label">Conference Highlights</label>
+                            <textarea class="form-control" id="conferenceHighlights" name="conference[highlights]" rows="4" 
+                                      required>{{ home_content.hero.conference.highlights }}</textarea>
+                            <small class="form-text text-muted">Enter each highlight on a new line</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vision, Mission & Objectives Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-bullseye"></i> Vision, Mission & Objectives</h2>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="vision" class="form-label">Vision</label>
+                        <textarea class="form-control" id="vision" name="vmo[vision]" rows="3" 
+                                  required>{{ home_content.vmo.vision }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="mission" class="form-label">Mission</label>
+                        <textarea class="form-control" id="mission" name="vmo[mission]" rows="3" 
+                                  required>{{ home_content.vmo.mission }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="objectives" class="form-label">Objectives</label>
+                        <textarea class="form-control" id="objectives" name="vmo[objectives]" rows="5" 
+                                  required>{{ home_content.vmo.objectives }}</textarea>
+                        <small class="form-text text-muted">Enter each objective on a new line</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Downloads Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-download"></i> Downloads</h2>
+                <div class="card-body">
+                    <div class="downloads-grid" id="downloadsGrid">
+                        {% if home_content.downloads %}
+                            {% for download in home_content.downloads %}
+                            <div class="download-item" data-id="{{ download.id }}">
+                                <div class="download-info">
+                                    <input type="hidden" name="download_ids[]" value="{{ download.id }}">
+                                    <div class="mb-3">
+                                        <label class="form-label">Title</label>
+                                        <input type="text" class="form-control" name="download_titles[]" 
+                                               value="{{ download.title }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Description</label>
+                                        <textarea class="form-control" name="download_descriptions[]" 
+                                                  rows="2" required>{{ download.description }}</textarea>
+                                    </div>
+                                    {% if download.file_url %}
+                                    <div class="current-file mb-3">
+                                        <input type="hidden" name="download_existing_files[]" value="{{ download.file_url }}">
+                                        <span>Current file: <a href="{{ download.file_url }}" target="_blank">{{ download.file_url.split('/')[-1] }}</a></span>
+                                        <small>({{ download.file_size }})</small>
+                                    </div>
+                                    {% else %}
+                                    <input type="hidden" name="download_existing_files[]" value="">
+                                    {% endif %}
+                                    <div class="file-upload">
+                                        <label class="form-label">Upload File</label>
+                                        <input type="file" class="form-control" name="download_file_{{ download.id }}" 
+                                               accept=".pdf,.doc,.docx">
+                                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX</small>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-danger delete-download">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                        <div class="download-upload">
+                            <button type="button" class="btn btn-outline-primary add-download">
+                                <i class="fas fa-plus"></i> Add Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supporters Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-handshake"></i> Supporters</h2>
+                <div class="card-body">
+                    <!-- Existing Supporters -->
+                    <div id="existingSupporters">
+                        {% if home_content.supporters %}
+                            {% for supporter in home_content.supporters %}
+                            <div class="supporter-card" data-id="{{ loop.index }}">
+                                <div class="supporter-content">
+                                    <div class="supporter-image">
+                                        <img src="{{ supporter.logo }}" alt="{{ supporter.name }}">
+                                        <input type="hidden" name="existing_supporter_logos[]" value="{{ supporter.logo }}">
+                                    </div>
+                                    <div class="supporter-details">
+                                        <div class="form-group">
+                                            <label>Name</label>
+                                            <input type="text" class="form-control" name="existing_supporter_names[]" 
+                                                   value="{{ supporter.name }}" required>
+                                        </div>
+                                        <div class="form-group mt-2">
+                                            <label>Description</label>
+                                            <textarea class="form-control" name="existing_supporter_descriptions[]" 
+                                                      rows="2" required>{{ supporter.description }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="supporter-actions">
+                                    <button type="button" class="btn btn-danger btn-sm delete-supporter">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Add New Supporter Form -->
+                    <div class="add-supporter-form mt-4">
+                        <h4>Add New Supporter</h4>
+                        <div class="supporter-card new-supporter">
+                            <div class="supporter-content">
+                                <div class="supporter-image" id="imagePreviewContainer">
+                                    <div class="upload-placeholder" id="uploadPlaceholder">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <span>Click to upload logo</span>
+                                    </div>
+                                    <img id="imagePreview" src="" alt="" style="display: none;">
+                                    <input type="file" id="supporterLogo" name="new_supporter_logo" 
+                                           accept="image/*" style="display: none;">
+                                </div>
+                                <div class="supporter-details">
+                                    <div class="form-group">
+                                        <label>Name</label>
+                                        <input type="text" class="form-control" id="newSupporterName" 
+                                               placeholder="Enter supporter name">
+                                    </div>
+                                    <div class="form-group mt-2">
+                                        <label>Description</label>
+                                        <textarea class="form-control" id="newSupporterDescription" 
+                                                  rows="2" placeholder="Enter description"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="supporter-actions">
+                                <button type="button" class="btn btn-primary" id="addSupporterBtn">
+                                    <i class="fas fa-plus"></i> Add Supporter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-footer"></i> Footer Information</h2>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Contact Email</label>
+                                <input type="email" class="form-control" name="footer[contact_email]" 
+                                       value="{{ home_content.footer.contact_email }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Contact Phone</label>
+                                <input type="text" class="form-control" name="footer[contact_phone]" 
+                                       value="{{ home_content.footer.contact_phone }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Facebook URL</label>
+                                <input type="url" class="form-control" name="footer[social_media][facebook]" 
+                                       value="{{ home_content.footer.social_media.facebook }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">Twitter URL</label>
+                                <input type="url" class="form-control" name="footer[social_media][twitter]" 
+                                       value="{{ home_content.footer.social_media.twitter }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">LinkedIn URL</label>
+                                <input type="url" class="form-control" name="footer[social_media][linkedin]" 
+                                       value="{{ home_content.footer.social_media.linkedin }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Address</label>
+                        <textarea class="form-control" name="footer[address]" rows="2">{{ home_content.footer.address }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Copyright Text</label>
+                        <input type="text" class="form-control" name="footer[copyright]" 
+                               value="{{ home_content.footer.copyright }}">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('homeContentForm');
+    const saveButton = document.getElementById('saveAllChanges');
+    const imageGrid = document.getElementById('heroImages');
+    const imageUpload = document.getElementById('heroImageUpload');
+    
+    // Handle image preview and deletion
+    imageUpload.addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        const currentImages = document.querySelectorAll('.image-item').length - 1; // -1 for upload box
+        const remainingSlots = 10 - currentImages;
+
+        if (files.length > remainingSlots) {
+            alert(`You can only add ${remainingSlots} more image(s)`);
+            return;
+        }
+
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const template = `
+                    <div class="image-item" data-id="new">
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <div class="image-actions">
+                            <button type="button" class="btn btn-sm btn-danger delete-image">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                const uploadBox = imageGrid.querySelector('.image-upload-box');
+                uploadBox.insertAdjacentHTML('beforebegin', template);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    // Handle image deletion
+    imageGrid.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-image')) {
+            const imageItem = e.target.closest('.image-item');
+            imageItem.remove();
+        }
+    });
+    
+    // Handle form submission
+    saveButton.addEventListener('click', function() {
+        const formData = new FormData(form);
+        
+        // Add existing images that weren't deleted
+        const existingImages = [];
+        document.querySelectorAll('.image-item').forEach(item => {
+            if (item.dataset.id !== 'new') {
+                const img = item.querySelector('img');
+                existingImages.push({
+                    url: img.src,
+                    alt: img.alt
+                });
+            }
+        });
+        formData.append('existing_images', JSON.stringify(existingImages));
+        
+        fetch('{{ url_for("admin_home_content") }}', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'  // Keep this to maintain session
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Error saving changes: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving changes');
+        });
+    });
+
+    // Handle supporter image uploads
+    const existingSupporters = document.getElementById('existingSupporters');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const imagePreview = document.getElementById('imagePreview');
+    const supporterLogo = document.getElementById('supporterLogo');
+    const newSupporterName = document.getElementById('newSupporterName');
+    const newSupporterDescription = document.getElementById('newSupporterDescription');
+    const addSupporterBtn = document.getElementById('addSupporterBtn');
+
+    // Handle image upload and preview
+    imagePreviewContainer.addEventListener('click', () => supporterLogo.click());
+
+    supporterLogo.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                uploadPlaceholder.style.display = 'none';
+            };
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+
+    // Handle adding new supporter
+    addSupporterBtn.addEventListener('click', function() {
+        // Validate inputs
+        if (!supporterLogo.files[0]) {
+            alert('Please select a logo image');
+            return;
+        }
+        if (!newSupporterName.value.trim()) {
+            alert('Please enter supporter name');
+            return;
+        }
+        if (!newSupporterDescription.value.trim()) {
+            alert('Please enter supporter description');
+            return;
+        }
+
+        // Create new supporter entry
+        const supporterCard = document.createElement('div');
+        supporterCard.className = 'supporter-card new-entry';
+        supporterCard.innerHTML = `
+            <div class="supporter-content">
+                <div class="supporter-image">
+                    <img src="${imagePreview.src}" alt="${newSupporterName.value}">
+                    <input type="hidden" name="new_supporter_logos[]" value="${imagePreview.src}">
+                </div>
+                <div class="supporter-details">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" class="form-control" name="new_supporter_names[]" 
+                               value="${newSupporterName.value}" required>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label>Description</label>
+                        <textarea class="form-control" name="new_supporter_descriptions[]" 
+                                  rows="2" required>${newSupporterDescription.value}</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="supporter-actions">
+                <button type="button" class="btn btn-danger btn-sm delete-supporter">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+        `;
+
+        // Add to existing supporters
+        existingSupporters.appendChild(supporterCard);
+
+        // Reset form
+        supporterLogo.value = '';
+        imagePreview.src = '';
+        imagePreview.style.display = 'none';
+        uploadPlaceholder.style.display = 'flex';
+        newSupporterName.value = '';
+        newSupporterDescription.value = '';
+    });
+
+    // Handle supporter deletion
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-supporter')) {
+            if (confirm('Are you sure you want to remove this supporter?')) {
+                e.target.closest('.supporter-card').remove();
+            }
+        }
+    });
+
+    // Handle downloads
+    const downloadsGrid = document.getElementById('downloadsGrid');
+    const addDownloadBtn = downloadsGrid.querySelector('.add-download');
+
+    addDownloadBtn.addEventListener('click', function() {
+        const downloadCount = downloadsGrid.querySelectorAll('.download-item').length;
+        const downloadId = `download_${Date.now()}`;
+        const template = `
+            <div class="download-item" data-id="${downloadId}">
+                <div class="download-info">
+                    <input type="hidden" name="download_ids[]" value="${downloadId}">
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" name="download_titles[]" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="download_descriptions[]" rows="2" required></textarea>
+                    </div>
+                    <input type="hidden" name="download_existing_files[]" value="">
+                    <div class="file-upload">
+                        <label class="form-label">Upload File</label>
+                        <input type="file" class="form-control" name="download_file_${downloadId}" 
+                               accept=".pdf,.doc,.docx">
+                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX</small>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-danger delete-download">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        `;
+        const uploadBox = downloadsGrid.querySelector('.download-upload');
+        uploadBox.insertAdjacentHTML('beforebegin', template);
+    });
+
+    // Handle download deletion
+    downloadsGrid.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-download')) {
+            const downloadItem = e.target.closest('.download-item');
+            downloadItem.remove();
+        }
+    });
+});
+</script>
+
+<style>
+.admin-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.image-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+}
+
+.image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.image-upload-box {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.image-upload-box:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+}
+
+.image-upload-box label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.image-upload-box i {
+    font-size: 2rem;
+    color: #666;
+}
+
+/* Downloads Section */
+.downloads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.download-item {
+    position: relative;
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.download-info {
+    margin-bottom: 2rem;
+}
+
+.current-file {
+    padding: 0.5rem;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.download-upload {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}
+
+.delete-download {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+}
+
+/* Supporters Section */
+.supporter-image {
+    width: 100px;
+    height: 70px;
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+.supporter-image img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.supporter-image:hover img {
+    filter: grayscale(0);
+    opacity: 1;
+}
+
+.supporter-card {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    box-shadow: none;
+}
+
+#existingSupporters {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 3rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 1rem;
+}
+
+.supporter-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.supporter-details {
+    width: 100%;
+}
+
+.new-supporter {
+    border: 1px dashed #007bff;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.supporter-actions {
+    margin-top: 0.5rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+</style>
+{% endblock %}
+
+{% endblock %} 

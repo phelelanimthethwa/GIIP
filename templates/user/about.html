@@ -4,33 +4,32 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>About GIIR Conference</h1>
+    <h1>{{ about_content.overview.title|default('About GIIR Conference') }}</h1>
     <p>Advancing Innovation Through Global Research Collaboration</p>
 </div>
 
 <div class="content-section">
     <section class="overview-section">
-        <h2>Conference Overview</h2>
+        <h2>{{ about_content.overview.title|default('Conference Overview') }}</h2>
         <div class="overview-content">
             <div class="overview-text">
-                <p>The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world to share groundbreaking research, exchange ideas, and foster collaboration in emerging technologies and innovative research.</p>
-                <p>This premier international conference provides a platform for presenting cutting-edge research, networking with global experts, and exploring potential collaborations across various disciplines.</p>
+                <p>{{ about_content.overview.description|default('The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world to share groundbreaking research, exchange ideas, and foster collaboration in emerging technologies and innovative research.') }}</p>
             </div>
             <div class="overview-stats">
                 <div class="stat-card">
-                    <div class="number">500+</div>
+                    <div class="number">{{ about_content.overview.stats.attendees|default('500+') }}</div>
                     <h4>Attendees</h4>
                 </div>
                 <div class="stat-card">
-                    <div class="number">50+</div>
+                    <div class="number">{{ about_content.overview.stats.countries|default('50+') }}</div>
                     <h4>Countries</h4>
                 </div>
                 <div class="stat-card">
-                    <div class="number">200+</div>
+                    <div class="number">{{ about_content.overview.stats.papers|default('200+') }}</div>
                     <h4>Research Papers</h4>
                 </div>
                 <div class="stat-card">
-                    <div class="number">30+</div>
+                    <div class="number">{{ about_content.overview.stats.speakers|default('30+') }}</div>
                     <h4>Speakers</h4>
                 </div>
             </div>
@@ -40,98 +39,76 @@
     <section class="objectives-section">
         <h2>Conference Objectives</h2>
         <div class="objectives-grid">
-            <div class="objective-card">
-                <div class="objective-icon">
-                    <i class="fas fa-lightbulb"></i>
+            {% if about_content.objectives %}
+                {% for objective in about_content.objectives %}
+                <div class="objective-card">
+                    <div class="objective-icon">
+                        <i class="fas {{ objective.icon }}"></i>
+                    </div>
+                    <h3>{{ objective.title }}</h3>
+                    <p>{{ objective.description }}</p>
                 </div>
-                <h3>Knowledge Exchange</h3>
-                <p>Facilitate the exchange of innovative ideas and research findings between academics, researchers, and industry professionals</p>
-            </div>
-            <div class="objective-card">
-                <div class="objective-icon">
-                    <i class="fas fa-users"></i>
+                {% endfor %}
+            {% else %}
+                <div class="objective-card">
+                    <div class="objective-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Knowledge Exchange</h3>
+                    <p>Facilitate the exchange of innovative ideas and research findings between academics, researchers, and industry professionals</p>
                 </div>
-                <h3>Networking</h3>
-                <p>Create opportunities for networking and collaboration among participants from diverse backgrounds and regions</p>
-            </div>
-            <div class="objective-card">
-                <div class="objective-icon">
-                    <i class="fas fa-chart-line"></i>
+                <div class="objective-card">
+                    <div class="objective-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Networking</h3>
+                    <p>Create opportunities for networking and collaboration among participants from diverse backgrounds and regions</p>
                 </div>
-                <h3>Research Impact</h3>
-                <p>Showcase cutting-edge research and its potential impact on industry and society</p>
-            </div>
-            <div class="objective-card">
-                <div class="objective-icon">
-                    <i class="fas fa-globe"></i>
+                <div class="objective-card">
+                    <div class="objective-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Research Impact</h3>
+                    <p>Showcase cutting-edge research and its potential impact on industry and society</p>
                 </div>
-                <h3>Global Collaboration</h3>
-                <p>Foster international collaboration and create lasting research partnerships</p>
-            </div>
+                <div class="objective-card">
+                    <div class="objective-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3>Global Collaboration</h3>
+                    <p>Foster international collaboration and create lasting research partnerships</p>
+                </div>
+            {% endif %}
         </div>
     </section>
 
-    <section class="committee-section">
-        <h2>Organizing Committee</h2>
-        <div class="committee-grid">
-            <div class="committee-card">
-                <div class="member-photo">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="member-info">
-                    <h3>Conference Chair</h3>
-                    <h4>Prof. Sarah Johnson</h4>
-                    <p>Stanford University, USA</p>
-                    <div class="member-expertise">
-                        <span>Artificial Intelligence</span>
-                        <span>Machine Learning</span>
+    <section class="committee-section py-5">
+        <div class="container">
+            <h2 class="section-title text-center mb-5">Organizing Committee</h2>
+            <div class="row g-4 justify-content-center">
+                {% for member in about_content.committee %}
+                <div class="col-md-4 col-lg-3">
+                    <div class="committee-card h-100">
+                        <div class="member-image mb-3">
+                            {% if member.image and member.image.strip() %}
+                                <img src="{{ member.image }}" alt="{{ member.name }}" class="img-fluid rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
+                            {% else %}
+                                <div class="default-member-icon">
+                                    <i class="fas fa-user-circle fa-5x"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="member-info text-center">
+                            <h4 class="member-name">{{ member.name }}</h4>
+                            <p class="member-role text-primary mb-1">{{ member.role }}</p>
+                            <p class="member-affiliation mb-1">{{ member.affiliation }}</p>
+                            <p class="member-expertise small text-muted">
+                                {{ member.expertise|join(', ') }}
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="committee-card">
-                <div class="member-photo">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="member-info">
-                    <h3>Program Chair</h3>
-                    <h4>Dr. Michael Chen</h4>
-                    <p>MIT, USA</p>
-                    <div class="member-expertise">
-                        <span>Data Science</span>
-                        <span>Big Data Analytics</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="committee-card">
-                <div class="member-photo">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="member-info">
-                    <h3>Technical Chair</h3>
-                    <h4>Prof. Elena Rodriguez</h4>
-                    <p>ETH Zurich, Switzerland</p>
-                    <div class="member-expertise">
-                        <span>IoT Systems</span>
-                        <span>Edge Computing</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="committee-card">
-                <div class="member-photo">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="member-info">
-                    <h3>Publication Chair</h3>
-                    <h4>Dr. James Wilson</h4>
-                    <p>University of Tokyo, Japan</p>
-                    <div class="member-expertise">
-                        <span>Cybersecurity</span>
-                        <span>Privacy</span>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
         </div>
     </section>
@@ -139,22 +116,280 @@
     <section class="past-conferences">
         <h2>Past Conferences</h2>
         <div class="conference-timeline">
-            <div class="timeline-item">
-                <div class="year">2023</div>
-                <div class="location">Tokyo, Japan</div>
-                <div class="highlight">450+ Attendees</div>
-            </div>
-            <div class="timeline-item">
-                <div class="year">2022</div>
-                <div class="location">Berlin, Germany</div>
-                <div class="highlight">400+ Attendees</div>
-            </div>
-            <div class="timeline-item">
-                <div class="year">2021</div>
-                <div class="location">Virtual Conference</div>
-                <div class="highlight">1000+ Online Participants</div>
-            </div>
+            {% if about_content.past_conferences %}
+                {% for conference in about_content.past_conferences %}
+                <div class="timeline-item">
+                    <div class="year">{{ conference.year }}</div>
+                    <div class="location">{{ conference.location }}</div>
+                    <div class="highlight">{{ conference.highlight }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="timeline-item">
+                    <div class="year">2023</div>
+                    <div class="location">Tokyo, Japan</div>
+                    <div class="highlight">450+ Attendees</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">2022</div>
+                    <div class="location">Berlin, Germany</div>
+                    <div class="highlight">400+ Attendees</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">2021</div>
+                    <div class="location">Virtual Conference</div>
+                    <div class="highlight">1000+ Online Participants</div>
+                </div>
+            {% endif %}
         </div>
     </section>
 </div>
+
+<style>
+.page-header {
+    background: var(--primary-color);
+    color: white;
+    text-align: center;
+    padding: 3rem 1rem;
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.content-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Overview Section */
+.overview-section {
+    margin-bottom: 4rem;
+}
+
+.overview-content {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: 1fr;
+}
+
+.overview-text {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.overview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-card .number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-card h4 {
+    color: #666;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Objectives Section */
+.objectives-section {
+    margin-bottom: 4rem;
+}
+
+.objectives-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.objective-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.objective-card:hover {
+    transform: translateY(-5px);
+}
+
+.objective-icon {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.objective-card h3 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.objective-card p {
+    color: #666;
+    line-height: 1.5;
+}
+
+/* Committee Section */
+.committee-section {
+    margin-bottom: 4rem;
+}
+
+.committee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.committee-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease;
+    text-align: center;
+}
+
+.committee-card:hover {
+    transform: translateY(-5px);
+}
+
+.member-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.default-member-icon {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-radius: 50%;
+}
+
+.member-name {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.member-role {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.member-affiliation {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.member-expertise {
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+/* Past Conferences */
+.past-conferences {
+    margin-bottom: 4rem;
+}
+
+.conference-timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.timeline-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.timeline-item .year {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.timeline-item .location {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.timeline-item .highlight {
+    color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-header h1 {
+        font-size: 2rem;
+    }
+
+    .overview-content {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card .number {
+        font-size: 2rem;
+    }
+
+    .col-md-4 {
+        width: 50%;
+    }
+}
+
+@media (max-width: 576px) {
+    .col-md-4 {
+        width: 100%;
+    }
+    
+    .committee-card {
+        padding: 1rem;
+    }
+    
+    .member-image img,
+    .default-member-icon {
+        width: 100px;
+        height: 100px;
+    }
+}
+</style>
 {% endblock %} 

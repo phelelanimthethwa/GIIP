@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -6,11 +6,12 @@ import firebase_admin
 from firebase_admin import credentials, db, auth
 from config import Config
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
 import os
 from google.cloud import storage
+import base64
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -46,7 +47,7 @@ def format_datetime(value):
 
 # Add this configuration after other app configurations
 app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max file size
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'}
 
 # Add these constants near the top of the file
@@ -59,9 +60,11 @@ DEFAULT_THEME = {
     'background_color': '#ffffff',
     'header_background': '#f8f9fa',
     'footer_background': '#343a40',
-    'hero_text_color': '#ffffff',
-    'hero_image': '/static/uploads/design/default-hero.jpg'  # Add default hero image
+    'hero_text_color': '#ffffff'
 }
+
+# Add this near the top with other upload folder configurations
+app.config['COMMITTEE_UPLOAD_FOLDER'] = 'static/uploads/committee'
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -122,13 +125,157 @@ def get_site_design():
 
 @app.route('/')
 def home():
-    downloads_ref = db.reference('downloads')
-    downloads = downloads_ref.get()
-    return render_template('user/home.html', downloads=downloads, site_design=get_site_design())
+    try:
+        # Get home content
+        content_ref = db.reference('home_content')
+        home_content = content_ref.get() or {
+            'welcome': {
+                'title': 'Welcome to GIIR Conference 2024',
+                'message': 'Join us for the premier conference in innovative research'
+            },
+            'hero': {
+                'images': [],
+                'conference': {
+                    'name': 'GIIR Conference 2024',
+                    'date': 'TBA',
+                    'time': 'TBA',
+                    'city': 'TBA',
+                    'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+                }
+            },
+            'vmo': {
+                'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+                'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
+                'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+            },
+            'downloads': [],
+            'supporters': [],
+            'footer': {
+                'contact_email': 'contact@giirconference.com',
+                'contact_phone': '+1234567890',
+                'social_media': {
+                    'facebook': '',
+                    'twitter': '',
+                    'linkedin': ''
+                },
+                'address': 'Conference Venue, City, Country',
+                'copyright': '© 2024 GIIR Conference. All rights reserved.'
+            }
+        }
+        
+        # Get downloads
+        downloads_ref = db.reference('downloads')
+        downloads = downloads_ref.get() or []
+        
+        return render_template('user/home.html', 
+                             home_content=home_content,
+                             downloads=downloads,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash(f'Error loading home page: {str(e)}', 'error')
+        return render_template('user/home.html', 
+                             home_content={
+                                'welcome': {
+                                    'title': 'Welcome to GIIR Conference 2024',
+                                    'message': 'Join us for the premier conference in innovative research'
+                                },
+                                'hero': {
+                                    'images': [],
+                                    'conference': {
+                                        'name': 'GIIR Conference 2024',
+                                        'date': 'TBA',
+                                        'time': 'TBA',
+                                        'city': 'TBA',
+                                        'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+                                    }
+                                },
+                                'vmo': {
+                                    'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+                                    'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
+                                    'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+                                },
+                                'downloads': [],
+                                'supporters': [],
+                                'footer': {
+                                    'contact_email': 'contact@giirconference.com',
+                                    'contact_phone': '+1234567890',
+                                    'social_media': {
+                                        'facebook': '',
+                                        'twitter': '',
+                                        'linkedin': ''
+                                    },
+                                    'address': 'Conference Venue, City, Country',
+                                    'copyright': '© 2024 GIIR Conference. All rights reserved.'
+                                }
+                             },
+                             downloads=[],
+                             site_design=get_site_design())
 
 @app.route('/about')
 def about():
-    return render_template('user/about.html', site_design=get_site_design())
+    try:
+        # Get about content from Firebase Realtime Database
+        about_ref = db.reference('about_content')
+        about_content = about_ref.get() or {
+            'overview': {
+                'title': 'About GIIR Conference',
+                'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                'stats': {
+                    'attendees': '500+',
+                    'countries': '50+',
+                    'papers': '200+',
+                    'speakers': '30+'
+                }
+            },
+            'objectives': [
+                {
+                    'icon': 'fa-lightbulb',
+                    'title': 'Knowledge Exchange',
+                    'description': 'Facilitate the exchange of innovative ideas and research findings'
+                },
+                {
+                    'icon': 'fa-users',
+                    'title': 'Networking',
+                    'description': 'Create opportunities for networking and collaboration'
+                },
+                {
+                    'icon': 'fa-chart-line',
+                    'title': 'Research Impact',
+                    'description': 'Showcase cutting-edge research and its potential impact'
+                }
+            ],
+            'committee': [
+                {
+                    'role': 'Conference Chair',
+                    'name': 'Prof. Sarah Johnson',
+                    'affiliation': 'Stanford University, USA',
+                    'expertise': ['Artificial Intelligence', 'Machine Learning']
+                }
+            ],
+            'past_conferences': [
+                {
+                    'year': '2023',
+                    'location': 'Tokyo, Japan',
+                    'highlight': '450+ Attendees'
+                }
+            ]
+        }
+        
+        return render_template('user/about.html', about_content=about_content, site_design=get_site_design())
+    except Exception as e:
+        flash(f'Error loading about content: {str(e)}', 'error')
+        return render_template('user/about.html', about_content={
+            'overview': {
+                'title': 'About GIIR Conference',
+                'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                'stats': {
+                    'attendees': '500+',
+                    'countries': '50+',
+                    'papers': '200+',
+                    'speakers': '30+'
+                }
+            }
+        }, site_design=get_site_design())
 
 @app.route('/call-for-papers')
 def call_for_papers():
@@ -222,14 +369,43 @@ def paper_submission():
 
 @app.route('/author-guidelines')
 def author_guidelines():
-    return render_template('user/papers/guidelines.html')
+    try:
+        # Get guidelines from Firebase
+        guidelines_ref = db.reference('author_guidelines')
+        guidelines = guidelines_ref.get() or {}
+        
+        return render_template('user/papers/guidelines.html', 
+                             guidelines=guidelines,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash('Error loading author guidelines.', 'error')
+        return redirect(url_for('home'))
 
 @app.route('/venue')
 def venue():
-    # Get venue details from Firebase
-    venue_ref = db.reference('venue')
-    venue_details = venue_ref.get()
-    return render_template('user/conference/venue.html', site_design=get_site_design(), venue_details=venue_details)
+    try:
+        # Get venue details from Firebase
+        venue_ref = db.reference('venue_details')
+        venue_details = venue_ref.get()
+        
+        if venue_details:
+            # Clean and validate venue details
+            required_fields = ['name', 'address', 'city', 'country', 'postal_code', 'phone', 'email']
+            for field in required_fields:
+                if not venue_details.get(field):
+                    venue_details[field] = 'TBA'
+            
+            # Handle map URL
+            if not venue_details.get('map_url'):
+                # Default to OpenStreetMap if no map URL is provided
+                address = f"{venue_details['address']}, {venue_details['city']}, {venue_details['country']}"
+                venue_details['map_url'] = f"https://www.openstreetmap.org/export/embed.html?bbox=-180,-90,180,90"
+    
+    except Exception as e:
+        print(f"Error fetching venue details: {e}")
+        venue_details = None
+    
+    return render_template('user/venue.html', venue_details=venue_details, site_design=get_site_design())
 
 @app.route('/video-conference')
 def video_conference():
@@ -414,18 +590,67 @@ def admin_dashboard():
     try:
         # Get all users
         users_ref = db.reference('users')
-        users = users_ref.get()
+        users = users_ref.get() or {}
         
         # Get all registrations
         reg_ref = db.reference('registrations')
-        registrations = reg_ref.get()
+        registrations = reg_ref.get() or {}
+        
+        # Get all submissions
+        submissions_ref = db.reference('submissions')
+        submissions = submissions_ref.get() or {}
+        
+        # Calculate stats
+        stats = {
+            'total_users': len(users) if users else 0,
+            'total_registrations': len(registrations) if registrations else 0,
+            'total_submissions': len(submissions) if submissions else 0,
+            'pending_registrations': sum(1 for reg in registrations.values() if reg and reg.get('payment_status') == 'pending') if registrations else 0,
+            'pending_submissions': sum(1 for sub in submissions.values() if sub and sub.get('status') == 'pending') if submissions else 0
+        }
+        
+        # Get recent registrations and users (last 5)
+        recent_registrations = {}
+        recent_users = {}
+        
+        if registrations:
+            # Sort registrations by created_at date
+            sorted_registrations = sorted(
+                [(k, v) for k, v in registrations.items() if v and v.get('created_at')],
+                key=lambda x: x[1].get('created_at', ''),
+                reverse=True
+            )
+            # Get first 5 items
+            recent_registrations = dict(sorted_registrations[:5])
+            
+        if users:
+            # Sort users by created_at date
+            sorted_users = sorted(
+                [(k, v) for k, v in users.items() if v and v.get('created_at')],
+                key=lambda x: x[1].get('created_at', ''),
+                reverse=True
+            )
+            # Get first 5 items
+            recent_users = dict(sorted_users[:5])
         
         return render_template('admin/dashboard.html', 
-                             users=users or {}, 
-                             registrations=registrations or {})
+                             users=recent_users, 
+                             registrations=recent_registrations,
+                             stats=stats,
+                             site_design=get_site_design())
     except Exception as e:
         flash(f'Error loading admin dashboard: {str(e)}', 'error')
-        return render_template('admin/dashboard.html', users={}, registrations={})
+        return render_template('admin/dashboard.html', 
+                             users={}, 
+                             registrations={},
+                             stats={
+                                'total_users': 0,
+                                'total_registrations': 0,
+                                'total_submissions': 0,
+                                'pending_registrations': 0,
+                                'pending_submissions': 0
+                             },
+                             site_design=get_site_design())
 
 @app.route('/admin/users')
 @login_required
@@ -492,81 +717,193 @@ def create_admin_user():
 @admin_required
 def admin_venue():
     if request.method == 'POST':
-        venue_data = {
-            'name': request.form.get('name'),
-            'address': request.form.get('address'),
-            'city': request.form.get('city'),
-            'country': request.form.get('country'),
-            'postal_code': request.form.get('postal_code'),
-            'phone': request.form.get('phone'),
-            'email': request.form.get('email'),
-            'map_url': request.form.get('map_url'),
-            'hotels': [],  # Will be updated separately
-            'airport_transport': request.form.getlist('airport_transport'),
-            'local_transport': request.form.getlist('local_transport'),
-            'attractions': []  # Will be updated separately
-        }
-        
-        # Update venue details in Firebase
-        venue_ref = db.reference('venue')
-        venue_ref.set(venue_data)
-        
-        flash('Venue details updated successfully', 'success')
-        return redirect(url_for('admin_venue'))
+        try:
+            # Get and validate form data
+            venue_data = {
+                'name': request.form.get('name', '').strip(),
+                'address': request.form.get('address', '').strip(),
+                'city': request.form.get('city', '').strip(),
+                'country': request.form.get('country', '').strip(),
+                'postal_code': request.form.get('postal_code', '').strip(),
+                'phone': request.form.get('phone', '').strip(),
+                'email': request.form.get('email', '').strip(),
+                'map_url': request.form.get('map_url', '').strip()
+            }
+            
+            # Validate required fields
+            required_fields = ['name', 'address', 'city', 'country', 'postal_code', 'phone', 'email']
+            missing_fields = [field for field in required_fields if not venue_data.get(field)]
+            
+            if missing_fields:
+                flash(f'Missing required fields: {", ".join(missing_fields)}', 'danger')
+                return redirect(url_for('admin_venue'))
+            
+            # Validate email format
+            if '@' not in venue_data['email']:
+                flash('Invalid email format', 'danger')
+                return redirect(url_for('admin_venue'))
+            
+            # Generate map URL if not provided or invalid
+            if not venue_data['map_url'] or 'maps/embed' not in venue_data['map_url']:
+                address = f"{venue_data['address']}, {venue_data['city']}, {venue_data['country']}"
+                venue_data['map_url'] = f"https://www.google.com/maps/embed/v1/place?key={app.config.get('GOOGLE_MAPS_API_KEY', '')}&q={address}"
+            
+            # Update venue details in Firebase
+            venue_ref = db.reference('venue_details')
+            venue_ref.set(venue_data)
+            
+            flash('Venue details updated successfully', 'success')
+            return redirect(url_for('admin_venue'))
+            
+        except Exception as e:
+            print(f"Error updating venue details: {str(e)}")
+            flash(f'Error updating venue details: {str(e)}', 'danger')
+            return redirect(url_for('admin_venue'))
     
-    # Get current venue details
-    venue_ref = db.reference('venue')
-    venue_details = venue_ref.get()
-    return render_template('admin/admin_venue.html', site_design=get_site_design(), venue_details=venue_details)
+    try:
+        # Get current venue details
+        venue_ref = db.reference('venue_details')
+        venue_details = venue_ref.get()
+        
+        return render_template('admin/admin_venue.html', 
+                             site_design=get_site_design(), 
+                             venue_details=venue_details)
+    except Exception as e:
+        print(f"Error loading venue details: {str(e)}")
+        flash(f'Error loading venue details: {str(e)}', 'danger')
+        return render_template('admin/admin_venue.html', 
+                             site_design=get_site_design(), 
+                             venue_details=None)
 
 @app.route('/admin/registration-fees', methods=['GET', 'POST'])
 @admin_required
 def admin_registration_fees():
     if request.method == 'POST':
-        registration_fees = {
-            'early_bird': {
-                'deadline': request.form.get('early_bird_deadline'),
-                'student_author': request.form.get('early_bird_student'),
-                'regular_author': request.form.get('early_bird_regular'),
-                'listener': request.form.get('early_bird_listener'),
-                'virtual': request.form.get('early_bird_virtual')
-            },
-            'early': {
-                'deadline': request.form.get('early_deadline'),
-                'student_author': request.form.get('early_student'),
-                'regular_author': request.form.get('early_regular'),
-                'listener': request.form.get('early_listener'),
-                'virtual': request.form.get('early_virtual')
-            },
-            'late': {
-                'deadline': request.form.get('late_deadline'),
-                'student_author': request.form.get('late_student'),
-                'regular_author': request.form.get('late_regular'),
-                'listener': request.form.get('late_listener'),
-                'virtual': request.form.get('late_virtual')
-            },
-            'extra_paper_fee': request.form.get('extra_paper_fee'),
-            'includes': request.form.getlist('registration_includes'),
-            'payment_details': {
-                'beneficiary': request.form.get('beneficiary'),
-                'iban': request.form.get('iban'),
-                'bic': request.form.get('bic'),
-                'beneficiary_address': request.form.get('beneficiary_address'),
-                'bank_name': request.form.get('bank_name'),
-                'bank_address': request.form.get('bank_address'),
-                'intermediary_bic': request.form.get('intermediary_bic'),
-                'contact_email': request.form.get('contact_email')
+        try:
+            registration_fees = {
+                'early_bird': None,
+                'early': {
+                    'deadline': request.form.get('early_deadline'),
+                    'student_author': request.form.get('early_student'),
+                    'regular_author': request.form.get('early_regular'),
+                    'listener': request.form.get('early_listener'),
+                    'virtual': request.form.get('early_virtual'),
+                    'benefits': [benefit for benefit in request.form.getlist('early_benefits[]') if benefit.strip()]
+                },
+                'late': {
+                    'deadline': request.form.get('late_deadline'),
+                    'student_author': request.form.get('late_student'),
+                    'regular_author': request.form.get('late_regular'),
+                    'listener': request.form.get('late_listener'),
+                    'virtual': request.form.get('late_virtual'),
+                    'benefits': [benefit for benefit in request.form.getlist('late_benefits[]') if benefit.strip()]
+                },
+                'extra_paper_fee': request.form.get('extra_paper_fee'),
+                'workshop_fee': request.form.get('workshop_fee'),
+                'banquet_fee': request.form.get('banquet_fee'),
+                'includes': request.form.getlist('registration_includes'),
+                'payment_details': {
+                    # South African Bank Details
+                    'account_name': request.form.get('account_name'),
+                    'account_number': request.form.get('account_number'),
+                    'bank_name': request.form.get('bank_name'),
+                    'universal_branch_code': request.form.get('universal_branch_code'),
+                    'account_type': request.form.get('account_type'),
+                    
+                    # International Payment Details
+                    'swift_code': request.form.get('swift_code'),
+                    'iban': request.form.get('iban'),
+                    'bank_address': request.form.get('bank_address'),
+                    'intermediary_bank': request.form.get('intermediary_bank'),
+                    
+                    # Additional Information
+                    'reference_format': request.form.get('reference_format'),
+                    'contact_email': request.form.get('contact_email'),
+                    'payment_instructions': request.form.get('payment_instructions')
+                }
             }
-        }
-        
-        # Update registration fees in Firebase
-        db.reference('registration_fees').set(registration_fees)
-        flash('Registration fees updated successfully', 'success')
-        return redirect(url_for('admin_registration_fees'))
+            
+            # Handle early bird registration if enabled
+            if request.form.get('early_bird_enabled'):
+                registration_fees['early_bird'] = {
+                    'deadline': request.form.get('early_bird_deadline'),
+                    'student_author': request.form.get('early_bird_student'),
+                    'regular_author': request.form.get('early_bird_regular'),
+                    'listener': request.form.get('early_bird_listener'),
+                    'virtual': request.form.get('early_bird_virtual'),
+                    'benefits': [benefit for benefit in request.form.getlist('early_bird_benefits[]') if benefit.strip()]
+                }
+            
+            # Validate required fields
+            required_fields = {
+                'early': ['deadline', 'student_author', 'regular_author', 'listener', 'virtual'],
+                'late': ['deadline', 'student_author', 'regular_author', 'listener', 'virtual'],
+                'payment_details': ['account_name', 'account_number', 'bank_name', 'universal_branch_code', 'account_type']
+            }
+            
+            errors = []
+            
+            # Validate early registration
+            for field in required_fields['early']:
+                if not registration_fees['early'][field]:
+                    errors.append(f'Early registration {field.replace("_", " ")} is required')
+            
+            # Validate late registration
+            for field in required_fields['late']:
+                if not registration_fees['late'][field]:
+                    errors.append(f'Late registration {field.replace("_", " ")} is required')
+            
+            # Validate payment details
+            for field in required_fields['payment_details']:
+                if not registration_fees['payment_details'][field]:
+                    errors.append(f'Payment details {field.replace("_", " ")} is required')
+            
+            # Validate early bird if enabled
+            if registration_fees['early_bird']:
+                for field in required_fields['early']:
+                    if not registration_fees['early_bird'][field]:
+                        errors.append(f'Early bird {field.replace("_", " ")} is required')
+            
+            # Validate dates
+            try:
+                if registration_fees['early_bird']:
+                    early_bird_deadline = datetime.strptime(registration_fees['early_bird']['deadline'], '%Y-%m-%d')
+                    early_deadline = datetime.strptime(registration_fees['early']['deadline'], '%Y-%m-%d')
+                    if early_bird_deadline >= early_deadline:
+                        errors.append('Early bird deadline must be before early registration deadline')
+                
+                early_deadline = datetime.strptime(registration_fees['early']['deadline'], '%Y-%m-%d')
+                late_deadline = datetime.strptime(registration_fees['late']['deadline'], '%Y-%m-%d')
+                if early_deadline >= late_deadline:
+                    errors.append('Early registration deadline must be before late registration deadline')
+            except ValueError:
+                errors.append('Invalid date format')
+            
+            if errors:
+                for error in errors:
+                    flash(error, 'danger')
+                return redirect(url_for('admin_registration_fees'))
+            
+            # Update registration fees in Firebase
+            db.reference('registration_fees').set(registration_fees)
+            flash('Registration fees updated successfully', 'success')
+            return redirect(url_for('admin_registration_fees'))
+            
+        except Exception as e:
+            flash(f'Error updating registration fees: {str(e)}', 'danger')
+            return redirect(url_for('admin_registration_fees'))
     
-    # Get current registration fees
-    fees = db.reference('registration_fees').get()
-    return render_template('admin/admin_registration_fees.html', site_design=get_site_design(), fees=fees)
+    # GET request - fetch current registration fees
+    try:
+        fees = db.reference('registration_fees').get()
+        return render_template('admin/admin_registration_fees.html', 
+                             site_design=get_site_design(), 
+                             fees=fees)
+    except Exception as e:
+        flash(f'Error loading registration fees: {str(e)}', 'danger')
+        return render_template('admin/admin_registration_fees.html', 
+                             site_design=get_site_design(), 
+                             fees=None)
 
 @app.route('/admin/downloads', methods=['GET', 'POST'])
 @login_required
@@ -1027,7 +1364,7 @@ def admin_schedule():
                     grouped_schedule[day].items(),
                     key=lambda x: x[1]['start_time']
                 ))
-        
+
         return render_template('admin/schedule.html', site_design=get_site_design(),
                              schedule=grouped_schedule,
                              schedule_days=SCHEDULE_DAYS,
@@ -1278,6 +1615,275 @@ def render_email_template(template_id, context):
         print(f"Error rendering email template: {str(e)}")
         return None, None
 
+@app.route('/admin/home-content', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_home_content():
+    if not current_user.is_authenticated or not current_user.is_admin:
+        return redirect(url_for('login', next=request.url))
+
+    # Define default content structure
+    default_content = {
+        'welcome': {
+            'title': 'Welcome to GIIR Conference 2024',
+            'message': 'Join us for the premier conference in innovative research'
+        },
+        'hero': {
+            'images': [],
+            'conference': {
+                'name': 'GIIR Conference 2024',
+                'date': 'TBA',
+                'time': 'TBA',
+                'city': 'TBA',
+                'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+            }
+        },
+        'vmo': {
+            'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+            'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
+            'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+        },
+        'downloads': [],
+        'supporters': [],
+        'footer': {
+            'contact_email': 'contact@giirconference.com',
+            'contact_phone': '+1234567890',
+            'social_media': {
+                'facebook': '',
+                'twitter': '',
+                'linkedin': ''
+            },
+            'address': 'Conference Venue, City, Country',
+            'copyright': '© 2024 GIIR Conference. All rights reserved.'
+        }
+    }
+
+    if request.method == 'POST':
+        try:
+            # Get existing content first
+            content_ref = db.reference('home_content')
+            existing_content = content_ref.get() or default_content
+            
+            # Handle hero images
+            hero_images = []
+            
+            # Add existing images that weren't deleted
+            if 'existing_images' in request.form:
+                try:
+                    existing_images = json.loads(request.form['existing_images'])
+                    hero_images.extend(existing_images)
+                except json.JSONDecodeError:
+                    pass
+            
+            # Handle new hero image uploads
+            if 'hero_images' in request.files:
+                files = request.files.getlist('hero_images')
+                for file in files:
+                    if file and file.filename and allowed_image_file(file.filename):
+                        filename = secure_filename(file.filename)
+                        unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                        
+                        # Create uploads directory if it doesn't exist
+                        upload_path = os.path.join(app.static_folder, 'uploads', 'hero')
+                        os.makedirs(upload_path, exist_ok=True)
+                        
+                        file_path = os.path.join(upload_path, unique_filename)
+                        file.save(file_path)
+                        
+                        hero_images.append({
+                            'url': f"/static/uploads/hero/{unique_filename}",
+                            'alt': filename
+                        })
+
+            # Handle downloads
+            downloads = []
+            download_titles = request.form.getlist('download_titles[]')
+            download_descriptions = request.form.getlist('download_descriptions[]')
+            download_ids = request.form.getlist('download_ids[]')
+            download_existing_files = request.form.getlist('download_existing_files[]')
+
+            for i in range(len(download_titles)):
+                download = {
+                    'id': download_ids[i] if i < len(download_ids) else f'download_{len(downloads)}',
+                    'title': download_titles[i],
+                    'description': download_descriptions[i],
+                    'file_url': download_existing_files[i] if i < len(download_existing_files) else '',
+                    'file_type': '',
+                    'file_size': ''
+                }
+
+                # Check if there's a new file upload for this download
+                file_key = f'download_file_{download["id"]}'
+                if file_key in request.files:
+                    file = request.files[file_key]
+                    if file and file.filename and allowed_file(file.filename):
+                        filename = secure_filename(file.filename)
+                        unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                        
+                        # Create downloads directory if it doesn't exist
+                        upload_path = os.path.join(app.static_folder, 'uploads', 'downloads')
+                        os.makedirs(upload_path, exist_ok=True)
+                        
+                        file_path = os.path.join(upload_path, unique_filename)
+                        file.save(file_path)
+                        
+                        # Update download info
+                        download['file_url'] = f"/static/uploads/downloads/{unique_filename}"
+                        download['file_type'] = filename.rsplit('.', 1)[1].lower()
+                        download['file_size'] = f"{os.path.getsize(file_path) / 1024:.0f} KB"
+                elif download['file_url']:  # Keep existing file info if no new file uploaded
+                    existing_download = next((d for d in existing_content.get('downloads', []) 
+                                           if d.get('file_url') == download['file_url']), None)
+                    if existing_download:
+                        download['file_type'] = existing_download.get('file_type', '')
+                        download['file_size'] = existing_download.get('file_size', '')
+
+                downloads.append(download)
+
+            # Handle supporters
+            supporters = []
+            
+            # Handle existing supporters
+            existing_names = request.form.getlist('existing_supporter_names[]')
+            existing_descriptions = request.form.getlist('existing_supporter_descriptions[]')
+            existing_logos = request.form.getlist('existing_supporter_logos[]')
+            
+            for i in range(len(existing_names)):
+                if existing_names[i].strip() and existing_logos[i].strip():
+                    supporters.append({
+                        'name': existing_names[i],
+                        'description': existing_descriptions[i],
+                        'logo': existing_logos[i]
+                    })
+            
+            # Handle new supporters
+            new_names = request.form.getlist('new_supporter_names[]')
+            new_descriptions = request.form.getlist('new_supporter_descriptions[]')
+            new_logos = request.form.getlist('new_supporter_logos[]')
+            
+            for i in range(len(new_names)):
+                if new_names[i].strip() and new_logos[i].strip():
+                    # Convert data URL to file and save
+                    try:
+                        # Extract the base64 part of the data URL
+                        image_data = new_logos[i].split(',')[1]
+                        image_binary = base64.b64decode(image_data)
+                        
+                        # Generate unique filename
+                        filename = f"supporter_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{i}.png"
+                        
+                        # Create supporters directory if it doesn't exist
+                        upload_path = os.path.join(app.static_folder, 'uploads', 'supporters')
+                        os.makedirs(upload_path, exist_ok=True)
+                        
+                        # Save the image
+                        file_path = os.path.join(upload_path, filename)
+                        with open(file_path, 'wb') as f:
+                            f.write(image_binary)
+                        
+                        # Add to supporters list
+                        supporters.append({
+                            'name': new_names[i],
+                            'description': new_descriptions[i],
+                            'logo': f"/static/uploads/supporters/{filename}"
+                        })
+                    except Exception as e:
+                        print(f"Error saving supporter image: {str(e)}")
+                        continue
+
+            # Get form data
+            home_content = {
+                'welcome': {
+                    'title': request.form.get('welcome[title]'),
+                    'message': request.form.get('welcome[message]')
+                },
+                'hero': {
+                    'images': hero_images,
+                    'conference': {
+                        'name': request.form.get('conference[name]'),
+                        'date': request.form.get('conference[date]'),
+                        'time': request.form.get('conference[time]'),
+                        'city': request.form.get('conference[city]'),
+                        'highlights': request.form.get('conference[highlights]')
+                    }
+                },
+                'vmo': {
+                    'vision': request.form.get('vmo[vision]'),
+                    'mission': request.form.get('vmo[mission]'),
+                    'objectives': request.form.get('vmo[objectives]')
+                },
+                'downloads': downloads,
+                'supporters': supporters,
+                'footer': {
+                    'contact_email': request.form.get('footer[contact_email]'),
+                    'contact_phone': request.form.get('footer[contact_phone]'),
+                    'social_media': {
+                        'facebook': request.form.get('footer[social_media][facebook]'),
+                        'twitter': request.form.get('footer[social_media][twitter]'),
+                        'linkedin': request.form.get('footer[social_media][linkedin]')
+                    },
+                    'address': request.form.get('footer[address]'),
+                    'copyright': request.form.get('footer[copyright]')
+                },
+                'updated_at': datetime.now().isoformat(),
+                'updated_by': current_user.email
+            }
+            
+            # Save to Firebase
+            content_ref = db.reference('home_content')
+            content_ref.set(home_content)
+            
+            flash('Home content updated successfully!', 'success')
+            return jsonify({'success': True})
+        except Exception as e:
+            print(f"Error saving home content: {str(e)}")  # Add debug print
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    # GET request - render template with current content
+    try:
+        content_ref = db.reference('home_content')
+        home_content = content_ref.get() or default_content
+        return render_template('admin/home_content.html', 
+                             home_content=home_content,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash(f'Error loading home content: {str(e)}', 'error')
+        return render_template('admin/home_content.html', 
+                             home_content=default_content,
+                             site_design=get_site_design())
+
+# Add to admin_required routes list in base_admin.html
+@app.context_processor
+def inject_admin_menu():
+    admin_menu = [
+        {'url': 'admin_dashboard', 'icon': 'tachometer-alt', 'text': 'Dashboard'},
+        {'url': 'admin_home_content', 'icon': 'home', 'text': 'Home Content'},
+        {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
+        {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
+        {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
+        {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},
+        {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
+        {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
+        {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
+        {'url': 'admin_announcements', 'icon': 'bullhorn', 'text': 'Announcements'},
+        {'url': 'admin_downloads', 'icon': 'download', 'text': 'Downloads'},
+        {'url': 'admin_author_guidelines', 'icon': 'book', 'text': 'Author Guidelines'},
+        {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
+        {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
+    ]
+    return dict(admin_menu=admin_menu)
+
+# Add this to ensure session persistence
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)
+
+@app.before_request
+def before_request():
+    if current_user.is_authenticated:
+        session.permanent = True  # Make session permanent
+        app.permanent_session_lifetime = timedelta(minutes=60)
+
 @app.route('/admin/design', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -1293,26 +1899,8 @@ def admin_design():
                 'background_color': request.form.get('background_color', DEFAULT_THEME['background_color']),
                 'header_background': request.form.get('header_background', DEFAULT_THEME['header_background']),
                 'footer_background': request.form.get('footer_background', DEFAULT_THEME['footer_background']),
-                'hero_text_color': request.form.get('hero_text_color', DEFAULT_THEME['hero_text_color']),
-                'hero_image': DEFAULT_THEME['hero_image']  # Set default initially
+                'hero_text_color': request.form.get('hero_text_color', DEFAULT_THEME['hero_text_color'])
             }
-            
-            # Handle hero image upload
-            if 'hero_image' in request.files:
-                file = request.files['hero_image']
-                if file and file.filename != '' and allowed_image_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                    
-                    # Create uploads directory if it doesn't exist
-                    upload_path = os.path.join(app.static_folder, 'uploads', 'design')
-                    os.makedirs(upload_path, exist_ok=True)
-                    
-                    file_path = os.path.join(upload_path, unique_filename)
-                    file.save(file_path)
-                    
-                    # Update theme data with new image path
-                    theme_data['hero_image'] = f"/static/uploads/design/{unique_filename}"
             
             # Save theme data to Firebase
             design_ref = db.reference('site_design')
@@ -1336,6 +1924,346 @@ def downloads():
     downloads_ref = db.reference('downloads')
     downloads = downloads_ref.get()
     return render_template('user/conference/downloads.html', downloads=downloads, site_design=get_site_design())
+
+@app.route('/admin/about-content', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_about_content():
+    try:
+        if request.method == 'POST':
+            # Handle committee member images
+            committee = []
+            committee_roles = request.form.getlist('committee_roles[]')
+            committee_names = request.form.getlist('committee_names[]')
+            committee_affiliations = request.form.getlist('committee_affiliations[]')
+            committee_expertise = request.form.getlist('committee_expertise[]')
+            committee_existing_images = request.form.getlist('committee_existing_images[]')
+            
+            # Create upload directory if it doesn't exist
+            os.makedirs(os.path.join(app.static_folder, 'uploads', 'committee'), exist_ok=True)
+            
+            for i in range(len(committee_roles)):
+                member = {
+                    'role': committee_roles[i],
+                    'name': committee_names[i],
+                    'affiliation': committee_affiliations[i],
+                    'expertise': [exp.strip() for exp in committee_expertise[i].split(',') if exp.strip()],
+                    'image': committee_existing_images[i] if i < len(committee_existing_images) else ''
+                }
+                
+                # Check for new image upload
+                image_key = f'committee_image_{i}'
+                if image_key in request.files:
+                    file = request.files[image_key]
+                    if file and file.filename and allowed_image_file(file.filename):
+                        # Generate unique filename
+                        filename = secure_filename(file.filename)
+                        unique_filename = f"committee_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{i}.{filename.rsplit('.', 1)[1].lower()}"
+                        
+                        # Save the file
+                        file_path = os.path.join(app.static_folder, 'uploads', 'committee', unique_filename)
+                        file.save(file_path)
+                        
+                        # Update member image path
+                        member['image'] = f"/static/uploads/committee/{unique_filename}"
+                
+                committee.append(member)
+
+            about_content = {
+                'overview': {
+                    'title': request.form.get('overview_title', ''),
+                    'description': request.form.get('overview_description', ''),
+                    'stats': {
+                        'attendees': request.form.get('stats_attendees', '500+'),
+                        'countries': request.form.get('stats_countries', '50+'),
+                        'papers': request.form.get('stats_papers', '200+'),
+                        'speakers': request.form.get('stats_speakers', '30+')
+                    }
+                },
+                'objectives': [
+                    {
+                        'icon': icon,
+                        'title': title,
+                        'description': desc
+                    }
+                    for icon, title, desc in zip(
+                        request.form.getlist('objective_icons[]'),
+                        request.form.getlist('objective_titles[]'),
+                        request.form.getlist('objective_descriptions[]')
+                    )
+                ],
+                'committee': committee,
+                'past_conferences': [
+                    {
+                        'year': year,
+                        'location': loc,
+                        'highlight': high
+                    }
+                    for year, loc, high in zip(
+                        request.form.getlist('conference_years[]'),
+                        request.form.getlist('conference_locations[]'),
+                        request.form.getlist('conference_highlights[]')
+                    )
+                ]
+            }
+            
+            # Save to Firebase
+            db.reference('about_content').set(about_content)
+            flash('About page content updated successfully!', 'success')
+            return redirect(url_for('admin_about_content'))
+            
+        # Get existing content
+        about_content = db.reference('about_content').get() or {
+            'overview': {
+                'title': 'About GIIR Conference',
+                'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                'stats': {
+                    'attendees': '500+',
+                    'countries': '50+',
+                    'papers': '200+',
+                    'speakers': '30+'
+                }
+            },
+            'objectives': [
+                {
+                    'icon': 'fa-lightbulb',
+                    'title': 'Knowledge Exchange',
+                    'description': 'Facilitate the exchange of innovative ideas and research findings'
+                },
+                {
+                    'icon': 'fa-users',
+                    'title': 'Networking',
+                    'description': 'Create opportunities for networking and collaboration'
+                },
+                {
+                    'icon': 'fa-chart-line',
+                    'title': 'Research Impact',
+                    'description': 'Showcase cutting-edge research and its potential impact'
+                }
+            ],
+            'committee': [
+                {
+                    'role': 'Conference Chair',
+                    'name': 'Prof. Sarah Johnson',
+                    'affiliation': 'Stanford University, USA',
+                    'expertise': ['Artificial Intelligence', 'Machine Learning'],
+                    'image': ''
+                }
+            ],
+            'past_conferences': [
+                {
+                    'year': '2023',
+                    'location': 'Tokyo, Japan',
+                    'highlight': '450+ Attendees'
+                }
+            ]
+        }
+        
+        return render_template('admin/about_content.html', 
+                             about_content=about_content,
+                             site_design=get_site_design())
+        
+    except Exception as e:
+        flash(f'Error managing about content: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+def get_registration_fees():
+    """
+    Helper function to fetch registration fees from Firebase.
+    Returns a dictionary containing all registration fee information.
+    If no fees are set, returns a default structure.
+    """
+    try:
+        # Get registration fees from Firebase
+        fees_ref = db.reference('registration_fees')
+        fees = fees_ref.get()
+        
+        if not fees:
+            # Return default structure if no fees are set
+            return {
+                'early_bird': None,  # Early bird is optional
+                'early': {
+                    'deadline': '',
+                    'student_author': '',
+                    'regular_author': '',
+                    'listener': '',
+                    'virtual': '',
+                    'benefits': []
+                },
+                'late': {
+                    'deadline': '',
+                    'student_author': '',
+                    'regular_author': '',
+                    'listener': '',
+                    'virtual': '',
+                    'benefits': []
+                },
+                'extra_paper_fee': '',
+                'workshop_fee': '',
+                'banquet_fee': '',
+                'includes': [],
+                'payment_details': {
+                    # South African Bank Details
+                    'account_name': '',
+                    'account_number': '',
+                    'bank_name': '',
+                    'universal_branch_code': '',
+                    'account_type': '',
+                    
+                    # Additional Information
+                    'reference_format': '',
+                    'contact_email': '',
+                    'payment_instructions': ''
+                }
+            }
+        
+        return fees
+    except Exception as e:
+        print(f"Error fetching registration fees: {str(e)}")
+        return None
+
+@app.route('/registration-form', methods=['GET', 'POST'])
+@login_required
+def registration_form():
+    # Get both registration fees and site design
+    fees = get_registration_fees()
+    site_design = get_site_design()
+    
+    if request.method == 'POST':
+        try:
+            # Create upload directories if they don't exist
+            papers_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'papers')
+            payments_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'payments')
+            os.makedirs(papers_dir, exist_ok=True)
+            os.makedirs(payments_dir, exist_ok=True)
+            
+            # Get form data
+            registration_data = {
+                'full_name': request.form.get('full_name'),
+                'email': request.form.get('email'),
+                'institution': request.form.get('institution'),
+                'country': request.form.get('country'),
+                'registration_type': request.form.get('registration_type'),
+                'registration_period': request.form.get('registration_period'),
+                'extra_paper': request.form.get('extra_paper') == 'on',
+                'workshop': request.form.get('workshop') == 'on',
+                'banquet': request.form.get('banquet') == 'on',
+                'payment_reference': request.form.get('payment_reference'),
+                'submission_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'pending'
+            }
+            
+            # Handle paper submission for authors
+            if 'author' in registration_data['registration_type']:
+                paper_data = {
+                    'title': request.form.get('paper_title'),
+                    'abstract': request.form.get('abstract'),
+                    'keywords': request.form.get('keywords'),
+                }
+                registration_data['paper'] = paper_data
+                
+                # Handle paper file upload
+                if 'paper_file' in request.files:
+                    paper_file = request.files['paper_file']
+                    if paper_file and paper_file.filename:
+                        paper_filename = secure_filename(f"{registration_data['payment_reference']}_paper.pdf")
+                        paper_path = os.path.join(papers_dir, paper_filename)
+                        paper_file.save(paper_path)
+                        registration_data['paper_file'] = f"papers/{paper_filename}"
+            
+            # Handle payment proof upload
+            if 'payment_proof' in request.files:
+                payment_file = request.files['payment_proof']
+                if payment_file and payment_file.filename:
+                    payment_filename = secure_filename(f"{registration_data['payment_reference']}_payment.pdf")
+                    payment_path = os.path.join(payments_dir, payment_filename)
+                    payment_file.save(payment_path)
+                    registration_data['payment_proof'] = f"payments/{payment_filename}"
+            
+            # Save registration data to Firebase
+            registrations_ref = db.reference('registrations')
+            new_registration = registrations_ref.push(registration_data)
+            
+            # Update seats if early bird registration
+            if registration_data['registration_period'] == 'early_bird':
+                fees_ref = db.reference('registration_fees')
+                early_bird = fees_ref.get().get('early_bird')
+                if early_bird and early_bird.get('seats_remaining'):
+                    early_bird['seats_remaining'] = int(early_bird['seats_remaining']) - 1
+                    fees_ref.update({'early_bird': early_bird})
+            
+            flash('Registration submitted successfully!', 'success')
+            return redirect(url_for('registration'))
+            
+        except Exception as e:
+            flash(f'Error submitting registration: {str(e)}', 'danger')
+            return render_template('user/registration_form.html', fees=fees, site_design=site_design)
+    
+    # GET request - render form
+    period = request.args.get('period')
+    reg_type = request.args.get('type')
+    return render_template('user/registration_form.html', fees=fees, 
+                         selected_period=period, selected_type=reg_type,
+                         site_design=site_design)
+
+@app.route('/admin/author-guidelines', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_author_guidelines():
+    try:
+        # Get existing guidelines from Firebase
+        guidelines_ref = db.reference('author_guidelines')
+        guidelines = guidelines_ref.get()
+
+        if request.method == 'POST':
+            # Update guidelines
+            new_guidelines = {
+                'abstract_guidelines': request.form.get('abstract_guidelines', ''),
+                'paper_guidelines': request.form.get('paper_guidelines', ''),
+                'oral_guidelines': request.form.get('oral_guidelines', ''),
+                'virtual_guidelines': request.form.get('virtual_guidelines', '')
+            }
+
+            # Handle template file uploads
+            if 'abstract_template' in request.files:
+                file = request.files['abstract_template']
+                if file and file.filename and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"abstract_template_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    upload_path = os.path.join(app.static_folder, 'uploads', 'templates')
+                    os.makedirs(upload_path, exist_ok=True)
+                    file.save(os.path.join(upload_path, unique_filename))
+                    new_guidelines['abstract_template'] = f"/static/uploads/templates/{unique_filename}"
+
+            if 'paper_template' in request.files:
+                file = request.files['paper_template']
+                if file and file.filename and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"paper_template_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    upload_path = os.path.join(app.static_folder, 'uploads', 'templates')
+                    os.makedirs(upload_path, exist_ok=True)
+                    file.save(os.path.join(upload_path, unique_filename))
+                    new_guidelines['paper_template'] = f"/static/uploads/templates/{unique_filename}"
+
+            # Preserve existing template files if no new ones were uploaded
+            if guidelines:
+                if 'abstract_template' in guidelines and 'abstract_template' not in new_guidelines:
+                    new_guidelines['abstract_template'] = guidelines['abstract_template']
+                if 'paper_template' in guidelines and 'paper_template' not in new_guidelines:
+                    new_guidelines['paper_template'] = guidelines['paper_template']
+
+            # Save to Firebase
+            guidelines_ref.set(new_guidelines)
+            flash('Author guidelines updated successfully!', 'success')
+            return redirect(url_for('admin_author_guidelines'))
+
+        return render_template('admin/author_guidelines.html', 
+                            guidelines=guidelines,
+                            site_design=get_site_design())
+
+    except Exception as e:
+        flash(f'Error managing author guidelines: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

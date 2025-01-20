@@ -1,0 +1,310 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Manage About Page - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">About Content</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <!-- Overview Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="overview_title" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="overview_title" name="overview_title" value="{{ about_content.overview.title }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="overview_description" class="form-label">Description</label>
+                    <textarea class="form-control" id="overview_description" name="overview_description" rows="4" required>{{ about_content.overview.description }}</textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">Attendees</label>
+                        <input type="text" class="form-control" name="stats_attendees" value="{{ about_content.overview.stats.attendees }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Countries</label>
+                        <input type="text" class="form-control" name="stats_countries" value="{{ about_content.overview.stats.countries }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Papers</label>
+                        <input type="text" class="form-control" name="stats_papers" value="{{ about_content.overview.stats.papers }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Speakers</label>
+                        <input type="text" class="form-control" name="stats_speakers" value="{{ about_content.overview.stats.speakers }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Objectives Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Conference Objectives</h5>
+            </div>
+            <div class="card-body">
+                <div id="objectives-container">
+                    {% for objective in about_content.objectives %}
+                    <div class="objective-item mb-3">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label class="form-label">Icon</label>
+                                <input type="text" class="form-control" name="objective_icons[]" value="{{ objective.icon }}" placeholder="fa-icon-name">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-control" name="objective_titles[]" value="{{ objective.title }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Description</label>
+                                <input type="text" class="form-control" name="objective_descriptions[]" value="{{ objective.description }}">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="button" class="btn btn-danger d-block" onclick="removeObjective(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-success" onclick="addObjective()">
+                    <i class="fas fa-plus"></i> Add Objective
+                </button>
+            </div>
+        </div>
+
+        <!-- Committee Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Organizing Committee</h5>
+            </div>
+            <div class="card-body">
+                <div id="committee-container">
+                    {% for member in about_content.committee %}
+                    <div class="committee-item mb-4">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label class="form-label">Role</label>
+                                <input type="text" class="form-control" name="committee_roles[]" value="{{ member.role }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control" name="committee_names[]" value="{{ member.name }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Affiliation</label>
+                                <input type="text" class="form-control" name="committee_affiliations[]" value="{{ member.affiliation }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Expertise</label>
+                                <input type="text" class="form-control" name="committee_expertise[]" value="{{ member.expertise|join(', ') }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Profile Image</label>
+                                <input type="hidden" name="committee_existing_images[]" value="{{ member.image }}">
+                                <input type="file" class="form-control image-upload" name="committee_image_{{ loop.index0 }}" accept="image/*" onchange="previewImage(this)">
+                                <div class="image-preview mt-2">
+                                    {% if member.image %}
+                                    <img src="{{ member.image }}" alt="{{ member.name }}" class="img-thumbnail" style="height: 100px; width: 100px; object-fit: cover;">
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="button" class="btn btn-danger d-block" onclick="removeCommitteeMember(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-success" onclick="addCommitteeMember()">
+                    <i class="fas fa-plus"></i> Add Committee Member
+                </button>
+            </div>
+        </div>
+
+        <!-- Past Conferences Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Past Conferences</h5>
+            </div>
+            <div class="card-body">
+                <div id="conferences-container">
+                    {% for conference in about_content.past_conferences %}
+                    <div class="conference-item mb-3">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label class="form-label">Year</label>
+                                <input type="text" class="form-control" name="conference_years[]" value="{{ conference.year }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Location</label>
+                                <input type="text" class="form-control" name="conference_locations[]" value="{{ conference.location }}">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Highlight</label>
+                                <input type="text" class="form-control" name="conference_highlights[]" value="{{ conference.highlight }}">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="button" class="btn btn-danger d-block" onclick="removeConference(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-success" onclick="addConference()">
+                    <i class="fas fa-plus"></i> Add Past Conference
+                </button>
+            </div>
+        </div>
+
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function addObjective() {
+    const container = document.getElementById('objectives-container');
+    const template = `
+        <div class="objective-item mb-3">
+            <div class="row">
+                <div class="col-md-2">
+                    <label class="form-label">Icon</label>
+                    <input type="text" class="form-control" name="objective_icons[]" placeholder="fa-icon-name">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" name="objective_titles[]">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" name="objective_descriptions[]">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-danger d-block" onclick="removeObjective(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', template);
+}
+
+function addCommitteeMember() {
+    const container = document.getElementById('committee-container');
+    const index = document.querySelectorAll('.committee-item').length;
+    const template = `
+        <div class="committee-item mb-4">
+            <div class="row">
+                <div class="col-md-2">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-control" name="committee_roles[]">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" name="committee_names[]">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Affiliation</label>
+                    <input type="text" class="form-control" name="committee_affiliations[]">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Expertise</label>
+                    <input type="text" class="form-control" name="committee_expertise[]">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Profile Image</label>
+                    <input type="hidden" name="committee_existing_images[]" value="">
+                    <input type="file" class="form-control image-upload" name="committee_image_${index}" accept="image/*" onchange="previewImage(this)">
+                    <div class="image-preview mt-2"></div>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-danger d-block" onclick="removeCommitteeMember(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', template);
+}
+
+function addConference() {
+    const container = document.getElementById('conferences-container');
+    const template = `
+        <div class="conference-item mb-3">
+            <div class="row">
+                <div class="col-md-2">
+                    <label class="form-label">Year</label>
+                    <input type="text" class="form-control" name="conference_years[]">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control" name="conference_locations[]">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Highlight</label>
+                    <input type="text" class="form-control" name="conference_highlights[]">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-danger d-block" onclick="removeConference(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', template);
+}
+
+function removeObjective(button) {
+    button.closest('.objective-item').remove();
+}
+
+function removeCommitteeMember(button) {
+    button.closest('.committee-item').remove();
+}
+
+function removeConference(button) {
+    button.closest('.conference-item').remove();
+}
+
+function previewImage(input) {
+    const previewDiv = input.nextElementSibling;
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `<img src="${e.target.result}" class="img-thumbnail" style="height: 100px; width: 100px; object-fit: cover;">`;
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+{% endblock %} 
