@@ -45,18 +45,6 @@
                         <label for="institution">Institution/Organization *</label>
                         <input type="text" id="institution" name="institution" required>
                     </div>
-                    <div class="form-group">
-                        <label for="country">Country *</label>
-                        <input type="text" id="country" name="country" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="phone">Phone Number *</label>
-                        <div class="phone-input">
-                            <input type="text" id="country_code" name="country_code" 
-                                   placeholder="+27" required style="width: 80px;">
-                            <input type="tel" id="phone" name="phone" required>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -66,13 +54,55 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Selected Registration Type</label>
-                        <input type="text" id="registration_type_display" readonly>
-                        <input type="hidden" id="registration_type" name="registration_type">
+                        <div class="registration-info">
+                            <span class="info-value" id="registration_type_display"></span>
+                            <input type="hidden" id="registration_type" name="registration_type" value="{{ selected_type }}">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Selected Registration Period</label>
-                        <input type="text" id="registration_period_display" readonly>
-                        <input type="hidden" id="registration_period" name="registration_period">
+                        <div class="registration-info">
+                            <span class="info-value" id="registration_period_display"></span>
+                            <input type="hidden" id="registration_period" name="registration_period" value="{{ selected_period }}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Registration Fee</label>
+                        <div class="registration-info">
+                            <span class="info-value" id="registration_fee_display"></span>
+                            <input type="hidden" id="registration_fee" name="registration_fee">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paper Submission Section (Only for Authors) -->
+            <div class="form-section" id="paperSubmissionSection" style="display: none;">
+                <h2><i class="fas fa-file-alt"></i> Paper Submission</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="paper_title">Paper Title *</label>
+                        <input type="text" id="paper_title" name="paper_title">
+                        <small class="text-muted">Enter the title of your paper</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="paper_abstract">Abstract *</label>
+                        <textarea id="paper_abstract" name="paper_abstract" rows="4"></textarea>
+                        <small class="text-muted">Enter your paper abstract (max 300 words)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="paper_file">Paper File * <small>(PDF only)</small></label>
+                        <input type="file" id="paper_file" name="paper_file" accept=".pdf">
+                        <small class="text-muted">Upload your paper in PDF format</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="presentation_type">Presentation Type *</label>
+                        <select id="presentation_type" name="presentation_type">
+                            <option value="">Select Presentation Type</option>
+                            <option value="oral">Oral Presentation</option>
+                            <option value="poster">Poster Presentation</option>
+                            <option value="virtual">Virtual Presentation</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -84,13 +114,19 @@
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="workshop" name="workshop" onchange="updateTotal()">
-                            Workshop (R {{ fees.workshop_fee if fees else '0' }})
+                            <span class="checkbox-text">
+                                Workshop
+                                <span class="price">R {{ fees.workshop_fee if fees and fees.workshop_fee else '0' }}</span>
+                            </span>
                         </label>
                     </div>
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="banquet" name="banquet" onchange="updateTotal()">
-                            Banquet (R {{ fees.banquet_fee if fees else '0' }})
+                            <span class="checkbox-text">
+                                Banquet
+                                <span class="price">R {{ fees.banquet_fee if fees and fees.banquet_fee else '0' }}</span>
+                            </span>
                         </label>
                     </div>
                 </div>
@@ -100,10 +136,28 @@
             <div class="form-section">
                 <h2><i class="fas fa-credit-card"></i> Payment Information</h2>
                 <div class="payment-summary">
-                    <h3>Total Amount: <span id="totalAmount">R 0.00</span></h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span>Registration Fee:</span>
+                            <span id="registrationFeeDisplay">R 0.00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Workshop Fee:</span>
+                            <span id="workshopFeeDisplay">R 0.00</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Banquet Fee:</span>
+                            <span id="banquetFeeDisplay">R 0.00</span>
+                        </div>
+                        <div class="summary-item total">
+                            <span>Total Amount:</span>
+                            <span id="totalAmount">R 0.00</span>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="bank-details mb-4">
-                    <h3>Bank Details</h3>
+                    <h3><i class="fas fa-university"></i> Bank Details</h3>
                     {% if fees and fees.payment_details %}
                         <div class="bank-info-grid">
                             <div class="info-group">
@@ -122,9 +176,14 @@
                                 <label>Branch Code:</label>
                                 <span>{{ fees.payment_details.universal_branch_code }}</span>
                             </div>
+                            <div class="info-group">
+                                <label>Swift Code:</label>
+                                <span>{{ fees.payment_details.swift_code }}</span>
+                            </div>
                         </div>
                     {% endif %}
                 </div>
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="payment_proof">Proof of Payment * <small>(PDF/Image)</small></label>
@@ -165,9 +224,9 @@
 
 .form-section {
     background: white;
-    border-radius: var(--radius-lg);
+    border-radius: 12px;
     padding: 2rem;
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .form-section h2 {
@@ -206,13 +265,20 @@
 
 .form-group input[type="text"],
 .form-group input[type="email"],
-.form-group input[type="tel"],
-.form-group select {
+.form-group select,
+.form-group textarea {
     padding: 0.75rem;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
     font-size: 1rem;
     transition: all 0.3s ease;
+}
+
+.form-group input[type="file"] {
+    padding: 0.5rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    background: var(--background-secondary);
 }
 
 .form-group input[readonly] {
@@ -220,21 +286,70 @@
     cursor: not-allowed;
 }
 
-.phone-input {
+.checkbox-label {
     display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.checkbox-text {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+}
+
+.checkbox-text .price {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.payment-summary {
+    background: var(--background-secondary);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.summary-grid {
+    display: grid;
     gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item.total {
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--border-color);
 }
 
 .bank-details {
     background: var(--background-secondary);
     padding: 1.5rem;
-    border-radius: var(--radius-sm);
+    border-radius: 8px;
 }
 
 .bank-details h3 {
     color: var(--text-primary);
     font-size: 1.2rem;
     margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .bank-info-grid {
@@ -250,21 +365,12 @@
 }
 
 .info-group label {
-    font-weight: 500;
     color: var(--text-secondary);
+    font-size: 0.9rem;
 }
 
-.payment-summary {
-    background: var(--primary-color);
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: var(--radius-sm);
-    margin-bottom: 1.5rem;
-}
-
-.payment-summary h3 {
-    margin: 0;
-    font-size: 1.2rem;
+.info-group span {
+    font-weight: 500;
 }
 
 .form-actions {
@@ -273,24 +379,21 @@
     justify-content: flex-end;
 }
 
-.btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
+.form-actions button {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
 }
 
-.btn-primary:hover {
-    background: var(--primary-hover);
-    transform: translateY(-2px);
+.registration-info {
+    background: var(--background-secondary);
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.info-value {
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
 @media (max-width: 768px) {
@@ -298,8 +401,8 @@
         grid-template-columns: 1fr;
     }
 
-    .form-section {
-        padding: 1.5rem;
+    .bank-info-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>
@@ -307,96 +410,99 @@
 
 {% block scripts %}
 <script>
-// Initialize registration data from data attributes
-const registrationDataElement = document.getElementById('registrationData');
-const REGISTRATION_DATA = {
-    fees: JSON.parse(registrationDataElement.dataset.fees || '{}'),
-    selectedPeriod: (registrationDataElement.dataset.selectedPeriod || '').trim(),
-    selectedType: (registrationDataElement.dataset.selectedType || '').trim()
-};
-
-// Initialize form on DOM load
 document.addEventListener('DOMContentLoaded', function() {
-    // Set registration type and period
+    // Initialize registration data
+    const registrationData = document.getElementById('registrationData');
+    const fees = JSON.parse(registrationData.dataset.fees || '{}');
+    const selectedPeriod = registrationData.dataset.selectedPeriod;
+    const selectedType = registrationData.dataset.selectedType;
+
+    // Set registration details
     const registrationType = document.getElementById('registration_type');
     const registrationPeriod = document.getElementById('registration_period');
     const typeDisplay = document.getElementById('registration_type_display');
     const periodDisplay = document.getElementById('registration_period_display');
-    
-    if (REGISTRATION_DATA.selectedType) {
-        registrationType.value = REGISTRATION_DATA.selectedType;
-        typeDisplay.value = formatRegistrationType(REGISTRATION_DATA.selectedType);
+    const feeDisplay = document.getElementById('registration_fee_display');
+    const feeInput = document.getElementById('registration_fee');
+    const paperSubmissionSection = document.getElementById('paperSubmissionSection');
+
+    if (selectedType && selectedPeriod) {
+        // Set hidden inputs
+        registrationType.value = selectedType;
+        registrationPeriod.value = selectedPeriod;
+
+        // Format and display values
+        typeDisplay.textContent = formatRegistrationType(selectedType);
+        periodDisplay.textContent = formatRegistrationPeriod(selectedPeriod);
+
+        // Calculate and display fee
+        const fee = calculateRegistrationFee(fees, selectedPeriod, selectedType);
+        feeInput.value = fee;
+        feeDisplay.textContent = `R ${fee.toFixed(2)}`;
+
+        // Show paper submission section for authors
+        if (selectedType.includes('author')) {
+            paperSubmissionSection.style.display = 'block';
+            // Make paper submission fields required
+            document.getElementById('paper_title').required = true;
+            document.getElementById('paper_abstract').required = true;
+            document.getElementById('paper_file').required = true;
+            document.getElementById('presentation_type').required = true;
+        }
+    } else {
+        // Handle case when no registration type/period is selected
+        window.location.href = '{{ url_for("registration") }}';
     }
     
-    if (REGISTRATION_DATA.selectedPeriod) {
-        registrationPeriod.value = REGISTRATION_DATA.selectedPeriod;
-        periodDisplay.value = formatRegistrationPeriod(REGISTRATION_DATA.selectedPeriod);
-    }
-    
+    // Update total
     updateTotal();
 });
 
 function formatRegistrationType(type) {
-    if (!type) return '';
-    return type.split('_').map(word => 
+    if (!type) return 'Not Selected';
+    const words = type.split('_');
+    return words.map(word => 
         word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
 }
 
 function formatRegistrationPeriod(period) {
-    if (!period) return '';
-    return period.split('_').map(word => 
+    if (!period) return 'Not Selected';
+    const words = period.split('_');
+    return words.map(word => 
         word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ') + ' Registration';
+    ).join(' ');
+}
+
+function calculateRegistrationFee(fees, period, type) {
+    if (!fees || !period || !type) return 0;
+    if (fees[period] && typeof fees[period][type] !== 'undefined') {
+        return parseFloat(fees[period][type]);
+    }
+    return 0;
 }
 
 function updateTotal() {
-    const registrationType = document.getElementById('registration_type').value;
-    const registrationPeriod = document.getElementById('registration_period').value;
-    const workshop = document.getElementById('workshop').checked;
-    const banquet = document.getElementById('banquet').checked;
+    const registrationData = document.getElementById('registrationData');
+    const fees = JSON.parse(registrationData.dataset.fees || '{}');
     
-    let total = 0;
+    // Get base registration fee
+    const registrationFee = parseFloat(document.getElementById('registration_fee').value) || 0;
     
-    // Base registration fee
-    if (registrationType && registrationPeriod && REGISTRATION_DATA.fees[registrationPeriod]) {
-        const periodFees = REGISTRATION_DATA.fees[registrationPeriod];
-        total += parseFloat(periodFees[registrationType]) || 0;
-    }
+    // Calculate additional fees
+    const workshopFee = document.getElementById('workshop').checked ? 
+        (fees.workshop_fee || 0) : 0;
+    const banquetFee = document.getElementById('banquet').checked ? 
+        (fees.banquet_fee || 0) : 0;
     
-    // Additional fees
-    if (workshop) total += parseFloat(REGISTRATION_DATA.fees.workshop_fee) || 0;
-    if (banquet) total += parseFloat(REGISTRATION_DATA.fees.banquet_fee) || 0;
+    // Update display values
+    document.getElementById('registrationFeeDisplay').textContent = `R ${registrationFee.toFixed(2)}`;
+    document.getElementById('workshopFeeDisplay').textContent = `R ${workshopFee.toFixed(2)}`;
+    document.getElementById('banquetFeeDisplay').textContent = `R ${banquetFee.toFixed(2)}`;
     
+    // Calculate and update total
+    const total = registrationFee + workshopFee + banquetFee;
     document.getElementById('totalAmount').textContent = `R ${total.toFixed(2)}`;
 }
-
-// Form validation
-document.getElementById('registrationForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    if (validateForm()) {
-        this.submit();
-    }
-});
-
-function validateForm() {
-    const paymentProof = document.getElementById('payment_proof').files[0];
-    if (!paymentProof) {
-        alert('Please upload proof of payment');
-        return false;
-    }
-    
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowedTypes.includes(paymentProof.type)) {
-        alert('Payment proof must be a PDF or image file');
-        return false;
-    }
-    
-    return true;
-}
-
-// Add event listeners
-document.getElementById('workshop').addEventListener('change', updateTotal);
-document.getElementById('banquet').addEventListener('change', updateTotal);
 </script>
 {% endblock %} 

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Conference Schedule - GIIR Conference 2024{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Conference Schedule</h1>
+    <p>GIIR Conference 2024 Program Schedule</p>
+</div>
+
+<div class="content-section">
+    <div class="schedule-container">
+        {% if schedule %}
+            {% for day in schedule %}
+            <div class="schedule-day">
+                <h2 class="day-header">{{ day.date }}</h2>
+                <div class="timeline">
+                    {% for session in day.sessions %}
+                    <div class="session-card">
+                        <div class="session-time">
+                            <i class="fas fa-clock"></i>
+                            {{ session.start_time }} - {{ session.end_time }}
+                        </div>
+                        <div class="session-content">
+                            <h3>{{ session.title }}</h3>
+                            {% if session.description %}
+                            <p>{{ session.description }}</p>
+                            {% endif %}
+                            {% if session.speakers %}
+                            <div class="speakers">
+                                <i class="fas fa-user-tie"></i>
+                                {% for speaker in session.speakers %}
+                                <span class="speaker">{{ speaker }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if session.location %}
+                            <div class="location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                {{ session.location }}
+                            </div>
+                            {% endif %}
+                            {% if session.track %}
+                            <div class="track">
+                                <i class="fas fa-tag"></i>
+                                {{ session.track }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-schedule">
+                <i class="fas fa-calendar-times"></i>
+                <p>Conference schedule will be announced soon.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.schedule-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+.schedule-day {
+    margin-bottom: 3rem;
+}
+
+.day-header {
+    color: var(--primary-color);
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--primary-color);
+    opacity: 0.3;
+}
+
+.session-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+.session-card:hover {
+    transform: translateX(10px);
+}
+
+.session-card::before {
+    content: '';
+    position: absolute;
+    left: -2rem;
+    top: 50%;
+    width: 1rem;
+    height: 1rem;
+    background: var(--primary-color);
+    border-radius: 50%;
+    transform: translateY(-50%);
+}
+
+.session-time {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.session-content h3 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.session-content p {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.speakers, .location, .track {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.speakers i, .location i, .track i {
+    color: var(--primary-color);
+    width: 16px;
+}
+
+.speaker {
+    background: var(--background-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    margin-right: 0.5rem;
+}
+
+.no-schedule {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.no-schedule i {
+    font-size: 4rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-schedule p {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+    .schedule-container {
+        padding: 1rem;
+    }
+    
+    .timeline {
+        padding-left: 1.5rem;
+    }
+    
+    .session-card::before {
+        left: -1.5rem;
+    }
+    
+    .session-card:hover {
+        transform: none;
+    }
+}
+</style>
+{% endblock %} 

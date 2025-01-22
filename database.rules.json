@@ -10,7 +10,7 @@
       }
     },
     "registrations": {
-      ".indexOn": ["email"],
+      ".indexOn": ["email", "user_id", "registration_type", "registration_period", "payment_status"],
       ".read": "auth != null",
       ".write": "auth != null",
       "$registration_id": {
@@ -34,6 +34,11 @@
     "venue": {
       ".read": true,
       ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+    },
+    "downloads": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
+      ".indexOn": ["category", "type"]
     }
   }
 } 

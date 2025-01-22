@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -561,12 +561,23 @@ def registration():
 def dashboard():
     try:
         # Get user's registrations
-        registrations_ref = db.reference(f'registrations').order_by_child('user_id').equal_to(current_user.id)
-        registrations = registrations_ref.get()
-        return render_template('user/account/dashboard.html', registrations=registrations or {}, site_design=get_site_design())
+        registrations_ref = db.reference('registrations')
+        registrations = registrations_ref.order_by_child('user_id').equal_to(current_user.id).get()
+        
+        # Get registration fees for displaying amounts
+        fees_ref = db.reference('registration_fees')
+        fees = fees_ref.get()
+        
+        return render_template('user/dashboard.html', 
+                             registrations=registrations or {}, 
+                             fees=fees,
+                             site_design=get_site_design())
     except Exception as e:
         flash(f'Error loading dashboard: {str(e)}', 'error')
-        return render_template('user/account/dashboard.html', registrations={}, site_design=get_site_design())
+        return render_template('user/dashboard.html', 
+                             registrations={}, 
+                             fees={},
+                             site_design=get_site_design())
 
 @app.route('/schedule')
 def schedule():
@@ -996,13 +1007,37 @@ def delete_download(download_id):
 @admin_required
 def admin_registrations():
     try:
-        # Get all registrations from Firebase
         registrations_ref = db.reference('registrations')
         registrations = registrations_ref.get()
-        return render_template('admin/registrations.html', site_design=get_site_design(), registrations=registrations or {})
+        return render_template('admin/manage_registrations.html', 
+                             site_design=get_site_design(), 
+                             registrations=registrations or {})
     except Exception as e:
-        flash(f'Error loading registrations: {str(e)}', 'error')
-        return render_template('admin/registrations.html', site_design=get_site_design(), registrations={})
+        flash('Error loading registrations: ' + str(e), 'error')
+        return render_template('admin/manage_registrations.html', 
+                             site_design=get_site_design(), 
+                             registrations={})
+
+@app.route('/admin/registrations/<registration_id>')
+@login_required
+@admin_required
+def get_registration_details(registration_id):
+    try:
+        registration_ref = db.reference(f'registrations/{registration_id}')
+        registration = registration_ref.get()
+        
+        if registration:
+            # Update file paths to use the new /uploads route
+            if registration.get('payment_proof'):
+                registration['payment_proof'] = registration['payment_proof'].replace('/static/uploads/', '')
+            if registration.get('paper') and registration['paper'].get('file_path'):
+                registration['paper']['file_path'] = registration['paper']['file_path'].replace('/static/uploads/', '')
+            
+            return jsonify(registration)
+        else:
+            return jsonify({'error': 'Registration not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/registrations/<registration_id>/status', methods=['POST'])
 @login_required
@@ -1010,64 +1045,138 @@ def admin_registrations():
 def update_registration_status(registration_id):
     try:
         data = request.get_json()
-        new_status = data.get('status')
-        
-        if new_status not in ['approved', 'rejected']:
-            return jsonify({'success': False, 'error': 'Invalid status'}), 400
-        
-        # Update registration status in Firebase
-        reg_ref = db.reference(f'registrations/{registration_id}')
-        registration = reg_ref.get()
+        status = data.get('status')
+        if status not in ['approved', 'rejected']:
+            return jsonify({'error': 'Invalid status'}), 400
+
+        registration_ref = db.reference(f'registrations/{registration_id}')
+        registration_ref.update({
+            'payment_status': status,
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': current_user.id
+        })
+
+        # If approved and it's an early bird registration, update available seats
+        registration = registration_ref.get()
+        if status == 'approved' and registration.get('registration_period') == 'early_bird':
+            fees_ref = db.reference('registration_fees/early_bird')
+            fees = fees_ref.get()
+            if fees and 'seats_available' in fees:
+                fees_ref.update({
+                    'seats_available': max(0, fees['seats_available'] - 1)
+                })
+
+        # Send email notification to user
+        user_email = registration.get('email')
+        if user_email:
+            if status == 'approved':
+                send_approval_email(user_email, registration)
+            else:
+                send_rejection_email(user_email, registration)
+
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/registrations/<registration_id>/payment-proof')
+@login_required
+@admin_required
+def get_payment_proof(registration_id):
+    try:
+        registration_ref = db.reference(f'registrations/{registration_id}')
+        registration = registration_ref.get()
         
         if not registration:
-            return jsonify({'success': False, 'error': 'Registration not found'}), 404
+            return jsonify({'error': 'Registration not found'}), 404
+            
+        if not registration.get('payment_proof'):
+            return jsonify({'error': 'No payment proof uploaded'}), 404
+            
+        # Clean up the file path
+        payment_proof = registration['payment_proof']
+        if not payment_proof.startswith('payments/'):
+            payment_proof = f'payments/{payment_proof}'
+            
+        return jsonify({'url': payment_proof})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/registrations/<registration_id>/notes', methods=['POST'])
+@login_required
+@admin_required
+def save_registration_notes(registration_id):
+    try:
+        data = request.get_json()
+        notes = data.get('notes', '').strip()
         
-        # Update the status
-        reg_ref.update({
-            'payment_status': new_status,
-            'updated_at': datetime.now().isoformat(),
-            'updated_by': current_user.email
+        registration_ref = db.reference(f'registrations/{registration_id}')
+        registration_ref.update({
+            'admin_notes': notes,
+            'notes_updated_at': datetime.now().isoformat(),
+            'notes_updated_by': current_user.id
         })
-        
-        # Send email notification to user
-        try:
-            msg = Message(
-                f'Registration {new_status.title()}',
-                recipients=[registration['email']]
-            )
-            if new_status == 'approved':
-                msg.body = f"""
-                Dear {registration['full_name']},
-                
-                Your registration for Conference 2024 has been approved.
-                
-                Registration Details:
-                - Registration Type: {registration['registration_type']}
-                - Total Amount: ${registration['total_amount']}
-                
-                Thank you for registering for our conference.
-                
-                Best regards,
-                Conference Team
-                """
-            else:
-                msg.body = f"""
-                Dear {registration['full_name']},
-                
-                Unfortunately, your registration for Conference 2024 has been rejected.
-                
-                If you have any questions, please contact us at support@conference2024.com.
-                
-                Best regards,
-                Conference Team
-                """
-            mail.send(msg)
-        except Exception as e:
-            print(f"Error sending email: {str(e)}")
         
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500
+
+def send_email(to, subject, body):
+    """
+    Helper function to send emails using Flask-Mail.
+    
+    Args:
+        to (str): Recipient email address
+        subject (str): Email subject
+        body (str): Email body content
+    """
+    try:
+        msg = Message(
+            subject=subject,
+            recipients=[to],
+            body=body,
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False
+
+def send_approval_email(email, registration):
+    subject = "GIIR Conference 2024 - Registration Approved"
+    body = f"""Dear {registration.get('full_name')},
+
+Your registration for the GIIR Conference 2024 has been approved.
+
+Registration Details:
+- Type: {registration.get('registration_type', '').replace('_', ' ').title()}
+- Period: {registration.get('registration_period', '').replace('_', ' ').title()}
+- Total Amount: R {registration.get('total_amount')}
+
+{'Your paper submission has been confirmed.' if 'author' in registration.get('registration_type', '') else ''}
+{'Virtual access details will be sent closer to the conference date.' if 'virtual' in registration.get('registration_type', '') else ''}
+
+Thank you for registering for GIIR Conference 2024.
+
+Best regards,
+GIIR Conference Team"""
+    
+    send_email(email, subject, body)
+
+def send_rejection_email(email, registration):
+    subject = "GIIR Conference 2024 - Registration Update"
+    body = f"""Dear {registration.get('full_name')},
+
+Your registration for the GIIR Conference 2024 requires attention.
+
+Please log in to your dashboard to view the status of your registration and make any necessary updates.
+
+If you have any questions, please contact us.
+
+Best regards,
+GIIR Conference Team"""
+    
+    send_email(email, subject, body)
 
 @app.route('/admin/submissions')
 @login_required
@@ -1921,9 +2030,37 @@ def admin_design():
 
 @app.route('/downloads')
 def downloads():
-    downloads_ref = db.reference('downloads')
-    downloads = downloads_ref.get()
-    return render_template('user/conference/downloads.html', downloads=downloads, site_design=get_site_design())
+    try:
+        # Get downloads from Firebase
+        downloads_ref = db.reference('downloads')
+        downloads_data = downloads_ref.get()
+        
+        # Organize downloads by category
+        organized_downloads = {}
+        if downloads_data:
+            for key, item in downloads_data.items():
+                category = item.get('category', 'General')
+                if category not in organized_downloads:
+                    organized_downloads[category] = []
+                
+                # Ensure all required fields are present
+                download_item = {
+                    'title': item.get('title', 'Untitled'),
+                    'description': item.get('description', ''),
+                    'type': item.get('type', 'file'),
+                    'size': item.get('file_size', ''),
+                    'url': item.get('file_url', '#')
+                }
+                organized_downloads[category].append(download_item)
+        
+        return render_template('user/conference/downloads.html', 
+                             downloads=organized_downloads,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash('Error loading downloads.', 'error')
+        return render_template('user/conference/downloads.html', 
+                             downloads={},
+                             site_design=get_site_design())
 
 @app.route('/admin/about-content', methods=['GET', 'POST'])
 @login_required
@@ -2125,27 +2262,37 @@ def get_registration_fees():
 @app.route('/registration-form', methods=['GET', 'POST'])
 @login_required
 def registration_form():
-    # Get both registration fees and site design
-    fees = get_registration_fees()
-    site_design = get_site_design()
+    # Get registration type and period from query parameters
+    registration_type = request.args.get('type')
+    registration_period = request.args.get('period')
+    
+    # Get fees from Firebase
+    fees_ref = db.reference('registration_fees')
+    fees = fees_ref.get()
     
     if request.method == 'POST':
         try:
             # Create upload directories if they don't exist
-            papers_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'papers')
-            payments_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'payments')
+            papers_dir = os.path.join(app.static_folder, 'uploads', 'papers')
+            payments_dir = os.path.join(app.static_folder, 'uploads', 'payments')
             os.makedirs(papers_dir, exist_ok=True)
             os.makedirs(payments_dir, exist_ok=True)
             
+            # Get registration fee with default value of 0
+            try:
+                registration_fee = float(request.form.get('registration_fee', 0))
+            except (ValueError, TypeError):
+                registration_fee = 0
+            
             # Get form data
             registration_data = {
+                'user_id': current_user.id,
                 'full_name': request.form.get('full_name'),
                 'email': request.form.get('email'),
                 'institution': request.form.get('institution'),
-                'country': request.form.get('country'),
                 'registration_type': request.form.get('registration_type'),
                 'registration_period': request.form.get('registration_period'),
-                'extra_paper': request.form.get('extra_paper') == 'on',
+                'registration_fee': registration_fee,
                 'workshop': request.form.get('workshop') == 'on',
                 'banquet': request.form.get('banquet') == 'on',
                 'payment_reference': request.form.get('payment_reference'),
@@ -2157,8 +2304,8 @@ def registration_form():
             if 'author' in registration_data['registration_type']:
                 paper_data = {
                     'title': request.form.get('paper_title'),
-                    'abstract': request.form.get('abstract'),
-                    'keywords': request.form.get('keywords'),
+                    'abstract': request.form.get('paper_abstract'),
+                    'presentation_type': request.form.get('presentation_type')
                 }
                 registration_data['paper'] = paper_data
                 
@@ -2166,45 +2313,75 @@ def registration_form():
                 if 'paper_file' in request.files:
                     paper_file = request.files['paper_file']
                     if paper_file and paper_file.filename:
-                        paper_filename = secure_filename(f"{registration_data['payment_reference']}_paper.pdf")
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        paper_filename = secure_filename(f"{registration_data['payment_reference']}_{timestamp}_paper.pdf")
                         paper_path = os.path.join(papers_dir, paper_filename)
                         paper_file.save(paper_path)
-                        registration_data['paper_file'] = f"papers/{paper_filename}"
+                        registration_data['paper']['file_path'] = f"papers/{paper_filename}"
             
             # Handle payment proof upload
             if 'payment_proof' in request.files:
                 payment_file = request.files['payment_proof']
                 if payment_file and payment_file.filename:
-                    payment_filename = secure_filename(f"{registration_data['payment_reference']}_payment.pdf")
+                    # Get original filename and secure it
+                    original_filename = secure_filename(payment_file.filename)
+                    # Add timestamp to ensure uniqueness but keep original name
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    payment_filename = f"{timestamp}_{original_filename}"
                     payment_path = os.path.join(payments_dir, payment_filename)
                     payment_file.save(payment_path)
                     registration_data['payment_proof'] = f"payments/{payment_filename}"
+            
+            # Calculate total amount with safe conversion
+            total_amount = registration_fee
+            if registration_data['workshop'] and fees and 'workshop_fee' in fees:
+                try:
+                    workshop_fee = float(fees['workshop_fee'])
+                    total_amount += workshop_fee
+                except (ValueError, TypeError):
+                    pass
+                    
+            if registration_data['banquet'] and fees and 'banquet_fee' in fees:
+                try:
+                    banquet_fee = float(fees['banquet_fee'])
+                    total_amount += banquet_fee
+                except (ValueError, TypeError):
+                    pass
+                    
+            registration_data['total_amount'] = total_amount
             
             # Save registration data to Firebase
             registrations_ref = db.reference('registrations')
             new_registration = registrations_ref.push(registration_data)
             
-            # Update seats if early bird registration
+            # Update early bird seats if applicable
             if registration_data['registration_period'] == 'early_bird':
-                fees_ref = db.reference('registration_fees')
-                early_bird = fees_ref.get().get('early_bird')
-                if early_bird and early_bird.get('seats_remaining'):
+                early_bird = fees.get('early_bird', {})
+                if early_bird and early_bird.get('show_seats') and early_bird.get('seats_remaining'):
                     early_bird['seats_remaining'] = int(early_bird['seats_remaining']) - 1
-                    fees_ref.update({'early_bird': early_bird})
+                    fees_ref.child('early_bird').update({'seats_remaining': early_bird['seats_remaining']})
             
             flash('Registration submitted successfully!', 'success')
-            return redirect(url_for('registration'))
+            return redirect(url_for('dashboard'))
             
         except Exception as e:
-            flash(f'Error submitting registration: {str(e)}', 'danger')
-            return render_template('user/registration_form.html', fees=fees, site_design=site_design)
+            flash(f'Error submitting registration: {str(e)}', 'error')
+            return render_template('user/registration_form.html',
+                                site_design=get_site_design(),
+                                fees=fees,
+                                selected_type=registration_type,
+                                selected_period=registration_period)
     
-    # GET request - render form
-    period = request.args.get('period')
-    reg_type = request.args.get('type')
-    return render_template('user/registration_form.html', fees=fees, 
-                         selected_period=period, selected_type=reg_type,
-                         site_design=site_design)
+    # If registration type or period is missing, redirect to registration page
+    if not registration_type or not registration_period:
+        flash('Please select a registration type and period first.', 'error')
+        return redirect(url_for('registration'))
+    
+    return render_template('user/registration_form.html',
+                         site_design=get_site_design(),
+                         fees=fees,
+                         selected_type=registration_type,
+                         selected_period=registration_period)
 
 @app.route('/admin/author-guidelines', methods=['GET', 'POST'])
 @login_required
@@ -2264,6 +2441,55 @@ def admin_author_guidelines():
     except Exception as e:
         flash(f'Error managing author guidelines: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
+
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    try:
+        # Security check - prevent directory traversal
+        if '..' in filename or filename.startswith('/'):
+            return "Access denied", 403
+            
+        # Split the path to get the upload type (payments, papers, etc.)
+        path_parts = filename.split('/')
+        if len(path_parts) < 2:
+            return "Invalid path", 400
+            
+        upload_type = path_parts[0]  # e.g., 'payments', 'papers'
+        file_name = path_parts[-1]   # the actual filename
+        
+        # Validate upload type
+        valid_upload_types = {'payments', 'papers', 'documents', 'templates', 'hero', 'committee', 'supporters'}
+        if upload_type not in valid_upload_types:
+            return "Invalid upload type", 400
+        
+        # Construct the full path relative to static/uploads
+        upload_path = os.path.join(app.static_folder, 'uploads', upload_type)
+        file_path = os.path.join(upload_path, file_name)
+        
+        # Security check - ensure file is within allowed directory
+        real_path = os.path.realpath(file_path)
+        if not real_path.startswith(os.path.realpath(upload_path)):
+            return "Access denied", 403
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return "File not found", 404
+            
+        # Set content disposition to force download for certain file types
+        download_types = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip'}
+        _, ext = os.path.splitext(file_name)
+        download = ext.lower() in download_types
+        
+        return send_from_directory(
+            upload_path, 
+            file_name,
+            as_attachment=download,
+            download_name=file_name if download else None
+        )
+        
+    except Exception as e:
+        print(f"Error serving file: {str(e)}")
+        return "Error accessing file", 500
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

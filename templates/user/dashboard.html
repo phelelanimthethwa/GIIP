@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Conference 2024{% endblock %}
+{% block title %}Dashboard - GIIR Conference 2024{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -12,8 +12,9 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
                     {{ message }}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
                 </div>
             {% endfor %}
         {% endif %}
@@ -44,30 +45,133 @@
                 {% if registrations %}
                     {% for reg_id, reg in registrations.items() %}
                         <div class="registration-item">
-                            <div class="reg-details">
-                                <p><strong>Type:</strong> {{ reg.registration_type }}</p>
-                                <p><strong>Amount:</strong> ${{ reg.total_amount }}</p>
-                                <p><strong>Status:</strong> 
-                                    <span class="status-badge status-{{ reg.payment_status }}">
-                                        {{ reg.payment_status }}
+                            <div class="reg-header">
+                                <div class="reg-title">
+                                    <h3>{{ reg.registration_type|replace('_', ' ')|title }}</h3>
+                                    <span class="reg-period {{ reg.registration_period }}">
+                                        {{ reg.registration_period|replace('_', ' ')|title }}
                                     </span>
-                                </p>
+                                </div>
+                                <span class="status-badge status-{{ reg.status }}">
+                                    {{ reg.status|title }}
+                                </span>
                             </div>
-                            <div class="reg-options">
+                            <div class="reg-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Registration Fee:</span>
+                                    <span class="detail-value">R {{ reg.registration_fee }}</span>
+                                </div>
                                 {% if reg.workshop %}
-                                    <span class="option-badge">Workshop</span>
+                                <div class="detail-row">
+                                    <span class="detail-label">Workshop Fee:</span>
+                                    <span class="detail-value">R {{ fees.workshop_fee }}</span>
+                                </div>
                                 {% endif %}
                                 {% if reg.banquet %}
-                                    <span class="option-badge">Banquet</span>
+                                <div class="detail-row">
+                                    <span class="detail-label">Banquet Fee:</span>
+                                    <span class="detail-value">R {{ fees.banquet_fee }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="detail-row total">
+                                    <span class="detail-label">Total Amount:</span>
+                                    <span class="detail-value">R {{ reg.total_amount }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Submission Date:</span>
+                                    <span class="detail-value">{{ reg.submission_date }}</span>
+                                </div>
+                            </div>
+
+                            {% if 'author' in reg.registration_type %}
+                            <div class="paper-details">
+                                <h4><i class="fas fa-file-alt"></i> Paper Details</h4>
+                                {% if reg.paper %}
+                                <div class="detail-row">
+                                    <span class="detail-label">Paper Title:</span>
+                                    <span class="detail-value">{{ reg.paper.title }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Presentation Type:</span>
+                                    <span class="detail-value">{{ reg.paper.presentation_type|title }}</span>
+                                </div>
+                                {% if reg.paper.file_path %}
+                                <div class="detail-row">
+                                    <span class="detail-label">Paper File:</span>
+                                    <a href="{{ url_for('static', filename=reg.paper.file_path) }}" class="file-link" target="_blank">
+                                        <i class="fas fa-download"></i> Download Paper
+                                    </a>
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <div class="paper-upload-prompt">
+                                    <p>Please submit your paper to complete your registration.</p>
+                                    <a href="{{ url_for('call_for_papers') }}" class="btn btn-primary">
+                                        <i class="fas fa-upload"></i> Submit Paper
+                                    </a>
+                                </div>
                                 {% endif %}
                             </div>
+                            {% endif %}
+
+                            {% if reg.registration_type == 'virtual_delegate' and reg.status == 'approved' %}
+                            <div class="virtual-details">
+                                <h4><i class="fas fa-video"></i> Virtual Access Details</h4>
+                                <div class="detail-row">
+                                    <span class="detail-label">Meeting Link:</span>
+                                    <a href="{{ reg.virtual_link }}" class="meeting-link" target="_blank">
+                                        <i class="fas fa-external-link-alt"></i> Join Meeting
+                                    </a>
+                                </div>
+                                {% if reg.virtual_password %}
+                                <div class="detail-row">
+                                    <span class="detail-label">Meeting Password:</span>
+                                    <span class="detail-value">{{ reg.virtual_password }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <div class="reg-options">
+                                {% if reg.workshop %}
+                                <span class="option-badge">
+                                    <i class="fas fa-chalkboard-teacher"></i> Workshop
+                                </span>
+                                {% endif %}
+                                {% if reg.banquet %}
+                                <span class="option-badge">
+                                    <i class="fas fa-glass-cheers"></i> Banquet
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            {% if reg.payment_proof %}
+                            <div class="payment-proof">
+                                <h4><i class="fas fa-receipt"></i> Payment Information</h4>
+                                <div class="detail-row">
+                                    <span class="detail-label">Reference:</span>
+                                    <span class="detail-value">{{ reg.payment_reference }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Proof of Payment:</span>
+                                    <a href="{{ url_for('serve_upload', filename=reg.payment_proof) }}" class="file-link" target="_blank">
+                                        <i class="fas fa-download"></i> View Payment Proof
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     {% endfor %}
                 {% else %}
-                    <p class="no-data">No registrations found.</p>
-                    <a href="{{ url_for('registration') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Register Now
-                    </a>
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h3>No Registrations Found</h3>
+                        <p>You haven't registered for the conference yet.</p>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('registration') }}" class="btn btn-primary">Register Now</a>
+                            <a href="{{ url_for('call_for_papers') }}" class="btn btn-secondary">Submit Paper</a>
+                        </div>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -80,13 +184,17 @@
             </div>
             <div class="card-content">
                 <div class="quick-links">
-                    <a href="{{ url_for('paper_submission') }}" class="quick-link">
-                        <i class="fas fa-file-upload"></i>
-                        Submit Paper
-                    </a>
                     <a href="{{ url_for('downloads') }}" class="quick-link">
                         <i class="fas fa-download"></i>
                         Downloads
+                    </a>
+                    <a href="{{ url_for('schedule') }}" class="quick-link">
+                        <i class="fas fa-calendar-alt"></i>
+                        Schedule
+                    </a>
+                    <a href="{{ url_for('venue') }}" class="quick-link">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Venue
                     </a>
                 </div>
             </div>
@@ -132,12 +240,50 @@
 }
 
 .registration-item {
-    border-bottom: 1px solid #eee;
-    padding: 1rem 0;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .registration-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.reg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.reg-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reg-title h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.reg-period {
+    font-size: 0.9rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: var(--background-color);
+}
+
+.reg-period.early_bird {
+    background: var(--accent-color);
+    color: white;
+}
+
+.reg-period.late {
+    background: var(--secondary-color);
+    color: white;
 }
 
 .status-badge {
@@ -157,13 +303,89 @@
     color: white;
 }
 
+.status-rejected {
+    background: var(--danger-color);
+    color: white;
+}
+
+.reg-details {
+    margin-bottom: 1.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row.total {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--background-color);
+    font-weight: bold;
+}
+
+.detail-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--text-primary);
+}
+
+.paper-details, .virtual-details, .payment-proof {
+    background: var(--background-color);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.paper-details h4, .virtual-details h4, .payment-proof h4 {
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+}
+
+.paper-upload-prompt {
+    text-align: center;
+    padding: 1rem;
+}
+
+.file-link, .meeting-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.file-link:hover, .meeting-link:hover {
+    text-decoration: underline;
+}
+
+.reg-options {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
 .option-badge {
     background: var(--secondary-color);
     color: white;
-    padding: 0.2rem 0.6rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 15px;
-    font-size: 0.8rem;
-    margin-right: 0.5rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .quick-links {
@@ -189,15 +411,30 @@
     transform: translateX(5px);
 }
 
-.no-data {
-    color: #666;
+.empty-state {
     text-align: center;
+    padding: 2rem;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: var(--primary-color);
     margin-bottom: 1rem;
 }
 
 @media (max-width: 768px) {
     .dashboard-grid {
         grid-template-columns: 1fr;
+    }
+
+    .reg-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .status-badge {
+        align-self: flex-start;
     }
 }
 </style>
