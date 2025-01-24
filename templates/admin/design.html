@@ -13,52 +13,90 @@
 
     <div class="content-section">
         <form method="POST" enctype="multipart/form-data">
-            <div class="admin-card mb-4">
-                <h2><i class="fas fa-paint-brush"></i> Color Scheme</h2>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Primary Color</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="primary_color" value="{{ design.primary_color }}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Secondary Color</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="secondary_color" value="{{ design.secondary_color }}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Accent Color</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="accent_color" value="{{ design.accent_color }}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Text Color</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="text_color" value="{{ design.text_color }}">
+            <div class="row">
+                <!-- Color Scheme Settings -->
+                <div class="col-md-8">
+                    <div class="admin-card mb-4">
+                        <h2><i class="fas fa-paint-brush"></i> Color Scheme</h2>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Primary Color</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="primary_color" value="{{ design.primary_color }}"
+                                               data-preview="primary">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Secondary Color</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="secondary_color" value="{{ design.secondary_color }}"
+                                               data-preview="secondary">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Accent Color</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="accent_color" value="{{ design.accent_color }}"
+                                               data-preview="accent">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Text Color</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="text_color" value="{{ design.text_color }}"
+                                               data-preview="text">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Background Color</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="background_color" value="{{ design.background_color }}"
+                                               data-preview="background">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Header Background</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="header_background" value="{{ design.header_background }}"
+                                               data-preview="header">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Footer Background</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="footer_background" value="{{ design.footer_background }}"
+                                               data-preview="footer">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Hero Text Color</label>
+                                        <input type="color" class="form-control form-control-color w-100" 
+                                               name="hero_text_color" value="{{ design.hero_text_color }}"
+                                               data-preview="hero-text">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Background Color</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="background_color" value="{{ design.background_color }}">
+                    </div>
+                </div>
+
+                <!-- Live Preview -->
+                <div class="col-md-4">
+                    <div class="admin-card mb-4 sticky-top" style="top: 20px;">
+                        <h2><i class="fas fa-eye"></i> Live Preview</h2>
+                        <div class="preview-section">
+                            <div class="preview-header" id="preview-header">
+                                <h3>Header</h3>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Header Background</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="header_background" value="{{ design.header_background }}">
+                            <div class="preview-content" id="preview-content">
+                                <div class="preview-hero">
+                                    <h4 id="preview-hero-text">Hero Section</h4>
+                                </div>
+                                <div class="preview-text">
+                                    <p>Sample text content</p>
+                                    <button class="btn btn-primary">Primary Button</button>
+                                    <button class="btn btn-secondary">Secondary Button</button>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Footer Background</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="footer_background" value="{{ design.footer_background }}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Hero Text Color</label>
-                                <input type="color" class="form-control form-control-color w-100" 
-                                       name="hero_text_color" value="{{ design.hero_text_color }}">
+                            <div class="preview-footer" id="preview-footer">
+                                <p>Footer</p>
                             </div>
                         </div>
                     </div>
@@ -66,6 +104,9 @@
             </div>
 
             <div class="form-actions">
+                <button type="button" class="btn btn-secondary me-2" onclick="resetColors()">
+                    <i class="fas fa-undo"></i> Reset to Default
+                </button>
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
@@ -91,5 +132,129 @@
     margin-top: 2rem;
     text-align: right;
 }
+
+/* Preview Styles */
+.preview-section {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-header {
+    background: v-bind(header_background);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+.preview-content {
+    flex-grow: 1;
+    padding: 1rem;
+    background: v-bind(background_color);
+}
+
+.preview-hero {
+    background: rgba(0,0,0,0.1);
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.preview-text {
+    color: v-bind(text_color);
+}
+
+.preview-footer {
+    background: v-bind(footer_background);
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: v-bind(primary_color);
+    border-color: v-bind(primary_color);
+}
+
+.btn-secondary {
+    background-color: v-bind(secondary_color);
+    border-color: v-bind(secondary_color);
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize color inputs
+    const colorInputs = document.querySelectorAll('input[type="color"]');
+    colorInputs.forEach(input => {
+        input.addEventListener('input', updatePreview);
+    });
+
+    // Initial preview update
+    updatePreview();
+});
+
+function updatePreview() {
+    const preview = document.querySelector('.preview-section');
+    const colors = {
+        primary: document.querySelector('[name="primary_color"]').value,
+        secondary: document.querySelector('[name="secondary_color"]').value,
+        accent: document.querySelector('[name="accent_color"]').value,
+        text: document.querySelector('[name="text_color"]').value,
+        background: document.querySelector('[name="background_color"]').value,
+        header: document.querySelector('[name="header_background"]').value,
+        footer: document.querySelector('[name="footer_background"]').value,
+        heroText: document.querySelector('[name="hero_text_color"]').value
+    };
+
+    // Update preview elements
+    document.getElementById('preview-header').style.backgroundColor = colors.header;
+    document.getElementById('preview-content').style.backgroundColor = colors.background;
+    document.getElementById('preview-footer').style.backgroundColor = colors.footer;
+    document.getElementById('preview-hero-text').style.color = colors.heroText;
+    
+    // Update text colors
+    document.querySelector('.preview-text').style.color = colors.text;
+    
+    // Update buttons
+    const primaryButtons = document.querySelectorAll('.btn-primary');
+    primaryButtons.forEach(btn => {
+        btn.style.backgroundColor = colors.primary;
+        btn.style.borderColor = colors.primary;
+    });
+    
+    const secondaryButtons = document.querySelectorAll('.btn-secondary');
+    secondaryButtons.forEach(btn => {
+        btn.style.backgroundColor = colors.secondary;
+        btn.style.borderColor = colors.secondary;
+    });
+}
+
+function resetColors() {
+    const defaultColors = {
+        primary_color: '#007bff',
+        secondary_color: '#6c757d',
+        accent_color: '#28a745',
+        text_color: '#333333',
+        background_color: '#ffffff',
+        header_background: '#f8f9fa',
+        footer_background: '#343a40',
+        hero_text_color: '#ffffff'
+    };
+
+    // Reset all color inputs
+    Object.entries(defaultColors).forEach(([key, value]) => {
+        const input = document.querySelector(`[name="${key}"]`);
+        if (input) {
+            input.value = value;
+        }
+    });
+
+    // Update preview
+    updatePreview();
+}
+</script>
 {% endblock %} 

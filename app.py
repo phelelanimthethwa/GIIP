@@ -45,6 +45,18 @@ def format_datetime(value):
         dt = value
     return dt.strftime('%B %d, %Y %I:%M %p')
 
+# Add this after app initialization but before routes
+@app.template_filter('format_date')
+def format_date(date_str):
+    try:
+        if isinstance(date_str, str):
+            date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        else:
+            date = date_str
+        return date.strftime('%B %d, %Y %I:%M %p')
+    except Exception:
+        return date_str  # Return original string if parsing fails
+
 # Add this configuration after other app configurations
 app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max file size
@@ -293,31 +305,42 @@ def paper_submission():
                 return redirect(url_for('paper_submission'))
 
             # Get form data
-            submission_data = {
-                'name': request.form.get('name'),
-                'email': request.form.get('email'),
-                'country_code': request.form.get('country_code'),
-                'mobile': request.form.get('mobile'),
+            paper_data = {
+                'user_id': current_user.uid,
+                'user_email': current_user.email,
                 'paper_title': request.form.get('paper_title'),
-                'university': request.form.get('university'),
-                'conference_name': request.form.get('conference_name'),
-                'conference_date': request.form.get('conference_date'),
-                'conference_city': request.form.get('conference_city'),
-                'conference_country': request.form.get('conference_country'),
-                'presentation_mode': request.form.get('presentation_mode'),
-                'journal': request.form.get('journal'),
-                'comments': request.form.get('comments'),
+                'paper_abstract': request.form.get('paper_abstract'),
+                'presentation_type': request.form.get('presentation_type'),
+                'research_area': request.form.get('research_area'),
+                'keywords': [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()],
                 'submitted_at': datetime.now().isoformat(),
-                'status': 'pending'
+                'status': 'pending',
+                'authors': [],
+                'review_comments': '',
+                'reviewed_by': '',
+                'updated_at': datetime.now().isoformat()
             }
 
-            # Handle file upload
+            # Process authors
+            author_count = 0
+            while f'authors[{author_count}][name]' in request.form:
+                author = {
+                    'name': request.form.get(f'authors[{author_count}][name]'),
+                    'email': request.form.get(f'authors[{author_count}][email]'),
+                    'institution': request.form.get(f'authors[{author_count}][institution]')
+                }
+                paper_data['authors'].append(author)
+                author_count += 1
+
+            # Handle paper file upload
             if 'paper_file' in request.files:
                 file = request.files['paper_file']
                 if file and file.filename:
                     # Create a storage reference
-                    bucket = storage.bucket()
-                    blob = bucket.blob(f'papers/{datetime.now().strftime("%Y%m%d_%H%M%S")}_{secure_filename(file.filename)}')
+                    bucket = storage_client.bucket(app.config['FIREBASE_CONFIG']['storageBucket'])
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f'papers/{current_user.uid}/{timestamp}_{secure_filename(file.filename)}'
+                    blob = bucket.blob(filename)
                     
                     # Upload the file
                     blob.upload_from_string(
@@ -325,34 +348,65 @@ def paper_submission():
                         content_type=file.content_type
                     )
                     
-                    # Make the file publicly accessible
+                    # Make the file accessible to admins
                     blob.make_public()
                     
-                    # Add file URL to submission data
-                    submission_data['file_url'] = blob.public_url
+                    # Add file info to paper data
+                    paper_data['file_path'] = filename
+                    paper_data['file_url'] = blob.public_url
+                else:
+                    flash('Please upload a paper file.', 'error')
+                    return redirect(url_for('paper_submission'))
+            else:
+                flash('Please upload a paper file.', 'error')
+                return redirect(url_for('paper_submission'))
 
-            # Store submission in Firebase
-            ref = db.reference('submissions')
-            new_submission = ref.push(submission_data)
+            # Find user's author registration if it exists
+            registrations_ref = db.reference('registrations')
+            user_registrations = registrations_ref.order_by_child('user_id').equal_to(current_user.uid).get()
             
+            author_registration = None
+            if user_registrations:
+                for reg_id, reg in user_registrations.items():
+                    if 'author' in reg.get('registration_type', '').lower():
+                        author_registration = reg_id
+                        break
+
+            # Store paper in Firebase
+            papers_ref = db.reference('papers')
+            new_paper = papers_ref.push(paper_data)
+            paper_id = new_paper.key
+
+            # If there's an author registration, link the paper
+            if author_registration:
+                reg_ref = db.reference(f'registrations/{author_registration}')
+                reg_ref.update({
+                    'paper_id': paper_id,
+                    'updated_at': datetime.now().isoformat()
+                })
+
+            # Add paper reference to user's papers
+            user_papers_ref = db.reference(f'users/{current_user.uid}/papers')
+            user_papers_ref.update({paper_id: True})
+
             # Send confirmation email
             try:
                 msg = Message('Paper Submission Confirmation',
-                            recipients=[submission_data['email']])
+                            recipients=[current_user.email])
                 msg.body = f"""
-                Dear {submission_data['name']},
+                Dear {paper_data['authors'][0]['name']},
                 
-                Thank you for submitting your paper to Conference 2024.
+                Thank you for submitting your paper to GIIR Conference 2024.
                 
                 Submission Details:
-                - Paper Title: {submission_data['paper_title']}
-                - Presentation Mode: {submission_data['presentation_mode']}
-                - Submission ID: {new_submission.key}
+                - Paper Title: {paper_data['paper_title']}
+                - Presentation Type: {paper_data['presentation_type']}
+                - Submission ID: {paper_id}
                 
                 We will review your submission and get back to you soon.
                 
                 Best regards,
-                Conference Team
+                GIIR Conference Team
                 """
                 mail.send(msg)
             except Exception as e:
@@ -362,10 +416,13 @@ def paper_submission():
             return redirect(url_for('dashboard'))
             
         except Exception as e:
+            print(f"Error submitting paper: {str(e)}")  # Log the error
             flash(f'Error submitting paper: {str(e)}', 'error')
             return redirect(url_for('paper_submission'))
 
-    return render_template('user/papers/submit.html', site_design=get_site_design(), recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
+    return render_template('user/papers/submit.html', 
+                         site_design=get_site_design(), 
+                         recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
 
 @app.route('/author-guidelines')
 def author_guidelines():
@@ -433,6 +490,17 @@ def login():
             login_user(User(user.uid, user.email, user.display_name, is_admin))
             flash('Logged in successfully!', 'success')
             
+            # Check if there's a registration selection in session
+            if 'registration_type' in session and 'registration_period' in session:
+                reg_type = session.pop('registration_type')
+                reg_period = session.pop('registration_period')
+                return redirect(url_for('registration_form', type=reg_type, period=reg_period))
+            
+            # Check for next parameter
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            
             # Redirect admin users to admin dashboard
             if is_admin:
                 return redirect(url_for('admin_dashboard'))
@@ -488,73 +556,35 @@ def logout():
     flash('Logged out successfully!', 'success')
     return redirect(url_for('home'))
 
-@app.route('/registration', methods=['GET', 'POST'])
-@login_required
+@app.route('/registration')
 def registration():
-    # Get registration fees from Firebase
-    fees = db.reference('registration_fees').get()
+    try:
+        # Get registration fees from Firebase
+        fees_ref = db.reference('registration_fees')
+        fees = fees_ref.get()
+        
+        return render_template('user/registration.html', 
+                             site_design=get_site_design(),
+                             fees=fees)
+    except Exception as e:
+        flash('Error loading registration fees.', 'error')
+        return render_template('user/registration.html', 
+                             site_design=get_site_design(),
+                             fees={})
+
+@app.route('/registration/register', methods=['POST'])
+def registration_select():
+    if not current_user.is_authenticated:
+        # Store registration selection in session
+        session['registration_type'] = request.form.get('registration_type')
+        session['registration_period'] = request.form.get('registration_period')
+        # Redirect to login with next parameter
+        return redirect(url_for('login', next=url_for('registration_form')))
     
-    if request.method == 'POST':
-        registration_data = {
-            'full_name': request.form.get('full_name'),
-            'email': current_user.email,
-            'affiliation': request.form.get('affiliation'),
-            'registration_type': request.form.get('registration_type'),
-            'paper_id': request.form.get('paper_id'),
-            'workshop': request.form.get('workshop') == 'yes',
-            'banquet': request.form.get('banquet') == 'yes',
-            'dietary': request.form.get('dietary'),
-            'created_at': datetime.now().isoformat()
-        }
-        
-        # Calculate total amount based on registration type and period
-        total = 0
-        current_date = datetime.now()
-        
-        if fees:
-            # Determine registration period
-            if fees.get('early_bird') and current_date <= datetime.strptime(fees['early_bird']['deadline'], '%Y-%m-%d'):
-                period = fees['early_bird']
-            elif fees.get('early') and current_date <= datetime.strptime(fees['early']['deadline'], '%Y-%m-%d'):
-                period = fees['early']
-            else:
-                period = fees.get('late', {})
-            
-            # Get base fee
-            if registration_data['registration_type'] == 'student':
-                total = float(period.get('student_author', 0))
-            elif registration_data['registration_type'] == 'regular':
-                total = float(period.get('regular_author', 0))
-            elif registration_data['registration_type'] == 'listener':
-                total = float(period.get('listener', 0))
-            elif registration_data['registration_type'] == 'virtual':
-                total = float(period.get('virtual', 0))
-            
-            # Add extra fees
-            if registration_data['workshop']:
-                total += 50  # Workshop fee
-            if registration_data['banquet']:
-                total += 75  # Banquet fee
-        
-        registration_data['total_amount'] = total
-        registration_data['payment_status'] = 'pending'
-        
-        try:
-            # Store registration in Firebase
-            ref = db.reference('registrations')
-            new_reg = ref.push(registration_data)
-            
-            # Send confirmation email
-            if send_confirmation_email(registration_data):
-                flash('Registration successful! Check your email for confirmation.', 'success')
-            else:
-                flash('Registration successful but email confirmation failed.', 'warning')
-            
-            return redirect(url_for('dashboard'))
-        except Exception as e:
-            flash(f'Error processing registration: {str(e)}', 'error')
-    
-    return render_template('user/registration.html', site_design=get_site_design(), fees=fees)
+    # If user is already logged in, proceed to registration form
+    return redirect(url_for('registration_form', 
+                          type=request.form.get('registration_type'),
+                          period=request.form.get('registration_period')))
 
 @app.route('/dashboard')
 @login_required
@@ -1265,7 +1295,7 @@ def update_submission_status(submission_id):
             msg.body = status_messages[new_status].format(
                 title=submission['title'],
                 category=submission['category'],
-                comments=comments
+                comments=comments if comments else 'No additional comments provided.'
             )
             
             mail.send(msg)
@@ -1284,15 +1314,15 @@ def save_submission_comments(submission_id):
         data = request.get_json()
         comments = data.get('comments', '')
         
-        # Update comments in Firebase
-        sub_ref = db.reference(f'submissions/{submission_id}')
-        submission = sub_ref.get()
+        # Update paper comments in Firebase
+        paper_ref = db.reference(f'papers/{submission_id}')
+        paper = paper_ref.get()
         
-        if not submission:
-            return jsonify({'success': False, 'error': 'Submission not found'}), 404
+        if not paper:
+            return jsonify({'success': False, 'error': 'Paper not found'}), 404
         
         # Update the comments
-        sub_ref.update({
+        paper_ref.update({
             'review_comments': comments,
             'updated_at': datetime.now().isoformat(),
             'reviewed_by': current_user.email
@@ -2284,91 +2314,55 @@ def registration_form():
             except (ValueError, TypeError):
                 registration_fee = 0
             
+            # Handle payment proof upload
+            payment_proof_url = ''
+            if 'payment_proof' in request.files:
+                payment_file = request.files['payment_proof']
+                if payment_file and payment_file.filename:
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = secure_filename(f"{timestamp}_{payment_file.filename}")
+                    payment_path = os.path.join(payments_dir, filename)
+                    payment_file.save(payment_path)
+                    payment_proof_url = f"/static/uploads/payments/{filename}"
+            
             # Get form data
             registration_data = {
                 'user_id': current_user.id,
-                'full_name': request.form.get('full_name'),
-                'email': request.form.get('email'),
+                'email': current_user.email,
+                'full_name': current_user.full_name,
                 'institution': request.form.get('institution'),
                 'registration_type': request.form.get('registration_type'),
                 'registration_period': request.form.get('registration_period'),
                 'registration_fee': registration_fee,
                 'workshop': request.form.get('workshop') == 'on',
                 'banquet': request.form.get('banquet') == 'on',
+                'extra_paper': request.form.get('extra_paper') == 'on',
                 'payment_reference': request.form.get('payment_reference'),
-                'submission_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'status': 'pending'
+                'payment_proof_url': payment_proof_url,
+                'submission_date': datetime.now().isoformat(),
+                'payment_status': 'pending',
+                'total_amount': float(request.form.get('total_amount', 0)),
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
             }
             
-            # Handle paper submission for authors
-            if 'author' in registration_data['registration_type']:
-                paper_data = {
-                    'title': request.form.get('paper_title'),
-                    'abstract': request.form.get('paper_abstract'),
-                    'presentation_type': request.form.get('presentation_type')
-                }
-                registration_data['paper'] = paper_data
-                
-                # Handle paper file upload
-                if 'paper_file' in request.files:
-                    paper_file = request.files['paper_file']
-                    if paper_file and paper_file.filename:
-                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                        paper_filename = secure_filename(f"{registration_data['payment_reference']}_{timestamp}_paper.pdf")
-                        paper_path = os.path.join(papers_dir, paper_filename)
-                        paper_file.save(paper_path)
-                        registration_data['paper']['file_path'] = f"papers/{paper_filename}"
-            
-            # Handle payment proof upload
-            if 'payment_proof' in request.files:
-                payment_file = request.files['payment_proof']
-                if payment_file and payment_file.filename:
-                    # Get original filename and secure it
-                    original_filename = secure_filename(payment_file.filename)
-                    # Add timestamp to ensure uniqueness but keep original name
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    payment_filename = f"{timestamp}_{original_filename}"
-                    payment_path = os.path.join(payments_dir, payment_filename)
-                    payment_file.save(payment_path)
-                    registration_data['payment_proof'] = f"payments/{payment_filename}"
-            
-            # Calculate total amount with safe conversion
-            total_amount = registration_fee
-            if registration_data['workshop'] and fees and 'workshop_fee' in fees:
-                try:
-                    workshop_fee = float(fees['workshop_fee'])
-                    total_amount += workshop_fee
-                except (ValueError, TypeError):
-                    pass
-                    
-            if registration_data['banquet'] and fees and 'banquet_fee' in fees:
-                try:
-                    banquet_fee = float(fees['banquet_fee'])
-                    total_amount += banquet_fee
-                except (ValueError, TypeError):
-                    pass
-                    
-            registration_data['total_amount'] = total_amount
-            
-            # Save registration data to Firebase
+            # Save to Firebase
             registrations_ref = db.reference('registrations')
             new_registration = registrations_ref.push(registration_data)
             
-            # Update early bird seats if applicable
-            if registration_data['registration_period'] == 'early_bird':
-                early_bird = fees.get('early_bird', {})
-                if early_bird and early_bird.get('show_seats') and early_bird.get('seats_remaining'):
-                    early_bird['seats_remaining'] = int(early_bird['seats_remaining']) - 1
-                    fees_ref.child('early_bird').update({'seats_remaining': early_bird['seats_remaining']})
+            # Also save reference to user's registrations
+            user_reg_ref = db.reference(f'users/{current_user.id}/registrations/{new_registration.key}')
+            user_reg_ref.set(True)
             
             flash('Registration submitted successfully!', 'success')
             return redirect(url_for('dashboard'))
             
         except Exception as e:
             flash(f'Error submitting registration: {str(e)}', 'error')
-            return render_template('user/registration_form.html',
+            return render_template('user/registration.html',
                                 site_design=get_site_design(),
                                 fees=fees,
+                                firebase_config=app.config['FIREBASE_CONFIG'],
                                 selected_type=registration_type,
                                 selected_period=registration_period)
     
@@ -2377,9 +2371,10 @@ def registration_form():
         flash('Please select a registration type and period first.', 'error')
         return redirect(url_for('registration'))
     
-    return render_template('user/registration_form.html',
+    return render_template('user/registration.html',
                          site_design=get_site_design(),
                          fees=fees,
+                         firebase_config=app.config['FIREBASE_CONFIG'],
                          selected_type=registration_type,
                          selected_period=registration_period)
 
@@ -2490,6 +2485,166 @@ def serve_upload(filename):
     except Exception as e:
         print(f"Error serving file: {str(e)}")
         return "Error accessing file", 500
+
+# Admin paper management routes
+@app.route('/admin/submissions')  # Keep this route for backward compatibility
+@app.route('/admin/papers')
+@login_required
+@admin_required
+def admin_papers():
+    try:
+        # Get all papers from Firebase
+        papers_ref = db.reference('papers')
+        papers = papers_ref.get() or {}
+        
+        # Initialize papersData for JavaScript
+        papers_data = json.dumps(papers)
+        
+        # Sort papers by submission date (newest first)
+        papers = dict(sorted(
+            papers.items(),
+            key=lambda x: x[1].get('submitted_at', ''),
+            reverse=True
+        ))
+        
+        return render_template(
+            'admin/submissions.html',
+            papers=papers,
+            papers_data=papers_data,  # Add this for JavaScript
+            site_design=get_site_design()
+        )
+    except Exception as e:
+        flash(f'Error loading papers: {str(e)}', 'error')
+        return render_template(
+            'admin/submissions.html',
+            papers={},
+            papers_data='{}',
+            site_design=get_site_design()
+        )
+
+@app.route('/admin/papers/<paper_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def update_paper_status(paper_id):
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        comments = data.get('comments', '')
+        
+        if new_status not in ['accepted', 'rejected', 'revision']:
+            return jsonify({'success': False, 'error': 'Invalid status'}), 400
+        
+        # Update paper status in Firebase
+        paper_ref = db.reference(f'papers/{paper_id}')
+        paper = paper_ref.get()
+        
+        if not paper:
+            return jsonify({'success': False, 'error': 'Paper not found'}), 404
+        
+        # Update the status and comments
+        paper_ref.update({
+            'status': new_status,
+            'review_comments': comments,
+            'updated_at': datetime.now().isoformat(),
+            'reviewed_by': current_user.email
+        })
+        
+        # Send email notification to author
+        try:
+            msg = Message(
+                f'Paper Submission {new_status.title()}',
+                recipients=[paper['user_email']]
+            )
+            
+            status_messages = {
+                'accepted': """
+                Congratulations! Your paper has been accepted for the GIIR Conference 2024.
+                
+                Paper Details:
+                Title: {title}
+                Presentation Type: {type}
+                
+                Please prepare your presentation according to the conference guidelines.
+                {comments}
+                
+                Best regards,
+                GIIR Conference Team
+                """,
+                'rejected': """
+                Thank you for submitting your paper to the GIIR Conference 2024.
+                
+                We regret to inform you that your paper was not accepted for presentation.
+                
+                Paper Details:
+                Title: {title}
+                Presentation Type: {type}
+                
+                Review Comments:
+                {comments}
+                
+                We encourage you to consider our feedback for future submissions.
+                
+                Best regards,
+                GIIR Conference Team
+                """,
+                'revision': """
+                Thank you for submitting your paper to the GIIR Conference 2024.
+                
+                Your paper requires revisions before it can be accepted.
+                
+                Paper Details:
+                Title: {title}
+                Presentation Type: {type}
+                
+                Review Comments:
+                {comments}
+                
+                Please submit your revised version through the conference system.
+                
+                Best regards,
+                GIIR Conference Team
+                """
+            }
+            
+            msg.body = status_messages[new_status].format(
+                title=paper['paper_title'],
+                type=paper['presentation_type'].replace('_', ' ').title(),
+                comments=comments if comments else 'No additional comments provided.'
+            )
+            
+            mail.send(msg)
+        except Exception as e:
+            print(f"Error sending email: {str(e)}")
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/papers/<paper_id>/comments', methods=['POST'])
+@login_required
+@admin_required
+def save_paper_comments(paper_id):
+    try:
+        data = request.get_json()
+        comments = data.get('comments', '')
+        
+        # Update paper comments in Firebase
+        paper_ref = db.reference(f'papers/{paper_id}')
+        paper = paper_ref.get()
+        
+        if not paper:
+            return jsonify({'success': False, 'error': 'Paper not found'}), 404
+        
+        # Update the comments
+        paper_ref.update({
+            'review_comments': comments,
+            'updated_at': datetime.now().isoformat(),
+            'reviewed_by': current_user.email
+        })
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

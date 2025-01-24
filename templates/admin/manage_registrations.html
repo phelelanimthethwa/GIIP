@@ -188,8 +188,34 @@
 
                 <div class="detail-section">
                     <h3>Additional Items</h3>
-                    <div id="modalAdditionalItems">
-                        <!-- Dynamically populated -->
+                    <div id="modalAdditionalItems" class="additional-items-grid">
+                        <div class="item-status workshop-status">
+                            <div class="item-icon">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                            </div>
+                            <div class="item-details">
+                                <h4>Workshop</h4>
+                                <p class="status"></p>
+                            </div>
+                        </div>
+                        <div class="item-status banquet-status">
+                            <div class="item-icon">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                            <div class="item-details">
+                                <h4>Banquet</h4>
+                                <p class="status"></p>
+                            </div>
+                        </div>
+                        <div class="item-status extra-paper-status author-only">
+                            <div class="item-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="item-details">
+                                <h4>Extra Paper</h4>
+                                <p class="status"></p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -551,6 +577,89 @@
         padding: 1rem;
     }
 }
+
+/* Additional Items Styles in Modal */
+.additional-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.item-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background: var(--background-color);
+    transition: all 0.3s ease;
+}
+
+.item-status.selected {
+    background: var(--primary-color);
+}
+
+.item-status.selected .item-icon i,
+.item-status.selected .item-details h4,
+.item-status.selected .item-details p {
+    color: white;
+}
+
+.item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-icon i {
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-details h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.item-details p {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.item-status .status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-status .status i {
+    font-size: 1rem;
+}
+
+.item-status .status.included i {
+    color: #28a745;
+}
+
+.item-status .status.not-included i {
+    color: #dc3545;
+}
+
+@media (max-width: 768px) {
+    .additional-items-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <script>
@@ -607,26 +716,47 @@ function viewDetails(id) {
             document.getElementById('modalPeriod').textContent = (registration.registration_period || '').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             document.getElementById('modalDate').textContent = registration.submission_date || 'Not provided';
             
-            // Additional Items
-            const additionalItemsContainer = document.getElementById('modalAdditionalItems');
-            additionalItemsContainer.innerHTML = '';
+            // Update Additional Items Section
+            const workshopStatus = document.querySelector('.workshop-status');
+            const banquetStatus = document.querySelector('.banquet-status');
+            const extraPaperStatus = document.querySelector('.extra-paper-status');
             
+            // Workshop Status
             if (registration.workshop) {
-                additionalItemsContainer.innerHTML += `
-                    <div class="detail-group">
-                        <label>Workshop</label>
-                        <p><i class="fas fa-check-circle text-success"></i> Registered</p>
-                    </div>`;
+                workshopStatus.classList.add('selected');
+                workshopStatus.querySelector('.status').innerHTML = '<i class="fas fa-check-circle"></i> Included';
+                workshopStatus.querySelector('.status').classList.add('included');
+            } else {
+                workshopStatus.classList.remove('selected');
+                workshopStatus.querySelector('.status').innerHTML = '<i class="fas fa-times-circle"></i> Not Included';
+                workshopStatus.querySelector('.status').classList.add('not-included');
             }
+            
+            // Banquet Status
             if (registration.banquet) {
-                additionalItemsContainer.innerHTML += `
-                    <div class="detail-group">
-                        <label>Banquet</label>
-                        <p><i class="fas fa-check-circle text-success"></i> Registered</p>
-                    </div>`;
+                banquetStatus.classList.add('selected');
+                banquetStatus.querySelector('.status').innerHTML = '<i class="fas fa-check-circle"></i> Included';
+                banquetStatus.querySelector('.status').classList.add('included');
+            } else {
+                banquetStatus.classList.remove('selected');
+                banquetStatus.querySelector('.status').innerHTML = '<i class="fas fa-times-circle"></i> Not Included';
+                banquetStatus.querySelector('.status').classList.add('not-included');
             }
-            if (!registration.workshop && !registration.banquet) {
-                additionalItemsContainer.innerHTML = '<p>No additional items selected</p>';
+            
+            // Extra Paper Status (only for authors)
+            if (registration.registration_type && registration.registration_type.includes('author')) {
+                extraPaperStatus.style.display = 'flex';
+                if (registration.extra_paper) {
+                    extraPaperStatus.classList.add('selected');
+                    extraPaperStatus.querySelector('.status').innerHTML = '<i class="fas fa-check-circle"></i> Included';
+                    extraPaperStatus.querySelector('.status').classList.add('included');
+                } else {
+                    extraPaperStatus.classList.remove('selected');
+                    extraPaperStatus.querySelector('.status').innerHTML = '<i class="fas fa-times-circle"></i> Not Included';
+                    extraPaperStatus.querySelector('.status').classList.add('not-included');
+                }
+            } else {
+                extraPaperStatus.style.display = 'none';
             }
             
             // Payment Information
