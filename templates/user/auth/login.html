@@ -27,6 +27,8 @@
             </div>
             <div class="form-group text-center">
                 <a href="{{ url_for('register_account') }}">Don't have an account? Register</a>
+                <br>
+                <a href="{{ url_for('forgot_password') }}" class="forgot-password">Forgot your password?</a>
             </div>
         </form>
     </div>
@@ -103,6 +105,17 @@
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+
+.forgot-password {
+    display: inline-block;
+    margin-top: 0.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
 }
 </style>
 {% endblock %} 

@@ -2,6 +2,81 @@
 
 {% block title %}Submit Paper - GIIR Conference 2024{% endblock %}
 
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<style>
+.submission-form {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.author-entry {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+.author-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.author-header h4 {
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-outline-primary {
+    margin-bottom: 1.5rem;
+}
+
+.g-recaptcha {
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .submission-form {
+        padding: 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions button {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <h1>Submit Your Paper</h1>
@@ -9,163 +84,88 @@
 </div>
 
 <div class="content-section">
-    <form method="POST" enctype="multipart/form-data" id="paperSubmissionForm" class="submission-form">
-        <!-- Progress Steps -->
-        <div class="submission-progress">
-            <div class="progress-step active" data-step="1">
-                <div class="step-number">1</div>
-                <div class="step-label">Paper Details</div>
+    <form id="paperSubmissionForm" method="POST" enctype="multipart/form-data" class="submission-form">
+        <div class="form-section">
+            <h3>Paper Details</h3>
+            <div class="form-group">
+                <label for="paper_title">Paper Title *</label>
+                <input type="text" id="paper_title" name="paper_title" class="form-control" required>
             </div>
-            <div class="progress-step" data-step="2">
-                <div class="step-number">2</div>
-                <div class="step-label">Authors</div>
+            <div class="form-group">
+                <label for="paper_abstract">Abstract *</label>
+                <textarea id="paper_abstract" name="paper_abstract" class="form-control" rows="5" required></textarea>
             </div>
-            <div class="progress-step" data-step="3">
-                <div class="step-number">3</div>
-                <div class="step-label">Review & Submit</div>
+            <div class="form-group">
+                <label for="keywords">Keywords * (comma-separated)</label>
+                <input type="text" id="keywords" name="keywords" class="form-control" placeholder="e.g., AI, Machine Learning, Data Science" required>
             </div>
-        </div>
-
-        <!-- Step 1: Paper Details -->
-        <div class="form-section" id="step1">
-            <h2><i class="fas fa-file-alt"></i> Paper Details</h2>
-            <div class="form-grid">
-                <div class="form-group full-width">
-                    <label for="paper_title">Paper Title *</label>
-                    <input type="text" id="paper_title" name="paper_title" required>
-                    <small class="text-muted">Enter the full title of your paper</small>
-                </div>
-
-                <div class="form-group full-width">
-                    <label for="paper_abstract">Abstract *</label>
-                    <textarea id="paper_abstract" name="paper_abstract" rows="6" required></textarea>
-                    <div class="word-count">
-                        <span id="abstractWordCount">0</span>/300 words
-                    </div>
-                    <small class="text-muted">Enter your paper abstract (max 300 words)</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="paper_file">Paper File * <small>(PDF only)</small></label>
-                    <div class="file-upload-wrapper">
-                        <input type="file" id="paper_file" name="paper_file" accept=".pdf" required>
-                        <div class="file-upload-preview">
-                            <span class="preview-text">No file selected</span>
-                            <button type="button" class="btn-clear-file" style="display: none;">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <small class="text-muted">Upload your paper in PDF format (max 10MB)</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="presentation_type">Presentation Type *</label>
-                    <select id="presentation_type" name="presentation_type" required>
-                        <option value="">Select Presentation Type</option>
-                        <option value="oral">Oral Presentation</option>
-                        <option value="poster">Poster Presentation</option>
-                        <option value="virtual">Virtual Presentation</option>
-                    </select>
-                    <small class="text-muted">Choose how you would like to present your paper</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="research_area">Research Area *</label>
-                    <select id="research_area" name="research_area" required>
-                        <option value="">Select Research Area</option>
-                        <option value="social_sciences">Social Sciences</option>
-                        <option value="economics">Economics</option>
-                        <option value="information_technology">Information Technology</option>
-                        <option value="education">Education</option>
-                        <option value="management">Management Sciences</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="keywords">Keywords *</label>
-                    <input type="text" id="keywords" name="keywords" required>
-                    <small class="text-muted">Enter 3-5 keywords separated by commas</small>
-                    <div class="keywords-preview"></div>
-                </div>
+            <div class="form-group">
+                <label for="research_area">Research Area *</label>
+                <select id="research_area" name="research_area" class="form-control" required>
+                    <option value="">Select Research Area</option>
+                    <option value="artificial_intelligence">Artificial Intelligence</option>
+                    <option value="machine_learning">Machine Learning</option>
+                    <option value="data_science">Data Science</option>
+                    <option value="computer_vision">Computer Vision</option>
+                    <option value="natural_language_processing">Natural Language Processing</option>
+                    <option value="robotics">Robotics</option>
+                    <option value="cybersecurity">Cybersecurity</option>
+                    <option value="cloud_computing">Cloud Computing</option>
+                    <option value="internet_of_things">Internet of Things</option>
+                    <option value="blockchain">Blockchain</option>
+                    <option value="other">Other</option>
+                </select>
             </div>
-            <div class="form-navigation">
-                <button type="button" class="btn btn-primary next-step">Next: Authors <i class="fas fa-arrow-right"></i></button>
+            <div class="form-group">
+                <label for="presentation_type">Presentation Type *</label>
+                <select id="presentation_type" name="presentation_type" class="form-control" required>
+                    <option value="">Select Presentation Type</option>
+                    <option value="oral">Oral Presentation</option>
+                    <option value="poster">Poster Presentation</option>
+                    <option value="virtual">Virtual Presentation</option>
+                </select>
             </div>
         </div>
 
-        <!-- Step 2: Authors -->
-        <div class="form-section" id="step2" style="display: none;">
-            <h2><i class="fas fa-users"></i> Authors</h2>
+        <div class="form-section">
+            <h3>Authors</h3>
             <div id="authors-container">
-                <div class="author-entry primary-author">
-                    <h3>Primary Author</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Full Name *</label>
-                            <input type="text" name="authors[0][name]" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Email *</label>
-                            <input type="email" name="authors[0][email]" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Institution/Organization *</label>
-                            <input type="text" name="authors[0][institution]" required>
-                        </div>
+                <!-- Primary Author (always present) -->
+                <div class="author-entry">
+                    <h4>Primary Author</h4>
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="authors[0][name]" class="form-control" value="{{ current_user.full_name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="authors[0][email]" class="form-control" value="{{ current_user.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Institution/Organization *</label>
+                        <input type="text" name="authors[0][institution]" class="form-control" required>
                     </div>
                 </div>
             </div>
-            <button type="button" id="addAuthor" class="btn btn-secondary">
+            <button type="button" class="btn btn-outline-primary" onclick="addCoAuthor()">
                 <i class="fas fa-plus"></i> Add Co-Author
             </button>
-            <div class="form-navigation">
-                <button type="button" class="btn btn-outline-primary prev-step"><i class="fas fa-arrow-left"></i> Back</button>
-                <button type="button" class="btn btn-primary next-step">Review & Submit <i class="fas fa-arrow-right"></i></button>
+        </div>
+
+        <div class="form-section">
+            <h3>Paper Upload</h3>
+            <div class="form-group">
+                <label for="paper_file">Upload Paper * (PDF only)</label>
+                <input type="file" id="paper_file" name="paper_file" class="form-control" accept=".pdf" required>
+                <small class="form-text text-muted">Maximum file size: 10MB</small>
             </div>
         </div>
 
-        <!-- Step 3: Review & Submit -->
-        <div class="form-section" id="step3" style="display: none;">
-            <h2><i class="fas fa-check-circle"></i> Review & Submit</h2>
-            <div class="review-summary">
-                <div class="review-section">
-                    <h3>Paper Details</h3>
-                    <div class="review-item">
-                        <span class="review-label">Title:</span>
-                        <span class="review-value" id="review-title"></span>
-                    </div>
-                    <div class="review-item">
-                        <span class="review-label">Research Area:</span>
-                        <span class="review-value" id="review-area"></span>
-                    </div>
-                    <div class="review-item">
-                        <span class="review-label">Presentation Type:</span>
-                        <span class="review-value" id="review-presentation"></span>
-                    </div>
-                    <div class="review-item">
-                        <span class="review-label">File:</span>
-                        <span class="review-value" id="review-file"></span>
-                    </div>
-                </div>
-                <div class="review-section">
-                    <h3>Authors</h3>
-                    <div id="review-authors"></div>
-                </div>
-            </div>
+        <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
 
-            <!-- reCAPTCHA -->
-            <div class="form-section">
-                <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
-            </div>
-
-            <div class="form-navigation">
-                <button type="button" class="btn btn-outline-primary prev-step"><i class="fas fa-arrow-left"></i> Back</button>
-                <button type="submit" class="btn btn-success" id="submitButton">
-                    <i class="fas fa-paper-plane"></i> Submit Paper
-                </button>
-            </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Submit Paper</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 
@@ -179,619 +179,96 @@
 </div>
 {% endblock %}
 
-{% block styles %}
-<style>
-.submission-form {
-    max-width: 1200px;
-    margin: 0 auto;
-    position: relative;
-}
-
-.submission-progress {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    padding: 0 1rem;
-}
-
-.progress-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    flex: 1;
-}
-
-.progress-step::before {
-    content: '';
-    position: absolute;
-    top: 1.5rem;
-    left: -50%;
-    width: 100%;
-    height: 2px;
-    background: #dee2e6;
-    z-index: 1;
-}
-
-.progress-step:first-child::before {
-    display: none;
-}
-
-.progress-step.active .step-number {
-    background: var(--primary-color);
-    color: white;
-}
-
-.progress-step.completed .step-number {
-    background: var(--success-color);
-    color: white;
-}
-
-.step-number {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    z-index: 2;
-    transition: all 0.3s ease;
-}
-
-.step-label {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
-.form-section {
-    background: white;
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    margin-bottom: 2rem;
-}
-
-.form-section h2 {
-    color: var(--text-primary);
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.form-section h2 i {
-    color: var(--primary-color);
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group.full-width {
-    grid-column: 1 / -1;
-}
-
-.form-group label {
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.form-group input[type="text"],
-.form-group input[type="email"],
-.form-group select,
-.form-group textarea {
-    padding: 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.form-group input[type="text"]:focus,
-.form-group input[type="email"]:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
-    outline: none;
-}
-
-.file-upload-wrapper {
-    position: relative;
-}
-
-.file-upload-preview {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-    background: #f8f9fa;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.btn-clear-file {
-    background: none;
-    border: none;
-    color: #dc3545;
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 4px;
-}
-
-.btn-clear-file:hover {
-    background: rgba(220, 53, 69, 0.1);
-}
-
-.word-count {
-    text-align: right;
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin-top: 0.25rem;
-}
-
-.keywords-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.keyword-tag {
-    background: #e9ecef;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.author-entry {
-    background: var(--background-secondary);
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    position: relative;
-}
-
-.author-entry.primary-author {
-    border: 2px solid var(--primary-color);
-}
-
-.author-entry h3 {
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-}
-
-.remove-author {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: none;
-    border: none;
-    color: #dc3545;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 4px;
-}
-
-.remove-author:hover {
-    background: rgba(220, 53, 69, 0.1);
-}
-
-.form-navigation {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px solid #dee2e6;
-}
-
-.review-summary {
-    display: grid;
-    gap: 2rem;
-}
-
-.review-section {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 8px;
-}
-
-.review-section h3 {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-    color: var(--text-primary);
-}
-
-.review-item {
-    display: flex;
-    margin-bottom: 0.5rem;
-}
-
-.review-label {
-    font-weight: 500;
-    min-width: 150px;
-}
-
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.loading-content {
-    text-align: center;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-@media (max-width: 768px) {
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-navigation {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .form-navigation button {
-        width: 100%;
-    }
-    
-    .submission-progress {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .progress-step::before {
-        left: 1.5rem;
-        top: -1rem;
-        width: 2px;
-        height: 1rem;
-    }
-}
-</style>
-{% endblock %}
-
 {% block scripts %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('paperSubmissionForm');
-    const addAuthorBtn = document.getElementById('addAuthor');
-    const authorsContainer = document.getElementById('authors-container');
-    const abstractInput = document.getElementById('paper_abstract');
-    const wordCountDisplay = document.getElementById('abstractWordCount');
-    const keywordsInput = document.getElementById('keywords');
-    const keywordsPreview = document.querySelector('.keywords-preview');
-    const fileInput = document.getElementById('paper_file');
-    const filePreview = document.querySelector('.preview-text');
-    const clearFileBtn = document.querySelector('.btn-clear-file');
-    let authorCount = 1;
+let authorCount = 1;
 
-    // Progress steps functionality
-    const steps = ['step1', 'step2', 'step3'];
-    let currentStep = 0;
-
-    function updateProgress() {
-        document.querySelectorAll('.progress-step').forEach((step, index) => {
-            if (index < currentStep) {
-                step.classList.add('completed');
-                step.classList.remove('active');
-            } else if (index === currentStep) {
-                step.classList.add('active');
-                step.classList.remove('completed');
-            } else {
-                step.classList.remove('active', 'completed');
-            }
-        });
-    }
-
-    function showStep(stepIndex) {
-        steps.forEach((step, index) => {
-            const element = document.getElementById(step);
-            if (index === stepIndex) {
-                element.style.display = 'block';
-            } else {
-                element.style.display = 'none';
-            }
-        });
-        currentStep = stepIndex;
-        updateProgress();
-    }
-
-    // Navigation between sections
-    const paperDetailsSection = document.getElementById('step1');
-    const authorsSection = document.getElementById('step2');
-    const submissionSection = document.getElementById('step3');
-
-    // Next button in Paper Details section
-    paperDetailsSection.querySelector('.btn-next').addEventListener('click', function() {
-        if (validatePaperDetails()) {
-            paperDetailsSection.classList.add('section-completed');
-            authorsSection.classList.add('section-active');
-            authorsSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    });
-
-    // Next button in Authors section
-    authorsSection.querySelector('.btn-next').addEventListener('click', function() {
-        if (validateAuthors()) {
-            authorsSection.classList.add('section-completed');
-            submissionSection.classList.add('section-active');
-            submissionSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    });
-
-    // Validation functions
-    function validatePaperDetails() {
-        const title = document.getElementById('paper_title').value;
-        const abstract = document.getElementById('paper_abstract').value;
-        const file = document.getElementById('paper_file').files[0];
-        const type = document.getElementById('presentation_type').value;
-        const area = document.getElementById('research_area').value;
-        const keywords = document.getElementById('keywords').value;
-
-        let isValid = true;
-        const fields = [
-            { id: 'paper_title', value: title },
-            { id: 'paper_abstract', value: abstract },
-            { id: 'presentation_type', value: type },
-            { id: 'research_area', value: area },
-            { id: 'keywords', value: keywords }
-        ];
-
-        fields.forEach(field => {
-            const element = document.getElementById(field.id);
-            const feedback = element.nextElementSibling.querySelector('.validation-feedback') || 
-                           element.nextElementSibling;
-            if (!field.value.trim()) {
-                isValid = false;
-                element.classList.add('is-invalid');
-                feedback.textContent = 'This field is required';
-            } else {
-                element.classList.remove('is-invalid');
-                feedback.textContent = '';
-            }
-        });
-
-        if (!file) {
-            isValid = false;
-            document.getElementById('paper_file').classList.add('is-invalid');
-            document.querySelector('.file-upload-container .validation-feedback').textContent = 'Please upload a PDF file';
-        }
-
-        const keywordCount = keywords.split(',').filter(k => k.trim()).length;
-        if (keywordCount < 3 || keywordCount > 5) {
-            isValid = false;
-            document.getElementById('keywords').classList.add('is-invalid');
-            document.querySelector('#keywords + .validation-feedback').textContent = 'Please provide 3-5 keywords';
-        }
-
-        return isValid;
-    }
-
-    function validateAuthors() {
-        let isValid = true;
-        const authorInputs = document.querySelectorAll('.author-entry input[required]');
-        
-        authorInputs.forEach(input => {
-            const feedback = input.nextElementSibling;
-            if (!input.value.trim()) {
-                isValid = false;
-                input.classList.add('is-invalid');
-                feedback.textContent = 'This field is required';
-            } else if (input.type === 'email' && !isValidEmail(input.value)) {
-                isValid = false;
-                input.classList.add('is-invalid');
-                feedback.textContent = 'Please enter a valid email address';
-            } else {
-                input.classList.remove('is-invalid');
-                feedback.textContent = '';
-            }
-        });
-
-        return isValid;
-    }
-
-    function isValidEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    // Update the form sections CSS
-    const formSectionStyles = `
-        .form-section {
-            opacity: 0.7;
-            pointer-events: none;
-            transition: all 0.3s ease;
-        }
-
-        .form-section:first-child,
-        .form-section.section-completed,
-        .form-section.section-active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .form-section .btn-next {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-            margin-top: 1.5rem;
-        }
-
-        .form-section .btn-next:hover {
-            background: var(--primary-dark);
-        }
-
-        .is-invalid {
-            border-color: var(--danger-color) !important;
-        }
-
-        .validation-feedback {
-            color: var(--danger-color);
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-        }
+function addCoAuthor() {
+    const container = document.getElementById('authors-container');
+    const newAuthor = document.createElement('div');
+    newAuthor.className = 'author-entry';
+    newAuthor.innerHTML = `
+        <div class="author-header">
+            <h4>Co-Author ${authorCount}</h4>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeCoAuthor(this)">
+                <i class="fas fa-times"></i> Remove
+            </button>
+        </div>
+        <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="authors[${authorCount}][name]" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="authors[${authorCount}][email]" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Institution/Organization *</label>
+            <input type="text" name="authors[${authorCount}][institution]" class="form-control" required>
+        </div>
     `;
+    container.appendChild(newAuthor);
+    authorCount++;
+}
 
-    // Add the styles to the page
-    const styleSheet = document.createElement("style");
-    styleSheet.textContent = formSectionStyles;
-    document.head.appendChild(styleSheet);
+function removeCoAuthor(button) {
+    const authorEntry = button.closest('.author-entry');
+    authorEntry.remove();
+    updateCoAuthorNumbers();
+}
 
-    // Make first section active by default
-    paperDetailsSection.classList.add('section-active');
-
-    // Word count for abstract
-    function updateWordCount() {
-        const text = abstractInput.value;
-        const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
-        wordCountDisplay.textContent = wordCount;
-    }
-
-    // Add event listener for word count
-    abstractInput.addEventListener('input', updateWordCount);
-    abstractInput.addEventListener('paste', function() {
-        setTimeout(updateWordCount, 0);
-    });
-
-    // Initial word count
-    updateWordCount();
-
-    // Keywords preview
-    keywordsInput.addEventListener('input', function() {
-        const keywords = this.value.split(',').map(k => k.trim()).filter(k => k);
-        keywordsPreview.innerHTML = keywords.map(keyword => 
-            `<span class="keyword-tag">${keyword}</span>`
-        ).join('');
-    });
-
-    // File upload preview
-    fileInput.addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            filePreview.textContent = file.name;
-            clearFileBtn.style.display = 'block';
-        } else {
-            filePreview.textContent = 'No file selected';
-            clearFileBtn.style.display = 'none';
-        }
-    });
-
-    clearFileBtn.addEventListener('click', function() {
-        fileInput.value = '';
-        filePreview.textContent = 'No file selected';
-        this.style.display = 'none';
-    });
-
-    // Add co-author functionality
-    addAuthorBtn.addEventListener('click', function() {
-        const authorEntry = document.createElement('div');
-        authorEntry.className = 'author-entry';
-        authorEntry.innerHTML = `
-            <div class="entry-header">
-                <h3>Co-Author ${authorCount}</h3>
-                <button type="button" class="remove-author">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Full Name *</label>
-                    <input type="text" name="authors[${authorCount}][name]" required>
-                </div>
-                <div class="form-group">
-                    <label>Email *</label>
-                    <input type="email" name="authors[${authorCount}][email]" required>
-                </div>
-                <div class="form-group">
-                    <label>Institution/Organization *</label>
-                    <input type="text" name="authors[${authorCount}][institution]" required>
-                </div>
-            </div>
-        `;
-        authorsContainer.appendChild(authorEntry);
-        authorCount++;
-
-        // Add remove button functionality
-        const removeBtn = authorEntry.querySelector('.remove-author');
-        removeBtn.addEventListener('click', function() {
-            authorEntry.remove();
+function updateCoAuthorNumbers() {
+    const coAuthors = document.querySelectorAll('.author-entry:not(:first-child)');
+    coAuthors.forEach((author, index) => {
+        const number = index + 1;
+        author.querySelector('h4').textContent = `Co-Author ${number}`;
+        author.querySelectorAll('input').forEach(input => {
+            const fieldName = input.name.split('[')[2].replace(']', '');
+            input.name = `authors[${number}][${fieldName}]`;
         });
     });
+    authorCount = coAuthors.length + 1;
+}
 
-    // Form submission
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
+// Form validation and submission
+document.getElementById('paperSubmissionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Check if reCAPTCHA is completed
+    const recaptchaResponse = grecaptcha.getResponse();
+    if (!recaptchaResponse) {
+        alert('Please complete the reCAPTCHA verification.');
+        return;
+    }
+    
+    // Check file size
+    const fileInput = document.getElementById('paper_file');
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (fileInput.files[0] && fileInput.files[0].size > maxSize) {
+        alert('File size exceeds 10MB limit. Please choose a smaller file.');
+        return;
+    }
 
-        if (!validatePaperDetails()) {
-            return;
+    // Validate all required fields
+    const requiredFields = this.querySelectorAll('[required]');
+    let isValid = true;
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            isValid = false;
+            field.classList.add('is-invalid');
+        } else {
+            field.classList.remove('is-invalid');
         }
-
-        if (!validateAuthors()) {
-            return;
-        }
-
-        if (!grecaptcha.getResponse()) {
-            alert('Please complete the reCAPTCHA verification.');
-            return;
-        }
-
-        // Show loading overlay
-        document.querySelector('.loading-overlay').style.display = 'flex';
-        
-        // Disable submit button
-        document.getElementById('submitButton').disabled = true;
-
-        // Submit the form
-        this.submit();
     });
+
+    if (!isValid) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    // Submit the form if all validations pass
+    this.submit();
 });
 </script>
 {% endblock %} 

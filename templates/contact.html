@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us - GIIR Conference 2024{% endblock %}
+
+{% block styles %}
+<style>
+:root {
+    --primary-color: {{ site_design.primary_color }};
+    --secondary-color: {{ site_design.secondary_color }};
+    --accent-color: {{ site_design.accent_color }};
+    --text-color: {{ site_design.text_color }};
+    --background-color: {{ site_design.background_color }};
+    --header-background: {{ site_design.header_background }};
+}
+
+.contact-form {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: var(--background-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.contact-info {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--header-background);
+    border-radius: 8px;
+}
+
+.contact-info i {
+    width: 25px;
+    color: var(--primary-color);
+}
+
+.contact-method {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.contact-method:last-child {
+    margin-bottom: 0;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.success-message {
+    display: none;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    color: var(--background-color);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.page-header {
+    color: var(--text-color);
+}
+
+@media (max-width: 768px) {
+    .contact-form {
+        padding: 1rem;
+        margin: 1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Contact Us</h1>
+    <p>Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+</div>
+
+<div class="content-section">
+    <div class="contact-form">
+        <div class="contact-info">
+            <h3>Contact Information</h3>
+            <div class="contact-method">
+                <i class="fas fa-envelope"></i>
+                <span>Email: conference@giir.co.za</span>
+            </div>
+            <div class="contact-method">
+                <i class="fas fa-phone"></i>
+                <span>Phone: +27 (0)12 345 6789</span>
+            </div>
+            <div class="contact-method">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Address: 123 University Road, Pretoria, South Africa</span>
+            </div>
+        </div>
+
+        <div id="successMessage" class="success-message">
+            Thank you for your message. We'll get back to you soon!
+        </div>
+
+        <form id="contactForm" method="POST">
+            <div class="form-section">
+                <div class="form-group">
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="subject">Subject *</label>
+                    <input type="text" id="subject" name="subject" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="message">Message *</label>
+                    <textarea id="message" name="message" class="form-control" rows="5" required></textarea>
+                </div>
+            </div>
+
+            <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Send Message</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script>
+document.getElementById('contactForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Check if reCAPTCHA is completed
+    const recaptchaResponse = grecaptcha.getResponse();
+    if (!recaptchaResponse) {
+        alert('Please complete the reCAPTCHA verification.');
+        return;
+    }
+
+    // Validate all required fields
+    const requiredFields = this.querySelectorAll('[required]');
+    let isValid = true;
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            isValid = false;
+            field.classList.add('is-invalid');
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    // Get form data
+    const formData = new FormData(this);
+
+    // Submit form
+    fetch('/contact', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            document.getElementById('successMessage').style.display = 'block';
+            // Clear form
+            this.reset();
+            // Reset reCAPTCHA
+            grecaptcha.reset();
+        } else {
+            alert(data.message || 'An error occurred. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    });
+});
+</script>
+{% endblock %} 

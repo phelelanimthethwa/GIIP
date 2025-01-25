@@ -3,7 +3,7 @@ from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import firebase_admin
-from firebase_admin import credentials, db, auth
+from firebase_admin import credentials, db, auth, firestore
 from config import Config
 import json
 from datetime import datetime, timedelta
@@ -12,6 +12,17 @@ from werkzeug.utils import secure_filename
 import os
 from google.cloud import storage
 import base64
+from dotenv import load_dotenv
+from models.email_service import EmailService
+import pytz
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    print("Warning: python-dotenv not installed. Please install it using: pip install python-dotenv")
+    def load_dotenv(): pass
+
+load_dotenv()  # Add this before creating the Flask app
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -33,6 +44,9 @@ login_manager.login_view = 'login'
 # Initialize Flask-Mail
 mail = Mail(app)
 
+# After initializing mail
+email_service = EmailService(mail)
+
 # Add datetime filter for Jinja templates
 @app.template_filter('datetime')
 def format_datetime(value):
@@ -44,6 +58,25 @@ def format_datetime(value):
     else:
         dt = value
     return dt.strftime('%B %d, %Y %I:%M %p')
+
+# Add timezone formatting helper
+def format_datetime_with_timezone(date_str, time_str, timezone_str):
+    """Format datetime with timezone support"""
+    try:
+        # Get the timezone
+        tz = pytz.timezone(timezone_str)
+        
+        # Create datetime object
+        dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+        
+        # Localize the datetime to the specified timezone
+        localized_dt = tz.localize(dt)
+        
+        # Format with timezone name
+        return localized_dt.strftime('%B %d, %Y %I:%M %p %Z')
+    except Exception as e:
+        print(f"Error formatting datetime: {str(e)}")
+        return f"{date_str} {time_str} {timezone_str}"
 
 # Add this after app initialization but before routes
 @app.template_filter('format_date')
@@ -105,30 +138,7 @@ def load_user(user_id):
         return None
 
 def send_confirmation_email(registration_data):
-    try:
-        msg = Message('Conference Registration Confirmation',
-                     recipients=[registration_data['email']])
-        msg.body = f"""
-        Dear {registration_data['full_name']},
-        
-        Thank you for registering for Conference 2024!
-        
-        Registration Details:
-        - Registration Type: {registration_data['registration_type']}
-        - Total Amount: ${registration_data['total_amount']}
-        - Workshop: {'Yes' if registration_data.get('workshop') else 'No'}
-        - Banquet: {'Yes' if registration_data.get('banquet') else 'No'}
-        
-        Please keep this email for your records.
-        
-        Best regards,
-        Conference Team
-        """
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending email: {str(e)}")
-        return False
+    return email_service.send_registration_confirmation(registration_data)
 
 # Add this helper function near the top of the file
 def get_site_design():
@@ -329,61 +339,58 @@ def paper_submission():
                     'email': request.form.get(f'authors[{author_count}][email]'),
                     'institution': request.form.get(f'authors[{author_count}][institution]')
                 }
-                paper_data['authors'].append(author)
+                if all(author.values()):  # Only add if all fields are filled
+                    paper_data['authors'].append(author)
                 author_count += 1
 
-            # Handle paper file upload
-            if 'paper_file' in request.files:
-                file = request.files['paper_file']
-                if file and file.filename:
-                    # Create a storage reference
-                    bucket = storage_client.bucket(app.config['FIREBASE_CONFIG']['storageBucket'])
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = f'papers/{current_user.uid}/{timestamp}_{secure_filename(file.filename)}'
-                    blob = bucket.blob(filename)
-                    
-                    # Upload the file
-                    blob.upload_from_string(
-                        file.read(),
-                        content_type=file.content_type
-                    )
-                    
-                    # Make the file accessible to admins
-                    blob.make_public()
-                    
-                    # Add file info to paper data
-                    paper_data['file_path'] = filename
-                    paper_data['file_url'] = blob.public_url
-                else:
-                    flash('Please upload a paper file.', 'error')
+            # Validate required fields
+            required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area', 'keywords']
+            for field in required_fields:
+                if not paper_data.get(field):
+                    flash(f'Please fill in all required fields.', 'error')
                     return redirect(url_for('paper_submission'))
-            else:
+
+            if not paper_data['authors']:
+                flash('At least one author is required.', 'error')
+                return redirect(url_for('paper_submission'))
+
+            # Handle paper file upload
+            if 'paper_file' not in request.files:
                 flash('Please upload a paper file.', 'error')
                 return redirect(url_for('paper_submission'))
 
-            # Find user's author registration if it exists
-            registrations_ref = db.reference('registrations')
-            user_registrations = registrations_ref.order_by_child('user_id').equal_to(current_user.uid).get()
+            file = request.files['paper_file']
+            if not file or not file.filename:
+                flash('Please select a paper file.', 'error')
+                return redirect(url_for('paper_submission'))
+
+            if not file.filename.lower().endswith('.pdf'):
+                flash('Only PDF files are allowed.', 'error')
+                return redirect(url_for('paper_submission'))
+
+            # Create a storage reference
+            bucket = storage_client.bucket(app.config['FIREBASE_CONFIG']['storageBucket'])
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'papers/{current_user.uid}/{timestamp}_{secure_filename(file.filename)}'
+            blob = bucket.blob(filename)
             
-            author_registration = None
-            if user_registrations:
-                for reg_id, reg in user_registrations.items():
-                    if 'author' in reg.get('registration_type', '').lower():
-                        author_registration = reg_id
-                        break
+            # Upload the file
+            blob.upload_from_string(
+                file.read(),
+                content_type=file.content_type
+            )
+            
+            # Make the file accessible to admins
+            blob.make_public()
+            
+            # Add file info to paper data
+            paper_data['file_path'] = filename
+            paper_data['file_url'] = blob.public_url
 
             # Store paper in Firebase
             papers_ref = db.reference('papers')
             new_paper = papers_ref.push(paper_data)
             paper_id = new_paper.key
-
-            # If there's an author registration, link the paper
-            if author_registration:
-                reg_ref = db.reference(f'registrations/{author_registration}')
-                reg_ref.update({
-                    'paper_id': paper_id,
-                    'updated_at': datetime.now().isoformat()
-                })
 
             # Add paper reference to user's papers
             user_papers_ref = db.reference(f'users/{current_user.uid}/papers')
@@ -391,26 +398,16 @@ def paper_submission():
 
             # Send confirmation email
             try:
-                msg = Message('Paper Submission Confirmation',
-                            recipients=[current_user.email])
-                msg.body = f"""
-                Dear {paper_data['authors'][0]['name']},
-                
-                Thank you for submitting your paper to GIIR Conference 2024.
-                
-                Submission Details:
-                - Paper Title: {paper_data['paper_title']}
-                - Presentation Type: {paper_data['presentation_type']}
-                - Submission ID: {paper_id}
-                
-                We will review your submission and get back to you soon.
-                
-                Best regards,
-                GIIR Conference Team
-                """
-                mail.send(msg)
+                email_service.send_paper_confirmation({
+                    'authors': paper_data['authors'],
+                    'paper_title': paper_data['paper_title'],
+                    'presentation_type': paper_data['presentation_type'],
+                    'paper_id': paper_id,
+                    'user_email': current_user.email
+                })
             except Exception as e:
-                print(f"Error sending email: {str(e)}")
+                print(f"Error sending confirmation email: {str(e)}")
+                # Continue even if email fails
 
             flash('Paper submitted successfully! Check your email for confirmation.', 'success')
             return redirect(url_for('dashboard'))
@@ -520,11 +517,11 @@ def register_account():
 
         if not terms:
             flash('You must accept the terms and conditions.', 'error')
-            return render_template('user/auth/register.html', site_design=get_site_design())
+            return render_template('user/register.html', site_design=get_site_design())
 
         if password != confirm_password:
             flash('Passwords do not match.', 'error')
-            return render_template('user/auth/register.html', site_design=get_site_design())
+            return render_template('user/register.html', site_design=get_site_design())
 
         try:
             # Create user in Firebase Authentication
@@ -533,21 +530,29 @@ def register_account():
                 password=password,
                 display_name=full_name
             )
-            # Store additional user data in Realtime Database
-            ref = db.reference('users')
-            ref.child(user.uid).set({
+            
+            # User data for database and email
+            user_data = {
                 'email': email,
                 'full_name': full_name,
                 'created_at': datetime.now().isoformat(),
                 'is_admin': False  # Default to normal user
-            })
-            flash('Account created successfully! Please login.', 'success')
+            }
+            
+            # Store additional user data in Realtime Database
+            ref = db.reference('users')
+            ref.child(user.uid).set(user_data)
+            
+            # Send welcome email
+            email_service.send_welcome_email(user_data)
+            
+            flash('Account created successfully! Please check your email and login.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
             flash(f'Error creating account: {str(e)}', 'error')
-            return render_template('user/auth/register.html', site_design=get_site_design())
+            return render_template('user/register.html', site_design=get_site_design())
     
-    return render_template('user/auth/register.html', site_design=get_site_design())
+    return render_template('user/register.html', site_design=get_site_design())
 
 @app.route('/logout')
 @login_required
@@ -821,7 +826,13 @@ def admin_venue():
 def admin_registration_fees():
     if request.method == 'POST':
         try:
+            # Get currency settings
+            currency_code = request.form.get('currency_code')
+            custom_currency_symbol = request.form.get('custom_currency_symbol') if currency_code == 'custom' else None
+            
             registration_fees = {
+                'currency_code': currency_code,
+                'custom_currency_symbol': custom_currency_symbol,
                 'early_bird': None,
                 'early': {
                     'deadline': request.form.get('early_deadline'),
@@ -934,17 +945,18 @@ def admin_registration_fees():
             flash(f'Error updating registration fees: {str(e)}', 'danger')
             return redirect(url_for('admin_registration_fees'))
     
-    # GET request - fetch current registration fees
-    try:
-        fees = db.reference('registration_fees').get()
-        return render_template('admin/admin_registration_fees.html', 
-                             site_design=get_site_design(), 
-                             fees=fees)
-    except Exception as e:
-        flash(f'Error loading registration fees: {str(e)}', 'danger')
-        return render_template('admin/admin_registration_fees.html', 
-                             site_design=get_site_design(), 
-                             fees=None)
+    # Get current fees settings
+    fees_ref = db.reference('registration_fees')
+    current_fees = fees_ref.get() or {}
+    
+    # Add currency symbol if not present
+    if 'currency_code' not in current_fees:
+        current_fees['currency_code'] = 'ZAR'
+        current_fees['currency_symbol'] = 'R'
+    
+    return render_template('admin/admin_registration_fees.html', 
+                         site_design=get_site_design(), 
+                         fees=current_fees)
 
 @app.route('/admin/downloads', methods=['GET', 'POST'])
 @login_required
@@ -1069,6 +1081,86 @@ def get_registration_details(registration_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def get_email_template(template_name):
+    """Get email template from Firebase or return default template"""
+    try:
+        templates_ref = db.reference('email_templates').child(template_name)
+        template = templates_ref.get()
+        if template:
+            return template
+    except Exception as e:
+        print(f"Error fetching template: {e}")
+    
+    # Default templates if not found in Firebase
+    default_templates = {
+        'registration_approval': {
+            'subject': 'Your Conference Registration Has Been Approved',
+            'content': '''Dear {{full_name}},
+
+We are pleased to inform you that your registration for the conference has been approved!
+
+Registration Details:
+- Type: {{registration_type}}
+- Amount Paid: R {{amount_paid}}
+
+The conference will be held on {{conference_dates}}. We will send you additional information about the schedule and venue details closer to the date.
+
+Thank you for registering for our conference. We look forward to your participation!
+
+Best regards,
+Conference Team'''
+        },
+        'registration_rejection': {
+            'subject': 'Conference Registration Status Update',
+            'content': '''Dear {{full_name}},
+
+We regret to inform you that your conference registration could not be approved at this time.
+
+Reason: {{rejection_reason}}
+
+If you believe this is an error or would like to discuss this further, please contact our support team at {{support_email}}.
+
+Best regards,
+Conference Team'''
+        }
+    }
+    
+    return default_templates.get(template_name)
+
+def send_registration_email(registration, template_name, **kwargs):
+    """Send email notification for registration status update"""
+    try:
+        template = get_email_template(template_name)
+        if not template:
+            raise ValueError(f"Email template '{template_name}' not found")
+        
+        # Prepare template variables
+        template_vars = {
+            'full_name': registration.get('full_name', ''),
+            'registration_type': registration.get('registration_type', '').replace('_', ' ').title(),
+            'amount_paid': registration.get('total_amount', '0'),
+            'conference_dates': 'September 15-17, 2024',  # You should get this from your conference settings
+            'support_email': 'support@conference.com',  # You should get this from your conference settings
+            **kwargs
+        }
+        
+        # Replace template variables
+        content = template['content']
+        for key, value in template_vars.items():
+            content = content.replace('{{' + key + '}}', str(value))
+        
+        # Create and send email
+        msg = Message(
+            subject=template['subject'],
+            recipients=[registration.get('email')],
+            body=content
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
 @app.route('/admin/registrations/<registration_id>/status', methods=['POST'])
 @login_required
 @admin_required
@@ -1076,37 +1168,49 @@ def update_registration_status(registration_id):
     try:
         data = request.get_json()
         status = data.get('status')
-        if status not in ['approved', 'rejected']:
-            return jsonify({'error': 'Invalid status'}), 400
-
+        rejection_reason = data.get('rejection_reason')
+        send_email = data.get('send_email', False)
+        
+        if not status:
+            return jsonify({'success': False, 'error': 'Status is required'}), 400
+        
+        # Get registration data
         registration_ref = db.reference(f'registrations/{registration_id}')
-        registration_ref.update({
+        registration_data = registration_ref.get()
+        
+        if not registration_data:
+            return jsonify({'success': False, 'error': 'Registration not found'}), 404
+        
+        # Update status
+        update_data = {
             'payment_status': status,
             'updated_at': datetime.now().isoformat(),
-            'updated_by': current_user.id
+            'updated_by': current_user.email
+        }
+        
+        if status == 'rejected' and rejection_reason:
+            update_data['rejection_reason'] = rejection_reason
+        
+        registration_ref.update(update_data)
+        
+        email_sent = False
+        if send_email:
+            # Send email notification with correct template name
+            template_name = 'registration_approval' if status == 'approved' else 'registration_rejection'
+            email_sent = send_registration_email(
+                registration_data,
+                template_name,
+                rejection_reason=rejection_reason
+            )
+        
+        return jsonify({
+            'success': True,
+            'email_sent': email_sent
         })
-
-        # If approved and it's an early bird registration, update available seats
-        registration = registration_ref.get()
-        if status == 'approved' and registration.get('registration_period') == 'early_bird':
-            fees_ref = db.reference('registration_fees/early_bird')
-            fees = fees_ref.get()
-            if fees and 'seats_available' in fees:
-                fees_ref.update({
-                    'seats_available': max(0, fees['seats_available'] - 1)
-                })
-
-        # Send email notification to user
-        user_email = registration.get('email')
-        if user_email:
-            if status == 'approved':
-                send_approval_email(user_email, registration)
-            else:
-                send_rejection_email(user_email, registration)
-
-        return jsonify({'success': True})
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Error updating registration status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/registrations/<registration_id>/payment-proof')
 @login_required
@@ -1361,20 +1465,49 @@ def admin_announcements():
 @admin_required
 def create_announcement():
     try:
-        data = request.get_json()
+        # Create announcements upload directory if it doesn't exist
+        upload_path = os.path.join(app.static_folder, 'uploads', 'announcements')
+        os.makedirs(upload_path, exist_ok=True)
         
-        # Validate required fields
-        required_fields = ['title', 'content', 'type']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        # Get form data
+        title = request.form.get('title')
+        content = request.form.get('content')
+        announcement_type = request.form.get('type')
+        is_pinned = request.form.get('is_pinned') == 'on'
+        send_email = request.form.get('send_email') == 'on'
+        scheduled_date = request.form.get('announcement_date')
+        scheduled_time = request.form.get('announcement_time')
+        timezone = request.form.get('timezone')
         
-        # Create new announcement
+        # Handle image upload
+        image_url = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_image_file(file.filename):
+                filename = secure_filename(file.filename)
+                unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                file_path = os.path.join(upload_path, unique_filename)
+                file.save(file_path)
+                image_url = f"/static/uploads/announcements/{unique_filename}"
+        
+        # Format the datetime with timezone
+        formatted_datetime = format_datetime_with_timezone(
+            scheduled_date,
+            scheduled_time,
+            timezone
+        )
+        
+        # Create announcement data
         announcement = {
-            'title': data['title'],
-            'content': data['content'],
-            'type': data['type'],
-            'is_pinned': data.get('is_pinned', False),
+            'title': title,
+            'content': content,
+            'type': announcement_type,
+            'is_pinned': is_pinned,
+            'image_url': image_url,
+            'scheduled_date': scheduled_date,
+            'scheduled_time': scheduled_time,
+            'timezone': timezone,
+            'formatted_datetime': formatted_datetime,  # Add formatted datetime
             'created_at': datetime.now().isoformat(),
             'created_by': current_user.email,
             'updated_at': datetime.now().isoformat()
@@ -1384,8 +1517,8 @@ def create_announcement():
         announcements_ref = db.reference('announcements')
         new_announcement = announcements_ref.push(announcement)
         
-        # Send email notification for important announcements
-        if data['type'] == 'important':
+        # Send email notification if requested
+        if send_email:
             try:
                 # Get all user emails
                 users_ref = db.reference('users')
@@ -1393,18 +1526,47 @@ def create_announcement():
                 if users:
                     recipient_emails = [user['email'] for user in users.values() if user.get('email')]
                     
-                    msg = Message(
-                        'Important Conference Announcement',
-                        recipients=recipient_emails,
-                        body=f"""
-                        Important Announcement: {data['title']}
+                    # Get email template
+                    templates_ref = db.reference('email_templates')
+                    templates = templates_ref.get() or {}
+                    announcement_template = next(
+                        (t for t in templates.values() if t.get('name') == 'announcement_notification'),
+                        None
+                    )
+                    
+                    if announcement_template:
+                        subject = announcement_template['subject'].replace('{{title}}', title)
+                        body = announcement_template['body'].replace('{{title}}', title).replace('{{content}}', content)
+                    else:
+                        subject = f'New Announcement: {title}'
+                        body = f'''
+                        A new announcement has been posted:
                         
-                        {data['content']}
+                        {title}
+                        
+                        {content}
+                        
+                        Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
                         
                         Best regards,
                         Conference Team
-                        """
+                        '''
+                    
+                    msg = Message(
+                        subject,
+                        recipients=recipient_emails,
+                        body=body
                     )
+                    
+                    # Add image attachment if exists
+                    if image_url:
+                        with app.open_resource(os.path.join(app.static_folder, image_url.lstrip('/static/'))) as fp:
+                            msg.attach(
+                                os.path.basename(image_url),
+                                'image/jpeg',
+                                fp.read()
+                            )
+                    
                     mail.send(msg)
             except Exception as e:
                 print(f"Error sending email notification: {str(e)}")
@@ -1418,13 +1580,15 @@ def create_announcement():
 @admin_required
 def update_announcement(announcement_id):
     try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['title', 'content', 'type']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+        # Get form data
+        title = request.form.get('title')
+        content = request.form.get('content')
+        announcement_type = request.form.get('type')
+        is_pinned = request.form.get('is_pinned') == 'on'
+        send_email = request.form.get('send_email') == 'on'
+        scheduled_date = request.form.get('announcement_date')
+        scheduled_time = request.form.get('announcement_time')
+        timezone = request.form.get('timezone')
         
         # Update announcement
         announcement_ref = db.reference(f'announcements/{announcement_id}')
@@ -1433,16 +1597,88 @@ def update_announcement(announcement_id):
         if not current_announcement:
             return jsonify({'success': False, 'error': 'Announcement not found'}), 404
         
+        # Handle image upload
+        image_url = current_announcement.get('image_url')
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_image_file(file.filename):
+                # Delete old image if exists
+                if image_url:
+                    old_image_path = os.path.join(app.static_folder, image_url.lstrip('/static/'))
+                    if os.path.exists(old_image_path):
+                        os.remove(old_image_path)
+                
+                # Save new image
+                filename = secure_filename(file.filename)
+                unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                upload_path = os.path.join(app.static_folder, 'uploads', 'announcements')
+                os.makedirs(upload_path, exist_ok=True)
+                file_path = os.path.join(upload_path, unique_filename)
+                file.save(file_path)
+                image_url = f"/static/uploads/announcements/{unique_filename}"
+        
+        # Format the datetime with timezone
+        formatted_datetime = format_datetime_with_timezone(
+            scheduled_date,
+            scheduled_time,
+            timezone
+        )
+        
         update_data = {
-            'title': data['title'],
-            'content': data['content'],
-            'type': data['type'],
-            'is_pinned': data.get('is_pinned', False),
+            'title': title,
+            'content': content,
+            'type': announcement_type,
+            'is_pinned': is_pinned,
+            'image_url': image_url,
+            'scheduled_date': scheduled_date,
+            'scheduled_time': scheduled_time,
+            'timezone': timezone,
+            'formatted_datetime': formatted_datetime,  # Add formatted datetime
             'updated_at': datetime.now().isoformat(),
             'updated_by': current_user.email
         }
         
         announcement_ref.update(update_data)
+        
+        # Send email notification if requested
+        if send_email:
+            try:
+                # Get all user emails
+                users_ref = db.reference('users')
+                users = users_ref.get()
+                if users:
+                    recipient_emails = [user['email'] for user in users.values() if user.get('email')]
+                    
+                    msg = Message(
+                        f'Announcement Update: {title}',
+                        recipients=recipient_emails,
+                        body=f'''
+                        An announcement has been updated:
+                        
+                        {title}
+                        
+                        {content}
+                        
+                        Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
+                        
+                        Best regards,
+                        Conference Team
+                        '''
+                    )
+                    
+                    # Add image attachment if exists
+                    if image_url:
+                        with app.open_resource(os.path.join(app.static_folder, image_url.lstrip('/static/'))) as fp:
+                            msg.attach(
+                                os.path.basename(image_url),
+                                'image/jpeg',
+                                fp.read()
+                            )
+                    
+                    mail.send(msg)
+            except Exception as e:
+                print(f"Error sending email notification: {str(e)}")
+        
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1458,6 +1694,12 @@ def delete_announcement(announcement_id):
         
         if not announcement:
             return jsonify({'success': False, 'error': 'Announcement not found'}), 404
+        
+        # Delete associated image if exists
+        if announcement.get('image_url'):
+            image_path = os.path.join(app.static_folder, announcement['image_url'].lstrip('/static/'))
+            if os.path.exists(image_path):
+                os.remove(image_path)
         
         announcement_ref.delete()
         return jsonify({'success': True})
@@ -2008,6 +2250,7 @@ def inject_admin_menu():
         {'url': 'admin_downloads', 'icon': 'download', 'text': 'Downloads'},
         {'url': 'admin_author_guidelines', 'icon': 'book', 'text': 'Author Guidelines'},
         {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
+        {'url': 'admin_email_settings', 'icon': 'envelope-open', 'text': 'Email Settings'},
         {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
     ]
     return dict(admin_menu=admin_menu)
@@ -2533,6 +2776,9 @@ def update_paper_status(paper_id):
         
         if new_status not in ['accepted', 'rejected', 'revision']:
             return jsonify({'success': False, 'error': 'Invalid status'}), 400
+            
+        if not comments.strip() and new_status in ['rejected', 'revision']:
+            return jsonify({'success': False, 'error': 'Comments are required for rejection or revision'}), 400
         
         # Update paper status in Firebase
         paper_ref = db.reference(f'papers/{paper_id}')
@@ -2541,83 +2787,33 @@ def update_paper_status(paper_id):
         if not paper:
             return jsonify({'success': False, 'error': 'Paper not found'}), 404
         
-        # Update the status and comments
-        paper_ref.update({
+        # Update the paper data
+        update_data = {
             'status': new_status,
             'review_comments': comments,
             'updated_at': datetime.now().isoformat(),
             'reviewed_by': current_user.email
+        }
+        
+        paper_ref.update(update_data)
+        
+        # Get updated paper data for email
+        updated_paper = paper_ref.get()
+        
+        # Send email notification
+        try:
+            email_service.send_paper_status_update(updated_paper, new_status, comments)
+        except Exception as e:
+            print(f"Error sending email notification: {str(e)}")
+            # Continue even if email fails
+        
+        return jsonify({
+            'success': True,
+            'paper': updated_paper
         })
         
-        # Send email notification to author
-        try:
-            msg = Message(
-                f'Paper Submission {new_status.title()}',
-                recipients=[paper['user_email']]
-            )
-            
-            status_messages = {
-                'accepted': """
-                Congratulations! Your paper has been accepted for the GIIR Conference 2024.
-                
-                Paper Details:
-                Title: {title}
-                Presentation Type: {type}
-                
-                Please prepare your presentation according to the conference guidelines.
-                {comments}
-                
-                Best regards,
-                GIIR Conference Team
-                """,
-                'rejected': """
-                Thank you for submitting your paper to the GIIR Conference 2024.
-                
-                We regret to inform you that your paper was not accepted for presentation.
-                
-                Paper Details:
-                Title: {title}
-                Presentation Type: {type}
-                
-                Review Comments:
-                {comments}
-                
-                We encourage you to consider our feedback for future submissions.
-                
-                Best regards,
-                GIIR Conference Team
-                """,
-                'revision': """
-                Thank you for submitting your paper to the GIIR Conference 2024.
-                
-                Your paper requires revisions before it can be accepted.
-                
-                Paper Details:
-                Title: {title}
-                Presentation Type: {type}
-                
-                Review Comments:
-                {comments}
-                
-                Please submit your revised version through the conference system.
-                
-                Best regards,
-                GIIR Conference Team
-                """
-            }
-            
-            msg.body = status_messages[new_status].format(
-                title=paper['paper_title'],
-                type=paper['presentation_type'].replace('_', ' ').title(),
-                comments=comments if comments else 'No additional comments provided.'
-            )
-            
-            mail.send(msg)
-        except Exception as e:
-            print(f"Error sending email: {str(e)}")
-        
-        return jsonify({'success': True})
     except Exception as e:
+        print(f"Error updating paper status: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/papers/<paper_id>/comments', methods=['POST'])
@@ -2635,16 +2831,361 @@ def save_paper_comments(paper_id):
         if not paper:
             return jsonify({'success': False, 'error': 'Paper not found'}), 404
         
-        # Update the comments
-        paper_ref.update({
+        # Update the comments and metadata
+        update_data = {
             'review_comments': comments,
             'updated_at': datetime.now().isoformat(),
             'reviewed_by': current_user.email
+        }
+        
+        paper_ref.update(update_data)
+        
+        return jsonify({
+            'success': True,
+            'paper': paper_ref.get()
         })
         
+    except Exception as e:
+        print(f"Error saving paper comments: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/test-email')
+def test_email():
+    try:
+        # Test SMTP connection first
+        with mail.connect() as conn:
+            print("SMTP Connection successful!")
+            
+        msg = Message('Test Email from GIIR Conference',
+                     sender=app.config['MAIL_DEFAULT_SENDER'],
+                     recipients=['thobanisgabuzam@gmail.com'])
+        msg.body = '''
+        Dear Thobani,
+        
+        This is a test email from the GIIR Conference system using Outlook SMTP.
+        
+        If you received this email, it means the email configuration is working correctly.
+        
+        Best regards,
+        GIIR Conference Team
+        '''
+        
+        # Print debug information
+        print("\nSMTP Settings:")
+        print(f"Server: {app.config['MAIL_SERVER']}")
+        print(f"Port: {app.config['MAIL_PORT']}")
+        print(f"TLS: {app.config['MAIL_USE_TLS']}")
+        print(f"SSL: {app.config['MAIL_USE_SSL']}")
+        print(f"Username: {app.config['MAIL_USERNAME']}")
+        print(f"Sender: {app.config['MAIL_DEFAULT_SENDER']}")
+        
+        mail.send(msg)
+        return 'Email sent successfully! Check your inbox at thobansigabuzam@gmail.com'
+    except Exception as e:
+        error_msg = f'Error sending email: {str(e)}\n'
+        error_msg += f'Type: {type(e).__name__}\n'
+        if hasattr(e, 'strerror'):
+            error_msg += f'System error: {e.strerror}\n'
+        if hasattr(e, 'errno'):
+            error_msg += f'Error number: {e.errno}\n'
+        
+        # Add network diagnostic info
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            result = s.connect_ex((app.config['MAIL_SERVER'], app.config['MAIL_PORT']))
+            error_msg += f'\nPort check result: {result} (0 means port is open)\n'
+            s.close()
+        except Exception as net_e:
+            error_msg += f'\nNetwork test failed: {str(net_e)}\n'
+            
+        print(error_msg)  # Print to console for debugging
+        return error_msg
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    app.logger.debug('Accessing forgot password route')
+    try:
+        if request.method == 'POST':
+            email = request.form.get('email')
+            if not email:
+                flash('Please enter your email address.', 'error')
+                return render_template('user/auth/forgot_password.html', site_design=get_site_design())
+
+            # Check if user exists
+            try:
+                user = auth.get_user_by_email(email)
+            except:
+                # Don't reveal if email exists or not for security
+                flash('If an account exists with this email, you will receive password reset instructions.', 'info')
+                return render_template('user/auth/forgot_password.html', site_design=get_site_design())
+
+            # Generate password reset link
+            reset_link = auth.generate_password_reset_link(email)
+
+            # Get user data from database
+            user_ref = db.reference(f'users/{user.uid}')
+            user_data = user_ref.get()
+
+            if user_data:
+                # Send password reset email
+                email_service.send_password_reset_email(user_data, reset_link)
+                flash('Password reset instructions have been sent to your email.', 'success')
+            else:
+                flash('Error retrieving user data.', 'error')
+
+            return redirect(url_for('login'))
+
+        return render_template('user/auth/forgot_password.html', site_design=get_site_design())
+    except Exception as e:
+        app.logger.error(f'Error in forgot_password route: {str(e)}')
+        raise
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    # Handle the actual password reset after user clicks email link
+    try:
+        mode = request.args.get('mode')
+        oobCode = request.args.get('oobCode')
+        
+        if mode != 'resetPassword' or not oobCode:
+            flash('Invalid password reset link.', 'error')
+            return redirect(url_for('login'))
+
+        if request.method == 'POST':
+            new_password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+
+            if new_password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return render_template('user/auth/reset_password.html', 
+                                    oobCode=oobCode,
+                                    site_design=get_site_design())
+
+            # Verify and update password
+            try:
+                auth.verify_password_reset_code(oobCode)
+                auth.confirm_password_reset(oobCode, new_password)
+                flash('Password has been reset successfully. Please login with your new password.', 'success')
+                return redirect(url_for('login'))
+            except Exception as e:
+                flash('Error resetting password. The link may have expired.', 'error')
+                return redirect(url_for('forgot_password'))
+
+        return render_template('user/auth/reset_password.html', 
+                             oobCode=oobCode,
+                             site_design=get_site_design())
+
+    except Exception as e:
+        flash(f'Error processing password reset: {str(e)}', 'error')
+        return redirect(url_for('login'))
+
+@app.route('/admin/email-settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_email_settings():
+    try:
+        if request.method == 'POST':
+            # Get form data
+            email_settings = {
+                'service_provider': request.form.get('service_provider'),
+                'email': request.form.get('email'),
+                'password': request.form.get('password'),
+                'updated_at': datetime.now().isoformat(),
+                'updated_by': current_user.email
+            }
+
+            # Add SMTP settings if custom provider
+            if email_settings['service_provider'] == 'custom':
+                email_settings.update({
+                    'smtp_host': request.form.get('smtp_host'),
+                    'smtp_port': request.form.get('smtp_port'),
+                    'use_tls': request.form.get('use_tls') == 'on'
+                })
+            else:
+                # Set default SMTP settings based on provider
+                provider_settings = {
+                    'outlook': {
+                        'smtp_host': 'smtp.office365.com',
+                        'smtp_port': 587,
+                        'use_tls': True
+                    },
+                    'zoho': {
+                        'smtp_host': 'smtp.zoho.com',
+                        'smtp_port': 587,
+                        'use_tls': True
+                    },
+                    'gmail': {
+                        'smtp_host': 'smtp.gmail.com',
+                        'smtp_port': 587,
+                        'use_tls': True
+                    }
+                }
+                email_settings.update(provider_settings.get(email_settings['service_provider'], {}))
+
+            # Save settings to Firebase
+            settings_ref = db.reference('email_settings')
+            settings_ref.set(email_settings)
+
+            # Update Flask-Mail config
+            app.config.update(
+                MAIL_SERVER=email_settings['smtp_host'],
+                MAIL_PORT=email_settings['smtp_port'],
+                MAIL_USE_TLS=email_settings['use_tls'],
+                MAIL_USERNAME=email_settings['email'],
+                MAIL_PASSWORD=email_settings['password'],
+                MAIL_DEFAULT_SENDER=email_settings['email']
+            )
+
+            # Reinitialize Flask-Mail with new settings
+            global mail
+            mail = Mail(app)
+            global email_service
+            email_service = EmailService(mail)
+
+            flash('Email settings updated successfully!', 'success')
+            return redirect(url_for('admin_email_settings'))
+
+        # Get current settings
+        settings_ref = db.reference('email_settings')
+        settings = settings_ref.get()
+
+        return render_template('admin/email_settings.html', 
+                             settings=settings,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash(f'Error managing email settings: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/test-email-settings', methods=['POST'])
+@login_required
+@admin_required
+def test_email_settings():
+    try:
+        # Get form data
+        service_provider = request.form.get('service_provider')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        # Configure SMTP settings
+        if service_provider == 'custom':
+            smtp_host = request.form.get('smtp_host')
+            smtp_port = int(request.form.get('smtp_port'))
+            use_tls = request.form.get('use_tls') == 'on'
+        else:
+            provider_settings = {
+                'outlook': {
+                    'smtp_host': 'smtp.office365.com',
+                    'smtp_port': 587,
+                    'use_tls': True
+                },
+                'zoho': {
+                    'smtp_host': 'smtp.zoho.com',
+                    'smtp_port': 587,
+                    'use_tls': True
+                },
+                'gmail': {
+                    'smtp_host': 'smtp.gmail.com',
+                    'smtp_port': 587,
+                    'use_tls': True
+                }
+            }
+            settings = provider_settings.get(service_provider)
+            if not settings:
+                return jsonify({'success': False, 'error': 'Invalid service provider'})
+            smtp_host = settings['smtp_host']
+            smtp_port = settings['smtp_port']
+            use_tls = settings['use_tls']
+
+        # Create temporary Mail instance with new settings
+        test_config = Config()
+        test_config.MAIL_SERVER = smtp_host
+        test_config.MAIL_PORT = smtp_port
+        test_config.MAIL_USE_TLS = use_tls
+        test_config.MAIL_USERNAME = email
+        test_config.MAIL_PASSWORD = password
+        test_config.MAIL_DEFAULT_SENDER = email
+
+        test_app = Flask('test_app')
+        test_app.config.from_object(test_config)
+        test_mail = Mail(test_app)
+
+        # Try to send a test email
+        with test_app.app_context():
+            msg = Message(
+                'Test Email from GIIR Conference',
+                recipients=[email],
+                body='This is a test email to verify your email settings.'
+            )
+            test_mail.send(msg)
+
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        try:
+            # Get form data
+            name = request.form.get('name')
+            email = request.form.get('email')
+            subject = request.form.get('subject')
+            message = request.form.get('message')
+            
+            # Validate reCAPTCHA
+            recaptcha_response = request.form.get('g-recaptcha-response')
+            if not recaptcha_response:
+                return jsonify({'success': False, 'message': 'Please complete the reCAPTCHA verification.'})
+
+            # Validate required fields
+            if not all([name, email, subject, message]):
+                return jsonify({'success': False, 'message': 'Please fill in all required fields.'})
+
+            # Store contact submission in Firebase
+            contact_ref = db.reference('contact_submissions')
+            submission_data = {
+                'name': name,
+                'email': email,
+                'subject': subject,
+                'message': message,
+                'timestamp': datetime.now().isoformat(),
+                'status': 'new'  # For tracking response status
+            }
+            contact_ref.push(submission_data)
+
+            # Send email notification to admin
+            try:
+                msg = Message(
+                    subject=f'New Contact Form Submission: {subject}',
+                    sender=app.config['MAIL_DEFAULT_SENDER'],
+                    recipients=[app.config['ADMIN_EMAIL']],
+                    body=f'''New contact form submission received:
+
+Name: {name}
+Email: {email}
+Subject: {subject}
+
+Message:
+{message}
+'''
+                )
+                mail.send(msg)
+            except Exception as e:
+                print(f"Error sending email notification: {str(e)}")
+                # Continue execution even if email fails
+
+            return jsonify({'success': True})
+
+        except Exception as e:
+            print(f"Error processing contact form: {str(e)}")
+            return jsonify({'success': False, 'message': 'An error occurred while processing your request.'})
+
+    # GET request - display contact form
+    return render_template('contact.html', 
+                         recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'],
+                         site_design=get_site_design())
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

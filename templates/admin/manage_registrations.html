@@ -868,12 +868,23 @@ function updateStatus(id, status) {
     
     if (!confirm(`Are you sure you want to ${confirmMessage[status]} this registration?`)) return;
     
+    // If rejecting, prompt for reason
+    let rejectionReason = '';
+    if (status === 'rejected') {
+        rejectionReason = prompt('Please provide a reason for rejection:');
+        if (!rejectionReason) return; // Cancel if no reason provided
+    }
+    
     fetch(`/admin/registrations/${id}/status`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status: status })
+        body: JSON.stringify({ 
+            status: status,
+            rejection_reason: rejectionReason,
+            send_email: true // Enable email notifications
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -912,8 +923,9 @@ function updateStatus(id, status) {
                 }
             }
             
-            // Show success message
-            alert(`Registration successfully ${status}`);
+            // Show success message with email notification status
+            const emailStatus = data.email_sent ? 'and notification email sent' : 'but email notification failed';
+            alert(`Registration successfully ${status} ${emailStatus}`);
         } else {
             alert(data.error || 'Error updating status');
         }

@@ -523,30 +523,85 @@ function updateStatus(id, status) {
     const statusText = status === 'revision' ? 'request revision for' : status;
     const comments = document.getElementById('reviewComments').value;
     
+    if (!comments.trim() && (status === 'rejected' || status === 'revision')) {
+        alert('Please provide review comments before ' + statusText + ' the paper.');
+        return;
+    }
+    
     if (confirm(`Are you sure you want to ${statusText} this paper?`)) {
         fetch(`/admin/papers/${id}/status`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
                 status: status,
-                comments: comments
+                comments: comments,
+                updated_at: new Date().toISOString(),
+                reviewed_by: '{{ current_user.email }}'
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                // Update local data
+                papersData[id].status = status;
+                papersData[id].review_comments = comments;
+                papersData[id].updated_at = new Date().toISOString();
+                papersData[id].reviewed_by = '{{ current_user.email }}';
+                
+                // Update UI
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    row.setAttribute('data-status', status);
+                    const statusCell = row.querySelector('td:nth-child(6)');
+                    if (statusCell) {
+                        statusCell.innerHTML = `<span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+                    }
+                    
+                    // Hide action buttons if paper is no longer pending
+                    if (status !== 'pending') {
+                        const actionsCell = row.querySelector('td:last-child');
+                        if (actionsCell) {
+                            const actionButtons = actionsCell.querySelectorAll('button.approve, button.reject, button.warning');
+                            actionButtons.forEach(btn => btn.style.display = 'none');
+                        }
+                    }
+                }
+                
+                // Close modal
+                document.getElementById('detailsModal').style.display = 'none';
+                
+                // Show success message
+                const message = `Paper has been ${status === 'revision' ? 'marked for revision' : status} successfully.`;
+                showAlert('success', message);
             } else {
-                alert(data.error || 'Error updating status');
+                showAlert('error', data.error || 'Error updating status');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error updating status');
+            showAlert('error', 'Error updating paper status');
         });
     }
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    document.querySelector('.dashboard-header').insertAdjacentElement('afterend', alertDiv);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => alertDiv.remove(), 5000);
 }
 
 function downloadPaper(fileUrl) {
@@ -559,7 +614,7 @@ function downloadPaper(fileUrl) {
 
 function saveReviewComments() {
     if (!currentPaperId) {
-        alert('No paper selected');
+        showAlert('error', 'No paper selected');
         return;
     }
     
@@ -568,22 +623,35 @@ function saveReviewComments() {
     fetch(`/admin/papers/${currentPaperId}/comments`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ comments: comments })
+        body: JSON.stringify({ 
+            comments: comments,
+            updated_at: new Date().toISOString(),
+            reviewed_by: '{{ current_user.email }}'
+        })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            alert('Review comments saved successfully');
+            // Update local data
             papersData[currentPaperId].review_comments = comments;
+            papersData[currentPaperId].updated_at = new Date().toISOString();
+            papersData[currentPaperId].reviewed_by = '{{ current_user.email }}';
+            
+            showAlert('success', 'Review comments saved successfully');
         } else {
-            alert(data.error || 'Error saving comments');
+            showAlert('error', data.error || 'Error saving comments');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error saving comments');
+        showAlert('error', 'Error saving comments');
     });
 }
 </script>

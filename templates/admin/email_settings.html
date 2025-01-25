@@ -1,0 +1,218 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Email Settings - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-envelope"></i> Email Service Settings</h2>
+        </div>
+        <div class="card-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('admin_email_settings') }}" class="needs-validation" novalidate>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="service_provider" class="form-label">Email Service Provider</label>
+                            <select class="form-select" id="service_provider" name="service_provider" required>
+                                <option value="" disabled {% if not settings %}selected{% endif %}>Select a provider</option>
+                                <option value="outlook" {% if settings and settings.service_provider == 'outlook' %}selected{% endif %}>Microsoft Outlook</option>
+                                <option value="zoho" {% if settings and settings.service_provider == 'zoho' %}selected{% endif %}>Zoho Mail</option>
+                                <option value="gmail" {% if settings and settings.service_provider == 'gmail' %}selected{% endif %}>Gmail</option>
+                                <option value="custom" {% if settings and settings.service_provider == 'custom' %}selected{% endif %}>Custom SMTP</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ settings.email if settings else '' }}" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="password" class="form-label">Password or App Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       value="{{ settings.password if settings else '' }}" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                For Gmail and Outlook, use an App Password. 
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#appPasswordHelp">Learn more</a>
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 custom-smtp-settings" style="display: none;">
+                        <div class="form-group mb-3">
+                            <label for="smtp_host" class="form-label">SMTP Host</label>
+                            <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                   value="{{ settings.smtp_host if settings else '' }}">
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="smtp_port" class="form-label">SMTP Port</label>
+                            <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                   value="{{ settings.smtp_port if settings else '' }}">
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="use_tls" name="use_tls"
+                                       {% if settings and settings.use_tls %}checked{% endif %}>
+                                <label class="form-check-label" for="use_tls">
+                                    Use TLS
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                    <button type="button" class="btn btn-secondary ms-2" onclick="testEmailSettings()">
+                        <i class="fas fa-paper-plane"></i> Test Connection
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- App Password Help Modal -->
+<div class="modal fade" id="appPasswordHelp" tabindex="-1" aria-labelledby="appPasswordHelpLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="appPasswordHelpLabel">How to Get an App Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Gmail</h6>
+                <ol>
+                    <li>Go to your Google Account settings</li>
+                    <li>Click on "Security"</li>
+                    <li>Under "Signing in to Google," select "2-Step Verification"</li>
+                    <li>At the bottom, click on "App passwords"</li>
+                    <li>Select "Mail" and your device</li>
+                    <li>Click "Generate"</li>
+                </ol>
+
+                <h6>Outlook</h6>
+                <ol>
+                    <li>Go to your Microsoft Account settings</li>
+                    <li>Select "Security"</li>
+                    <li>Choose "More security options"</li>
+                    <li>Under "App passwords," click "Create a new app password"</li>
+                </ol>
+
+                <h6>Zoho Mail</h6>
+                <ol>
+                    <li>Log in to your Zoho Mail account</li>
+                    <li>Go to "Settings" → "Mail Accounts"</li>
+                    <li>Click on "Generate App Password"</li>
+                    <li>Enter an app name and click "Generate"</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = passwordInput.nextElementSibling.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleButton.classList.remove('fa-eye');
+        toggleButton.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleButton.classList.remove('fa-eye-slash');
+        toggleButton.classList.add('fa-eye');
+    }
+}
+
+document.getElementById('service_provider').addEventListener('change', function() {
+    const customSettings = document.querySelector('.custom-smtp-settings');
+    if (this.value === 'custom') {
+        customSettings.style.display = 'block';
+        document.getElementById('smtp_host').required = true;
+        document.getElementById('smtp_port').required = true;
+    } else {
+        customSettings.style.display = 'none';
+        document.getElementById('smtp_host').required = false;
+        document.getElementById('smtp_port').required = false;
+    }
+});
+
+async function testEmailSettings() {
+    const form = document.querySelector('form');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const formData = new FormData(form);
+    const button = document.querySelector('button[onclick="testEmailSettings()"]');
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+
+    try {
+        const response = await fetch("{{ url_for('test_email_settings') }}", {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('success', 'Test email sent successfully!');
+        } else {
+            showAlert('danger', 'Error: ' + result.error);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error testing email settings: ' + error.message);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.querySelector('.card-body').insertBefore(alertDiv, document.querySelector('form'));
+}
+
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+</script>
+{% endblock %} 
