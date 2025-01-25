@@ -3,656 +3,213 @@
 {% block title %}Manage Submissions - Admin{% endblock %}
 
 {% block content %}
-<div class="admin-dashboard">
-    <div class="dashboard-header">
-        <div class="header-content">
-            <h1><i class="fas fa-file-alt"></i> Manage Paper Submissions</h1>
-            <p>Review and manage conference paper submissions</p>
-            {% if papers %}
-            <div class="submission-stats">
-                <div class="stat-item">
-                    <span class="stat-label">Total Papers:</span>
-                    <span class="stat-value">{{ papers|length }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Pending Review:</span>
-                    <span class="stat-value">{{ papers.values()|selectattr('status', 'equalto', 'pending')|list|length }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Accepted:</span>
-                    <span class="stat-value">{{ papers.values()|selectattr('status', 'equalto', 'accepted')|list|length }}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Needs Revision:</span>
-                    <span class="stat-value">{{ papers.values()|selectattr('status', 'equalto', 'revision')|list|length }}</span>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-        <div class="quick-actions">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Search by title, author, or keywords...">
-            </div>
-            <select id="filterStatus" class="filter-select">
-                <option value="all">All Status</option>
-                <option value="pending">Pending Review</option>
-                <option value="accepted">Accepted</option>
-                <option value="rejected">Rejected</option>
-                <option value="revision">Needs Revision</option>
-            </select>
-            <select id="filterType" class="filter-select">
-                <option value="all">All Types</option>
-                <option value="oral">Oral Presentation</option>
-                <option value="poster">Poster Presentation</option>
-                <option value="virtual">Virtual Presentation</option>
-            </select>
-        </div>
-    </div>
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Manage Paper Submissions</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show">
-                    {{ message }}
-                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
-                </div>
+                <div class="alert alert-{{ category }}">{{ message }}</div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="submissions-table">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Primary Author</th>
-                        <th>Type</th>
-                        <th>Research Area</th>
-                        <th>Submitted</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if papers %}
-                        {% for id, paper in papers.items() %}
-                        <tr data-id="{{ id }}" data-title="{{ paper.paper_title }}" data-author="{{ paper.authors[0].name }}" data-type="{{ paper.presentation_type }}" data-status="{{ paper.status }}">
-                            <td>{{ paper.paper_title }}</td>
-                            <td>
-                                {{ paper.authors[0].name }}
-                                <small class="d-block text-muted">{{ paper.authors[0].institution }}</small>
-                            </td>
-                            <td>{{ paper.presentation_type|title }}</td>
-                            <td>{{ paper.research_area|replace('_', ' ')|title }}</td>
-                            <td>{{ paper.submitted_at|format_date }}</td>
-                            <td>
-                                <span class="status-badge status-{{ paper.status }}">
-                                    {{ paper.status|title }}
-                                </span>
-                            </td>
-                            <td class="actions">
-                                <button class="btn-icon" onclick="viewDetails('{{ id }}')" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn-icon" onclick="downloadPaper('{{ paper.file_url }}')" title="Download Paper">
-                                    <i class="fas fa-download"></i>
-                                </button>
-                                {% if paper.status == 'pending' %}
-                                <button class="btn-icon approve" onclick="updateStatus('{{ id }}', 'accepted')" title="Accept">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button class="btn-icon warning" onclick="updateStatus('{{ id }}', 'revision')" title="Request Revision">
-                                    <i class="fas fa-redo"></i>
-                                </button>
-                                <button class="btn-icon reject" onclick="updateStatus('{{ id }}', 'rejected')" title="Reject">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Paper Submissions</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="submissionsTable" width="100%" cellspacing="0">
+                    <thead>
                         <tr>
-                            <td colspan="7" class="no-data">No paper submissions found</td>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Submission Date</th>
+                            <th>Research Area</th>
+                            <th>Type</th>
                         </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- Paper Details Modal -->
-<div id="detailsModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Paper Details</h2>
-            <button class="close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="details-grid">
-                <div class="detail-group">
-                    <label>Paper Title</label>
-                    <p id="modalTitle"></p>
-                </div>
-                <div class="detail-group">
-                    <label>Research Area</label>
-                    <p id="modalArea"></p>
-                </div>
-                <div class="detail-group">
-                    <label>Presentation Type</label>
-                    <p id="modalType"></p>
-                </div>
-                <div class="detail-group">
-                    <label>Status</label>
-                    <p id="modalStatus"></p>
-                </div>
-                <div class="detail-group">
-                    <label>Submission Date</label>
-                    <p id="modalDate"></p>
-                </div>
-                <div class="detail-group full-width">
-                    <label>Abstract</label>
-                    <p id="modalAbstract"></p>
-                </div>
-                <div class="detail-group full-width">
-                    <label>Keywords</label>
-                    <p id="modalKeywords"></p>
-                </div>
-                <div class="detail-group full-width">
-                    <label>Authors</label>
-                    <div id="modalAuthors" class="authors-list"></div>
-                </div>
-                <div class="detail-group full-width">
-                    <label>Paper File</label>
-                    <div class="file-actions">
-                        <a id="modalDownload" href="#" class="btn btn-primary" target="_blank">
-                            <i class="fas fa-download"></i> Download Paper
-                        </a>
-                    </div>
-                </div>
-                <div class="detail-group full-width">
-                    <label>Review Comments</label>
-                    <textarea id="reviewComments" class="form-control" rows="4" placeholder="Add your review comments here..."></textarea>
-                    <div class="review-actions">
-                        <button onclick="updateStatus(currentPaperId, 'accepted')" class="btn btn-success">
-                            <i class="fas fa-check"></i> Accept
-                        </button>
-                        <button onclick="updateStatus(currentPaperId, 'revision')" class="btn btn-warning">
-                            <i class="fas fa-redo"></i> Request Revision
-                        </button>
-                        <button onclick="updateStatus(currentPaperId, 'rejected')" class="btn btn-danger">
-                            <i class="fas fa-times"></i> Reject
-                        </button>
-                        <button onclick="saveReviewComments()" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save Comments
-                        </button>
-                    </div>
-                </div>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Machine Learning Applications in Traditional Medicine</td>
+                            <td>Nkululeko Zulu</td>
+                            <td>2025-01-20 14:30</td>
+                            <td>Artificial Intelligence</td>
+                            <td>Oral</td>
+                        </tr>
+                        <tr>
+                            <td>Blockchain Technology in African Agriculture</td>
+                            <td>Sibusiso Ndlovu</td>
+                            <td>2025-01-21 09:15</td>
+                            <td>Blockchain</td>
+                            <td>Oral</td>
+                        </tr>
+                        <tr>
+                            <td>IoT Solutions for Rural Communities</td>
+                            <td>Themba Mkhize</td>
+                            <td>2025-01-22 16:45</td>
+                            <td>Internet of Things</td>
+                            <td>Poster</td>
+                        </tr>
+                        <tr>
+                            <td>Cybersecurity in Financial Systems</td>
+                            <td>Mandla Shabalala</td>
+                            <td>2025-01-23 11:20</td>
+                            <td>Cybersecurity</td>
+                            <td>Virtual</td>
+                        </tr>
+                        <tr>
+                            <td>AI-Driven Language Translation Systems</td>
+                            <td>Lungile Mbatha</td>
+                            <td>2025-01-24 13:50</td>
+                            <td>Natural Language Processing</td>
+                            <td>Oral</td>
+                        </tr>
+                        <tr>
+                            <td>Cloud Computing in Education</td>
+                            <td>Bongani Khumalo</td>
+                            <td>2025-01-25 10:30</td>
+                            <td>Cloud Computing</td>
+                            <td>Poster</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.submissions-table {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-top: 1.5rem;
-}
-
-.table {
-    width: 100%;
-    margin-bottom: 0;
-}
-
-.table th {
-    background: #f8f9fa;
-    padding: 1rem;
-    font-weight: 600;
-    text-align: left;
-}
-
-.table td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-top: 1px solid #dee2e6;
-}
-
-.status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.status-pending {
-    background: #ffc107;
-    color: #000;
-}
-
-.status-accepted {
-    background: #198754;
-    color: white;
-}
-
-.status-rejected {
-    background: #dc3545;
-    color: white;
-}
-
-.status-revision {
-    background: #fd7e14;
-    color: white;
-}
-
-.actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.btn-icon {
-    background: none;
-    border: none;
-    padding: 0.5rem;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
-.btn-icon:hover {
-    background: #e9ecef;
-}
-
-.btn-icon.approve:hover {
-    background: #198754;
-    color: white;
-}
-
-.btn-icon.reject:hover {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-icon.warning:hover {
-    background: #fd7e14;
-    color: white;
-}
-
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-}
-
-.modal-content {
-    position: relative;
-    background: white;
-    margin: 2rem auto;
-    padding: 0;
-    width: 90%;
-    max-width: 800px;
-    border-radius: 8px;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.modal-header {
-    padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-}
-
-.detail-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.detail-group.full-width {
-    grid-column: 1 / -1;
-}
-
-.detail-group label {
-    font-weight: 600;
-    color: #495057;
-}
-
-.authors-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.author-card {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 4px;
-}
-
-.review-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    transition: all 0.2s;
-}
-
-.btn-primary {
-    background: #0d6efd;
-    color: white;
-}
-
-.btn-success {
-    background: #198754;
-    color: white;
-}
-
-.btn-warning {
-    background: #fd7e14;
-    color: white;
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: white;
-}
-
-.btn:hover {
-    opacity: 0.9;
-}
-
-@media (max-width: 768px) {
-    .details-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .review-actions {
-        flex-direction: column;
-    }
-    
-    .review-actions button {
-        width: 100%;
-    }
-}
-
-/* Add styles for submission stats */
-.submission-stats {
-    display: flex;
-    gap: 2rem;
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
-.stat-value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #0d6efd;
-}
-</style>
-
-<script>
-// Initialize papers data from server
-const papersData = JSON.parse('{{ papers_data|safe }}');
-let currentPaperId = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize search and filter functionality
-    const searchInput = document.getElementById('searchInput');
-    const statusFilter = document.getElementById('filterStatus');
-    const typeFilter = document.getElementById('filterType');
-    
-    function filterSubmissions() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const statusValue = statusFilter.value;
-        const typeValue = typeFilter.value;
-        
-        document.querySelectorAll('tbody tr').forEach(row => {
-            if (row.classList.contains('no-data')) return;
-            
-            const title = row.getAttribute('data-title').toLowerCase();
-            const author = row.getAttribute('data-author').toLowerCase();
-            const type = row.getAttribute('data-type');
-            const status = row.getAttribute('data-status');
-            
-            const matchesSearch = title.includes(searchTerm) || author.includes(searchTerm);
-            const matchesStatus = statusValue === 'all' || status === statusValue;
-            const matchesType = typeValue === 'all' || type === typeValue;
-            
-            row.style.display = matchesSearch && matchesStatus && matchesType ? '' : 'none';
-        });
-    }
-    
-    searchInput.addEventListener('input', filterSubmissions);
-    statusFilter.addEventListener('change', filterSubmissions);
-    typeFilter.addEventListener('change', filterSubmissions);
-    
-    // Modal functionality
-    const modal = document.getElementById('detailsModal');
-    const closeBtn = document.querySelector('.close-modal');
-    
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
-    }
-    
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
-    }
-});
-
-function viewDetails(id) {
-    currentPaperId = id;
-    const paper = papersData[id];
-    
-    document.getElementById('modalTitle').textContent = paper.paper_title;
-    document.getElementById('modalArea').textContent = paper.research_area.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    document.getElementById('modalType').textContent = paper.presentation_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    document.getElementById('modalStatus').textContent = paper.status.charAt(0).toUpperCase() + paper.status.slice(1);
-    document.getElementById('modalDate').textContent = new Date(paper.submitted_at).toLocaleDateString();
-    document.getElementById('modalAbstract').textContent = paper.paper_abstract;
-    document.getElementById('modalKeywords').textContent = paper.keywords.join(', ');
-    
-    // Display authors
-    const authorsContainer = document.getElementById('modalAuthors');
-    authorsContainer.innerHTML = paper.authors.map((author, index) => `
-        <div class="author-card">
-            <strong>${index === 0 ? 'Primary Author' : `Co-Author ${index}`}</strong>
-            <p><strong>Name:</strong> ${author.name}</p>
-            <p><strong>Email:</strong> ${author.email}</p>
-            <p><strong>Institution:</strong> ${author.institution}</p>
+<!-- Submission Details Modal -->
+<div class="modal fade" id="submissionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Submission Details</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="submissionDetails"></div>
+                <div class="form-group mt-4">
+                    <label for="reviewComments">Review Comments</label>
+                    <textarea class="form-control" id="reviewComments" rows="4"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" onclick="saveComments()">Save Comments</button>
+            </div>
         </div>
-    `).join('');
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSubmissionId = null;
+
+function viewSubmission(id) {
+    currentSubmissionId = id;
+    const submission = submissionsData[id];
+    let detailsHtml = `
+        <h4>${submission.paper_title}</h4>
+        <hr>
+        <h5>Abstract</h5>
+        <p>${submission.paper_abstract}</p>
+        <h5>Authors</h5>
+        <ul>
+            ${submission.authors.map(author => `
+                <li>
+                    <strong>${author.name}</strong><br>
+                    ${author.email}<br>
+                    ${author.institution}
+                </li>
+            `).join('')}
+        </ul>
+        <h5>Keywords</h5>
+        <p>${submission.keywords.join(', ')}</p>
+        <h5>Research Area</h5>
+        <p>${submission.research_area.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+        <h5>Presentation Type</h5>
+        <p>${submission.presentation_type.charAt(0).toUpperCase() + submission.presentation_type.slice(1)}</p>
+        <h5>Status</h5>
+        <p>${submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}</p>
+    `;
     
-    // Set download link
-    const downloadBtn = document.getElementById('modalDownload');
-    downloadBtn.href = paper.file_url;
-    
-    // Set review comments
-    document.getElementById('reviewComments').value = paper.review_comments || '';
-    
-    document.getElementById('detailsModal').style.display = 'block';
+    document.getElementById('submissionDetails').innerHTML = detailsHtml;
+    document.getElementById('reviewComments').value = submission.review_comments || '';
+    $('#submissionModal').modal('show');
 }
 
 function updateStatus(id, status) {
-    const statusText = status === 'revision' ? 'request revision for' : status;
-    const comments = document.getElementById('reviewComments').value;
-    
-    if (!comments.trim() && (status === 'rejected' || status === 'revision')) {
-        alert('Please provide review comments before ' + statusText + ' the paper.');
+    if (!confirm(`Are you sure you want to mark this submission as ${status}?`)) {
         return;
     }
     
-    if (confirm(`Are you sure you want to ${statusText} this paper?`)) {
-        fetch(`/admin/papers/${id}/status`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-                status: status,
-                comments: comments,
-                updated_at: new Date().toISOString(),
-                reviewed_by: '{{ current_user.email }}'
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Update local data
-                papersData[id].status = status;
-                papersData[id].review_comments = comments;
-                papersData[id].updated_at = new Date().toISOString();
-                papersData[id].reviewed_by = '{{ current_user.email }}';
-                
-                // Update UI
-                const row = document.querySelector(`tr[data-id="${id}"]`);
-                if (row) {
-                    row.setAttribute('data-status', status);
-                    const statusCell = row.querySelector('td:nth-child(6)');
-                    if (statusCell) {
-                        statusCell.innerHTML = `<span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
-                    }
-                    
-                    // Hide action buttons if paper is no longer pending
-                    if (status !== 'pending') {
-                        const actionsCell = row.querySelector('td:last-child');
-                        if (actionsCell) {
-                            const actionButtons = actionsCell.querySelectorAll('button.approve, button.reject, button.warning');
-                            actionButtons.forEach(btn => btn.style.display = 'none');
-                        }
-                    }
-                }
-                
-                // Close modal
-                document.getElementById('detailsModal').style.display = 'none';
-                
-                // Show success message
-                const message = `Paper has been ${status === 'revision' ? 'marked for revision' : status} successfully.`;
-                showAlert('success', message);
-            } else {
-                showAlert('error', data.error || 'Error updating status');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showAlert('error', 'Error updating paper status');
-        });
-    }
-}
-
-function showAlert(type, message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
-    `;
-    document.querySelector('.dashboard-header').insertAdjacentElement('afterend', alertDiv);
+    const comments = prompt('Enter any comments or feedback:');
     
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => alertDiv.remove(), 5000);
-}
-
-function downloadPaper(fileUrl) {
-    if (!fileUrl) {
-        alert('Paper file not available');
-        return;
-    }
-    window.open(fileUrl, '_blank');
-}
-
-function saveReviewComments() {
-    if (!currentPaperId) {
-        showAlert('error', 'No paper selected');
-        return;
-    }
-    
-    const comments = document.getElementById('reviewComments').value;
-    
-    fetch(`/admin/papers/${currentPaperId}/comments`, {
+    fetch(`/admin/submissions/${id}/status`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-            comments: comments,
-            updated_at: new Date().toISOString(),
-            reviewed_by: '{{ current_user.email }}'
+        body: JSON.stringify({
+            status: status,
+            comments: comments
         })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update local data
-            papersData[currentPaperId].review_comments = comments;
-            papersData[currentPaperId].updated_at = new Date().toISOString();
-            papersData[currentPaperId].reviewed_by = '{{ current_user.email }}';
-            
-            showAlert('success', 'Review comments saved successfully');
+            location.reload();
         } else {
-            showAlert('error', data.error || 'Error saving comments');
+            alert('Error updating status: ' + data.error);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('error', 'Error saving comments');
+        alert('Error updating status');
     });
 }
+
+function saveComments() {
+    const comments = document.getElementById('reviewComments').value;
+    
+    fetch(`/admin/submissions/${currentSubmissionId}/comments`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            comments: comments
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#submissionModal').modal('hide');
+            location.reload();
+        } else {
+            alert('Error saving comments: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving comments');
+    });
+}
+
+// Initialize DataTable
+$(document).ready(function() {
+    $('#submissionsTable').DataTable({
+        order: [[2, 'desc']], // Sort by submission date by default
+        pageLength: 25
+    });
+});
+
+// Make submissions data available to JavaScript
+var submissionsData = JSON.parse('{{ submissions|tojson|safe }}');
 </script>
 {% endblock %} 

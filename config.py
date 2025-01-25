@@ -5,7 +5,7 @@ class Config:
     
     # Firebase Configuration
     FIREBASE_CONFIG = {
-        'apiKey': 'AIzaSyBsMIXeEKHGMQGWwEHg_nT1QdlOT_zCxYY',
+        'apiKey': os.environ.get('FIREBASE_API_KEY') or 'your-web-api-key-here',
         'authDomain': 'giir-66ae6.firebaseapp.com',
         'databaseURL': 'https://giir-66ae6-default-rtdb.firebaseio.com',
         'projectId': 'giir-66ae6',

@@ -251,6 +251,11 @@
 
         <!-- Page Content -->
         <main class="admin-content">
+            <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                <a class="navbar-brand" href="{{ url_for('admin_dashboard') }}">
+                    <img src="{{ url_for('static', filename='images/logotrans.png') }}" alt="GIIR Logo" height="50">
+                </a>
+            </nav>
             {% block content %}{% endblock %}
         </main>
     </div>

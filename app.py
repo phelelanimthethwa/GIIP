@@ -15,6 +15,7 @@ import base64
 from dotenv import load_dotenv
 from models.email_service import EmailService
 import pytz
+import requests
 
 try:
     from dotenv import load_dotenv
@@ -30,11 +31,25 @@ app.config.from_object(Config)
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate('serviceAccountKey.json')
 firebase_admin.initialize_app(cred, {
-    'databaseURL': Config.FIREBASE_CONFIG['databaseURL']
+    'databaseURL': Config.FIREBASE_CONFIG['databaseURL'],
+    'storageBucket': Config.FIREBASE_CONFIG['storageBucket']  # Add storage bucket configuration
 })
 
 # Initialize Google Cloud Storage with the same credentials
 storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
+bucket = storage_client.bucket(Config.FIREBASE_CONFIG['storageBucket'])
+
+# Create the bucket if it doesn't exist
+try:
+    if not bucket.exists():
+        bucket.create()
+        # Make all objects in bucket publicly readable
+        bucket.make_public(recursive=True)
+        print(f"Created storage bucket: {Config.FIREBASE_CONFIG['storageBucket']}")
+    else:
+        print(f"Using existing storage bucket: {Config.FIREBASE_CONFIG['storageBucket']}")
+except Exception as e:
+    print(f"Error configuring storage bucket: {str(e)}")
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -308,15 +323,9 @@ def call_for_papers():
 def paper_submission():
     if request.method == 'POST':
         try:
-            # Verify reCAPTCHA
-            recaptcha_response = request.form.get('g-recaptcha-response')
-            if not recaptcha_response:
-                flash('Please complete the reCAPTCHA.', 'error')
-                return redirect(url_for('paper_submission'))
-
             # Get form data
             paper_data = {
-                'user_id': current_user.uid,
+                'user_id': current_user.id,
                 'user_email': current_user.email,
                 'paper_title': request.form.get('paper_title'),
                 'paper_abstract': request.form.get('paper_abstract'),
@@ -344,7 +353,7 @@ def paper_submission():
                 author_count += 1
 
             # Validate required fields
-            required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area', 'keywords']
+            required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area']
             for field in required_fields:
                 if not paper_data.get(field):
                     flash(f'Please fill in all required fields.', 'error')
@@ -371,7 +380,7 @@ def paper_submission():
             # Create a storage reference
             bucket = storage_client.bucket(app.config['FIREBASE_CONFIG']['storageBucket'])
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'papers/{current_user.uid}/{timestamp}_{secure_filename(file.filename)}'
+            filename = f'papers/{current_user.id}/{timestamp}_{secure_filename(file.filename)}'
             blob = bucket.blob(filename)
             
             # Upload the file
@@ -380,21 +389,23 @@ def paper_submission():
                 content_type=file.content_type
             )
             
-            # Make the file accessible to admins
+            # Make the file accessible
             blob.make_public()
             
             # Add file info to paper data
             paper_data['file_path'] = filename
             paper_data['file_url'] = blob.public_url
 
+            # Debug print before saving
+            print("Saving paper data:", paper_data)
+
             # Store paper in Firebase
             papers_ref = db.reference('papers')
             new_paper = papers_ref.push(paper_data)
             paper_id = new_paper.key
 
-            # Add paper reference to user's papers
-            user_papers_ref = db.reference(f'users/{current_user.uid}/papers')
-            user_papers_ref.update({paper_id: True})
+            # Debug print after saving
+            print("Paper saved with ID:", paper_id)
 
             # Send confirmation email
             try:
@@ -407,7 +418,6 @@ def paper_submission():
                 })
             except Exception as e:
                 print(f"Error sending confirmation email: {str(e)}")
-                # Continue even if email fails
 
             flash('Paper submitted successfully! Check your email for confirmation.', 'success')
             return redirect(url_for('dashboard'))
@@ -418,8 +428,7 @@ def paper_submission():
             return redirect(url_for('paper_submission'))
 
     return render_template('user/papers/submit.html', 
-                         site_design=get_site_design(), 
-                         recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'])
+                         site_design=get_site_design())
 
 @app.route('/author-guidelines')
 def author_guidelines():
@@ -476,15 +485,66 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         try:
-            user = auth.get_user_by_email(email)
+            # First verify the user exists
+            try:
+                user = auth.get_user_by_email(email)
+            except:
+                flash('Invalid email or password', 'error')
+                return render_template('user/auth/login.html', site_design=get_site_design())
+
+            # Debug: Print API key
+            api_key = os.environ.get('FIREBASE_API_KEY')
+            print(f"Using API key: {api_key}")
+            
+            if not api_key:
+                api_key = app.config['FIREBASE_CONFIG']['apiKey']
+                print(f"Fallback to config API key: {api_key}")
+
+            # Verify password using Firebase Auth REST API
+            verify_url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
+            verify_data = {
+                "email": email,
+                "password": password,
+                "returnSecureToken": True
+            }
+            headers = {"Content-Type": "application/json"}
+            
+            print(f"Making request to: {verify_url}?key={api_key}")
+            response = requests.post(
+                f"{verify_url}?key={api_key}",
+                json=verify_data,
+                headers=headers
+            )
+
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.text}")
+
+            if not response.ok:
+                print(f"Login error: {response.text}")
+                flash('Invalid email or password', 'error')
+                return render_template('user/auth/login.html', site_design=get_site_design())
+            
             # Get user data from Realtime Database
             ref = db.reference(f'users/{user.uid}')
             user_data = ref.get()
-            is_admin = user_data.get('is_admin', False) if user_data else False
             
-            # In a real application, you would verify the password here
-            # For demo purposes, we're just logging in the user
-            login_user(User(user.uid, user.email, user.display_name, is_admin))
+            if not user_data:
+                # If user data doesn't exist in Realtime DB, create it
+                user_data = {
+                    'email': email,
+                    'full_name': user.display_name or email.split('@')[0],
+                    'created_at': datetime.now().isoformat(),
+                    'is_admin': False
+                }
+                ref.set(user_data)
+            
+            is_admin = user_data.get('is_admin', False)
+            display_name = user_data.get('full_name', email.split('@')[0])
+            
+            # Create User object and login
+            user_obj = User(user.uid, email, display_name, is_admin)
+            login_user(user_obj)
+            
             flash('Logged in successfully!', 'success')
             
             # Check if there's a registration selection in session
@@ -502,8 +562,11 @@ def login():
             if is_admin:
                 return redirect(url_for('admin_dashboard'))
             return redirect(url_for('dashboard'))
-        except:
+            
+        except Exception as e:
+            print(f"Login error: {str(e)}")  # Log the error
             flash('Invalid email or password', 'error')
+            
     return render_template('user/auth/login.html', site_design=get_site_design())
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -728,35 +791,44 @@ def toggle_admin(user_id):
 
 def create_admin_user():
     try:
-        admin_email = "admin@conference2024.com"
-        admin_password = "Admin@2024"
+        admin_email = "admin@giirconference.com"
+        admin_password = "Admin@2024!"
         admin_name = "Conference Admin"
 
-        # Create user in Firebase Authentication
+        # Try to get existing admin user
         try:
+            user = auth.get_user_by_email(admin_email)
+            # Update existing admin's password
+            auth.update_user(
+                user.uid,
+                password=admin_password
+            )
+            print("Admin password updated successfully!")
+        except auth.UserNotFoundError:
+            # Create new admin user if doesn't exist
             user = auth.create_user(
                 email=admin_email,
                 password=admin_password,
                 display_name=admin_name
             )
-        except auth.EmailAlreadyExistsError:
-            # If user already exists, get the user
-            user = auth.get_user_by_email(admin_email)
+            print("New admin user created successfully!")
 
-        # Store or update user data in Realtime Database
+        # Update or create admin data in Realtime Database
         ref = db.reference('users')
-        ref.child(user.uid).set({
+        ref.child(user.uid).update({
             'email': admin_email,
             'full_name': admin_name,
             'created_at': datetime.now().isoformat(),
-            'is_admin': True
+            'is_admin': True,
+            'updated_at': datetime.now().isoformat()
         })
-        print("Admin user created successfully!")
+
+        print("Admin user configuration complete!")
         print(f"Email: {admin_email}")
         print(f"Password: {admin_password}")
         return True
     except Exception as e:
-        print(f"Error creating admin user: {str(e)}")
+        print(f"Error configuring admin user: {str(e)}")
         return False
 
 @app.route('/admin/venue', methods=['GET', 'POST'])
@@ -1312,129 +1384,53 @@ GIIR Conference Team"""
     
     send_email(email, subject, body)
 
-@app.route('/admin/submissions')
-@login_required
-@admin_required
-def admin_submissions():
-    try:
-        # Get all submissions from Firebase
-        submissions_ref = db.reference('submissions')
-        submissions = submissions_ref.get()
-        return render_template('admin/submissions.html', site_design=get_site_design(), submissions=submissions or {})
-    except Exception as e:
-        flash(f'Error loading submissions: {str(e)}', 'error')
-        return render_template('admin/submissions.html', site_design=get_site_design(), submissions={})
 
-@app.route('/admin/submissions/<submission_id>/status', methods=['POST'])
 @login_required
 @admin_required
-def update_submission_status(submission_id):
+def update_submission_comments(submission_id):
+    data = request.get_json()
+    comments = data.get('comments')
+    
+    if comments is None:
+        return jsonify({'success': False, 'error': 'Comments are required'}), 400
+        
     try:
-        data = request.get_json()
-        new_status = data.get('status')
-        comments = data.get('comments', '')
-        
-        if new_status not in ['accepted', 'rejected', 'revision']:
-            return jsonify({'success': False, 'error': 'Invalid status'}), 400
-        
-        # Update submission status in Firebase
-        sub_ref = db.reference(f'submissions/{submission_id}')
-        submission = sub_ref.get()
-        
-        if not submission:
-            return jsonify({'success': False, 'error': 'Submission not found'}), 404
-        
-        # Update the status and comments
-        sub_ref.update({
-            'status': new_status,
+        # Update submission comments in Firebase
+        submission_ref = db.reference(f'papers/{submission_id}')
+        submission_ref.update({
             'review_comments': comments,
-            'updated_at': datetime.now().isoformat(),
+            'updated_at': datetime.utcnow().isoformat(),
             'reviewed_by': current_user.email
         })
-        
-        # Send email notification to author
-        try:
-            msg = Message(
-                f'Paper Submission {new_status.title()}',
-                recipients=[submission['email']]
-            )
-            
-            status_messages = {
-                'accepted': """
-                Congratulations! Your paper submission has been accepted.
-                
-                Paper Details:
-                Title: {title}
-                Category: {category}
-                
-                Please prepare your camera-ready version following the conference guidelines.
-                """,
-                'rejected': """
-                Thank you for your submission to our conference.
-                
-                Unfortunately, after careful review, we regret to inform you that your paper was not accepted.
-                
-                Paper Details:
-                Title: {title}
-                Category: {category}
-                
-                We encourage you to consider our feedback for future submissions.
-                """,
-                'revision': """
-                Thank you for your submission to our conference.
-                
-                Your paper requires revisions before it can be accepted.
-                
-                Paper Details:
-                Title: {title}
-                Category: {category}
-                
-                Review Comments:
-                {comments}
-                
-                Please submit your revised version through the conference system.
-                """
-            }
-            
-            msg.body = status_messages[new_status].format(
-                title=submission['title'],
-                category=submission['category'],
-                comments=comments if comments else 'No additional comments provided.'
-            )
-            
-            mail.send(msg)
-        except Exception as e:
-            print(f"Error sending email: {str(e)}")
-        
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/admin/submissions/<submission_id>/comments', methods=['POST'])
-@login_required
-@admin_required
-def save_submission_comments(submission_id):
-    try:
-        data = request.get_json()
-        comments = data.get('comments', '')
-        
-        # Update paper comments in Firebase
-        paper_ref = db.reference(f'papers/{submission_id}')
-        paper = paper_ref.get()
-        
-        if not paper:
-            return jsonify({'success': False, 'error': 'Paper not found'}), 404
-        
-        # Update the comments
-        paper_ref.update({
-            'review_comments': comments,
-            'updated_at': datetime.now().isoformat(),
-            'reviewed_by': current_user.email
-        })
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+def send_submission_status_email(email, paper_title, status, comments):
+    subject = f'Update on your GIIR Conference Paper Submission'
+    
+    status_messages = {
+        'accepted': 'We are pleased to inform you that your paper has been accepted.',
+        'rejected': 'We regret to inform you that your paper was not accepted.',
+        'revision': 'Your paper requires revisions before it can be accepted.'
+    }
+    
+    body = f"""Dear Author,
+
+This email is regarding your paper submission: "{paper_title}"
+
+{status_messages.get(status, 'Your paper status has been updated.')}
+
+Reviewer Comments:
+{comments or 'No additional comments provided.'}
+
+{'Please submit your revised paper through the conference system.' if status == 'revision' else ''}
+
+Best regards,
+GIIR Conference Team
+"""
+    
+    send_email(email, subject, body)
 
 @app.route('/admin/announcements')
 @login_required
@@ -2242,7 +2238,7 @@ def inject_admin_menu():
         {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
         {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
         {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
-        {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},
+        {'url': 'admin_papers', 'icon': 'file-alt', 'text': 'Submissions'},  # Updated this line
         {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
         {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
         {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
@@ -2740,8 +2736,8 @@ def admin_papers():
         papers_ref = db.reference('papers')
         papers = papers_ref.get() or {}
         
-        # Initialize papersData for JavaScript
-        papers_data = json.dumps(papers)
+        # Debug print to check what's being retrieved
+        print("Retrieved papers:", papers)
         
         # Sort papers by submission date (newest first)
         papers = dict(sorted(
@@ -2752,16 +2748,15 @@ def admin_papers():
         
         return render_template(
             'admin/submissions.html',
-            papers=papers,
-            papers_data=papers_data,  # Add this for JavaScript
+            submissions=papers,
             site_design=get_site_design()
         )
     except Exception as e:
+        print(f"Error in admin_papers: {str(e)}")  # Add debug print
         flash(f'Error loading papers: {str(e)}', 'error')
         return render_template(
             'admin/submissions.html',
-            papers={},
-            papers_data='{}',
+            submissions={},
             site_design=get_site_design()
         )
 
@@ -3186,6 +3181,128 @@ Message:
     return render_template('contact.html', 
                          recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'],
                          site_design=get_site_design())
+
+@app.route('/submit', methods=['GET', 'POST'])
+@login_required
+def submit_paper():
+    if request.method == 'GET':
+        return render_template('submit.html', site_design=get_site_design())
+        
+    try:
+        # Get form data
+        data = request.form.to_dict()
+        files = request.files
+        
+        # Process authors from form data
+        authors = []
+        author_index = 0
+        while True:
+            author_name = data.get(f'authors[{author_index}][name]')
+            author_email = data.get(f'authors[{author_index}][email]')
+            author_institution = data.get(f'authors[{author_index}][institution]')
+            
+            if not author_name:  # No more authors
+                break
+                
+            if author_name and author_email and author_institution:
+                authors.append({
+                    'name': author_name,
+                    'email': author_email,
+                    'institution': author_institution
+                })
+            author_index += 1
+        
+        if not authors:
+            flash('At least one author is required', 'error')
+            return redirect(url_for('submit'))
+        
+        # Process paper file
+        if 'paper_file' not in files:
+            flash('Paper file is required', 'error')
+            return redirect(url_for('submit'))
+            
+        paper_file = files['paper_file']
+        if not paper_file.filename:
+            flash('Paper file is required', 'error')
+            return redirect(url_for('submit'))
+            
+        # Check file type
+        allowed_extensions = {'pdf', 'doc', 'docx'}
+        if not '.' in paper_file.filename or \
+           paper_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+            flash('Invalid file type. Allowed types: PDF, DOC, DOCX', 'error')
+            return redirect(url_for('submit'))
+        
+        # Convert file to base64 for storage in Realtime Database
+        file_data = paper_file.read()
+        file_base64 = base64.b64encode(file_data).decode('utf-8')
+        
+        # Create paper submission data
+        paper_data = {
+            'paper_title': data.get('paper_title'),
+            'paper_abstract': data.get('paper_abstract'),
+            'research_area': data.get('research_area'),
+            'presentation_type': data.get('presentation_type'),
+            'keywords': [k.strip() for k in data.get('keywords', '').split(',') if k.strip()],
+            'authors': authors,
+            'file_data': file_base64,
+            'file_name': secure_filename(paper_file.filename),
+            'file_type': paper_file.content_type,
+            'file_size': len(file_data),
+            'status': 'pending',
+            'submitted_at': datetime.utcnow().isoformat(),
+            'submitted_by': current_user.email,
+            'user_id': current_user.id,
+            'review_comments': None,
+            'reviewed_by': None,
+            'updated_at': None
+        }
+        
+        # Debug print
+        print("Saving paper data:", {k: v for k, v in paper_data.items() if k != 'file_data'})
+        
+        # Save to Firebase Realtime Database
+        papers_ref = db.reference('papers')
+        new_paper = papers_ref.push(paper_data)
+        
+        # Add reference to user's papers
+        user_papers_ref = db.reference(f'users/{current_user.id}/papers/{new_paper.key}')
+        user_papers_ref.set(True)
+        
+        # Send confirmation email
+        try:
+            send_submission_confirmation_email(
+                authors[0]['email'],
+                paper_data['paper_title'],
+                new_paper.key
+            )
+        except Exception as e:
+            print(f"Error sending confirmation email: {str(e)}")
+        
+        flash('Paper submitted successfully!', 'success')
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        print(f"Error submitting paper: {str(e)}")
+        flash(f'Error submitting paper: {str(e)}', 'error')
+        return redirect(url_for('submit'))
+
+def send_submission_confirmation_email(email, paper_title, submission_id):
+    subject = 'GIIR Conference Paper Submission Confirmation'
+    body = f"""Dear Author,
+
+Thank you for submitting your paper to the GIIR Conference 2024.
+
+Submission Details:
+Title: {paper_title}
+Submission ID: {submission_id}
+
+Your paper has been received and will be reviewed by our committee. You will be notified of any updates regarding your submission.
+
+Best regards,
+GIIR Conference Team
+"""
+    send_email(email, subject, body)
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
