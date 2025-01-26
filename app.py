@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.utils import secure_filename
 import os
-from google.cloud import storage
 import base64
 from dotenv import load_dotenv
 from models.email_service import EmailService
@@ -41,43 +40,11 @@ try:
         print("Using Firebase credentials from serviceAccountKey.json")
     
     firebase_admin.initialize_app(cred, {
-        'databaseURL': os.environ.get('FIREBASE_DATABASE_URL', 'https://giir-66ae6-default-rtdb.firebaseio.com'),
-        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET', 'giir-66ae6.appspot.com')
+        'databaseURL': os.environ.get('FIREBASE_DATABASE_URL', 'https://giir-66ae6-default-rtdb.firebaseio.com')
     })
     print("Firebase initialized successfully")
 except Exception as e:
     print(f"Error initializing Firebase: {str(e)}")
-    raise
-
-# Initialize Google Cloud Storage
-try:
-    # Set default bucket name
-    bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET', 'giir-66ae6.appspot.com')
-    
-    if os.environ.get('FIREBASE_CREDENTIALS'):
-        # In production, use credentials from environment variable
-        storage_client = storage.Client.from_service_account_info(
-            json.loads(os.environ.get('FIREBASE_CREDENTIALS'))
-        )
-        print("Using Google Cloud Storage credentials from environment variable")
-    else:
-        # In development, use service account file
-        storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-        print("Using Google Cloud Storage credentials from serviceAccountKey.json")
-    
-    print(f"Attempting to access bucket: {bucket_name}")
-    bucket = storage_client.bucket(bucket_name)
-
-    # Create the bucket if it doesn't exist
-    if not bucket.exists():
-        bucket.create()
-        # Make all objects in bucket publicly readable
-        bucket.make_public(recursive=True)
-        print(f"Created storage bucket: {bucket_name}")
-    else:
-        print(f"Using existing storage bucket: {bucket_name}")
-except Exception as e:
-    print(f"Error configuring storage bucket: {str(e)}")
     raise
 
 # Initialize Flask-Login
@@ -405,24 +372,16 @@ def paper_submission():
                 flash('Only PDF files are allowed.', 'error')
                 return redirect(url_for('paper_submission'))
 
-            # Create a storage reference
-            bucket = storage_client.bucket(app.config['FIREBASE_CONFIG']['storageBucket'])
+            # Save file to local uploads directory
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'papers/{current_user.id}/{timestamp}_{secure_filename(file.filename)}'
-            blob = bucket.blob(filename)
+            upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'papers', current_user.id)
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(app.root_path, 'static', 'uploads', filename)
+            file.save(file_path)
             
-            # Upload the file
-            blob.upload_from_string(
-                file.read(),
-                content_type=file.content_type
-            )
-            
-            # Make the file accessible
-            blob.make_public()
-            
-            # Add file info to paper data
-            paper_data['file_path'] = filename
-            paper_data['file_url'] = blob.public_url
+            # Get the public URL for the file
+            file_url = url_for('static', filename=f'uploads/{filename}')
 
             # Debug print before saving
             print("Saving paper data:", paper_data)
@@ -3500,6 +3459,35 @@ def get_email_settings():
             'success': False,
             'error': str(e)
         })
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
+        if file:
+            filename = secure_filename(file.filename)
+            # Save file to local uploads directory
+            upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, filename)
+            file.save(file_path)
+            
+            # Return the URL for the uploaded file
+            file_url = url_for('static', filename=f'uploads/{filename}')
+            return jsonify({
+                'success': True,
+                'url': file_url,
+                'filename': filename
+            })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
