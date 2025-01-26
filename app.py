@@ -30,13 +30,15 @@ app.config.from_object(Config)
 
 # Initialize Firebase Admin SDK
 try:
-    if os.environ.get('FLASK_ENV') == 'production':
+    if os.environ.get('FIREBASE_CREDENTIALS'):
         # In production, use credentials from environment variable
-        cred_dict = json.loads(os.environ.get('FIREBASE_CREDENTIALS', '{}'))
+        cred_dict = json.loads(os.environ.get('FIREBASE_CREDENTIALS'))
         cred = credentials.Certificate(cred_dict)
+        print("Using Firebase credentials from environment variable")
     else:
         # In development, use service account file
         cred = credentials.Certificate('serviceAccountKey.json')
+        print("Using Firebase credentials from serviceAccountKey.json")
     
     firebase_admin.initialize_app(cred, {
         'databaseURL': os.environ.get('FIREBASE_DATABASE_URL', 'https://giir-66ae6-default-rtdb.firebaseio.com'),
@@ -49,14 +51,16 @@ except Exception as e:
 
 # Initialize Google Cloud Storage
 try:
-    if os.environ.get('FLASK_ENV') == 'production':
+    if os.environ.get('FIREBASE_CREDENTIALS'):
         # In production, use credentials from environment variable
         storage_client = storage.Client.from_service_account_info(
-            json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '{}'))
+            json.loads(os.environ.get('FIREBASE_CREDENTIALS'))
         )
+        print("Using Google Cloud Storage credentials from environment variable")
     else:
         # In development, use service account file
         storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
+        print("Using Google Cloud Storage credentials from serviceAccountKey.json")
     
     bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET')
     bucket = storage_client.bucket(bucket_name)
