@@ -32,16 +32,17 @@ app.config.from_object(Config)
 try:
     if os.environ.get('FLASK_ENV') == 'production':
         # In production, use credentials from environment variable
-        cred_dict = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '{}'))
+        cred_dict = json.loads(os.environ.get('FIREBASE_CREDENTIALS', '{}'))
         cred = credentials.Certificate(cred_dict)
     else:
         # In development, use service account file
         cred = credentials.Certificate('serviceAccountKey.json')
     
-    firebase_app = initialize_app(cred, {
-        'databaseURL': os.environ.get('FIREBASE_DATABASE_URL'),
-        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': os.environ.get('FIREBASE_DATABASE_URL', 'https://giir-66ae6-default-rtdb.firebaseio.com'),
+        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET', 'giir-66ae6.appspot.com')
     })
+    print("Firebase initialized successfully")
 except Exception as e:
     print(f"Error initializing Firebase: {str(e)}")
     raise
