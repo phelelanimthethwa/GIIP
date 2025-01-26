@@ -475,17 +475,22 @@ def login():
             # First verify the user exists
             try:
                 user = auth.get_user_by_email(email)
-            except:
+            except Exception as e:
+                print(f"Error getting user by email: {str(e)}")
                 flash('Invalid email or password', 'error')
                 return render_template('user/auth/login.html', site_design=get_site_design())
 
-            # Debug: Print API key
+            # Get API key with better error handling
             api_key = os.environ.get('FIREBASE_API_KEY')
-            print(f"Using API key: {api_key}")
-            
             if not api_key:
-                api_key = app.config['FIREBASE_CONFIG']['apiKey']
-                print(f"Fallback to config API key: {api_key}")
+                api_key = app.config['FIREBASE_CONFIG'].get('apiKey')
+                if not api_key:
+                    print("Error: No Firebase API key found in environment or config")
+                    flash('Authentication configuration error', 'error')
+                    return render_template('user/auth/login.html', site_design=get_site_design())
+                print("Using API key from config")
+            else:
+                print("Using API key from environment")
 
             # Verify password using Firebase Auth REST API
             verify_url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
@@ -496,63 +501,75 @@ def login():
             }
             headers = {"Content-Type": "application/json"}
             
-            print(f"Making request to: {verify_url}?key={api_key}")
-            response = requests.post(
-                f"{verify_url}?key={api_key}",
-                json=verify_data,
-                headers=headers
-            )
-
-            print(f"Response status: {response.status_code}")
-            print(f"Response content: {response.text}")
-
-            if not response.ok:
-                print(f"Login error: {response.text}")
-                flash('Invalid email or password', 'error')
+            try:
+                response = requests.post(
+                    f"{verify_url}?key={api_key}",
+                    json=verify_data,
+                    headers=headers
+                )
+                print(f"Auth response status: {response.status_code}")
+                
+                if not response.ok:
+                    error_data = response.json()
+                    print(f"Auth error response: {error_data}")
+                    error_message = error_data.get('error', {}).get('message', 'Unknown error')
+                    print(f"Auth error message: {error_message}")
+                    flash('Invalid email or password', 'error')
+                    return render_template('user/auth/login.html', site_design=get_site_design())
+                    
+            except Exception as e:
+                print(f"Error during authentication request: {str(e)}")
+                flash('Authentication service error', 'error')
                 return render_template('user/auth/login.html', site_design=get_site_design())
             
-            # Get user data from Realtime Database
-            ref = db.reference(f'users/{user.uid}')
-            user_data = ref.get()
-            
-            if not user_data:
-                # If user data doesn't exist in Realtime DB, create it
-                user_data = {
-                    'email': email,
-                    'full_name': user.display_name or email.split('@')[0],
-                    'created_at': datetime.now().isoformat(),
-                    'is_admin': False
-                }
-                ref.set(user_data)
-            
-            is_admin = user_data.get('is_admin', False)
-            display_name = user_data.get('full_name', email.split('@')[0])
-            
-            # Create User object and login
-            user_obj = User(user.uid, email, display_name, is_admin)
-            login_user(user_obj)
-            
-            flash('Logged in successfully!', 'success')
-            
-            # Check if there's a registration selection in session
-            if 'registration_type' in session and 'registration_period' in session:
-                reg_type = session.pop('registration_type')
-                reg_period = session.pop('registration_period')
-                return redirect(url_for('registration_form', type=reg_type, period=reg_period))
-            
-            # Check for next parameter
-            next_page = request.args.get('next')
-            if next_page:
-                return redirect(next_page)
-            
-            # Redirect admin users to admin dashboard
-            if is_admin:
-                return redirect(url_for('admin_dashboard'))
-            return redirect(url_for('dashboard'))
-            
+            try:
+                # Get user data from Realtime Database
+                ref = db.reference(f'users/{user.uid}')
+                user_data = ref.get()
+                
+                if not user_data:
+                    # If user data doesn't exist in Realtime DB, create it
+                    user_data = {
+                        'email': email,
+                        'full_name': user.display_name or email.split('@')[0],
+                        'created_at': datetime.now().isoformat(),
+                        'is_admin': False
+                    }
+                    ref.set(user_data)
+                
+                is_admin = user_data.get('is_admin', False)
+                display_name = user_data.get('full_name', email.split('@')[0])
+                
+                # Create User object and login
+                user_obj = User(user.uid, email, display_name, is_admin)
+                login_user(user_obj)
+                
+                flash('Logged in successfully!', 'success')
+                
+                # Check if there's a registration selection in session
+                if 'registration_type' in session and 'registration_period' in session:
+                    reg_type = session.pop('registration_type')
+                    reg_period = session.pop('registration_period')
+                    return redirect(url_for('registration_form', type=reg_type, period=reg_period))
+                
+                # Check for next parameter
+                next_page = request.args.get('next')
+                if next_page:
+                    return redirect(next_page)
+                
+                # Redirect admin users to admin dashboard
+                if is_admin:
+                    return redirect(url_for('admin_dashboard'))
+                return redirect(url_for('dashboard'))
+                
+            except Exception as e:
+                print(f"Error getting/setting user data: {str(e)}")
+                flash('Error accessing user data', 'error')
+                return render_template('user/auth/login.html', site_design=get_site_design())
+                
         except Exception as e:
-            print(f"Login error: {str(e)}")  # Log the error
-            flash('Invalid email or password', 'error')
+            print(f"Login error: {str(e)}")
+            flash('Login error occurred', 'error')
             
     return render_template('user/auth/login.html', site_design=get_site_design())
 
