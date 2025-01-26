@@ -382,22 +382,55 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         formData.append('existing_images', JSON.stringify(existingImages));
         
+        // Show loading state
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
         fetch('{{ url_for("admin_home_content") }}', {
             method: 'POST',
             body: formData,
-            credentials: 'same-origin'  // Keep this to maintain session
+            credentials: 'same-origin'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.reload();
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show';
+                alert.innerHTML = `
+                    <strong>Success!</strong> Changes saved successfully.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                form.insertAdjacentElement('beforebegin', alert);
+                
+                // Reload after 1 second
+                setTimeout(() => window.location.reload(), 1000);
             } else {
-                alert('Error saving changes: ' + data.error);
+                // Show error message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger alert-dismissible fade show';
+                alert.innerHTML = `
+                    <strong>Error!</strong> ${data.error || 'Failed to save changes'}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                form.insertAdjacentElement('beforebegin', alert);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error saving changes');
+            // Show error message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger alert-dismissible fade show';
+            alert.innerHTML = `
+                <strong>Error!</strong> Failed to save changes. Please try again.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            form.insertAdjacentElement('beforebegin', alert);
+        })
+        .finally(() => {
+            // Reset button state
+            saveButton.disabled = false;
+            saveButton.innerHTML = '<i class="fas fa-save"></i> Save All Changes';
         });
     });
 

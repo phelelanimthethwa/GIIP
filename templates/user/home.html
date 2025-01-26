@@ -12,10 +12,14 @@
 <div class="hero-section">
     <div class="hero-slider">
         <div class="slider-container">
-            {% if home_content.hero.images %}
+            {% if home_content.hero.images and home_content.hero.images|length > 0 %}
                 {% for image in home_content.hero.images %}
                 <div class="slide">
-                    <img src="{{ image.url }}" alt="Conference image {{ loop.index }}">
+                    {% set default_image = url_for('static', filename='images/default-hero.jpg') %}
+                    <img src="{{ image.url }}" 
+                         alt="{{ image.alt }}" 
+                         data-default="{{ default_image }}"
+                         onError="this.onerror=null; this.src=this.getAttribute('data-default');">
                 </div>
                 {% endfor %}
             {% else %}
@@ -24,11 +28,13 @@
                 </div>
             {% endif %}
         </div>
+        {% if home_content.hero.images and home_content.hero.images|length > 1 %}
         <div class="slider-nav">
             <button class="prev-slide"><i class="fas fa-chevron-left"></i></button>
             <button class="next-slide"><i class="fas fa-chevron-right"></i></button>
         </div>
         <div class="slider-dots"></div>
+        {% endif %}
 
         <!-- Conference Info Overlay -->
         <div class="conference-info-overlay">

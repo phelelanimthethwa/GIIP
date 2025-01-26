@@ -2193,129 +2193,46 @@ def admin_home_content():
             # Handle hero images
             hero_images = []
             
+            # Create base upload directory if it doesn't exist
+            base_upload_path = os.path.join(app.root_path, 'static', 'uploads')
+            hero_upload_path = os.path.join(base_upload_path, 'hero')
+            os.makedirs(hero_upload_path, exist_ok=True)
+            
             # Add existing images that weren't deleted
             if 'existing_images' in request.form:
                 try:
                     existing_images = json.loads(request.form['existing_images'])
                     hero_images.extend(existing_images)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing existing images: {str(e)}")
             
             # Handle new hero image uploads
             if 'hero_images' in request.files:
                 files = request.files.getlist('hero_images')
                 for file in files:
                     if file and file.filename and allowed_image_file(file.filename):
-                        filename = secure_filename(file.filename)
-                        unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                        
-                        # Create uploads directory if it doesn't exist
-                        upload_path = os.path.join(app.static_folder, 'uploads', 'hero')
-                        os.makedirs(upload_path, exist_ok=True)
-                        
-                        file_path = os.path.join(upload_path, unique_filename)
-                        file.save(file_path)
-                        
-                        hero_images.append({
-                            'url': f"/static/uploads/hero/{unique_filename}",
-                            'alt': filename
-                        })
-
-            # Handle downloads
-            downloads = []
-            download_titles = request.form.getlist('download_titles[]')
-            download_descriptions = request.form.getlist('download_descriptions[]')
-            download_ids = request.form.getlist('download_ids[]')
-            download_existing_files = request.form.getlist('download_existing_files[]')
-
-            for i in range(len(download_titles)):
-                download = {
-                    'id': download_ids[i] if i < len(download_ids) else f'download_{len(downloads)}',
-                    'title': download_titles[i],
-                    'description': download_descriptions[i],
-                    'file_url': download_existing_files[i] if i < len(download_existing_files) else '',
-                    'file_type': '',
-                    'file_size': ''
-                }
-
-                # Check if there's a new file upload for this download
-                file_key = f'download_file_{download["id"]}'
-                if file_key in request.files:
-                    file = request.files[file_key]
-                    if file and file.filename and allowed_file(file.filename):
-                        filename = secure_filename(file.filename)
-                        unique_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                        
-                        # Create downloads directory if it doesn't exist
-                        upload_path = os.path.join(app.static_folder, 'uploads', 'downloads')
-                        os.makedirs(upload_path, exist_ok=True)
-                        
-                        file_path = os.path.join(upload_path, unique_filename)
-                        file.save(file_path)
-                        
-                        # Update download info
-                        download['file_url'] = f"/static/uploads/downloads/{unique_filename}"
-                        download['file_type'] = filename.rsplit('.', 1)[1].lower()
-                        download['file_size'] = f"{os.path.getsize(file_path) / 1024:.0f} KB"
-                elif download['file_url']:  # Keep existing file info if no new file uploaded
-                    existing_download = next((d for d in existing_content.get('downloads', []) 
-                                           if d.get('file_url') == download['file_url']), None)
-                    if existing_download:
-                        download['file_type'] = existing_download.get('file_type', '')
-                        download['file_size'] = existing_download.get('file_size', '')
-
-                downloads.append(download)
-
-            # Handle supporters
-            supporters = []
-            
-            # Handle existing supporters
-            existing_names = request.form.getlist('existing_supporter_names[]')
-            existing_descriptions = request.form.getlist('existing_supporter_descriptions[]')
-            existing_logos = request.form.getlist('existing_supporter_logos[]')
-            
-            for i in range(len(existing_names)):
-                if existing_names[i].strip() and existing_logos[i].strip():
-                    supporters.append({
-                        'name': existing_names[i],
-                        'description': existing_descriptions[i],
-                        'logo': existing_logos[i]
-                    })
-            
-            # Handle new supporters
-            new_names = request.form.getlist('new_supporter_names[]')
-            new_descriptions = request.form.getlist('new_supporter_descriptions[]')
-            new_logos = request.form.getlist('new_supporter_logos[]')
-            
-            for i in range(len(new_names)):
-                if new_names[i].strip() and new_logos[i].strip():
-                    # Convert data URL to file and save
-                    try:
-                        # Extract the base64 part of the data URL
-                        image_data = new_logos[i].split(',')[1]
-                        image_binary = base64.b64decode(image_data)
-                        
-                        # Generate unique filename
-                        filename = f"supporter_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{i}.png"
-                        
-                        # Create supporters directory if it doesn't exist
-                        upload_path = os.path.join(app.static_folder, 'uploads', 'supporters')
-                        os.makedirs(upload_path, exist_ok=True)
-                        
-                        # Save the image
-                        file_path = os.path.join(upload_path, filename)
-                        with open(file_path, 'wb') as f:
-                            f.write(image_binary)
-                        
-                        # Add to supporters list
-                        supporters.append({
-                            'name': new_names[i],
-                            'description': new_descriptions[i],
-                            'logo': f"/static/uploads/supporters/{filename}"
-                        })
-                    except Exception as e:
-                        print(f"Error saving supporter image: {str(e)}")
-                        continue
+                        try:
+                            filename = secure_filename(file.filename)
+                            unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                            file_path = os.path.join(hero_upload_path, unique_filename)
+                            
+                            # Save the file
+                            file.save(file_path)
+                            
+                            # Verify file was saved
+                            if not os.path.exists(file_path):
+                                raise Exception(f"Failed to save file: {file_path}")
+                            
+                            # Add to hero images list
+                            image_url = f"/static/uploads/hero/{unique_filename}"
+                            hero_images.append({
+                                'url': image_url,
+                                'alt': filename
+                            })
+                            print(f"Successfully saved hero image: {image_url}")
+                        except Exception as e:
+                            print(f"Error saving hero image {filename}: {str(e)}")
+                            continue
 
             # Get form data
             home_content = {
@@ -2338,8 +2255,8 @@ def admin_home_content():
                     'mission': request.form.get('vmo[mission]'),
                     'objectives': request.form.get('vmo[objectives]')
                 },
-                'downloads': downloads,
-                'supporters': supporters,
+                'downloads': [],
+                'supporters': [],
                 'footer': {
                     'contact_email': request.form.get('footer[contact_email]'),
                     'contact_phone': request.form.get('footer[contact_phone]'),
@@ -2350,19 +2267,16 @@ def admin_home_content():
                     },
                     'address': request.form.get('footer[address]'),
                     'copyright': request.form.get('footer[copyright]')
-                },
-                'updated_at': datetime.now().isoformat(),
-                'updated_by': current_user.email
+                }
             }
             
             # Save to Firebase
             content_ref = db.reference('home_content')
             content_ref.set(home_content)
             
-            flash('Home content updated successfully!', 'success')
             return jsonify({'success': True})
         except Exception as e:
-            print(f"Error saving home content: {str(e)}")  # Add debug print
+            print(f"Error saving home content: {str(e)}")
             return jsonify({'success': False, 'error': str(e)}), 500
     
     # GET request - render template with current content
