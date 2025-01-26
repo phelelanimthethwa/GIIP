@@ -51,6 +51,9 @@ except Exception as e:
 
 # Initialize Google Cloud Storage
 try:
+    # Set default bucket name
+    bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET', 'giir-66ae6.appspot.com')
+    
     if os.environ.get('FIREBASE_CREDENTIALS'):
         # In production, use credentials from environment variable
         storage_client = storage.Client.from_service_account_info(
@@ -62,7 +65,7 @@ try:
         storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
         print("Using Google Cloud Storage credentials from serviceAccountKey.json")
     
-    bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET')
+    print(f"Attempting to access bucket: {bucket_name}")
     bucket = storage_client.bucket(bucket_name)
 
     # Create the bucket if it doesn't exist
