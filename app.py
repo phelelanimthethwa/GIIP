@@ -29,27 +29,48 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # Initialize Firebase Admin SDK
-cred = credentials.Certificate('serviceAccountKey.json')
-firebase_admin.initialize_app(cred, {
-    'databaseURL': Config.FIREBASE_CONFIG['databaseURL'],
-    'storageBucket': Config.FIREBASE_CONFIG['storageBucket']  # Add storage bucket configuration
-})
-
-# Initialize Google Cloud Storage with the same credentials
-storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-bucket = storage_client.bucket(Config.FIREBASE_CONFIG['storageBucket'])
-
-# Create the bucket if it doesn't exist
 try:
+    if os.environ.get('FLASK_ENV') == 'production':
+        # In production, use credentials from environment variable
+        cred_dict = json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '{}'))
+        cred = credentials.Certificate(cred_dict)
+    else:
+        # In development, use service account file
+        cred = credentials.Certificate('serviceAccountKey.json')
+    
+    firebase_app = initialize_app(cred, {
+        'databaseURL': os.environ.get('FIREBASE_DATABASE_URL'),
+        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')
+    })
+except Exception as e:
+    print(f"Error initializing Firebase: {str(e)}")
+    raise
+
+# Initialize Google Cloud Storage
+try:
+    if os.environ.get('FLASK_ENV') == 'production':
+        # In production, use credentials from environment variable
+        storage_client = storage.Client.from_service_account_info(
+            json.loads(os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '{}'))
+        )
+    else:
+        # In development, use service account file
+        storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
+    
+    bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET')
+    bucket = storage_client.bucket(bucket_name)
+
+    # Create the bucket if it doesn't exist
     if not bucket.exists():
         bucket.create()
         # Make all objects in bucket publicly readable
         bucket.make_public(recursive=True)
-        print(f"Created storage bucket: {Config.FIREBASE_CONFIG['storageBucket']}")
+        print(f"Created storage bucket: {bucket_name}")
     else:
-        print(f"Using existing storage bucket: {Config.FIREBASE_CONFIG['storageBucket']}")
+        print(f"Using existing storage bucket: {bucket_name}")
 except Exception as e:
     print(f"Error configuring storage bucket: {str(e)}")
+    raise
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -76,22 +97,21 @@ def format_datetime(value):
 
 # Add timezone formatting helper
 def format_datetime_with_timezone(date_str, time_str, timezone_str):
-    """Format datetime with timezone support"""
+    """Format datetime with timezone for consistent display"""
     try:
-        # Get the timezone
-        tz = pytz.timezone(timezone_str)
-        
         # Create datetime object
         dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
         
-        # Localize the datetime to the specified timezone
-        localized_dt = tz.localize(dt)
+        # Get timezone
+        tz = pytz.timezone(timezone_str)
         
-        # Format with timezone name
-        return localized_dt.strftime('%B %d, %Y %I:%M %p %Z')
+        # Localize the datetime
+        local_dt = tz.localize(dt)
+        
+        return local_dt.isoformat()
     except Exception as e:
         print(f"Error formatting datetime: {str(e)}")
-        return f"{date_str} {time_str} {timezone_str}"
+        return None
 
 # Add this after app initialization but before routes
 @app.template_filter('format_date')
@@ -1432,35 +1452,94 @@ GIIR Conference Team
     
     send_email(email, subject, body)
 
-@app.route('/admin/announcements')
+@app.route('/admin/announcements', methods=['GET'])
 @login_required
 @admin_required
 def admin_announcements():
     try:
         # Get all announcements from Firebase
         announcements_ref = db.reference('announcements')
-        announcements = announcements_ref.get()
+        announcements = announcements_ref.get() or {}
         
         # Sort announcements by pinned status and date
-        if announcements:
-            sorted_announcements = dict(sorted(
-                announcements.items(),
-                key=lambda x: (not x[1].get('is_pinned', False), x[1].get('created_at', '')),
-                reverse=True
-            ))
-        else:
-            sorted_announcements = {}
-            
-        return render_template('admin/announcements.html', site_design=get_site_design(), announcements=sorted_announcements)
+        sorted_announcements = dict(sorted(
+            announcements.items(),
+            key=lambda x: (
+                not x[1].get('is_pinned', False),  # Pinned first
+                x[1].get('scheduled_date', ''),    # Then by date
+                x[1].get('scheduled_time', '')     # Then by time
+            ),
+            reverse=True
+        ))
+        
+        return render_template(
+            'admin/announcements.html', 
+            announcements=sorted_announcements,
+            site_design=get_site_design()
+        )
     except Exception as e:
         flash(f'Error loading announcements: {str(e)}', 'error')
-        return render_template('admin/announcements.html', site_design=get_site_design(), announcements={})
+        return render_template(
+            'admin/announcements.html', 
+            announcements={},
+            site_design=get_site_design()
+        )
+
+def send_email(recipients, subject, body, attachments=None):
+    """Send email using configured email settings"""
+    try:
+        # Get email settings from Firebase
+        settings_ref = db.reference('email_settings')
+        settings = settings_ref.get()
+        
+        if not settings:
+            raise Exception("Email settings not configured")
+        
+        # Configure Flask-Mail with settings
+        app.config.update(
+            MAIL_SERVER=settings.get('smtp_host'),
+            MAIL_PORT=settings.get('smtp_port'),
+            MAIL_USE_TLS=settings.get('use_tls', True),
+            MAIL_USE_SSL=settings.get('use_ssl', False),
+            MAIL_USERNAME=settings.get('email'),
+            MAIL_PASSWORD=settings.get('password'),
+            MAIL_DEFAULT_SENDER=f"GIIR Conference <{settings.get('email')}>"
+        )
+        
+        # Create new Mail instance with current config
+        mail = Mail(app)
+        
+        # Create message
+        msg = Message(
+            subject=subject,
+            recipients=recipients if isinstance(recipients, list) else [recipients],
+            body=body
+        )
+        
+        # Add attachments if any
+        if attachments:
+            for attachment in attachments:
+                msg.attach(
+                    filename=os.path.basename(attachment['path']),
+                    content_type=attachment['type'],
+                    data=attachment['data']
+                )
+        
+        # Send email
+        with app.app_context():
+            mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        raise
 
 @app.route('/admin/announcements', methods=['POST'])
 @login_required
 @admin_required
 def create_announcement():
     try:
+        print("Creating new announcement...")
+        
         # Create announcements upload directory if it doesn't exist
         upload_path = os.path.join(app.static_folder, 'uploads', 'announcements')
         os.makedirs(upload_path, exist_ok=True)
@@ -1470,13 +1549,38 @@ def create_announcement():
         content = request.form.get('content')
         announcement_type = request.form.get('type')
         is_pinned = request.form.get('is_pinned') == 'on'
-        send_email = request.form.get('send_email') == 'on'
+        should_send_email = request.form.get('send_email') == 'on'  # Renamed variable
         scheduled_date = request.form.get('announcement_date')
         scheduled_time = request.form.get('announcement_time')
         timezone = request.form.get('timezone')
         
+        print("Received form data:", {
+            'title': title,
+            'content': content[:100] + '...' if content else None,
+            'type': announcement_type,
+            'is_pinned': is_pinned,
+            'send_email': should_send_email,
+            'date': scheduled_date,
+            'time': scheduled_time,
+            'timezone': timezone
+        })
+        
+        if not all([title, content, announcement_type, scheduled_date, scheduled_time, timezone]):
+            missing_fields = [field for field, value in {
+                'title': title,
+                'content': content,
+                'type': announcement_type,
+                'date': scheduled_date,
+                'time': scheduled_time,
+                'timezone': timezone
+            }.items() if not value]
+            error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+            print("Error:", error_msg)
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
         # Handle image upload
         image_url = None
+        image_data = None
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename and allowed_image_file(file.filename):
@@ -1485,6 +1589,10 @@ def create_announcement():
                 file_path = os.path.join(upload_path, unique_filename)
                 file.save(file_path)
                 image_url = f"/static/uploads/announcements/{unique_filename}"
+                print("Image saved:", image_url)
+                # Store image data for email attachment
+                with open(file_path, 'rb') as f:
+                    image_data = f.read()
         
         # Format the datetime with timezone
         formatted_datetime = format_datetime_with_timezone(
@@ -1503,24 +1611,31 @@ def create_announcement():
             'scheduled_date': scheduled_date,
             'scheduled_time': scheduled_time,
             'timezone': timezone,
-            'formatted_datetime': formatted_datetime,  # Add formatted datetime
+            'formatted_datetime': formatted_datetime,
             'created_at': datetime.now().isoformat(),
             'created_by': current_user.email,
             'updated_at': datetime.now().isoformat()
         }
         
+        print("Saving announcement to Firebase...")
+        
         # Save to Firebase
         announcements_ref = db.reference('announcements')
         new_announcement = announcements_ref.push(announcement)
         
+        print("Announcement saved successfully with ID:", new_announcement.key)
+        
         # Send email notification if requested
-        if send_email:
+        email_status = None
+        if should_send_email:  # Using renamed variable
             try:
+                print("Sending email notifications...")
                 # Get all user emails
                 users_ref = db.reference('users')
                 users = users_ref.get()
                 if users:
                     recipient_emails = [user['email'] for user in users.values() if user.get('email')]
+                    print(f"Sending email to {len(recipient_emails)} recipients")
                     
                     # Get email template
                     templates_ref = db.reference('email_templates')
@@ -1548,26 +1663,65 @@ def create_announcement():
                         Conference Team
                         '''
                     
-                    msg = Message(
-                        subject,
-                        recipients=recipient_emails,
-                        body=body
-                    )
+                    attachments = []
+                    if image_url and image_data:
+                        attachments.append({
+                            'path': image_url,
+                            'type': 'image/jpeg',
+                            'data': image_data
+                        })
                     
-                    # Add image attachment if exists
-                    if image_url:
-                        with app.open_resource(os.path.join(app.static_folder, image_url.lstrip('/static/'))) as fp:
-                            msg.attach(
-                                os.path.basename(image_url),
-                                'image/jpeg',
-                                fp.read()
-                            )
-                    
-                    mail.send(msg)
+                    send_email(recipient_emails, subject, body, attachments)
+                    email_status = f"Email notifications sent successfully to {len(recipient_emails)} recipients."
+                    print(email_status)
+                else:
+                    email_status = "No users found to send email notifications."
+                    print(email_status)
             except Exception as e:
-                print(f"Error sending email notification: {str(e)}")
+                error_msg = f"Error sending email notification: {str(e)}"
+                print("Error:", error_msg)
+                email_status = error_msg
         
-        return jsonify({'success': True, 'id': new_announcement.key})
+        # Check if request is AJAX
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if is_ajax:
+            return jsonify({
+                'success': True, 
+                'id': new_announcement.key,
+                'emailStatus': email_status,
+                'redirect': url_for('admin_announcements')
+            })
+        else:
+            flash('Announcement created successfully!', 'success')
+            if email_status:
+                flash(email_status, 'info')
+            return redirect(url_for('admin_announcements'))
+            
+    except Exception as e:
+        error_msg = f"Error creating announcement: {str(e)}"
+        print("Error:", error_msg)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': error_msg}), 500
+        else:
+            flash(error_msg, 'error')
+            return redirect(url_for('admin_announcements'))
+
+@app.route('/admin/announcements/<announcement_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_announcement(announcement_id):
+    try:
+        announcement_ref = db.reference(f'announcements/{announcement_id}')
+        announcement = announcement_ref.get()
+        
+        if not announcement:
+            return jsonify({'success': False, 'error': 'Announcement not found'}), 404
+            
+        return jsonify({
+            'success': True,
+            'announcement': announcement
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1629,7 +1783,7 @@ def update_announcement(announcement_id):
             'scheduled_date': scheduled_date,
             'scheduled_time': scheduled_time,
             'timezone': timezone,
-            'formatted_datetime': formatted_datetime,  # Add formatted datetime
+            'formatted_datetime': formatted_datetime,
             'updated_at': datetime.now().isoformat(),
             'updated_by': current_user.email
         }
@@ -1637,6 +1791,7 @@ def update_announcement(announcement_id):
         announcement_ref.update(update_data)
         
         # Send email notification if requested
+        email_status = None
         if send_email:
             try:
                 # Get all user emails
@@ -1672,12 +1827,20 @@ def update_announcement(announcement_id):
                             )
                     
                     mail.send(msg)
+                    email_status = "Email notifications sent successfully."
             except Exception as e:
-                print(f"Error sending email notification: {str(e)}")
+                error_msg = f"Error sending email notification: {str(e)}"
+                print("Error:", error_msg)
+                email_status = error_msg
         
-        return jsonify({'success': True})
+        return jsonify({
+            'success': True,
+            'emailStatus': email_status
+        })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_msg = f"Error updating announcement: {str(e)}"
+        print("Error:", error_msg)
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/admin/announcements/<announcement_id>', methods=['DELETE'])
 @login_required
@@ -1700,7 +1863,9 @@ def delete_announcement(announcement_id):
         announcement_ref.delete()
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_msg = f"Error deleting announcement: {str(e)}"
+        print("Error:", error_msg)
+        return jsonify({'success': False, 'error': error_msg}), 500
 
 # Conference schedule configuration
 SCHEDULE_DAYS = [
@@ -3304,6 +3469,40 @@ GIIR Conference Team
 """
     send_email(email, subject, body)
 
+@app.route('/admin/get-email-settings')
+@login_required
+@admin_required
+def get_email_settings():
+    try:
+        settings_ref = db.reference('email_settings')
+        settings = settings_ref.get()
+        
+        if not settings:
+            return jsonify({
+                'success': False,
+                'error': 'Email settings not configured'
+            })
+            
+        return jsonify({
+            'success': True,
+            'sender': settings.get('email', 'GIIR Conference')
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
-    app.run(debug=True) 
+    
+    # Use production settings if not in debug mode
+    if os.environ.get('FLASK_ENV') == 'production':
+        app.config['SESSION_COOKIE_SECURE'] = True
+        app.config['REMEMBER_COOKIE_SECURE'] = True
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    else:
+        app.run(debug=True) 
