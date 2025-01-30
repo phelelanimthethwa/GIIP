@@ -40,7 +40,8 @@ try:
         print("Using Firebase credentials from serviceAccountKey.json")
     
     firebase_admin.initialize_app(cred, {
-        'databaseURL': os.environ.get('FIREBASE_DATABASE_URL', 'https://giir-66ae6-default-rtdb.firebaseio.com')
+        'databaseURL': 'https://giir-66ae6-default-rtdb.firebaseio.com',
+        'apiKey': os.environ.get('FIREBASE_API_KEY')
     })
     print("Firebase initialized successfully")
 except Exception as e:
@@ -121,12 +122,106 @@ DEFAULT_THEME = {
 # Add this near the top with other upload folder configurations
 app.config['COMMITTEE_UPLOAD_FOLDER'] = 'static/uploads/committee'
 
+# Update or add these configuration settings
+app.config['FIREBASE_API_KEY'] = os.environ.get('FIREBASE_API_KEY')
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def allowed_image_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+def validate_associate_data(name, description, logo_url):
+    """Validate associate data fields"""
+    if not name or not name.strip():
+        raise ValueError("Associate name is required")
+    if not description or not description.strip():
+        raise ValueError("Associate description is required")
+    if not logo_url or not logo_url.strip():
+        raise ValueError("Associate logo is required")
+    return True
+
+def save_associate_logo(logo_file, existing_logo=None):
+    """Save associate logo and return the URL"""
+    if not logo_file or not logo_file.filename:
+        if existing_logo:
+            return existing_logo
+        raise ValueError("Logo file is required")
+    
+    if not allowed_image_file(logo_file.filename):
+        raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
+    
+    try:
+        filename = secure_filename(logo_file.filename)
+        unique_filename = f"associate_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        associates_upload_path = os.path.join(app.root_path, 'static', 'uploads', 'associates')
+        os.makedirs(associates_upload_path, exist_ok=True)
+        
+        file_path = os.path.join(associates_upload_path, unique_filename)
+        logo_file.save(file_path)
+        
+        if not os.path.exists(file_path):
+            raise ValueError("Failed to save logo file")
+        
+        return f"/static/uploads/associates/{unique_filename}"
+    except Exception as e:
+        raise ValueError(f"Error saving logo: {str(e)}")
+
+def process_associates_data(request_form, request_files):
+    """Process and validate all associates data"""
+    associates = []
+    
+    # Process existing associates
+    existing_names = request_form.getlist('existing_associate_names[]')
+    existing_descriptions = request_form.getlist('existing_associate_descriptions[]')
+    existing_logos = request_form.getlist('existing_associate_logos[]')
+    
+    for i in range(len(existing_names)):
+        try:
+            name = existing_names[i].strip()
+            description = existing_descriptions[i].strip()
+            logo = existing_logos[i].strip()
+            
+            if name and description and logo:  # Only process complete entries
+                validate_associate_data(name, description, logo)
+                associates.append({
+                    'name': name,
+                    'description': description,
+                    'logo': logo
+                })
+        except Exception as e:
+            print(f"Error processing existing associate {i + 1}: {str(e)}")
+            continue
+    
+    # Process new associates
+    new_names = request_form.getlist('new_associate_names[]')
+    new_descriptions = request_form.getlist('new_associate_descriptions[]')
+    
+    for i in range(len(new_names)):
+        try:
+            name = new_names[i].strip()
+            description = new_descriptions[i].strip()
+            
+            if name and description:  # Only process complete entries
+                logo_file_key = f'new_associate_logo_{i}'
+                if logo_file_key in request_files:
+                    logo_file = request_files[logo_file_key]
+                    if logo_file and logo_file.filename:
+                        logo_url = save_associate_logo(logo_file)
+                        validate_associate_data(name, description, logo_url)
+                        associates.append({
+                            'name': name,
+                            'description': description,
+                            'logo': logo_url
+                        })
+        except Exception as e:
+            print(f"Error processing new associate {i + 1}: {str(e)}")
+            continue
+    
+    return associates
 
 class User(UserMixin):
     def __init__(self, uid, email, full_name, is_admin=False):
@@ -152,8 +247,12 @@ def send_confirmation_email(registration_data):
 
 # Add this helper function near the top of the file
 def get_site_design():
-    design_ref = db.reference('site_design')
-    return design_ref.get() or DEFAULT_THEME
+    try:
+        design_ref = db.reference('site_design')
+        return design_ref.get() or DEFAULT_THEME
+    except Exception as e:
+        print(f"Error fetching site design: {str(e)}")
+        return DEFAULT_THEME
 
 @app.route('/')
 def home():
@@ -181,7 +280,7 @@ def home():
                 'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
             },
             'downloads': [],
-            'supporters': [],
+            'associates': [],  # Changed from supporters to associates
             'footer': {
                 'contact_email': 'contact@giirconference.com',
                 'contact_phone': '+1234567890',
@@ -227,7 +326,7 @@ def home():
                                     'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
                                 },
                                 'downloads': [],
-                                'supporters': [],
+                                'associates': [],  # Changed from supporters to associates
                                 'footer': {
                                     'contact_email': 'contact@giirconference.com',
                                     'contact_phone': '+1234567890',
@@ -2141,6 +2240,98 @@ def render_email_template(template_id, context):
         print(f"Error rendering email template: {str(e)}")
         return None, None
 
+# Add these helper functions at the top level
+def validate_associate_data(name, description, logo_url):
+    """Validate associate data fields"""
+    if not name or not name.strip():
+        raise ValueError("Associate name is required")
+    if not description or not description.strip():
+        raise ValueError("Associate description is required")
+    if not logo_url or not logo_url.strip():
+        raise ValueError("Associate logo is required")
+    return True
+
+def save_associate_logo(logo_file, existing_logo=None):
+    """Save associate logo and return the URL"""
+    if not logo_file or not logo_file.filename:
+        if existing_logo:
+            return existing_logo
+        raise ValueError("Logo file is required")
+    
+    if not allowed_image_file(logo_file.filename):
+        raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
+    
+    try:
+        filename = secure_filename(logo_file.filename)
+        unique_filename = f"associate_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        associates_upload_path = os.path.join(app.root_path, 'static', 'uploads', 'associates')
+        os.makedirs(associates_upload_path, exist_ok=True)
+        
+        file_path = os.path.join(associates_upload_path, unique_filename)
+        logo_file.save(file_path)
+        
+        if not os.path.exists(file_path):
+            raise ValueError("Failed to save logo file")
+        
+        return f"/static/uploads/associates/{unique_filename}"
+    except Exception as e:
+        raise ValueError(f"Error saving logo: {str(e)}")
+
+def process_associates_data(request_form, request_files):
+    """Process and validate all associates data"""
+    associates = []
+    
+    # Process existing associates
+    existing_names = request_form.getlist('existing_associate_names[]')
+    existing_descriptions = request_form.getlist('existing_associate_descriptions[]')
+    existing_logos = request_form.getlist('existing_associate_logos[]')
+    
+    for i in range(len(existing_names)):
+        try:
+            name = existing_names[i].strip()
+            description = existing_descriptions[i].strip()
+            logo = existing_logos[i].strip()
+            
+            if name and description and logo:  # Only process complete entries
+                validate_associate_data(name, description, logo)
+                associates.append({
+                    'name': name,
+                    'description': description,
+                    'logo': logo
+                })
+        except Exception as e:
+            print(f"Error processing existing associate {i + 1}: {str(e)}")
+            continue
+    
+    # Process new associates
+    new_names = request_form.getlist('new_associate_names[]')
+    new_descriptions = request_form.getlist('new_associate_descriptions[]')
+    
+    for i in range(len(new_names)):
+        try:
+            name = new_names[i].strip()
+            description = new_descriptions[i].strip()
+            
+            if name and description:  # Only process complete entries
+                logo_file_key = f'new_associate_logo_{i}'
+                if logo_file_key in request_files:
+                    logo_file = request_files[logo_file_key]
+                    if logo_file and logo_file.filename:
+                        logo_url = save_associate_logo(logo_file)
+                        validate_associate_data(name, description, logo_url)
+                        associates.append({
+                            'name': name,
+                            'description': description,
+                            'logo': logo_url
+                        })
+        except Exception as e:
+            print(f"Error processing new associate {i + 1}: {str(e)}")
+            continue
+    
+    return associates
+
 @app.route('/admin/home-content', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -2148,100 +2339,24 @@ def admin_home_content():
     if not current_user.is_authenticated or not current_user.is_admin:
         return redirect(url_for('login', next=request.url))
 
-    # Define default content structure
-    default_content = {
-        'welcome': {
-            'title': 'Welcome to GIIR Conference 2024',
-            'message': 'Join us for the premier conference in innovative research'
-        },
-        'hero': {
-            'images': [],
-            'conference': {
-                'name': 'GIIR Conference 2024',
-                'date': 'TBA',
-                'time': 'TBA',
-                'city': 'TBA',
-                'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-            }
-        },
-        'vmo': {
-            'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-            'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
-            'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
-        },
-        'downloads': [],
-        'supporters': [],
-        'footer': {
-            'contact_email': 'contact@giirconference.com',
-            'contact_phone': '+1234567890',
-            'social_media': {
-                'facebook': '',
-                'twitter': '',
-                'linkedin': ''
-            },
-            'address': 'Conference Venue, City, Country',
-            'copyright': '© 2024 GIIR Conference. All rights reserved.'
-        }
-    }
-
     if request.method == 'POST':
         try:
             # Get existing content first
-            content_ref = db.reference('home_content')
-            existing_content = content_ref.get() or default_content
+            try:
+                content_ref = db.reference('home_content')
+                existing_content = content_ref.get() or default_content
+            except Exception as e:
+                print(f"Error fetching existing content: {str(e)}")
+                existing_content = default_content
             
-            # Handle hero images
-            hero_images = []
-            
-            # Create base upload directory if it doesn't exist
-            base_upload_path = os.path.join(app.root_path, 'static', 'uploads')
-            hero_upload_path = os.path.join(base_upload_path, 'hero')
-            os.makedirs(hero_upload_path, exist_ok=True)
-            
-            # Add existing images that weren't deleted
-            if 'existing_images' in request.form:
-                try:
-                    existing_images = json.loads(request.form['existing_images'])
-                    hero_images.extend(existing_images)
-                except json.JSONDecodeError as e:
-                    print(f"Error parsing existing images: {str(e)}")
-            
-            # Handle new hero image uploads
-            if 'hero_images' in request.files:
-                files = request.files.getlist('hero_images')
-                for file in files:
-                    if file and file.filename and allowed_image_file(file.filename):
-                        try:
-                            filename = secure_filename(file.filename)
-                            unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                            file_path = os.path.join(hero_upload_path, unique_filename)
-                            
-                            # Save the file
-                            file.save(file_path)
-                            
-                            # Verify file was saved
-                            if not os.path.exists(file_path):
-                                raise Exception(f"Failed to save file: {file_path}")
-                            
-                            # Add to hero images list
-                            image_url = f"/static/uploads/hero/{unique_filename}"
-                            hero_images.append({
-                                'url': image_url,
-                                'alt': filename
-                            })
-                            print(f"Successfully saved hero image: {image_url}")
-                        except Exception as e:
-                            print(f"Error saving hero image {filename}: {str(e)}")
-                            continue
-
-            # Get form data
+            # Process all the form data
             home_content = {
                 'welcome': {
                     'title': request.form.get('welcome[title]'),
                     'message': request.form.get('welcome[message]')
                 },
                 'hero': {
-                    'images': hero_images,
+                    'images': process_hero_images(request),
                     'conference': {
                         'name': request.form.get('conference[name]'),
                         'date': request.form.get('conference[date]'),
@@ -2255,8 +2370,7 @@ def admin_home_content():
                     'mission': request.form.get('vmo[mission]'),
                     'objectives': request.form.get('vmo[objectives]')
                 },
-                'downloads': [],
-                'supporters': [],
+                'downloads': process_downloads_data(request),
                 'footer': {
                     'contact_email': request.form.get('footer[contact_email]'),
                     'contact_phone': request.form.get('footer[contact_phone]'),
@@ -2270,27 +2384,56 @@ def admin_home_content():
                 }
             }
             
-            # Save to Firebase
-            content_ref = db.reference('home_content')
-            content_ref.set(home_content)
+            # Process associates data
+            try:
+                associates = process_associates_data(request.form, request.files)
+                home_content['associates'] = associates
+            except Exception as e:
+                print(f"Error processing associates: {str(e)}")
+                home_content['associates'] = existing_content.get('associates', [])
             
-            return jsonify({'success': True})
+            # Save to Firebase with retry
+            max_retries = 3
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    content_ref = db.reference('home_content')
+                    content_ref.set(home_content)
+                    break
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        print(f"Failed to save to Firebase after {max_retries} attempts: {str(e)}")
+                        return jsonify({
+                            'success': False,
+                            'error': f"Failed to save changes: {str(e)}"
+                        }), 500
+                    print(f"Retry {retry_count} after error: {str(e)}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Content updated successfully'
+            })
+            
         except Exception as e:
             print(f"Error saving home content: {str(e)}")
-            return jsonify({'success': False, 'error': str(e)}), 500
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
     
     # GET request - render template with current content
     try:
         content_ref = db.reference('home_content')
         home_content = content_ref.get() or default_content
-        return render_template('admin/home_content.html', 
-                             home_content=home_content,
-                             site_design=get_site_design())
     except Exception as e:
-        flash(f'Error loading home content: {str(e)}', 'error')
-        return render_template('admin/home_content.html', 
-                             home_content=default_content,
-                             site_design=get_site_design())
+        print(f"Error loading home content: {str(e)}")
+        home_content = default_content
+        flash('Error loading content. Using default values.', 'warning')
+    
+    return render_template('admin/home_content.html', 
+                         home_content=home_content,
+                         site_design=get_site_design())
 
 # Add to admin_required routes list in base_admin.html
 @app.context_processor
@@ -3419,6 +3562,142 @@ def upload_file():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Add this after the ALLOWED_IMAGE_EXTENSIONS definition
+# Default content structure
+default_content = {
+    'welcome': {
+        'title': 'Welcome to GIIR Conference 2024',
+        'message': 'Join us for the premier conference in innovative research'
+    },
+    'hero': {
+        'images': [],
+        'conference': {
+            'name': 'GIIR Conference 2024',
+            'date': 'TBA',
+            'time': 'TBA',
+            'city': 'TBA',
+            'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+        }
+    },
+    'vmo': {
+        'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+        'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
+        'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+    },
+    'downloads': [],
+    'associates': [],
+    'footer': {
+        'contact_email': 'contact@giirconference.com',
+        'contact_phone': '+1234567890',
+        'social_media': {
+            'facebook': '',
+            'twitter': '',
+            'linkedin': ''
+        },
+        'address': 'Conference Venue, City, Country',
+        'copyright': '© 2024 GIIR Conference. All rights reserved.'
+    }
+}
+
+def process_hero_images(request):
+    """Process and save hero images from form data"""
+    hero_images = []
+    
+    # Create base upload directory if it doesn't exist
+    base_upload_path = os.path.join(app.root_path, 'static', 'uploads')
+    hero_upload_path = os.path.join(base_upload_path, 'hero')
+    os.makedirs(hero_upload_path, exist_ok=True)
+    
+    # Add existing images that weren't deleted
+    if 'existing_images' in request.form:
+        try:
+            existing_images = json.loads(request.form['existing_images'])
+            hero_images.extend(existing_images)
+        except json.JSONDecodeError as e:
+            print(f"Error parsing existing images: {str(e)}")
+    
+    # Handle new hero image uploads
+    if 'hero_images' in request.files:
+        files = request.files.getlist('hero_images')
+        for file in files:
+            if file and file.filename and allowed_image_file(file.filename):
+                try:
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    file_path = os.path.join(hero_upload_path, unique_filename)
+                    
+                    # Save the file
+                    file.save(file_path)
+                    
+                    # Verify file was saved
+                    if not os.path.exists(file_path):
+                        raise Exception(f"Failed to save file: {file_path}")
+                    
+                    # Add to hero images list
+                    image_url = f"/static/uploads/hero/{unique_filename}"
+                    hero_images.append({
+                        'url': image_url,
+                        'alt': filename
+                    })
+                    print(f"Successfully saved hero image: {image_url}")
+                except Exception as e:
+                    print(f"Error saving hero image {filename}: {str(e)}")
+                    continue
+    
+    return hero_images
+
+def process_downloads_data(request):
+    """Process and save downloads data from form data"""
+    downloads = []
+    
+    # Create base upload directory if it doesn't exist
+    base_upload_path = os.path.join(app.root_path, 'static', 'uploads')
+    downloads_upload_path = os.path.join(base_upload_path, 'downloads')
+    os.makedirs(downloads_upload_path, exist_ok=True)
+    
+    # Process existing downloads
+    existing_titles = request.form.getlist('download_titles[]')
+    existing_descriptions = request.form.getlist('download_descriptions[]')
+    existing_files = request.form.getlist('download_existing_files[]')
+    
+    for i in range(len(existing_titles)):
+        if existing_titles[i].strip():  # Only process if title exists
+            download_data = {
+                'title': existing_titles[i],
+                'description': existing_descriptions[i],
+                'file_url': existing_files[i] if existing_files[i] else None,
+                'file_type': 'pdf',  # Default type
+                'file_size': '0 KB'  # Default size
+            }
+            
+            # Handle new file upload for existing download
+            file_key = f'download_file_{i}'
+            if file_key in request.files:
+                file = request.files[file_key]
+                if file and file.filename and allowed_file(file.filename):
+                    try:
+                        filename = secure_filename(file.filename)
+                        unique_filename = f"download_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                        file_path = os.path.join(downloads_upload_path, unique_filename)
+                        
+                        # Save the file
+                        file.save(file_path)
+                        
+                        # Update download data
+                        file_size = os.path.getsize(file_path)
+                        download_data.update({
+                            'file_url': f"/static/uploads/downloads/{unique_filename}",
+                            'file_type': filename.rsplit('.', 1)[1].lower(),
+                            'file_size': f"{file_size / 1024:.1f} KB"
+                        })
+                    except Exception as e:
+                        print(f"Error saving download file {filename}: {str(e)}")
+                        continue
+            
+            downloads.append(download_data)
+    
+    return downloads
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

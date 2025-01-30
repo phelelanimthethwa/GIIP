@@ -186,35 +186,35 @@
                 </div>
             </div>
 
-            <!-- Supporters Section -->
+           <!-- Associates Section -->
             <div class="admin-card mb-4">
-                <h2><i class="fas fa-handshake"></i> Supporters</h2>
+    <h2><i class="fas fa-handshake"></i> Associates</h2>
                 <div class="card-body">
-                    <!-- Existing Supporters -->
-                    <div id="existingSupporters">
-                        {% if home_content.supporters %}
-                            {% for supporter in home_content.supporters %}
-                            <div class="supporter-card" data-id="{{ loop.index }}">
-                                <div class="supporter-content">
-                                    <div class="supporter-image">
-                                        <img src="{{ supporter.logo }}" alt="{{ supporter.name }}">
-                                        <input type="hidden" name="existing_supporter_logos[]" value="{{ supporter.logo }}">
+        <!-- Existing Associates -->
+        <div id="existingAssociates" class="associates-grid">
+            {% if home_content.associates %}
+                {% for associate in home_content.associates %}
+                <div class="associate-card" data-id="{{ associate.id }}">
+                    <div class="associate-content">
+                        <div class="associate-image">
+                            <img src="{{ associate.logo }}" alt="{{ associate.name }}">
+                            <input type="hidden" name="existing_associate_logos[]" value="{{ associate.logo }}">
                                     </div>
-                                    <div class="supporter-details">
+                        <div class="associate-details">
                                         <div class="form-group">
                                             <label>Name</label>
-                                            <input type="text" class="form-control" name="existing_supporter_names[]" 
-                                                   value="{{ supporter.name }}" required>
+                                <input type="text" class="form-control" name="existing_associate_names[]" 
+                                       value="{{ associate.name }}" required>
                                         </div>
                                         <div class="form-group mt-2">
                                             <label>Description</label>
-                                            <textarea class="form-control" name="existing_supporter_descriptions[]" 
-                                                      rows="2" required>{{ supporter.description }}</textarea>
+                                <textarea class="form-control" name="existing_associate_descriptions[]" 
+                                          rows="2" required>{{ associate.description }}</textarea>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="supporter-actions">
-                                    <button type="button" class="btn btn-danger btn-sm delete-supporter">
+                    <div class="associate-actions">
+                        <button type="button" class="btn btn-danger btn-sm delete-associate">
                                         <i class="fas fa-trash"></i> Remove
                                     </button>
                                 </div>
@@ -229,10 +229,6 @@
                         <div class="associate-card new-associate">
                             <div class="associate-content">
                                 <div class="associate-image" id="imagePreviewContainer">
-                                    <div class="upload-placeholder" id="uploadPlaceholder">
-                                        <i class="fas fa-cloud-upload-alt"></i>
-                                        <span>Click to upload logo</span>
-                                    </div>
                                     <img id="imagePreview" src="" alt="" style="display: none;">
                                     <input type="file" id="associateLogo" name="new_associate_logo" 
                                            accept="image/*" style="display: none;">
@@ -241,16 +237,17 @@
                                     <div class="form-group">
                                         <label>Name</label>
                                         <input type="text" class="form-control" id="newAssociateName" 
-                                               placeholder="Enter associate name">
+                                   name="new_associate_names[]" placeholder="Enter associate name">
                                     </div>
                                     <div class="form-group mt-2">
                                         <label>Description</label>
                                         <textarea class="form-control" id="newAssociateDescription" 
-                                                  rows="2" placeholder="Enter description"></textarea>
+                                      name="new_associate_descriptions[]" rows="2" 
+                                      placeholder="Enter description"></textarea>
                                     </div>
                                 </div>
                             </div>
-                            <div class="associate-actions">
+                <div class="associate-actions mt-3">
                                 <button type="button" class="btn btn-primary" id="addAssociateBtn">
                                     <i class="fas fa-plus"></i> Add Associate
                                 </button>
@@ -259,6 +256,7 @@
                     </div>
                 </div>
             </div>
+
 
             <!-- Footer Section -->
             <div class="admin-card mb-4">
@@ -321,79 +319,112 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Get form elements with null checks
     const form = document.getElementById('homeContentForm');
     const saveButton = document.getElementById('saveAllChanges');
     const imageGrid = document.getElementById('heroImages');
     const imageUpload = document.getElementById('heroImageUpload');
-    
-    // Handle image preview and deletion
-    imageUpload.addEventListener('change', function(e) {
-        const files = Array.from(e.target.files);
-        const currentImages = document.querySelectorAll('.image-item').length - 1; // -1 for upload box
-        const remainingSlots = 10 - currentImages;
+    const existingAssociates = document.getElementById('existingAssociates');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const imagePreview = document.getElementById('imagePreview');
+    const associateLogo = document.getElementById('associateLogo');
+    const newAssociateName = document.getElementById('newAssociateName');
+    const newAssociateDescription = document.getElementById('newAssociateDescription');
+    const addAssociateBtn = document.getElementById('addAssociateBtn');
 
-        if (files.length > remainingSlots) {
-            alert(`You can only add ${remainingSlots} more image(s)`);
+    if (!form || !saveButton) {
+        console.error('Required form elements not found');
             return;
         }
-
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const template = `
-                    <div class="image-item" data-id="new">
-                        <img src="${e.target.result}" alt="${file.name}">
-                        <div class="image-actions">
-                            <button type="button" class="btn btn-sm btn-danger delete-image">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                const uploadBox = imageGrid.querySelector('.image-upload-box');
-                uploadBox.insertAdjacentHTML('beforebegin', template);
-            };
-            reader.readAsDataURL(file);
-        });
-    });
-
-    // Handle image deletion
-    imageGrid.addEventListener('click', function(e) {
-        if (e.target.closest('.delete-image')) {
-            const imageItem = e.target.closest('.image-item');
-            imageItem.remove();
-        }
-    });
     
     // Handle form submission
-    saveButton.addEventListener('click', function() {
+    saveButton.addEventListener('click', async function() {
+        try {
+            // Show loading state
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
         const formData = new FormData(form);
         
         // Add existing images that weren't deleted
         const existingImages = [];
         document.querySelectorAll('.image-item').forEach(item => {
-            if (item.dataset.id !== 'new') {
+                if (item && item.dataset.id !== 'new') {
                 const img = item.querySelector('img');
+                    if (img) {
                 existingImages.push({
                     url: img.src,
                     alt: img.alt
                 });
+                    }
             }
         });
         formData.append('existing_images', JSON.stringify(existingImages));
         
-        // Show loading state
-        saveButton.disabled = true;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        
-        fetch('{{ url_for("admin_home_content") }}', {
+            // Handle existing associates data
+            const existingAssociatesData = [];
+            if (existingAssociates) {
+                existingAssociates.querySelectorAll('.associate-card').forEach(card => {
+                    if (card && !card.classList.contains('new-associate') && !card.hasAttribute('data-new')) {
+                        const logoInput = card.querySelector('input[name="existing_associate_logos[]"]');
+                        const nameInput = card.querySelector('input[name="existing_associate_names[]"]');
+                        const descInput = card.querySelector('textarea[name="existing_associate_descriptions[]"]');
+                        
+                        if (logoInput && nameInput && descInput) {
+                            const logo = logoInput.value;
+                            const name = nameInput.value;
+                            const description = descInput.value;
+                            
+                            if (name && description && logo) {
+                                existingAssociatesData.push({ logo, name, description });
+                            }
+                        }
+                    }
+                });
+            }
+            formData.append('existing_associates', JSON.stringify(existingAssociatesData));
+            
+            // Handle new associates data
+            const newAssociatesData = [];
+            if (existingAssociates) {
+                existingAssociates.querySelectorAll('.associate-card[data-id^="new_"]').forEach(card => {
+                    if (card) {
+                        const nameInput = card.querySelector('input[name="new_associate_names[]"]');
+                        const descInput = card.querySelector('textarea[name="new_associate_descriptions[]"]');
+                        const fileInput = card.querySelector('input[type="file"]');
+                        
+                        if (nameInput && descInput && fileInput && fileInput.files[0]) {
+                            const name = nameInput.value;
+                            const description = descInput.value;
+                            
+                            if (name && description) {
+                                formData.append(`new_associate_logo_${card.dataset.id}`, fileInput.files[0]);
+                                newAssociatesData.push({
+                                    id: card.dataset.id,
+                                    name: name,
+                                    description: description
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+            formData.append('new_associates', JSON.stringify(newAssociatesData));
+            
+            // Send the form data
+            const response = await fetch('{{ url_for("admin_home_content") }}', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to save changes');
+            }
+            
                 // Show success message
                 const alert = document.createElement('div');
                 alert.className = 'alert alert-success alert-dismissible fade show';
@@ -403,170 +434,127 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 form.insertAdjacentElement('beforebegin', alert);
                 
-                // Reload after 1 second
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                // Show error message
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-danger alert-dismissible fade show';
-                alert.innerHTML = `
-                    <strong>Error!</strong> ${data.error || 'Failed to save changes'}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                form.insertAdjacentElement('beforebegin', alert);
+            // Fetch updated content
+            const updatedContent = await fetch('{{ url_for("admin_home_content") }}');
+            const html = await updatedContent.text();
+            
+            // Create a temporary container
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            
+            // Get the associates grid from the fetched content
+            const newAssociatesGrid = temp.querySelector('#existingAssociates');
+            
+            if (newAssociatesGrid && existingAssociates) {
+                // Replace the current associates grid with the new one
+                existingAssociates.innerHTML = newAssociatesGrid.innerHTML;
             }
-        })
-        .catch(error => {
+            
+            // Reset the new associate form
+            if (associateLogo) associateLogo.value = '';
+            if (imagePreview) {
+                imagePreview.src = '';
+                imagePreview.style.display = 'none';
+            }
+            if (uploadPlaceholder) uploadPlaceholder.style.display = 'flex';
+            if (newAssociateName) newAssociateName.value = '';
+            if (newAssociateDescription) newAssociateDescription.value = '';
+            
+        } catch (error) {
             console.error('Error:', error);
             // Show error message
             const alert = document.createElement('div');
             alert.className = 'alert alert-danger alert-dismissible fade show';
             alert.innerHTML = `
-                <strong>Error!</strong> Failed to save changes. Please try again.
+                <strong>Error!</strong> ${error.message || 'Failed to save changes. Please try again.'}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             form.insertAdjacentElement('beforebegin', alert);
-        })
-        .finally(() => {
+        } finally {
             // Reset button state
             saveButton.disabled = false;
             saveButton.innerHTML = '<i class="fas fa-save"></i> Save All Changes';
-        });
+        }
     });
 
-    // Handle supporter image uploads
-    const existingSupporters = document.getElementById('existingSupporters');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
-    const imagePreview = document.getElementById('imagePreview');
-    const supporterLogo = document.getElementById('supporterLogo');
-    const newSupporterName = document.getElementById('newSupporterName');
-    const newSupporterDescription = document.getElementById('newSupporterDescription');
-    const addSupporterBtn = document.getElementById('addSupporterBtn');
+  // Handle associate image uploads
+  document.getElementById('imagePreviewContainer').addEventListener('click', () => {
+    document.getElementById('associateLogo').click();
+});
 
-    // Handle image upload and preview
-    imagePreviewContainer.addEventListener('click', () => supporterLogo.click());
-
-    supporterLogo.addEventListener('change', function(e) {
-        if (this.files && this.files[0]) {
+document.getElementById('associateLogo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file && file.type.match('image.*')) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = 'block';
-                uploadPlaceholder.style.display = 'none';
-            };
-            reader.readAsDataURL(this.files[0]);
-        }
-    });
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+    }
 
-    // Handle adding new supporter
-    addSupporterBtn.addEventListener('click', function() {
-        // Validate inputs
-        if (!supporterLogo.files[0]) {
-            alert('Please select a logo image');
-            return;
-        }
-        if (!newSupporterName.value.trim()) {
-            alert('Please enter supporter name');
-            return;
-        }
-        if (!newSupporterDescription.value.trim()) {
-            alert('Please enter supporter description');
+    // Handle adding new associate
+    document.getElementById('addAssociateBtn').addEventListener('click', function() {
+        const name = document.getElementById('newAssociateName').value.trim();
+        const description = document.getElementById('newAssociateDescription').value.trim();
+        const logo = document.getElementById('associateLogo').files[0];
+
+        if (!name || !description || !logo) {
+            alert('Please fill in all fields and upload a logo.');
             return;
         }
 
-        // Create new supporter entry
-        const supporterCard = document.createElement('div');
-        supporterCard.className = 'supporter-card new-entry';
-        supporterCard.innerHTML = `
-            <div class="supporter-content">
-                <div class="supporter-image">
-                    <img src="${imagePreview.src}" alt="${newSupporterName.value}">
-                    <input type="hidden" name="new_supporter_logos[]" value="${imagePreview.src}">
+        const associateId = Date.now();
+        const template = `
+            <div class="associate-card" data-id="new_${associateId}">
+                <div class="associate-content">
+                    <div class="associate-image">
+                        <img src="${document.getElementById('imagePreview').src}" alt="${name}">
                 </div>
-                <div class="supporter-details">
+                    <div class="associate-details">
                     <div class="form-group">
                         <label>Name</label>
-                        <input type="text" class="form-control" name="new_supporter_names[]" 
-                               value="${newSupporterName.value}" required>
+                            <input type="text" class="form-control" name="new_associate_names[]" value="${name}" required>
                     </div>
                     <div class="form-group mt-2">
                         <label>Description</label>
-                        <textarea class="form-control" name="new_supporter_descriptions[]" 
-                                  rows="2" required>${newSupporterDescription.value}</textarea>
+                            <textarea class="form-control" name="new_associate_descriptions[]" rows="2" required>${description}</textarea>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="supporter-actions">
-                <button type="button" class="btn btn-danger btn-sm delete-supporter">
+                <div class="associate-actions">
+                    <button type="button" class="btn btn-danger btn-sm delete-associate">
                     <i class="fas fa-trash"></i> Remove
                 </button>
+                </div>
             </div>
         `;
 
-        // Add to existing supporters
-        existingSupporters.appendChild(supporterCard);
+        document.getElementById('existingAssociates').insertAdjacentHTML('beforeend', template);
+
+        // Clone the file input and add it to the form with a unique name
+        const fileInput = document.getElementById('associateLogo').cloneNode(true);
+        fileInput.files = document.getElementById('associateLogo').files;
+        fileInput.name = `new_associate_logo_${associateId}`;
+        fileInput.style.display = 'none';
+        document.getElementById('existingAssociates').lastElementChild.appendChild(fileInput);
 
         // Reset form
-        supporterLogo.value = '';
-        imagePreview.src = '';
-        imagePreview.style.display = 'none';
-        uploadPlaceholder.style.display = 'flex';
-        newSupporterName.value = '';
-        newSupporterDescription.value = '';
-    });
+        document.getElementById('imagePreview').src = '';
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('associateLogo').value = '';
+        document.getElementById('newAssociateName').value = '';
+        document.getElementById('newAssociateDescription').value = '';
 
-    // Handle supporter deletion
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.delete-supporter')) {
-            if (confirm('Are you sure you want to remove this supporter?')) {
-                e.target.closest('.supporter-card').remove();
-            }
-        }
-    });
-
-    // Handle downloads
-    const downloadsGrid = document.getElementById('downloadsGrid');
-    const addDownloadBtn = downloadsGrid.querySelector('.add-download');
-
-    addDownloadBtn.addEventListener('click', function() {
-        const downloadCount = downloadsGrid.querySelectorAll('.download-item').length;
-        const downloadId = `download_${Date.now()}`;
-        const template = `
-            <div class="download-item" data-id="${downloadId}">
-                <div class="download-info">
-                    <input type="hidden" name="download_ids[]" value="${downloadId}">
-                    <div class="mb-3">
-                        <label class="form-label">Title</label>
-                        <input type="text" class="form-control" name="download_titles[]" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control" name="download_descriptions[]" rows="2" required></textarea>
-                    </div>
-                    <input type="hidden" name="download_existing_files[]" value="">
-                    <div class="file-upload">
-                        <label class="form-label">Upload File</label>
-                        <input type="file" class="form-control" name="download_file_${downloadId}" 
-                               accept=".pdf,.doc,.docx">
-                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX</small>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-sm btn-danger delete-download">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
-            </div>
-        `;
-        const uploadBox = downloadsGrid.querySelector('.download-upload');
-        uploadBox.insertAdjacentHTML('beforebegin', template);
-    });
-
-    // Handle download deletion
-    downloadsGrid.addEventListener('click', function(e) {
-        if (e.target.closest('.delete-download')) {
-            const downloadItem = e.target.closest('.download-item');
-            downloadItem.remove();
-        }
+        // Add event listener for delete button
+        document.querySelectorAll('.delete-associate').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to remove this associate?')) {
+                    button.closest('.associate-card').remove();
+                }
+            });
     });
 });
 </script>
@@ -677,12 +665,37 @@ document.addEventListener('DOMContentLoaded', function() {
     right: 1rem;
 }
 
-/* Supporters Section */
-.supporter-image {
-    width: 100px;
-    height: 70px;
-    border: none;
-    border-radius: 0;
+/* Associates Section Styles */
+.associates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.associate-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.associate-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.associate-content {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.associate-image {
+    width: 120px;
+    height: 120px;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
     overflow: hidden;
     position: relative;
     background: #fff;
@@ -691,66 +704,54 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
 }
 
-.supporter-image img {
+.associate-image:hover {
+    border-color: #007bff;
+}
+
+.associate-image img {
     max-width: 100%;
     max-height: 100%;
-    width: auto;
-    height: auto;
     object-fit: contain;
-    filter: grayscale(1);
-    opacity: 0.8;
-    transition: all 0.3s ease;
 }
 
-.supporter-image:hover img {
-    filter: grayscale(0);
-    opacity: 1;
-}
-
-.supporter-card {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 0.5rem;
-    margin-bottom: 0.5rem;
-    box-shadow: none;
-}
-
-#existingSupporters {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 3rem;
-    align-items: center;
-    margin-bottom: 2rem;
-    padding: 1rem;
-}
-
-.supporter-content {
+.upload-placeholder {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
     align-items: center;
-}
-
-.supporter-details {
-    width: 100%;
-}
-
-.new-supporter {
-    border: 1px dashed #007bff;
-    background: #f8f9fa;
+    gap: 0.5rem;
     padding: 1rem;
-    border-radius: 8px;
+    text-align: center;
 }
 
-.supporter-actions {
-    margin-top: 0.5rem;
-    width: 100%;
+.upload-placeholder i {
+    font-size: 2rem;
+    color: #6c757d;
+}
+
+.upload-placeholder span {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.upload-placeholder small {
+    font-size: 0.75rem;
+    color: #999;
+}
+
+.associate-details {
+    flex: 1;
+}
+
+.associate-actions {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
+}
+
+.new-associate {
+    border: 2px dashed #007bff;
+    background: #f8f9fa;
 }
 </style>
 {% endblock %}

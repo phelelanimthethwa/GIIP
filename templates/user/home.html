@@ -149,14 +149,20 @@
 </div>
 
 <!-- Supporters Section -->
-{% if home_content.supporters %}
-<section class="supporters-section">
+{% if home_content.associates %}
+<section class="associates-section">
     <div class="container">
-        <h2 class="section-title text-center">Our Supporters</h2>
-        <div class="supporters-grid">
-            {% for supporter in home_content.supporters %}
-            <div class="supporter-logo">
-                <img src="{{ supporter.logo }}" alt="Supporter">
+        <h2 class="section-title text-center">Our Associates</h2>
+        <div class="associates-grid">
+            {% for associate in home_content.associates %}
+            <div class="associate-card">
+                <div class="associate-logo">
+                    <img src="{{ associate.logo }}" alt="{{ associate.name }}">
+                </div>
+                <div class="associate-info">
+                    <h3>{{ associate.name }}</h3>
+                    <p>{{ associate.description }}</p>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -164,7 +170,7 @@
 </section>
 
 <style>
-.supporters-section {
+.associates-section {
     padding: 2rem 0;
     background: #fff;
     text-align: center;
@@ -189,27 +195,38 @@
     background: var(--primary-color);
 }
 
-.supporters-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 3rem;
+.associates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
     margin: 2rem auto;
     max-width: 1200px;
     padding: 0 1rem;
 }
 
-.supporter-logo {
-    width: 100px;
-    height: 70px;
+.associate-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.associate-card:hover {
+    transform: translateY(-5px);
+}
+
+.associate-logo {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 8px;
 }
 
-.supporter-logo img {
+.associate-logo img {
     max-width: 100%;
     max-height: 100%;
     width: auto;
@@ -220,9 +237,62 @@
     transition: all 0.3s ease;
 }
 
-.supporter-logo:hover img {
+.associate-card:hover .associate-logo img {
     filter: grayscale(0);
     opacity: 1;
+}
+
+.associate-info h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+}
+
+.associate-info p {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    line-height: 1.5;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .associates-section {
+        padding: 2rem 1rem;
+    }
+
+    .section-title {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .associates-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .associate-logo {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .associate-card {
+        padding: 1rem;
+    }
+
+    .associate-logo {
+        width: 80px;
+        height: 80px;
+    }
+
+    .associate-info h3 {
+        font-size: 1.1rem;
+    }
+
+    .associate-info p {
+        font-size: 0.85rem;
+    }
 }
 </style>
 {% endif %}
@@ -564,8 +634,8 @@
         padding: 1rem;
     }
 
-    /* Supporters Section */
-    .supporters-section {
+    /* Associates Section */
+    .associates-section {
         padding: 2rem 1rem;
     }
 
@@ -574,12 +644,12 @@
         margin-bottom: 1.5rem;
     }
 
-    .supporters-grid {
+    .associates-grid {
         gap: 1.5rem;
         margin: 1rem auto;
     }
 
-    .supporter-logo {
+    .associate-logo {
         width: 80px;
         height: 60px;
         padding: 6px;
@@ -615,14 +685,10 @@
         padding: 1rem;
     }
 
-    .supporter-logo {
+    .associate-logo {
         width: 70px;
         height: 50px;
         padding: 4px;
-    }
-
-    .supporters-grid {
-        gap: 1rem;
     }
 
     .section-title:after {
@@ -643,7 +709,7 @@ html {
         transform: none;
     }
 
-    .supporter-logo img {
+    .associate-logo img {
         filter: grayscale(0);
         opacity: 1;
     }
