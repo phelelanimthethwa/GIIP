@@ -1,7 +1,9 @@
 <header class="site-header">
     <nav class="navbar">
         <div class="nav-container">
-            <a href="{{ url_for('home') }}" class="logo">GIIR Conference 2024</a>
+            <a href="{{ url_for('home') }}" class="logo">
+                <img src="{{ url_for('static', filename='images/giirlogo.jpg') }}" alt="GIIR Conference 2024" class="logo-img">
+            </a>
             <ul class="nav-links">
                 <li><a href="{{ url_for('about') }}">About</a></li>
                 <li><a href="{{ url_for('call_for_papers') }}">Submit Paper</a></li>
