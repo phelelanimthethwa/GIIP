@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 from models.email_service import EmailService
 import pytz
 import requests
+from PIL import Image
+from io import BytesIO
 
 try:
     from dotenv import load_dotenv
@@ -2444,13 +2446,14 @@ def inject_admin_menu():
         {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
         {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
         {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
-        {'url': 'admin_papers', 'icon': 'file-alt', 'text': 'Submissions'},  # Updated this line
+        {'url': 'admin_papers', 'icon': 'file-alt', 'text': 'Submissions'},
         {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
         {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
         {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
         {'url': 'admin_announcements', 'icon': 'bullhorn', 'text': 'Announcements'},
         {'url': 'admin_downloads', 'icon': 'download', 'text': 'Downloads'},
         {'url': 'admin_author_guidelines', 'icon': 'book', 'text': 'Author Guidelines'},
+        {'url': 'admin_contact_email', 'icon': 'envelope', 'text': 'Contact Settings'},
         {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
         {'url': 'admin_email_settings', 'icon': 'envelope-open', 'text': 'Email Settings'},
         {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
@@ -2734,94 +2737,93 @@ def get_registration_fees():
         print(f"Error fetching registration fees: {str(e)}")
         return None
 
+def save_payment_proof(file):
+    """Save payment proof file to Firebase Storage and return file data"""
+    if not file:
+        return None
+        
+    try:
+        # Initialize Firebase Storage
+        bucket = firebase_admin.storage.bucket()
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        original_filename = secure_filename(file.filename)
+        unique_filename = f"payment_proofs/{timestamp}_{original_filename}"
+        
+        # Create blob and upload file
+        blob = bucket.blob(unique_filename)
+        blob.upload_from_string(
+            file.read(),
+            content_type=file.content_type
+        )
+        
+        # Make the file publicly accessible
+        blob.make_public()
+        
+        # Return file data
+        return {
+            'url': blob.public_url,
+            'filename': original_filename,
+            'path': unique_filename,
+            'type': file.content_type,
+            'size': blob.size
+        }
+    except Exception as e:
+        print(f"Error saving payment proof: {str(e)}")
+        return None
+
 @app.route('/registration-form', methods=['GET', 'POST'])
 @login_required
 def registration_form():
-    # Get registration type and period from query parameters
-    registration_type = request.args.get('type')
-    registration_period = request.args.get('period')
-    
-    # Get fees from Firebase
-    fees_ref = db.reference('registration_fees')
-    fees = fees_ref.get()
-    
-    if request.method == 'POST':
+    try:
+        # Get form data
+        registration_data = {
+            'full_name': current_user.full_name,
+            'email': current_user.email,
+            'registration_period': request.form.get('selected_period'),
+            'registration_type': request.form.get('selected_type'),
+            'total_amount': float(request.form.get('total_amount', 0)),
+            'payment_reference': request.form.get('payment_reference'),
+            'extra_paper': request.form.get('extra_paper') == 'true',
+            'workshop': request.form.get('workshop') == 'true',
+            'banquet': request.form.get('banquet') == 'true',
+            'submission_date': datetime.now().isoformat(),
+            'payment_status': 'pending',
+            'user_id': current_user.id,
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Handle payment proof file
+        payment_proof = request.files.get('payment_proof')
+        if payment_proof:
+            file_data = save_payment_proof(payment_proof)
+            if file_data:
+                registration_data['payment_proof'] = file_data
+            else:
+                raise ValueError('Failed to save payment proof file')
+        
+        # Save registration to Firebase Realtime Database
+        registrations_ref = db.reference('registrations')
+        new_registration = registrations_ref.push(registration_data)
+        
+        # Save reference to user's registrations collection
+        user_reg_ref = db.reference(f'users/{current_user.id}/registrations/{new_registration.key}')
+        user_reg_ref.set(True)
+        
+        # Send confirmation email
         try:
-            # Create upload directories if they don't exist
-            papers_dir = os.path.join(app.static_folder, 'uploads', 'papers')
-            payments_dir = os.path.join(app.static_folder, 'uploads', 'payments')
-            os.makedirs(papers_dir, exist_ok=True)
-            os.makedirs(payments_dir, exist_ok=True)
-            
-            # Get registration fee with default value of 0
-            try:
-                registration_fee = float(request.form.get('registration_fee', 0))
-            except (ValueError, TypeError):
-                registration_fee = 0
-            
-            # Handle payment proof upload
-            payment_proof_url = ''
-            if 'payment_proof' in request.files:
-                payment_file = request.files['payment_proof']
-                if payment_file and payment_file.filename:
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = secure_filename(f"{timestamp}_{payment_file.filename}")
-                    payment_path = os.path.join(payments_dir, filename)
-                    payment_file.save(payment_path)
-                    payment_proof_url = f"/static/uploads/payments/{filename}"
-            
-            # Get form data
-            registration_data = {
-                'user_id': current_user.id,
-                'email': current_user.email,
-                'full_name': current_user.full_name,
-                'institution': request.form.get('institution'),
-                'registration_type': request.form.get('registration_type'),
-                'registration_period': request.form.get('registration_period'),
-                'registration_fee': registration_fee,
-                'workshop': request.form.get('workshop') == 'on',
-                'banquet': request.form.get('banquet') == 'on',
-                'extra_paper': request.form.get('extra_paper') == 'on',
-                'payment_reference': request.form.get('payment_reference'),
-                'payment_proof_url': payment_proof_url,
-                'submission_date': datetime.now().isoformat(),
-                'payment_status': 'pending',
-                'total_amount': float(request.form.get('total_amount', 0)),
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-            
-            # Save to Firebase
-            registrations_ref = db.reference('registrations')
-            new_registration = registrations_ref.push(registration_data)
-            
-            # Also save reference to user's registrations
-            user_reg_ref = db.reference(f'users/{current_user.id}/registrations/{new_registration.key}')
-            user_reg_ref.set(True)
-            
-            flash('Registration submitted successfully!', 'success')
-            return redirect(url_for('dashboard'))
-            
+            send_confirmation_email(registration_data)
         except Exception as e:
-            flash(f'Error submitting registration: {str(e)}', 'error')
-            return render_template('user/registration.html',
-                                site_design=get_site_design(),
-                                fees=fees,
-                                firebase_config=app.config['FIREBASE_CONFIG'],
-                                selected_type=registration_type,
-                                selected_period=registration_period)
-    
-    # If registration type or period is missing, redirect to registration page
-    if not registration_type or not registration_period:
-        flash('Please select a registration type and period first.', 'error')
+            print(f"Error sending confirmation email: {str(e)}")
+        
+        flash('Registration submitted successfully!', 'success')
+        return redirect(url_for('dashboard'))
+        
+    except Exception as e:
+        flash(f'Error submitting registration: {str(e)}', 'error')
         return redirect(url_for('registration'))
-    
-    return render_template('user/registration.html',
-                         site_design=get_site_design(),
-                         fees=fees,
-                         firebase_config=app.config['FIREBASE_CONFIG'],
-                         selected_type=registration_type,
-                         selected_period=registration_period)
 
 @app.route('/admin/author-guidelines', methods=['GET', 'POST'])
 @login_required
@@ -3335,58 +3337,70 @@ def contact():
             subject = request.form.get('subject')
             message = request.form.get('message')
             
-            # Validate reCAPTCHA
-            recaptcha_response = request.form.get('g-recaptcha-response')
-            if not recaptcha_response:
-                return jsonify({'success': False, 'message': 'Please complete the reCAPTCHA verification.'})
-
             # Validate required fields
             if not all([name, email, subject, message]):
-                return jsonify({'success': False, 'message': 'Please fill in all required fields.'})
-
-            # Store contact submission in Firebase
-            contact_ref = db.reference('contact_submissions')
-            submission_data = {
+                flash('Please fill in all required fields.', 'error')
+                return redirect(url_for('contact'))
+            
+            # Save submission to Firebase
+            submission = {
                 'name': name,
                 'email': email,
                 'subject': subject,
                 'message': message,
-                'timestamp': datetime.now().isoformat(),
-                'status': 'new'  # For tracking response status
+                'submitted_at': datetime.now().isoformat()
             }
-            contact_ref.push(submission_data)
+            submissions_ref = db.reference('contact_submissions')
+            submissions_ref.push(submission)
+            
+            # Get email settings
+            settings_ref = db.reference('contact_email_settings')
+            email_settings = settings_ref.get()
+            
+            if email_settings and email_settings.get('email'):
+                # Send notification to admin
+                admin_subject = f'New Contact Form Submission: {subject}'
+                admin_body = f'''New contact form submission received:
 
-            # Send email notification to admin
-            try:
-                msg = Message(
-                    subject=f'New Contact Form Submission: {subject}',
-                    sender=app.config['MAIL_DEFAULT_SENDER'],
-                    recipients=[app.config['ADMIN_EMAIL']],
-                    body=f'''New contact form submission received:
-
-Name: {name}
-Email: {email}
+From: {name} <{email}>
 Subject: {subject}
 
 Message:
-{message}
-'''
+{message}'''
+                
+                email_service.send_email(
+                    to_email=email_settings['email'],
+                    subject=admin_subject,
+                    body=admin_body
                 )
-                mail.send(msg)
-            except Exception as e:
-                print(f"Error sending email notification: {str(e)}")
-                # Continue execution even if email fails
-
-            return jsonify({'success': True})
-
+                
+                # Send auto-reply if configured
+                if email_settings.get('auto_reply'):
+                    email_service.send_email(
+                        to_email=email,
+                        subject='Thank you for contacting us',
+                        body=email_settings['auto_reply']
+                    )
+            
+            flash('Your message has been sent successfully!', 'success')
+            return redirect(url_for('contact'))
+            
         except Exception as e:
-            print(f"Error processing contact form: {str(e)}")
-            return jsonify({'success': False, 'message': 'An error occurred while processing your request.'})
-
-    # GET request - display contact form
-    return render_template('contact.html', 
-                         recaptcha_site_key=app.config['RECAPTCHA_SITE_KEY'],
-                         site_design=get_site_design())
+            flash(f'Error sending message: {str(e)}', 'error')
+            return redirect(url_for('contact'))
+    
+    # GET request - load page settings
+    try:
+        settings_ref = db.reference('contact_page_settings')
+        page_settings = settings_ref.get()
+    except Exception as e:
+        flash(f'Error loading page settings: {str(e)}', 'warning')
+        page_settings = None
+    
+    site_design = get_site_design()
+    return render_template('user/contact.html', 
+                         page_settings=page_settings,
+                         site_design=site_design)
 
 @app.route('/submit', methods=['GET', 'POST'])
 @login_required
@@ -3534,6 +3548,33 @@ def get_email_settings():
             'error': str(e)
         })
 
+def compress_image(file, max_size_kb=600):
+    """Compress an image to be under max_size_kb"""
+    img = Image.open(file)
+    
+    # Convert to RGB if image is in RGBA mode
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+    
+    # Initial quality
+    quality = 95
+    output = BytesIO()
+    
+    # Try compressing with different quality values
+    while quality > 5:
+        output.seek(0)
+        output.truncate(0)
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        size_kb = len(output.getvalue()) / 1024
+        
+        if size_kb <= max_size_kb:
+            break
+            
+        quality -= 5
+    
+    output.seek(0)
+    return output
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
@@ -3541,26 +3582,41 @@ def upload_file():
             return jsonify({'error': 'No file part'}), 400
         
         file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
+        if not file or not file.filename:
+            return jsonify({'error': 'No file selected'}), 400
 
-        if file:
-            filename = secure_filename(file.filename)
-            # Save file to local uploads directory
-            upload_dir = os.path.join(app.root_path, 'static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, filename)
-            file.save(file_path)
-            
-            # Return the URL for the uploaded file
-            file_url = url_for('static', filename=f'uploads/{filename}')
-            return jsonify({
-                'success': True,
-                'url': file_url,
-                'filename': filename
-            })
+        # Check file type
+        if not allowed_image_file(file.filename):
+            return jsonify({'error': 'Invalid file type. Only images are allowed.'}), 400
+
+        # Create upload directory if it doesn't exist
+        upload_dir = os.path.join(app.root_path, 'static', 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Generate unique filename
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename.rsplit('.', 1)[0]}.jpg"  # Force .jpg extension
+        file_path = os.path.join(upload_dir, unique_filename)
+
+        # Compress the image
+        compressed_image = compress_image(file)
+        
+        # Save the compressed file
+        with open(file_path, 'wb') as f:
+            f.write(compressed_image.getvalue())
+
+        # Generate URL for the uploaded file
+        file_url = url_for('static', filename=f'uploads/{unique_filename}')
+
+        return jsonify({
+            'success': True,
+            'url': file_url,
+            'filename': unique_filename
+        })
 
     except Exception as e:
+        print(f"Error in upload_file: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # Add this after the ALLOWED_IMAGE_EXTENSIONS definition
@@ -3698,6 +3754,136 @@ def process_downloads_data(request):
             downloads.append(download_data)
     
     return downloads
+
+@app.route('/admin/contact-email', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_contact_email():
+    if request.method == 'POST':
+        try:
+            # Get form data
+            service_provider = request.form.get('service_provider')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            auto_reply = request.form.get('auto_reply')
+            
+            settings = {
+                'service_provider': service_provider,
+                'email': email,
+                'password': password,
+                'auto_reply': auto_reply,
+                'updated_at': datetime.now().isoformat(),
+                'updated_by': current_user.email
+            }
+            
+            # Add SMTP settings if custom provider
+            if service_provider == 'custom':
+                settings.update({
+                    'smtp_host': request.form.get('smtp_host'),
+                    'smtp_port': request.form.get('smtp_port'),
+                    'use_tls': 'use_tls' in request.form
+                })
+            
+            # Save settings to Firebase
+            settings_ref = db.reference('contact_email_settings')
+            settings_ref.set(settings)
+            
+            # Update email service configuration
+            email_service.update_settings(settings)
+            
+            flash('Email settings saved successfully!', 'success')
+            return redirect(url_for('admin_contact_email'))
+            
+        except Exception as e:
+            flash(f'Error saving email settings: {str(e)}', 'error')
+            return redirect(url_for('admin_contact_email'))
+    
+    # GET request - load current settings
+    try:
+        # Get email settings
+        settings_ref = db.reference('contact_email_settings')
+        email_settings = settings_ref.get()
+        
+        # Get page settings
+        page_settings_ref = db.reference('contact_page_settings')
+        page_settings = page_settings_ref.get()
+    except Exception as e:
+        flash(f'Error loading settings: {str(e)}', 'warning')
+        email_settings = None
+        page_settings = None
+    
+    return render_template('admin/contact_email.html', 
+                         settings=email_settings,
+                         page_settings=page_settings)
+
+@app.route('/test-contact-email', methods=['POST'])
+@login_required
+@admin_required
+def test_contact_email():
+    try:
+        # Get contact email settings
+        settings_ref = db.reference('contact_email_settings')
+        settings = settings_ref.get()
+        
+        if not settings or not settings.get('email'):
+            return jsonify({
+                'success': False,
+                'error': 'Email settings not configured'
+            }), 400
+        
+        # Send test email
+        subject = 'Test Contact Form Email'
+        body = f'''This is a test email to verify contact form settings.
+        
+Email Configuration:
+- Service Provider: {settings['service_provider']}
+- Email: {settings['email']}
+- SMTP Host: {settings.get('smtp_host', 'N/A')}
+- SMTP Port: {settings.get('smtp_port', 'N/A')}
+- TLS Enabled: {settings.get('use_tls', 'N/A')}
+
+Auto-reply message: {settings['auto_reply']}
+
+If you received this email, your contact form settings are working correctly.'''
+        
+        email_service.send_email(
+            to_email=settings['email'],
+            subject=subject,
+            body=body
+        )
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/admin/contact-page-settings', methods=['POST'])
+@login_required
+@admin_required
+def admin_contact_page_settings():
+    try:
+        settings = {
+            'title': request.form.get('page_title'),
+            'description': request.form.get('page_description'),
+            'email': request.form.get('contact_email'),
+            'phone': request.form.get('contact_phone'),
+            'address': request.form.get('contact_address'),
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': current_user.email
+        }
+        
+        # Save settings to Firebase
+        settings_ref = db.reference('contact_page_settings')
+        settings_ref.set(settings)
+        
+        flash('Contact page settings saved successfully!', 'success')
+        return redirect(url_for('admin_contact_email'))
+        
+    except Exception as e:
+        flash(f'Error saving contact page settings: {str(e)}', 'error')
+        return redirect(url_for('admin_contact_email'))
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

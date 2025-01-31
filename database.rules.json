@@ -15,7 +15,11 @@
       ".write": "auth != null",
       "$registration_id": {
         ".read": "auth != null && (data.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)",
-        ".write": "auth != null && (newData.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)"
+        ".write": "auth != null && (newData.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+        "payment_proof": {
+          ".read": "auth != null && (data.parent().child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+          ".write": "auth != null && (newData.parent().child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)"
+        }
       }
     },
     "submissions": {
@@ -39,6 +43,19 @@
       ".read": true,
       ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
       ".indexOn": ["category", "type"]
+    },
+    "contact_email_settings": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+    },
+    "contact_page_settings": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+    },
+    "contact_submissions": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
+      ".write": true,
+      ".indexOn": ["email", "submitted_at"]
     }
   }
 } 

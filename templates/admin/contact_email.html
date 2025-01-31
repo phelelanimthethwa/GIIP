@@ -1,0 +1,363 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Contact Settings - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-envelope"></i> Contact Settings</h1>
+            <p>Manage contact page details and email configurations</p>
+        </div>
+    </div>
+
+    <!-- Add Introduction Section -->
+    <div class="content-section">
+        <div class="admin-card mb-4">
+            <h2><i class="fas fa-info-circle"></i> About Contact Settings</h2>
+            <div class="card-body">
+                <div class="intro-text">
+                    <p>This page allows you to manage two important aspects of your website's contact functionality:</p>
+                    <div class="feature-list">
+                        <div class="feature-item">
+                            <h4><i class="fas fa-address-card"></i> Contact Page Settings</h4>
+                            <p>Configure how your contact page appears to visitors, including:</p>
+                            <ul>
+                                <li>Page title and description</li>
+                                <li>Contact information displayed to visitors (email, phone, address)</li>
+                                <li>These details will be shown on the public contact page</li>
+                            </ul>
+                        </div>
+                        <div class="feature-item">
+                            <h4><i class="fas fa-mail-bulk"></i> Email Configuration</h4>
+                            <p>Set up how contact form submissions are handled:</p>
+                            <ul>
+                                <li>Configure the email address that receives contact form submissions</li>
+                                <li>Set up your email service provider (Gmail, Outlook, etc.)</li>
+                                <li>Customize automatic reply messages sent to users</li>
+                                <li>Test your email settings to ensure proper functionality</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-section">
+        <!-- Contact Page Settings -->
+        <div class="admin-card mb-4">
+            <h2><i class="fas fa-address-card"></i> Contact Page Details</h2>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_contact_page_settings') }}" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="page_title" class="form-label">Page Title</label>
+                                <input type="text" class="form-control" id="page_title" name="page_title" 
+                                       value="{{ page_settings.title if page_settings else 'Contact Us' }}" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="page_description" class="form-label">Page Description</label>
+                                <textarea class="form-control" id="page_description" name="page_description" rows="3" required>{{ page_settings.description if page_settings else "Have a question? We'd love to hear from you. Send us a message and we'll respond as soon as possible." }}</textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="contact_email" class="form-label">Contact Email</label>
+                                <input type="email" class="form-control" id="contact_email" name="contact_email" 
+                                       value="{{ page_settings.email if page_settings else '' }}" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="contact_phone" class="form-label">Contact Phone</label>
+                                <input type="text" class="form-control" id="contact_phone" name="contact_phone" 
+                                       value="{{ page_settings.phone if page_settings else '' }}" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="contact_address" class="form-label">Address</label>
+                                <textarea class="form-control" id="contact_address" name="contact_address" rows="3" required>{{ page_settings.address if page_settings else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Page Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Email Settings -->
+        <div class="admin-card mb-4">
+            <h2><i class="fas fa-mail-bulk"></i> Email Configuration</h2>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_contact_email') }}" class="needs-validation" novalidate>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="service_provider" class="form-label">Email Service Provider</label>
+                                <select class="form-select" id="service_provider" name="service_provider" required>
+                                    <option value="" disabled {% if not settings %}selected{% endif %}>Select a provider</option>
+                                    <option value="outlook" {% if settings and settings.service_provider == 'outlook' %}selected{% endif %}>Microsoft Outlook</option>
+                                    <option value="zoho" {% if settings and settings.service_provider == 'zoho' %}selected{% endif %}>Zoho Mail</option>
+                                    <option value="gmail" {% if settings and settings.service_provider == 'gmail' %}selected{% endif %}>Gmail</option>
+                                    <option value="custom" {% if settings and settings.service_provider == 'custom' %}selected{% endif %}>Custom SMTP</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ settings.email if settings else '' }}" required>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="password" class="form-label">Password/App Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" 
+                                           value="{{ settings.password if settings else '' }}" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">
+                                    For Gmail and Outlook, use an App Password. 
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#appPasswordHelp">Learn more</a>
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 custom-smtp-settings" style="display: none;">
+                            <div class="form-group mb-3">
+                                <label for="smtp_host" class="form-label">SMTP Host</label>
+                                <input type="text" class="form-control" id="smtp_host" name="smtp_host"
+                                       value="{{ settings.smtp_host if settings else '' }}">
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="smtp_port" class="form-label">SMTP Port</label>
+                                <input type="number" class="form-control" id="smtp_port" name="smtp_port"
+                                       value="{{ settings.smtp_port if settings else '' }}">
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="use_tls" name="use_tls"
+                                           {% if settings and settings.use_tls %}checked{% endif %}>
+                                    <label class="form-check-label" for="use_tls">
+                                        Use TLS
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="auto_reply" class="form-label">Auto-Reply Message</label>
+                        <textarea class="form-control" id="auto_reply" name="auto_reply" rows="5" required>{{ settings.auto_reply if settings else 'Thank you for contacting us. We have received your message and will get back to you shortly.' }}</textarea>
+                        <div class="form-text">This message will be automatically sent to users who submit the contact form.</div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Email Settings
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2" onclick="testEmailSettings()">
+                            <i class="fas fa-paper-plane"></i> Test Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- App Password Help Modal -->
+<div class="modal fade" id="appPasswordHelp" tabindex="-1" aria-labelledby="appPasswordHelpLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="appPasswordHelpLabel">How to Get an App Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Gmail</h6>
+                <ol>
+                    <li>Go to your Google Account settings</li>
+                    <li>Click on "Security"</li>
+                    <li>Under "Signing in to Google," select "2-Step Verification"</li>
+                    <li>At the bottom, click on "App passwords"</li>
+                    <li>Select "Mail" and your device</li>
+                    <li>Click "Generate"</li>
+                </ol>
+
+                <h6>Outlook</h6>
+                <ol>
+                    <li>Go to your Microsoft Account settings</li>
+                    <li>Select "Security"</li>
+                    <li>Choose "More security options"</li>
+                    <li>Under "App passwords," click "Create a new app password"</li>
+                </ol>
+
+                <h6>Zoho Mail</h6>
+                <ol>
+                    <li>Log in to your Zoho Mail account</li>
+                    <li>Go to "Settings" → "Mail Accounts"</li>
+                    <li>Click on "Generate App Password"</li>
+                    <li>Enter an app name and click "Generate"</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-text {
+    color: #666;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.form-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.intro-text {
+    color: #555;
+    line-height: 1.6;
+}
+
+.feature-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.feature-item {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.feature-item h4 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.feature-item ul {
+    margin-top: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.feature-item li {
+    margin-bottom: 0.5rem;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .feature-list {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = passwordInput.nextElementSibling.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleButton.classList.remove('fa-eye');
+        toggleButton.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleButton.classList.remove('fa-eye-slash');
+        toggleButton.classList.add('fa-eye');
+    }
+}
+
+document.getElementById('service_provider').addEventListener('change', function() {
+    const customSmtpSettings = document.querySelector('.custom-smtp-settings');
+    if (this.value === 'custom') {
+        customSmtpSettings.style.display = 'block';
+        document.querySelectorAll('.custom-smtp-settings input').forEach(input => {
+            input.required = true;
+        });
+    } else {
+        customSmtpSettings.style.display = 'none';
+        document.querySelectorAll('.custom-smtp-settings input').forEach(input => {
+            input.required = false;
+        });
+    }
+});
+
+async function testEmailSettings() {
+    const button = document.querySelector('button[onclick="testEmailSettings()"]');
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+
+    try {
+        const response = await fetch("{{ url_for('test_contact_email') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('success', 'Test email sent successfully!');
+        } else {
+            showAlert('danger', 'Error: ' + result.error);
+        }
+    } catch (error) {
+        showAlert('danger', 'Error testing email settings: ' + error.message);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.querySelector('.card-body').insertBefore(alertDiv, document.querySelector('form'));
+}
+
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+
+// Show/hide custom SMTP settings on page load
+window.addEventListener('load', function() {
+    const serviceProvider = document.getElementById('service_provider');
+    if (serviceProvider.value === 'custom') {
+        document.querySelector('.custom-smtp-settings').style.display = 'block';
+    }
+});
+</script>
+{% endblock %} 
