@@ -172,14 +172,38 @@
                             </div>
 
                             {% if reg.payment_proof %}
-                            <div class="payment-proof">
-                                <h4><i class="fas fa-receipt"></i> Payment Information</h4>
-                                <div class="detail-row">
-                                    <span class="detail-label">Payment Proof:</span>
-                                    <a href="{{ url_for('static', filename=reg.payment_proof) }}" class="file-link" target="_blank">
-                                        <i class="fas fa-download"></i> View Payment Proof
-                                    </a>
+                            <div class="payment-proof-section">
+                                <div class="proof-details">
+                                    <div class="proof-info">
+                                        <span class="proof-label">Payment Proof:</span>
+                                        <div class="proof-metadata">
+                                            <span class="proof-filename">{{ reg.payment_proof|filename }}</span>
+                                            {% if reg.payment_metadata %}
+                                            <span class="proof-size">{{ reg.payment_metadata.file_size|filesizeformat }}</span>
+                                            <span class="proof-date">Uploaded on {{ reg.payment_metadata.upload_date|datetime }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="proof-status status-{{ reg.payment_metadata.status if reg.payment_metadata else 'pending' }}">
+                                        {{ reg.payment_metadata.status|title if reg.payment_metadata else 'Pending' }}
+                                    </div>
+                                    <div class="proof-actions">
+                                        <a href="{{ url_for('static', filename=reg.payment_proof) }}" 
+                                           class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="{{ url_for('static', filename=reg.payment_proof) }}" 
+                                           class="btn btn-sm btn-outline-secondary" download>
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </div>
                                 </div>
+                                {% if reg.payment_notes %}
+                                <div class="payment-notes">
+                                    <span class="notes-label">Payment Notes:</span>
+                                    <p>{{ reg.payment_notes }}</p>
+                                </div>
+                                {% endif %}
                             </div>
                             {% endif %}
                         </div>
@@ -357,10 +381,62 @@
     text-decoration: underline;
 }
 
-.payment-proof {
+.payment-proof-section {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid #dee2e6;
+}
+
+.proof-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.proof-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.proof-label {
+    font-weight: bold;
+}
+
+.proof-metadata {
+    font-size: 0.875rem;
+}
+
+.proof-filename {
+    margin-top: 0.25rem;
+}
+
+.proof-size {
+    margin-top: 0.25rem;
+}
+
+.proof-date {
+    margin-top: 0.25rem;
+}
+
+.proof-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.proof-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.payment-notes {
+    margin-top: 0.5rem;
+}
+
+.notes-label {
+    font-weight: bold;
 }
 
 @media (max-width: 768px) {

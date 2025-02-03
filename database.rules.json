@@ -9,6 +9,18 @@
         ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true)"
       }
     },
+    "payment_proofs": {
+      ".indexOn": ["upload_date", "status"],
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$user_id": {
+        ".read": "auth != null && (auth.uid === $user_id || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+        ".write": "auth != null && (auth.uid === $user_id || root.child('users').child(auth.uid).child('is_admin').val() === true)",
+        "$proof_id": {
+          ".validate": "newData.hasChildren(['filename', 'original_filename', 'file_size', 'upload_date', 'status', 'mime_type'])"
+        }
+      }
+    },
     "registrations": {
       ".indexOn": ["email", "user_id", "registration_type", "registration_period", "payment_status"],
       ".read": "auth != null",

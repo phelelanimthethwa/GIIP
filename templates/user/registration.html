@@ -14,11 +14,10 @@
 const firebaseConfig = {
     apiKey: "{{ firebase_config.apiKey }}",
     authDomain: "{{ firebase_config.authDomain }}",
+    databaseURL: "{{ firebase_config.databaseURL }}",
     projectId: "{{ firebase_config.projectId }}",
-    storageBucket: "{{ firebase_config.storageBucket }}",
     messagingSenderId: "{{ firebase_config.messagingSenderId }}",
-    appId: "{{ firebase_config.appId }}",
-    databaseURL: "{{ firebase_config.databaseURL }}"
+    appId: "{{ firebase_config.appId }}"
 };
 
 // Initialize Firebase
@@ -63,7 +62,7 @@ firebase.initializeApp(firebaseConfig);
         </div>
     </div>
 
-    <form id="registration-form" method="POST" action="{{ url_for('registration_form') }}" enctype="multipart/form-data">
+    <form id="registration-form" method="POST" action="{{ url_for('registration') }}" enctype="multipart/form-data">
         <!-- Step 1: Package Selection -->
         <div class="registration-step active" id="step1">
             <div class="step-header">
@@ -75,70 +74,106 @@ firebase.initializeApp(firebaseConfig);
             <div class="period-selection">
                 <h3>Select Registration Period</h3>
                 <div class="period-options">
-                    {% set early_bird = fees.get('early_bird', {}) %}
-                    {% if early_bird %}
-                    <div class="period-card {% if early_bird.get('seats_remaining', 0) <= 0 %}disabled{% endif %}">
+                    {% if fees.early_bird and fees.early_bird.enabled %}
+                    <div class="period-card {% if fees.early_bird.seats.remaining <= 0 %}disabled{% endif %}">
                         <input type="radio" name="registration_period" id="early_bird" value="early_bird" 
-                               {% if early_bird.get('seats_remaining', 0) <= 0 %}disabled{% endif %}>
+                               {% if fees.early_bird.seats.remaining <= 0 %}disabled{% endif %}>
                         <label for="early_bird">
                             <div class="period-header">
-                                <i class="fas fa-clock"></i>
+                                <i class="fas fa-star"></i>
                                 <h4>Early Bird Registration</h4>
-                                {% if early_bird.get('deadline') %}
-                                <span class="deadline">Until {{ early_bird.get('deadline') }}</span>
+                                {% if fees.early_bird.deadline %}
+                                <span class="deadline">Until {{ fees.early_bird.deadline }}</span>
                                 {% endif %}
                             </div>
-                            {% if early_bird.get('show_seats') and early_bird.get('seats_remaining') %}
+                            {% if fees.early_bird.seats.show_remaining %}
                             <div class="seats-remaining">
-                                <span class="count">{{ early_bird.get('seats_remaining') }}</span> seats remaining
+                                <span class="count">{{ fees.early_bird.seats.remaining }}</span> seats remaining
                             </div>
                             {% endif %}
+                            <div class="benefits-list">
+                                {% if fees.early_bird.benefits %}
+                                <h5>Benefits:</h5>
+                                <ul>
+                                    {% for benefit in fees.early_bird.benefits %}
+                                    <li>{{ benefit }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                            </div>
                         </label>
                     </div>
                     {% endif %}
 
-                    {% set early = fees.get('early', {}) %}
-                    {% if early %}
+                    {% if fees.early %}
                     <div class="period-card">
                         <input type="radio" name="registration_period" id="early" value="early">
                         <label for="early">
                             <div class="period-header">
                                 <i class="fas fa-calendar-check"></i>
                                 <h4>Early Registration</h4>
-                                {% if early.get('deadline') %}
-                                <span class="deadline">Until {{ early.get('deadline') }}</span>
+                                {% if fees.early.deadline %}
+                                <span class="deadline">Until {{ fees.early.deadline }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="benefits-list">
+                                {% if fees.early.benefits %}
+                                <h5>Benefits:</h5>
+                                <ul>
+                                    {% for benefit in fees.early.benefits %}
+                                    <li>{{ benefit }}</li>
+                                    {% endfor %}
+                                </ul>
                                 {% endif %}
                             </div>
                         </label>
                     </div>
                     {% endif %}
 
-                    {% set regular = fees.get('regular', {}) %}
-                    {% if regular %}
+                    {% if fees.regular %}
                     <div class="period-card">
                         <input type="radio" name="registration_period" id="regular" value="regular">
                         <label for="regular">
                             <div class="period-header">
                                 <i class="fas fa-calendar-alt"></i>
                                 <h4>Regular Registration</h4>
-                                {% if regular.get('deadline') %}
-                                <span class="deadline">Until {{ regular.get('deadline') }}</span>
+                                {% if fees.regular.deadline %}
+                                <span class="deadline">Until {{ fees.regular.deadline }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="benefits-list">
+                                {% if fees.regular.benefits %}
+                                <h5>Benefits:</h5>
+                                <ul>
+                                    {% for benefit in fees.regular.benefits %}
+                                    <li>{{ benefit }}</li>
+                                    {% endfor %}
+                                </ul>
                                 {% endif %}
                             </div>
                         </label>
                     </div>
                     {% endif %}
 
-                    {% set late = fees.get('late', {}) %}
-                    {% if late %}
+                    {% if fees.late %}
                     <div class="period-card">
                         <input type="radio" name="registration_period" id="late" value="late">
                         <label for="late">
                             <div class="period-header">
-                                <i class="fas fa-hourglass-end"></i>
+                                <i class="fas fa-calendar-times"></i>
                                 <h4>Late Registration</h4>
-                                {% if late.get('deadline') %}
-                                <span class="deadline">Until {{ late.get('deadline') }}</span>
+                                {% if fees.late.deadline %}
+                                <span class="deadline">Until {{ fees.late.deadline }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="benefits-list">
+                                {% if fees.late.benefits %}
+                                <h5>Benefits:</h5>
+                                <ul>
+                                    {% for benefit in fees.late.benefits %}
+                                    <li>{{ benefit }}</li>
+                                    {% endfor %}
+                                </ul>
                                 {% endif %}
                             </div>
                         </label>
@@ -148,69 +183,72 @@ firebase.initializeApp(firebaseConfig);
             </div>
 
             <!-- Registration Type Selection -->
-            <div class="type-selection" style="display: none;">
+            <div class="type-selection">
                 <h3>Select Registration Type</h3>
-                <div class="registration-types">
-                    <!-- Author Types -->
-                    <div class="type-group">
-                        <h4>Author Registration</h4>
-                        <div class="type-options">
-                            <div class="type-card">
-                                <input type="radio" name="registration_type" id="student_author" value="student_author">
-                                <label for="student_author">
-                                    <div class="type-header">
-                                        <i class="fas fa-user-graduate"></i>
-                                        <h5>Student Author</h5>
-                                    </div>
-                                    <div class="type-price">
-                                        <span class="amount"></span>
-                                    </div>
-                                </label>
+                <div class="type-options">
+                    <div class="type-card" id="student_author_card">
+                        <input type="radio" name="registration_type" id="student_author" value="student_author">
+                        <label for="student_author">
+                            <div class="type-header">
+                                <i class="fas fa-user-graduate"></i>
+                                <h4>Student Author</h4>
                             </div>
-                            <div class="type-card">
-                                <input type="radio" name="registration_type" id="regular_author" value="regular_author">
-                                <label for="regular_author">
-                                    <div class="type-header">
-                                        <i class="fas fa-user"></i>
-                                        <h5>Regular Author</h5>
-                                    </div>
-                                    <div class="type-price">
-                                        <span class="amount"></span>
-                                    </div>
-                                </label>
+                            <div class="type-price">
+                                <span class="amount"></span>
                             </div>
-                        </div>
+                        </label>
                     </div>
 
-                    <!-- Delegate Types -->
-                    <div class="type-group">
-                        <h4>Delegate Registration</h4>
-                        <div class="type-options">
-                            <div class="type-card">
-                                <input type="radio" name="registration_type" id="physical_delegate" value="physical_delegate">
-                                <label for="physical_delegate">
-                                    <div class="type-header">
-                                        <i class="fas fa-user-friends"></i>
-                                        <h5>Physical Delegate</h5>
-                                    </div>
-                                    <div class="type-price">
-                                        <span class="amount"></span>
-                                    </div>
-                                </label>
+                    <div class="type-card" id="regular_author_card">
+                        <input type="radio" name="registration_type" id="regular_author" value="regular_author">
+                        <label for="regular_author">
+                            <div class="type-header">
+                                <i class="fas fa-user"></i>
+                                <h4>Regular Author</h4>
                             </div>
-                            <div class="type-card">
-                                <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate">
-                                <label for="virtual_delegate">
-                                    <div class="type-header">
-                                        <i class="fas fa-laptop"></i>
-                                        <h5>Virtual Delegate</h5>
-                                    </div>
-                                    <div class="type-price">
-                                        <span class="amount"></span>
-                                    </div>
-                                </label>
+                            <div class="type-price">
+                                <span class="amount"></span>
                             </div>
-                        </div>
+                        </label>
+                    </div>
+
+                    <div class="type-card" id="physical_delegate_card">
+                        <input type="radio" name="registration_type" id="physical_delegate" value="physical_delegate">
+                        <label for="physical_delegate">
+                            <div class="type-header">
+                                <i class="fas fa-user-friends"></i>
+                                <h4>Physical Delegate</h4>
+                            </div>
+                            <div class="type-price">
+                                <span class="amount"></span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="type-card" id="virtual_delegate_card">
+                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate">
+                        <label for="virtual_delegate">
+                            <div class="type-header">
+                                <i class="fas fa-laptop"></i>
+                                <h4>Virtual Delegate</h4>
+                            </div>
+                            <div class="type-price">
+                                <span class="amount"></span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="type-card" id="listener_card">
+                        <input type="radio" name="registration_type" id="listener" value="listener">
+                        <label for="listener">
+                            <div class="type-header">
+                                <i class="fas fa-headphones"></i>
+                                <h4>Listener</h4>
+                            </div>
+                            <div class="type-price">
+                                <span class="amount"></span>
+                            </div>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -224,62 +262,79 @@ firebase.initializeApp(firebaseConfig);
         <div class="registration-step" id="step2" style="display: none;">
             <div class="step-header">
                 <h2>Step 2: Additional Items</h2>
-                <p>Select any optional items you'd like to add</p>
+                <p>Select any additional items you would like to add</p>
             </div>
 
             <div class="additional-items">
-                <!-- Extra Paper (for authors only) -->
-                <div class="item-card author-only" style="display: none;">
-                    <div class="item-header">
-                        <i class="fas fa-file-alt"></i>
-                        <h4>Extra Paper</h4>
+                {% if fees.additional_items %}
+                    {% if fees.additional_items.extra_paper and fees.additional_items.extra_paper.enabled %}
+                    <div class="item-card" id="extra_paper_card">
+                        <div class="item-header">
+                            <i class="fas fa-file-alt"></i>
+                            <h4>Extra Paper</h4>
+                        </div>
+                        <div class="item-description">
+                            {{ fees.additional_items.extra_paper.description }}
+                        </div>
+                        <div class="item-price">
+                            <span class="amount"></span>
+                        </div>
+                        <div class="item-select">
+                            <label class="switch">
+                                <input type="checkbox" id="extra_paper" name="extra_paper">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="item-content">
-                        <p>Submit an additional paper</p>
-                        <div class="item-price">R {{ fees.get('extra_paper_fee', 0) }}</div>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="extra_paper" id="extra_paper">
-                            <span>Add Extra Paper</span>
-                        </label>
-                    </div>
-                </div>
+                    {% endif %}
 
-                <!-- Workshop -->
-                <div class="item-card">
-                    <div class="item-header">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        <h4>Workshop</h4>
+                    {% if fees.additional_items.workshop and fees.additional_items.workshop.enabled %}
+                    <div class="item-card" id="workshop_card">
+                        <div class="item-header">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <h4>Workshop</h4>
+                        </div>
+                        <div class="item-description">
+                            {{ fees.additional_items.workshop.description }}
+                        </div>
+                        <div class="item-price">
+                            <span class="amount"></span>
+                        </div>
+                        <div class="item-select">
+                            <label class="switch">
+                                <input type="checkbox" id="workshop" name="workshop">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="item-content">
-                        <p>Attend the conference workshop</p>
-                        <div class="item-price">R {{ fees.get('workshop_fee', 0) }}</div>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="workshop" id="workshop">
-                            <span>Add Workshop</span>
-                        </label>
-                    </div>
-                </div>
+                    {% endif %}
 
-                <!-- Banquet -->
-                <div class="item-card physical-only">
-                    <div class="item-header">
-                        <i class="fas fa-utensils"></i>
-                        <h4>Banquet</h4>
+                    {% if fees.additional_items.banquet and fees.additional_items.banquet.enabled %}
+                    <div class="item-card" id="banquet_card">
+                        <div class="item-header">
+                            <i class="fas fa-glass-cheers"></i>
+                            <h4>Banquet</h4>
+                        </div>
+                        <div class="item-description">
+                            {{ fees.additional_items.banquet.description }}
+                        </div>
+                        <div class="item-price">
+                            <span class="amount"></span>
+                        </div>
+                        <div class="item-select">
+                            <label class="switch">
+                                <input type="checkbox" id="banquet" name="banquet">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="item-content">
-                        <p>Join the conference banquet</p>
-                        <div class="item-price">R {{ fees.get('banquet_fee', 0) }}</div>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="banquet" id="banquet">
-                            <span>Add Banquet</span>
-                        </label>
-                    </div>
-                </div>
+                    {% endif %}
+                {% endif %}
             </div>
 
             <div class="step-actions">
                 <button type="button" class="btn btn-secondary prev-step">Back to Package Selection</button>
-                <button type="button" class="btn btn-primary next-step">Continue to Review</button>
+                <button type="button" class="btn btn-primary next-step">Continue to Payment</button>
             </div>
         </div>
 
@@ -287,106 +342,69 @@ firebase.initializeApp(firebaseConfig);
         <div class="registration-step" id="step3" style="display: none;">
             <div class="step-header">
                 <h2>Step 3: Review & Payment</h2>
-                <p>Review your selections and proceed to payment</p>
+                <p>Review your selections and complete payment</p>
             </div>
 
-            <div class="review-summary">
-                <div class="summary-section">
-                    <h3>Selected Package</h3>
-                    <div class="summary-item package-summary">
-                        <div class="summary-label">Registration Period:</div>
-                        <div class="summary-value period-value"></div>
+            <div class="review-section">
+                <h3>Registration Summary</h3>
+                <div class="summary-details">
+                    <div class="summary-item">
+                        <span class="label">Registration Period:</span>
+                        <span class="value period-name"></span>
                     </div>
-                    <div class="summary-item package-summary">
-                        <div class="summary-label">Registration Type:</div>
-                        <div class="summary-value type-value"></div>
+                    <div class="summary-item">
+                        <span class="label">Registration Type:</span>
+                        <span class="value type-name"></span>
                     </div>
-                    <div class="summary-item package-summary">
-                        <div class="summary-label">Base Fee:</div>
-                        <div class="summary-value base-fee"></div>
+                    <div class="summary-item">
+                        <span class="label">Additional Items:</span>
+                        <div class="value additional-items-list"></div>
                     </div>
-                </div>
-
-                <div class="summary-section additional-summary" style="display: none;">
-                    <h3>Additional Items</h3>
-                    <div class="summary-items"></div>
-                </div>
-
-                <div class="summary-section total-section">
-                    <div class="summary-item total">
-                        <div class="summary-label">Total Amount:</div>
-                        <div class="summary-value total-amount"></div>
+                    <div class="summary-item total-amount">
+                        <span class="label">Total Amount:</span>
+                        <span class="value amount"></span>
                     </div>
                 </div>
             </div>
 
-            <!-- Payment Information -->
             <div class="payment-section">
-                <h3>Payment Information</h3>
-                {% if fees.get('payment_details') %}
-                <div class="bank-details">
-                    <h4><i class="fas fa-university"></i> Bank Details</h4>
-                    <div class="details-grid">
-                        {% set payment_details = fees.get('payment_details', {}) %}
-                        {% if payment_details.get('account_name') %}
-                        <div class="detail-item">
-                            <span class="label">Account Name:</span>
-                            <span class="value">{{ payment_details.get('account_name') }}</span>
+                <h3>Payment Details</h3>
+                <div class="payment-instructions">
+                    <div class="form-group">
+                        <label for="payment_reference">Payment Reference:</label>
+                        <input type="text" id="payment_reference" name="payment_reference" class="form-control" 
+                               required placeholder="Enter your payment reference">
+                        <small class="form-text text-muted">Use this as your payment reference when making the bank transfer</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="payment_proof">Upload Proof of Payment:</label>
+                        <div class="upload-container">
+                            <input type="file" id="payment_proof" name="payment_proof" class="form-control" 
+                                   accept=".pdf,.jpg,.jpeg,.png" required onchange="validateFileUpload(this)">
+                            <div class="upload-preview" id="upload-preview" style="display: none;">
+                                <div class="preview-content">
+                                    <i class="fas fa-file-alt"></i>
+                                    <span class="filename"></span>
+                                    <span class="filesize"></span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="clearFileUpload()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
-                        {% endif %}
-                        {% if payment_details.get('account_number') %}
-                        <div class="detail-item">
-                            <span class="label">Account Number:</span>
-                            <span class="value">{{ payment_details.get('account_number') }}</span>
-                        </div>
-                        {% endif %}
-                        {% if payment_details.get('bank_name') %}
-                        <div class="detail-item">
-                            <span class="label">Bank Name:</span>
-                            <span class="value">{{ payment_details.get('bank_name') }}</span>
-                        </div>
-                        {% endif %}
-                        {% if payment_details.get('branch_code') %}
-                        <div class="detail-item">
-                            <span class="label">Branch Code:</span>
-                            <span class="value">{{ payment_details.get('branch_code') }}</span>
-                        </div>
-                        {% endif %}
-                        {% if payment_details.get('swift_code') %}
-                        <div class="detail-item">
-                            <span class="label">Swift Code:</span>
-                            <span class="value">{{ payment_details.get('swift_code') }}</span>
-                        </div>
-                        {% endif %}
+                        <small class="form-text text-muted">Accepted formats: PDF, JPG, PNG (Max size: 5MB)</small>
                     </div>
                 </div>
-                {% endif %}
-
-                <!-- Payment Proof Upload -->
-                <div class="payment-proof">
-                    <h4><i class="fas fa-receipt"></i> Proof of Payment</h4>
-                    <div class="upload-section">
-                        <div class="form-group">
-                            <label for="payment_reference">Payment Reference:</label>
-                            <input type="text" id="payment_reference" name="payment_reference" class="form-control" required>
-                            <small class="form-text text-muted">Enter the reference number from your payment</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="payment_proof">Upload Proof of Payment:</label>
-                            <input type="file" id="payment_proof" name="payment_proof" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
-                            <small class="form-text text-muted">Accepted formats: PDF, JPG, PNG (Max size: 5MB)</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Hidden Fields for Form Submission -->
-                <input type="hidden" name="selected_period" id="selected_period">
-                <input type="hidden" name="selected_type" id="selected_type">
-                <input type="hidden" name="total_amount" id="total_amount">
-                <input type="hidden" name="extra_paper" id="has_extra_paper">
-                <input type="hidden" name="workshop" id="has_workshop">
-                <input type="hidden" name="banquet" id="has_banquet">
             </div>
+
+            <!-- Hidden Fields -->
+            <input type="hidden" name="selected_period" id="selected_period">
+            <input type="hidden" name="selected_type" id="selected_type">
+            <input type="hidden" name="total_amount" id="total_amount">
+            <input type="hidden" name="extra_paper" id="has_extra_paper">
+            <input type="hidden" name="workshop" id="has_workshop">
+            <input type="hidden" name="banquet" id="has_banquet">
 
             <div class="step-actions">
                 <button type="button" class="btn btn-secondary prev-step">Back to Additional Items</button>
@@ -633,7 +651,7 @@ firebase.initializeApp(firebaseConfig);
     color: var(--primary-color);
 }
 
-.type-header h5 {
+.type-header h4 {
     margin: 0;
     font-size: 1rem;
 }
@@ -781,24 +799,14 @@ firebase.initializeApp(firebaseConfig);
 }
 
 /* Review Summary Styles */
-.review-summary {
+.review-section {
     background: var(--background-color);
     border-radius: 8px;
     padding: 1.5rem;
 }
 
-.summary-section {
+.summary-details {
     margin-bottom: 2rem;
-}
-
-.summary-section:last-child {
-    margin-bottom: 0;
-}
-
-.summary-section h3 {
-    margin: 0 0 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid rgba(0,0,0,0.1);
 }
 
 .summary-item {
@@ -819,7 +827,7 @@ firebase.initializeApp(firebaseConfig);
     font-weight: 500;
 }
 
-.total-section {
+.total-amount {
     margin-top: 2rem;
     padding-top: 1rem;
     border-top: 2px solid rgba(0,0,0,0.1);
@@ -853,63 +861,7 @@ firebase.initializeApp(firebaseConfig);
     border-top: 2px solid var(--background-color);
 }
 
-.bank-details {
-    background: var(--background-color);
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.bank-details h4 {
-    margin: 0 0 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--primary-color);
-}
-
-.details-grid {
-    display: grid;
-    gap: 1rem;
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-.detail-item:last-child {
-    border-bottom: none;
-}
-
-.detail-item .label {
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.detail-item .value {
-    font-family: monospace;
-    font-size: 1.1rem;
-}
-
-.payment-proof {
-    background: var(--background-color);
-    border-radius: 8px;
-    padding: 1.5rem;
-}
-
-.payment-proof h4 {
-    margin: 0 0 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--primary-color);
-}
-
-.upload-section {
+.payment-instructions {
     display: grid;
     gap: 1.5rem;
 }
@@ -940,6 +892,52 @@ firebase.initializeApp(firebaseConfig);
 .form-text {
     font-size: 0.9rem;
     color: var(--text-secondary);
+}
+
+.upload-container {
+    position: relative;
+}
+
+.upload-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--background-color);
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+}
+
+.preview-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.preview-content i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.filename {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.filesize {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.invalid-feedback {
+    display: none;
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.invalid-feedback.show {
+    display: block;
 }
 
 @media (max-width: 768px) {
@@ -991,80 +989,271 @@ firebase.initializeApp(firebaseConfig);
 </style>
 
 <script>
-// Form submission handler
-document.getElementById('registration-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+var selectedPeriod = null;
+var selectedType = null;
+var totalAmount = 0;
+var fees = JSON.parse('{{ fees|tojson|safe }}');
+
+function updatePrices() {
+    if (!selectedPeriod || !selectedType) return;
     
-    const submitButton = this.querySelector('button[type="submit"]');
-    const originalText = submitButton.innerHTML;
-    submitButton.disabled = true;
-    submitButton.innerHTML = 'Processing...';
-    
-    try {
-        // Validate form
-        if (!validateForm()) {
-            submitButton.disabled = false;
-            submitButton.innerHTML = originalText;
-            return;
-        }
+    var periodFees = fees[selectedPeriod].fees;
+    if (!periodFees) return;
+
+    // Update registration type prices
+    document.querySelectorAll('.type-card').forEach(card => {
+        const input = card.querySelector('input[name="registration_type"]');
+        const priceElement = card.querySelector('.type-price .amount');
+        const type = input.value;
         
-        // Update hidden fields
-        document.getElementById('total_amount').value = totalAmount;
-        document.getElementById('has_extra_paper').value = document.getElementById('extra_paper').checked;
-        document.getElementById('has_workshop').value = document.getElementById('workshop').checked;
-        document.getElementById('has_banquet').value = document.getElementById('banquet').checked;
-
-        // Submit form to server
-        const formData = new FormData(this);
-        const response = await fetch('/registration-form', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error('Registration failed. Please try again.');
+        if (periodFees[type] !== undefined) {
+            const price = periodFees[type];
+            const symbol = fees.currency.symbol || 'R';
+            priceElement.textContent = `${symbol} ${price.toFixed(2)}`;
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
         }
+    });
 
-        // Redirect to dashboard
-        window.location.href = '/dashboard';
-    } catch (error) {
-        console.error('Error during form submission:', error);
-        alert(error.message || 'Error during registration. Please try again.');
-        submitButton.disabled = false;
-        submitButton.innerHTML = originalText;
+    // Update additional items prices and availability
+    if (fees.additional_items) {
+        Object.entries(fees.additional_items).forEach(([item, data]) => {
+            const itemCard = document.querySelector(`#${item}_card`);
+            if (!itemCard) return;
+
+            const priceElement = itemCard.querySelector('.item-price .amount');
+            const checkbox = document.getElementById(item);
+            
+            if (data.enabled) {
+                const symbol = fees.currency.symbol || 'R';
+                priceElement.textContent = `${symbol} ${data.fee.toFixed(2)}`;
+                itemCard.style.display = 'block';
+                
+                // Handle virtual delegate restrictions
+                if (selectedType === 'virtual_delegate' && !data.virtual_eligible) {
+                    checkbox.checked = false;
+                    checkbox.disabled = true;
+                    itemCard.classList.add('disabled');
+                } else {
+                    checkbox.disabled = false;
+                    itemCard.classList.remove('disabled');
+                }
+            } else {
+                itemCard.style.display = 'none';
+            }
+        });
+    }
+
+    calculateTotal();
+    updateSummary();
+}
+
+function calculateTotal() {
+    if (!selectedPeriod || !selectedType) {
+        totalAmount = 0;
+        return;
+    }
+
+    const periodFees = fees[selectedPeriod].fees;
+    if (!periodFees) {
+        totalAmount = 0;
+        return;
+    }
+
+    // Base registration fee
+    totalAmount = periodFees[selectedType] || 0;
+
+    // Add additional items
+    if (fees.additional_items) {
+        Object.entries(fees.additional_items).forEach(([item, data]) => {
+            const checkbox = document.getElementById(item);
+            if (checkbox && checkbox.checked && !checkbox.disabled && data.enabled) {
+                totalAmount += data.fee;
+            }
+        });
+    }
+
+    // Update total display in all relevant places
+    const symbol = fees.currency.symbol || 'R';
+    
+    // Update total in review section
+    const reviewTotal = document.querySelector('.total-amount .amount');
+    if (reviewTotal) {
+        reviewTotal.textContent = `${symbol} ${totalAmount.toFixed(2)}`;
+    }
+    
+    // Add a running total display in step 1 and 2
+    const runningTotal = document.querySelector('.running-total');
+    if (runningTotal) {
+        runningTotal.textContent = `Total: ${symbol} ${totalAmount.toFixed(2)}`;
+    }
+    
+    // Update hidden field
+    document.getElementById('total_amount').value = totalAmount;
+}
+
+function updateSummary() {
+    // Update period name
+    const periodElement = document.querySelector('.period-name');
+    const periodLabel = document.querySelector(`label[for="${selectedPeriod}"] h4`);
+    if (periodLabel) {
+        periodElement.textContent = periodLabel.textContent;
+    }
+
+    // Update type name
+    const typeElement = document.querySelector('.type-name');
+    const typeLabel = document.querySelector(`label[for="${selectedType}"] h4`);
+    if (typeLabel) {
+        typeElement.textContent = typeLabel.textContent;
+    }
+
+    // Update additional items
+    const itemsList = document.querySelector('.additional-items-list');
+    itemsList.innerHTML = '';
+    
+    if (fees.additional_items) {
+        Object.entries(fees.additional_items).forEach(([item, data]) => {
+            const checkbox = document.getElementById(item);
+            if (checkbox && checkbox.checked && !checkbox.disabled && data.enabled) {
+                const symbol = fees.currency.symbol || 'R';
+                const itemElement = document.createElement('div');
+                itemElement.className = 'additional-item';
+                itemElement.innerHTML = `
+                    <span class="item-name">${data.description || item}</span>
+                    <span class="item-price">${symbol} ${data.fee.toFixed(2)}</span>
+                `;
+                itemsList.appendChild(itemElement);
+            }
+        });
+    }
+
+    if (itemsList.children.length === 0) {
+        itemsList.innerHTML = '<span class="none-selected">No additional items selected</span>';
+    }
+
+    // Update total amount display
+    calculateTotal();
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Add running total display to steps 1 and 2
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    
+    const runningTotalDiv = document.createElement('div');
+    runningTotalDiv.className = 'running-total';
+    runningTotalDiv.style.cssText = `
+        position: sticky;
+        bottom: 0;
+        background: var(--primary-color);
+        color: white;
+        padding: 1rem;
+        margin: 1rem -2rem -2rem -2rem;
+        text-align: right;
+        font-size: 1.2rem;
+        font-weight: bold;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    `;
+    
+    step1.appendChild(runningTotalDiv.cloneNode(true));
+    step2.appendChild(runningTotalDiv.cloneNode(true));
+    
+    // Initialize prices
+    updatePrices();
+    
+    // Handle form submission
+    document.getElementById('registration-form').addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+        }
+    });
+    
+    // Handle period selection
+    document.querySelectorAll('input[name="registration_period"]').forEach(input => {
+        input.addEventListener('change', function() {
+            selectedPeriod = this.value;
+            document.getElementById('selected_period').value = selectedPeriod;
+            updatePrices();
+            
+            // Enable/disable next button
+            document.querySelector('.next-step').disabled = !selectedPeriod || !selectedType;
+        });
+    });
+    
+    // Handle type selection
+    document.querySelectorAll('input[name="registration_type"]').forEach(input => {
+        input.addEventListener('change', function() {
+            selectedType = this.value;
+            document.getElementById('selected_type').value = selectedType;
+            updatePrices();
+            
+            // Enable/disable next button
+            document.querySelector('.next-step').disabled = !selectedPeriod || !selectedType;
+        });
+    });
+    
+    // Add event listeners for additional items
+    if (fees.additional_items) {
+        Object.keys(fees.additional_items).forEach(item => {
+            const checkbox = document.getElementById(item);
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    calculateTotal();
+                    updateSummary();
+                    
+                    // Update hidden fields
+                    document.getElementById('has_' + checkbox.id).value = checkbox.checked;
+                });
+            }
+        });
     }
 });
 
+// Navigation Functions
+function showStep(step) {
+    document.querySelectorAll('.registration-step').forEach(s => s.style.display = 'none');
+    document.getElementById(`step${step}`).style.display = 'block';
+    
+    document.querySelectorAll('.progress-steps .step').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.progress-steps .step[data-step="${step}"]`).classList.add('active');
+    
+    const progress = document.querySelector('.progress-bar .progress');
+    progress.style.width = `${(step - 1) * 50}%`;
+}
+
+document.querySelectorAll('.next-step').forEach(button => {
+    button.addEventListener('click', function() {
+        const currentStep = parseInt(this.closest('.registration-step').id.replace('step', ''));
+        showStep(currentStep + 1);
+    });
+});
+
+document.querySelectorAll('.prev-step').forEach(button => {
+    button.addEventListener('click', function() {
+        const currentStep = parseInt(this.closest('.registration-step').id.replace('step', ''));
+        showStep(currentStep - 1);
+    });
+});
+
+// Form Validation
 function validateForm() {
     try {
-        // Validate registration selections
         if (!selectedPeriod || !selectedType) {
             throw new Error('Please select both registration period and type');
         }
 
-        // Validate payment information
         const paymentRef = document.getElementById('payment_reference');
         const paymentProof = document.getElementById('payment_proof');
 
         if (!paymentRef.value.trim()) {
+            paymentRef.focus();
             throw new Error('Please enter a payment reference');
         }
 
         if (!paymentProof.files || paymentProof.files.length === 0) {
             throw new Error('Please upload proof of payment');
-        }
-
-        // Validate file size and type
-        const file = paymentProof.files[0];
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-
-        if (file.size > maxSize) {
-            throw new Error('File size exceeds 5MB limit');
-        }
-
-        if (!allowedTypes.includes(file.type)) {
-            throw new Error('Invalid file type. Please upload PDF, JPG, or PNG');
         }
 
         return true;
@@ -1074,201 +1263,42 @@ function validateForm() {
     }
 }
 
-const steps = document.querySelectorAll('.registration-step');
-const progressBar = document.querySelector('.progress');
-const progressSteps = document.querySelectorAll('.step');
-const registrationFees = JSON.parse('{{ fees|tojson|safe }}');
-let currentStep = 1;
-let selectedPeriod = '';
-let selectedType = '';
-let totalAmount = 0;
-
-// Handle period selection
-const periodInputs = document.querySelectorAll('input[name="registration_period"]');
-const typeSelection = document.querySelector('.type-selection');
-
-periodInputs.forEach(input => {
-    input.addEventListener('change', function() {
-        selectedPeriod = this.value;
-        typeSelection.style.display = 'block';
-        updateTypeOptions();
-        checkStepCompletion();
-    });
-});
-
-// Handle type selection
-const typeInputs = document.querySelectorAll('input[name="registration_type"]');
-typeInputs.forEach(input => {
-    input.addEventListener('change', function() {
-        selectedType = this.value;
-        updateAdditionalItems();
-        checkStepCompletion();
-    });
-});
-
-// Handle additional items
-const additionalInputs = document.querySelectorAll('input[type="checkbox"]');
-additionalInputs.forEach(input => {
-    input.addEventListener('change', function() {
-        const card = this.closest('.item-card');
-        if (this.checked) {
-            card.classList.add('selected');
-        } else {
-            card.classList.remove('selected');
-        }
-        updateTotalAmount();
-    });
-});
-
-// Navigation buttons
-const nextButtons = document.querySelectorAll('.next-step');
-const prevButtons = document.querySelectorAll('.prev-step');
-
-nextButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        if (currentStep < 3) {
-            goToStep(currentStep + 1);
-        }
-    });
-});
-
-prevButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        if (currentStep > 1) {
-            goToStep(currentStep - 1);
-        }
-    });
-});
-
-function goToStep(step) {
-    steps.forEach(s => s.style.display = 'none');
-    steps[step - 1].style.display = 'block';
+// File Upload Functions
+function validateFileUpload(input) {
+    const file = input.files[0];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
     
-    progressBar.style.width = `${(step / 3) * 100}%`;
-    
-    progressSteps.forEach((s, index) => {
-        if (index + 1 <= step) {
-            s.classList.add('active');
-        } else {
-            s.classList.remove('active');
+    if (file) {
+        if (file.size > maxSize) {
+            input.value = '';
+            document.getElementById('file-error').textContent = 'File size exceeds 5MB limit';
+            document.getElementById('file-error').style.display = 'block';
+            return false;
         }
-    });
-
-    currentStep = step;
-
-    if (step === 3) {
-        updateReviewSummary();
-    }
-}
-
-function updateTypeOptions() {
-    const periodFees = registrationFees[selectedPeriod] || {};
-    
-    typeInputs.forEach(input => {
-        const priceElement = input.parentElement.querySelector('.amount');
-        const price = periodFees[input.value];
         
-        if (price) {
-            priceElement.textContent = `R ${price}`;
-            input.disabled = false;
-            input.parentElement.classList.remove('disabled');
-        } else {
-            priceElement.textContent = 'Not available';
-            input.disabled = true;
-            input.checked = false;
-            input.parentElement.classList.add('disabled');
+        if (!allowedTypes.includes(file.type)) {
+            input.value = '';
+            document.getElementById('file-error').textContent = 'Invalid file type. Please upload PDF, JPG, or PNG';
+            document.getElementById('file-error').style.display = 'block';
+            return false;
         }
-    });
+        
+        // Show preview
+        const preview = document.getElementById('upload-preview');
+        preview.style.display = 'flex';
+        preview.querySelector('.filename').textContent = file.name;
+        preview.querySelector('.filesize').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        document.getElementById('file-error').style.display = 'none';
+        return true;
+    }
+    return false;
 }
 
-function updateAdditionalItems() {
-    const extraPaperSection = document.querySelector('.author-only');
-    const banquetSection = document.querySelector('.physical-only');
-
-    if (selectedType.includes('author')) {
-        extraPaperSection.style.display = 'block';
-    } else {
-        extraPaperSection.style.display = 'none';
-        document.getElementById('extra_paper').checked = false;
-    }
-
-    if (selectedType === 'virtual_delegate') {
-        banquetSection.style.display = 'none';
-        document.getElementById('banquet').checked = false;
-    } else {
-        banquetSection.style.display = 'block';
-    }
+function clearFileUpload() {
+    const input = document.getElementById('payment_proof');
+    input.value = '';
+    document.getElementById('upload-preview').style.display = 'none';
 }
-
-function updateTotalAmount() {
-    const periodFees = registrationFees[selectedPeriod] || {};
-    let total = periodFees[selectedType] || 0;
-
-    if (document.getElementById('extra_paper').checked) {
-        total += registrationFees.extra_paper_fee || 0;
-    }
-    if (document.getElementById('workshop').checked) {
-        total += registrationFees.workshop_fee || 0;
-    }
-    if (document.getElementById('banquet').checked) {
-        total += registrationFees.banquet_fee || 0;
-    }
-
-    totalAmount = total;
-    return total;
-}
-
-function updateReviewSummary() {
-    const periodValue = document.querySelector('.period-value');
-    const typeValue = document.querySelector('.type-value');
-    const baseFee = document.querySelector('.base-fee');
-    const additionalSummary = document.querySelector('.additional-summary');
-    const additionalItems = document.querySelector('.summary-items');
-    const totalAmountElement = document.querySelector('.total-amount');
-
-    // Update package summary
-    periodValue.textContent = selectedPeriod.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    typeValue.textContent = selectedType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    baseFee.textContent = `R ${registrationFees[selectedPeriod][selectedType]}`;
-
-    // Update additional items
-    const items = [];
-    if (document.getElementById('extra_paper').checked) {
-        items.push({ name: 'Extra Paper', price: registrationFees.extra_paper_fee });
-    }
-    if (document.getElementById('workshop').checked) {
-        items.push({ name: 'Workshop', price: registrationFees.workshop_fee });
-    }
-    if (document.getElementById('banquet').checked) {
-        items.push({ name: 'Banquet', price: registrationFees.banquet_fee });
-    }
-
-    if (items.length > 0) {
-        additionalSummary.style.display = 'block';
-        additionalItems.innerHTML = items.map(item => `
-            <div class="summary-item">
-                <div class="summary-label">${item.name}:</div>
-                <div class="summary-value">R ${item.price}</div>
-            </div>
-        `).join('');
-    } else {
-        additionalSummary.style.display = 'none';
-    }
-
-    // Update total
-    totalAmountElement.textContent = `R ${updateTotalAmount()}`;
-}
-
-function checkStepCompletion() {
-    const nextButton = steps[currentStep - 1].querySelector('.next-step');
-    
-    if (currentStep === 1) {
-        nextButton.disabled = !(selectedPeriod && selectedType);
-    }
-}
-
-// Initialize the form
-updateTypeOptions();
-checkStepCompletion();
 </script>
 {% endblock %}

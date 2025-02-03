@@ -17,6 +17,8 @@ import pytz
 import requests
 from PIL import Image
 from io import BytesIO
+from utils import register_filters
+from routes.user_routes import user_routes
 
 try:
     from dotenv import load_dotenv
@@ -28,6 +30,12 @@ load_dotenv()  # Add this before creating the Flask app
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Register blueprints
+app.register_blueprint(user_routes)
+
+# Register Jinja2 filters
+register_filters(app)
 
 # Initialize Firebase Admin SDK
 try:
@@ -1003,137 +1011,149 @@ def admin_venue():
 def admin_registration_fees():
     if request.method == 'POST':
         try:
+            # Debug: Print all form data
+            print("Form data received:", request.form)
+            
             # Get currency settings
             currency_code = request.form.get('currency_code')
             custom_currency_symbol = request.form.get('custom_currency_symbol') if currency_code == 'custom' else None
             
+            # Set up the currency structure
+            currency = {
+                'code': currency_code,
+                'symbol': custom_currency_symbol if currency_code == 'custom' else {
+                    'ZAR': 'R',
+                    'USD': '$',
+                    'EUR': '€',
+                    'GBP': '£',
+                    'AUD': 'A$'
+                }.get(currency_code)
+            }
+            
+            # Convert form data to float where needed
+            def get_float(key, default=0):
+                value = request.form.get(key)
+                try:
+                    return float(value) if value and value.strip() else default
+                except (ValueError, TypeError):
+                    print(f"Error converting {key} to float. Value: {value}")
+                    return default
+            
+            # Convert form data to int where needed
+            def get_int(key, default=0):
+                value = request.form.get(key)
+                try:
+                    return int(value) if value and value.strip() else default
+                except (ValueError, TypeError):
+                    print(f"Error converting {key} to int. Value: {value}")
+                    return default
+            
             registration_fees = {
-                'currency_code': currency_code,
-                'custom_currency_symbol': custom_currency_symbol,
-                'early_bird': None,
+                'currency': currency,
+                'early_bird': {
+                    'enabled': request.form.get('early_bird_enabled') == 'on',
+                    'deadline': request.form.get('early_bird_deadline', ''),
+                    'seats': {
+                        'total': get_int('early_bird_total_seats', 100),
+                        'remaining': get_int('early_bird_remaining_seats', 100),
+                        'show_remaining': request.form.get('show_remaining_seats') == 'on'
+                    },
+                    'fees': {
+                        'student_author': get_float('early_bird_student'),
+                        'regular_author': get_float('early_bird_regular'),
+                        'physical_delegate': get_float('early_bird_physical'),
+                        'virtual_delegate': get_float('early_bird_virtual'),
+                        'listener': get_float('early_bird_listener')
+                    },
+                    'benefits': [b for b in request.form.getlist('early_bird_benefits[]') if b and b.strip()]
+                } if request.form.get('early_bird_enabled') == 'on' else None,
                 'early': {
-                    'deadline': request.form.get('early_deadline'),
-                    'student_author': request.form.get('early_student'),
-                    'regular_author': request.form.get('early_regular'),
-                    'listener': request.form.get('early_listener'),
-                    'virtual': request.form.get('early_virtual'),
-                    'benefits': [benefit for benefit in request.form.getlist('early_benefits[]') if benefit.strip()]
+                    'deadline': request.form.get('early_deadline', ''),
+                    'fees': {
+                        'student_author': get_float('early_student'),
+                        'regular_author': get_float('early_regular'),
+                        'physical_delegate': get_float('early_physical'),
+                        'virtual_delegate': get_float('early_virtual'),
+                        'listener': get_float('early_listener')
+                    },
+                    'benefits': [b for b in request.form.getlist('early_benefits[]') if b and b.strip()]
+                },
+                'regular': {
+                    'deadline': request.form.get('regular_deadline', ''),
+                    'fees': {
+                        'student_author': get_float('regular_student'),
+                        'regular_author': get_float('regular_regular'),
+                        'physical_delegate': get_float('regular_physical'),
+                        'virtual_delegate': get_float('regular_virtual')
+                    },
+                    'benefits': [b for b in request.form.getlist('regular_benefits[]') if b and b.strip()]
                 },
                 'late': {
-                    'deadline': request.form.get('late_deadline'),
-                    'student_author': request.form.get('late_student'),
-                    'regular_author': request.form.get('late_regular'),
-                    'listener': request.form.get('late_listener'),
-                    'virtual': request.form.get('late_virtual'),
-                    'benefits': [benefit for benefit in request.form.getlist('late_benefits[]') if benefit.strip()]
+                    'deadline': request.form.get('late_deadline', ''),
+                    'fees': {
+                        'student_author': get_float('late_student'),
+                        'regular_author': get_float('late_regular'),
+                        'physical_delegate': get_float('late_physical'),
+                        'virtual_delegate': get_float('late_virtual'),
+                        'listener': get_float('late_listener')
+                    },
+                    'benefits': [b for b in request.form.getlist('late_benefits[]') if b and b.strip()]
                 },
-                'extra_paper_fee': request.form.get('extra_paper_fee'),
-                'workshop_fee': request.form.get('workshop_fee'),
-                'banquet_fee': request.form.get('banquet_fee'),
-                'includes': request.form.getlist('registration_includes'),
-                'payment_details': {
-                    # South African Bank Details
-                    'account_name': request.form.get('account_name'),
-                    'account_number': request.form.get('account_number'),
-                    'bank_name': request.form.get('bank_name'),
-                    'universal_branch_code': request.form.get('universal_branch_code'),
-                    'account_type': request.form.get('account_type'),
-                    
-                    # International Payment Details
-                    'swift_code': request.form.get('swift_code'),
-                    'iban': request.form.get('iban'),
-                    'bank_address': request.form.get('bank_address'),
-                    'intermediary_bank': request.form.get('intermediary_bank'),
-                    
-                    # Additional Information
-                    'reference_format': request.form.get('reference_format'),
-                    'contact_email': request.form.get('contact_email'),
-                    'payment_instructions': request.form.get('payment_instructions')
+                'additional_items': {
+                    'extra_paper': {
+                        'enabled': request.form.get('extra_paper_enabled') == 'on',
+                        'fee': get_float('extra_paper_fee'),
+                        'description': request.form.get('extra_paper_description', '').strip()
+                    },
+                    'workshop': {
+                        'enabled': request.form.get('workshop_enabled') == 'on',
+                        'fee': get_float('workshop_fee'),
+                        'description': request.form.get('workshop_description', '').strip()
+                    },
+                    'banquet': {
+                        'enabled': request.form.get('banquet_enabled') == 'on',
+                        'fee': get_float('banquet_fee'),
+                        'description': request.form.get('banquet_description', '').strip(),
+                        'virtual_eligible': request.form.get('banquet_virtual_eligible') == 'on'
+                    }
                 }
             }
             
-            # Handle early bird registration if enabled
-            if request.form.get('early_bird_enabled'):
-                registration_fees['early_bird'] = {
-                    'deadline': request.form.get('early_bird_deadline'),
-                    'student_author': request.form.get('early_bird_student'),
-                    'regular_author': request.form.get('early_bird_regular'),
-                    'listener': request.form.get('early_bird_listener'),
-                    'virtual': request.form.get('early_bird_virtual'),
-                    'benefits': [benefit for benefit in request.form.getlist('early_bird_benefits[]') if benefit.strip()]
-                }
-            
-            # Validate required fields
-            required_fields = {
-                'early': ['deadline', 'student_author', 'regular_author', 'listener', 'virtual'],
-                'late': ['deadline', 'student_author', 'regular_author', 'listener', 'virtual'],
-                'payment_details': ['account_name', 'account_number', 'bank_name', 'universal_branch_code', 'account_type']
-            }
-            
-            errors = []
-            
-            # Validate early registration
-            for field in required_fields['early']:
-                if not registration_fees['early'][field]:
-                    errors.append(f'Early registration {field.replace("_", " ")} is required')
-            
-            # Validate late registration
-            for field in required_fields['late']:
-                if not registration_fees['late'][field]:
-                    errors.append(f'Late registration {field.replace("_", " ")} is required')
-            
-            # Validate payment details
-            for field in required_fields['payment_details']:
-                if not registration_fees['payment_details'][field]:
-                    errors.append(f'Payment details {field.replace("_", " ")} is required')
-            
-            # Validate early bird if enabled
-            if registration_fees['early_bird']:
-                for field in required_fields['early']:
-                    if not registration_fees['early_bird'][field]:
-                        errors.append(f'Early bird {field.replace("_", " ")} is required')
-            
-            # Validate dates
-            try:
-                if registration_fees['early_bird']:
-                    early_bird_deadline = datetime.strptime(registration_fees['early_bird']['deadline'], '%Y-%m-%d')
-                    early_deadline = datetime.strptime(registration_fees['early']['deadline'], '%Y-%m-%d')
-                    if early_bird_deadline >= early_deadline:
-                        errors.append('Early bird deadline must be before early registration deadline')
-                
-                early_deadline = datetime.strptime(registration_fees['early']['deadline'], '%Y-%m-%d')
-                late_deadline = datetime.strptime(registration_fees['late']['deadline'], '%Y-%m-%d')
-                if early_deadline >= late_deadline:
-                    errors.append('Early registration deadline must be before late registration deadline')
-            except ValueError:
-                errors.append('Invalid date format')
-            
-            if errors:
-                for error in errors:
-                    flash(error, 'danger')
-                return redirect(url_for('admin_registration_fees'))
+            # Debug: Print the structured data
+            print("Structured data to save:", registration_fees)
             
             # Update registration fees in Firebase
             db.reference('registration_fees').set(registration_fees)
+            
             flash('Registration fees updated successfully', 'success')
             return redirect(url_for('admin_registration_fees'))
             
         except Exception as e:
+            import traceback
+            print("Error saving registration fees:")
+            print(traceback.format_exc())  # Print full stack trace
             flash(f'Error updating registration fees: {str(e)}', 'danger')
             return redirect(url_for('admin_registration_fees'))
     
-    # Get current fees settings
-    fees_ref = db.reference('registration_fees')
-    current_fees = fees_ref.get() or {}
-    
-    # Add currency symbol if not present
-    if 'currency_code' not in current_fees:
-        current_fees['currency_code'] = 'ZAR'
-        current_fees['currency_symbol'] = 'R'
-    
-    return render_template('admin/admin_registration_fees.html', 
-                         site_design=get_site_design(), 
-                         fees=current_fees)
+    try:
+        # Get current fees settings
+        fees_ref = db.reference('registration_fees')
+        current_fees = fees_ref.get() or {}
+        
+        # Debug: Print current fees
+        print("Current fees loaded:", current_fees)
+        
+        return render_template('admin/admin_registration_fees.html', 
+                             site_design=get_site_design(), 
+                             fees=current_fees)
+    except Exception as e:
+        import traceback
+        print("Error loading registration fees:")
+        print(traceback.format_exc())  # Print full stack trace
+        flash(f'Error loading registration fees: {str(e)}', 'danger')
+        return render_template('admin/admin_registration_fees.html', 
+                             site_design=get_site_design(), 
+                             fees={})
 
 @app.route('/admin/downloads', methods=['GET', 'POST'])
 @login_required
@@ -2696,46 +2716,212 @@ def get_registration_fees():
         if not fees:
             # Return default structure if no fees are set
             return {
-                'early_bird': None,  # Early bird is optional
+                'currency': {
+                    'code': 'ZAR',
+                    'symbol': 'R'
+                },
+                'early_bird': {
+                    'enabled': False,
+                    'deadline': '',
+                    'seats': {
+                        'total': 100,
+                        'remaining': 100,
+                        'show_remaining': True
+                    },
+                    'fees': {
+                        'student_author': 0,
+                        'regular_author': 0,
+                        'physical_delegate': 0,
+                        'virtual_delegate': 0,
+                        'listener': 0
+                    },
+                    'benefits': []
+                },
                 'early': {
                     'deadline': '',
-                    'student_author': '',
-                    'regular_author': '',
-                    'listener': '',
-                    'virtual': '',
+                    'fees': {
+                        'student_author': 0,
+                        'regular_author': 0,
+                        'physical_delegate': 0,
+                        'virtual_delegate': 0,
+                        'listener': 0
+                    },
+                    'benefits': []
+                },
+                'regular': {
+                    'deadline': '',
+                    'fees': {
+                        'student_author': 0,
+                        'regular_author': 0,
+                        'physical_delegate': 0,
+                        'virtual_delegate': 0,
+                        'listener': 0
+                    },
                     'benefits': []
                 },
                 'late': {
                     'deadline': '',
-                    'student_author': '',
-                    'regular_author': '',
-                    'listener': '',
-                    'virtual': '',
+                    'fees': {
+                        'student_author': 0,
+                        'regular_author': 0,
+                        'physical_delegate': 0,
+                        'virtual_delegate': 0,
+                        'listener': 0
+                    },
                     'benefits': []
                 },
-                'extra_paper_fee': '',
-                'workshop_fee': '',
-                'banquet_fee': '',
-                'includes': [],
-                'payment_details': {
-                    # South African Bank Details
-                    'account_name': '',
-                    'account_number': '',
-                    'bank_name': '',
-                    'universal_branch_code': '',
-                    'account_type': '',
-                    
-                    # Additional Information
-                    'reference_format': '',
-                    'contact_email': '',
-                    'payment_instructions': ''
+                'additional_items': {
+                    'extra_paper': {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': 'Submit an additional paper',
+                        'virtual_eligible': True
+                    },
+                    'workshop': {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': 'Attend the conference workshop',
+                        'virtual_eligible': True
+                    },
+                    'banquet': {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': 'Join the conference banquet',
+                        'virtual_eligible': False
+                    }
                 }
             }
+        
+        # Ensure the fees structure is correct
+        if 'currency' not in fees:
+            fees['currency'] = {
+                'code': 'ZAR',
+                'symbol': 'R'
+            }
+        
+        # Ensure each period has the correct structure
+        for period in ['early_bird', 'early', 'regular', 'late']:
+            if period in fees:
+                if 'fees' not in fees[period]:
+                    fees[period]['fees'] = {}
+                
+                # Ensure all registration types have a fee
+                for reg_type in ['student_author', 'regular_author', 'physical_delegate', 'virtual_delegate', 'listener']:
+                    if reg_type not in fees[period]['fees']:
+                        fees[period]['fees'][reg_type] = 0
+                
+                # Ensure benefits list exists
+                if 'benefits' not in fees[period]:
+                    fees[period]['benefits'] = []
+                
+                # Ensure early bird has seats info
+                if period == 'early_bird':
+                    if 'seats' not in fees[period]:
+                        fees[period]['seats'] = {
+                            'total': 100,
+                            'remaining': 100,
+                            'show_remaining': True
+                        }
+        
+        # Ensure additional items structure is correct
+        if 'additional_items' not in fees:
+            fees['additional_items'] = {
+                'extra_paper': {
+                    'enabled': False,
+                    'fee': 0,
+                    'description': 'Submit an additional paper',
+                    'virtual_eligible': True
+                },
+                'workshop': {
+                    'enabled': False,
+                    'fee': 0,
+                    'description': 'Attend the conference workshop',
+                    'virtual_eligible': True
+                },
+                'banquet': {
+                    'enabled': False,
+                    'fee': 0,
+                    'description': 'Join the conference banquet',
+                    'virtual_eligible': False
+                }
+            }
+        else:
+            # Ensure each additional item has the correct structure
+            for item in ['extra_paper', 'workshop', 'banquet']:
+                if item not in fees['additional_items']:
+                    fees['additional_items'][item] = {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': '',
+                        'virtual_eligible': item != 'banquet'
+                    }
+                else:
+                    if 'virtual_eligible' not in fees['additional_items'][item]:
+                        fees['additional_items'][item]['virtual_eligible'] = item != 'banquet'
         
         return fees
     except Exception as e:
         print(f"Error fetching registration fees: {str(e)}")
         return None
+
+def get_current_registration_period():
+    """
+    Determines the current registration period based on deadlines.
+    Returns: 'early_bird', 'regular', 'late', or 'closed'
+    """
+    try:
+        fees = get_registration_fees()
+        if not fees:
+            return 'closed'
+
+        current_date = datetime.now().date()
+        
+        # Check Early Bird period
+        if fees.get('early_bird', {}).get('enabled'):
+            early_bird_deadline = datetime.strptime(fees['early_bird']['deadline'], '%Y-%m-%d').date()
+            if current_date <= early_bird_deadline:
+                # Check if seats are available
+                seats = fees['early_bird'].get('seats', {})
+                if seats.get('remaining', 0) > 0:
+                    return 'early_bird'
+                
+        # Check Regular period
+        if fees.get('regular', {}).get('deadline'):
+            regular_deadline = datetime.strptime(fees['regular']['deadline'], '%Y-%m-%d').date()
+            if current_date <= regular_deadline:
+                return 'regular'
+                
+        # Check Late period
+        if fees.get('late', {}).get('deadline'):
+            late_deadline = datetime.strptime(fees['late']['deadline'], '%Y-%m-%d').date()
+            if current_date <= late_deadline:
+                return 'late'
+        
+        return 'closed'
+    except Exception as e:
+        print(f"Error determining registration period: {str(e)}")
+        return 'closed'
+
+def format_currency(amount, currency_info):
+    """
+    Formats the amount according to currency settings
+    """
+    try:
+        if not amount:
+            return "0.00"
+            
+        symbol = currency_info.get('symbol', 'R')
+        position = currency_info.get('position', 'before')
+        
+        formatted_amount = f"{float(amount):,.2f}"
+        
+        if position == 'before':
+            return f"{symbol} {formatted_amount}"
+        else:
+            return f"{formatted_amount} {symbol}"
+    except Exception as e:
+        print(f"Error formatting currency: {str(e)}")
+        return str(amount)
 
 def save_payment_proof(file):
     """Save payment proof file to Firebase Storage and return file data"""
@@ -2777,23 +2963,96 @@ def save_payment_proof(file):
 @login_required
 def registration_form():
     try:
+        if request.method == 'GET':
+            # Get current registration period and fees
+            current_period = get_current_registration_period()
+            if current_period == 'closed':
+                flash('Registration is currently closed.', 'error')
+                return redirect(url_for('home'))
+                
+            fees = get_registration_fees()
+            if not fees:
+                flash('Registration fees are not configured.', 'error')
+                return redirect(url_for('home'))
+            
+            # Add currency information if not present
+            if 'currency' not in fees:
+                fees['currency'] = {
+                    'code': 'ZAR',
+                    'symbol': 'R'
+                }
+            
+            # Ensure fee structure is correct
+            for period in ['early_bird', 'early', 'regular', 'late']:
+                if period in fees:
+                    if 'fees' not in fees[period]:
+                        fees[period]['fees'] = {}
+                    
+                    # Ensure all registration types have a fee
+                    for reg_type in ['student_author', 'regular_author', 'physical_delegate', 'virtual_delegate', 'listener']:
+                        if reg_type not in fees[period]['fees']:
+                            fees[period]['fees'][reg_type] = 0
+            
+            # Ensure additional items structure is correct
+            if 'additional_items' not in fees:
+                fees['additional_items'] = {
+                    'extra_paper': {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': 'Submit an additional paper'
+                    },
+                    'workshop': {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': 'Attend the conference workshop'
+                    },
+                    'banquet': {
+                        'enabled': False,
+                        'fee': 0,
+                        'description': 'Join the conference banquet'
+                    }
+                }
+            
         # Get form data
         registration_data = {
             'full_name': current_user.full_name,
             'email': current_user.email,
+            'user_id': current_user.id,
             'registration_period': request.form.get('selected_period'),
             'registration_type': request.form.get('selected_type'),
             'total_amount': float(request.form.get('total_amount', 0)),
             'payment_reference': request.form.get('payment_reference'),
-            'extra_paper': request.form.get('extra_paper') == 'true',
-            'workshop': request.form.get('workshop') == 'true',
-            'banquet': request.form.get('banquet') == 'true',
             'submission_date': datetime.now().isoformat(),
             'payment_status': 'pending',
-            'user_id': current_user.id,
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
+        
+        # Validate registration period
+        current_period = get_current_registration_period()
+        if current_period == 'closed':
+            raise ValueError('Registration is currently closed')
+        if registration_data['registration_period'] != current_period:
+            raise ValueError('Invalid registration period selected')
+            
+        # Add additional items if selected
+        additional_items = {}
+        for item in ['extra_paper', 'workshop', 'banquet']:
+            if request.form.get(item) == 'true':
+                if not fees['additional_items'][item]['enabled']:
+                    raise ValueError(f'{item.replace("_", " ").title()} is not available')
+                    
+                # Check if virtual delegate is eligible for this item
+                if (registration_data['registration_type'] == 'virtual_delegate' and 
+                    not fees['additional_items'][item].get('virtual_eligible', True)):
+                    raise ValueError(f'{item.replace("_", " ").title()} is not available for virtual delegates')
+                    
+                additional_items[item] = {
+                    'selected': True,
+                    'fee': fees['additional_items'][item]['fee']
+                }
+        
+        registration_data['additional_items'] = additional_items
         
         # Handle payment proof file
         payment_proof = request.files.get('payment_proof')
@@ -2803,6 +3062,18 @@ def registration_form():
                 registration_data['payment_proof'] = file_data
             else:
                 raise ValueError('Failed to save payment proof file')
+        else:
+            raise ValueError('Payment proof is required')
+        
+        # Update early bird seats if applicable
+        if current_period == 'early_bird':
+            fees_ref = db.reference('registration_fees/early_bird/seats')
+            remaining = fees_ref.child('remaining').get() or 0
+            if remaining <= 0:
+                raise ValueError('No early bird seats remaining')
+            fees_ref.update({
+                'remaining': remaining - 1
+            })
         
         # Save registration to Firebase Realtime Database
         registrations_ref = db.reference('registrations')
@@ -2821,6 +3092,9 @@ def registration_form():
         flash('Registration submitted successfully!', 'success')
         return redirect(url_for('dashboard'))
         
+    except ValueError as e:
+        flash(str(e), 'error')
+        return redirect(url_for('registration'))
     except Exception as e:
         flash(f'Error submitting registration: {str(e)}', 'error')
         return redirect(url_for('registration'))
@@ -3897,4 +4171,5 @@ if __name__ == '__main__':
         app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
         app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
     else:
+        app.run(debug=True) 
         app.run(debug=True) 

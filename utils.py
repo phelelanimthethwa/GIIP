@@ -1,4 +1,6 @@
 from firebase_admin import db
+import os
+from datetime import datetime
 
 # Default theme settings
 DEFAULT_THEME = {
@@ -23,4 +25,30 @@ def get_site_design():
         return design if design else DEFAULT_THEME
     except Exception as e:
         print(f"Error fetching site design: {str(e)}")
-        return DEFAULT_THEME 
+        return DEFAULT_THEME
+
+def format_filesize(size):
+    """Format file size to human readable format"""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} TB"
+
+def format_datetime(dt_str):
+    """Format datetime string to human readable format"""
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        return dt.strftime("%B %d, %Y at %I:%M %p")
+    except:
+        return dt_str
+
+def get_filename(filepath):
+    """Get original filename from path"""
+    return os.path.basename(filepath)
+
+# Register filters with Flask app
+def register_filters(app):
+    app.jinja_env.filters['filesizeformat'] = format_filesize
+    app.jinja_env.filters['datetime'] = format_datetime
+    app.jinja_env.filters['filename'] = get_filename 

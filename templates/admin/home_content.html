@@ -31,6 +31,16 @@
                                value="{{ home_content.welcome.title }}" required>
                     </div>
                     <div class="mb-3">
+                        <label for="welcomeSubtitle" class="form-label">Subtitle</label>
+                        <input type="text" class="form-control" id="welcomeSubtitle" name="welcome[subtitle]" 
+                               value="{{ home_content.welcome.subtitle }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="conferenceDate" class="form-label">Conference Date</label>
+                        <input type="text" class="form-control" id="conferenceDate" name="welcome[conference_date]" 
+                               value="{{ home_content.welcome.conference_date }}" required>
+                    </div>
+                    <div class="mb-3">
                         <label for="welcomeMessage" class="form-label">Message</label>
                         <textarea class="form-control" id="welcomeMessage" name="welcome[message]" rows="3" 
                                   required>{{ home_content.welcome.message }}</textarea>
@@ -319,246 +329,28 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get form elements with null checks
+    // Get form elements
     const form = document.getElementById('homeContentForm');
     const saveButton = document.getElementById('saveAllChanges');
-    const imageGrid = document.getElementById('heroImages');
-    const imageUpload = document.getElementById('heroImageUpload');
-    const existingAssociates = document.getElementById('existingAssociates');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
-    const imagePreview = document.getElementById('imagePreview');
-    const associateLogo = document.getElementById('associateLogo');
-    const newAssociateName = document.getElementById('newAssociateName');
-    const newAssociateDescription = document.getElementById('newAssociateDescription');
-    const addAssociateBtn = document.getElementById('addAssociateBtn');
-
+    
     if (!form || !saveButton) {
         console.error('Required form elements not found');
-            return;
-        }
+        return;
+    }
     
-    // Handle form submission
-    saveButton.addEventListener('click', async function() {
-        try {
-            // Show loading state
-            saveButton.disabled = true;
-            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-            
-        const formData = new FormData(form);
-        
-        // Add existing images that weren't deleted
-        const existingImages = [];
-        document.querySelectorAll('.image-item').forEach(item => {
-                if (item && item.dataset.id !== 'new') {
-                const img = item.querySelector('img');
-                    if (img) {
-                existingImages.push({
-                    url: img.src,
-                    alt: img.alt
-                });
-                    }
+    // Add event listener for delete button
+    document.querySelectorAll('.delete-associate').forEach((button) => {
+        button.addEventListener('click', function() {
+            if (confirm('Are you sure you want to remove this associate?')) {
+                button.closest('.associate-card').remove();
             }
         });
-        formData.append('existing_images', JSON.stringify(existingImages));
-        
-            // Handle existing associates data
-            const existingAssociatesData = [];
-            if (existingAssociates) {
-                existingAssociates.querySelectorAll('.associate-card').forEach(card => {
-                    if (card && !card.classList.contains('new-associate') && !card.hasAttribute('data-new')) {
-                        const logoInput = card.querySelector('input[name="existing_associate_logos[]"]');
-                        const nameInput = card.querySelector('input[name="existing_associate_names[]"]');
-                        const descInput = card.querySelector('textarea[name="existing_associate_descriptions[]"]');
-                        
-                        if (logoInput && nameInput && descInput) {
-                            const logo = logoInput.value;
-                            const name = nameInput.value;
-                            const description = descInput.value;
-                            
-                            if (name && description && logo) {
-                                existingAssociatesData.push({ logo, name, description });
-                            }
-                        }
-                    }
-                });
-            }
-            formData.append('existing_associates', JSON.stringify(existingAssociatesData));
-            
-            // Handle new associates data
-            const newAssociatesData = [];
-            if (existingAssociates) {
-                existingAssociates.querySelectorAll('.associate-card[data-id^="new_"]').forEach(card => {
-                    if (card) {
-                        const nameInput = card.querySelector('input[name="new_associate_names[]"]');
-                        const descInput = card.querySelector('textarea[name="new_associate_descriptions[]"]');
-                        const fileInput = card.querySelector('input[type="file"]');
-                        
-                        if (nameInput && descInput && fileInput && fileInput.files[0]) {
-                            const name = nameInput.value;
-                            const description = descInput.value;
-                            
-                            if (name && description) {
-                                formData.append(`new_associate_logo_${card.dataset.id}`, fileInput.files[0]);
-                                newAssociatesData.push({
-                                    id: card.dataset.id,
-                                    name: name,
-                                    description: description
-                                });
-                            }
-                        }
-                    }
-                });
-            }
-            formData.append('new_associates', JSON.stringify(newAssociatesData));
-            
-            // Send the form data
-            const response = await fetch('{{ url_for("admin_home_content") }}', {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-            });
-            
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to save changes');
-            }
-            
-                // Show success message
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-success alert-dismissible fade show';
-                alert.innerHTML = `
-                    <strong>Success!</strong> Changes saved successfully.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                form.insertAdjacentElement('beforebegin', alert);
-                
-            // Fetch updated content
-            const updatedContent = await fetch('{{ url_for("admin_home_content") }}');
-            const html = await updatedContent.text();
-            
-            // Create a temporary container
-            const temp = document.createElement('div');
-            temp.innerHTML = html;
-            
-            // Get the associates grid from the fetched content
-            const newAssociatesGrid = temp.querySelector('#existingAssociates');
-            
-            if (newAssociatesGrid && existingAssociates) {
-                // Replace the current associates grid with the new one
-                existingAssociates.innerHTML = newAssociatesGrid.innerHTML;
-            }
-            
-            // Reset the new associate form
-            if (associateLogo) associateLogo.value = '';
-            if (imagePreview) {
-                imagePreview.src = '';
-                imagePreview.style.display = 'none';
-            }
-            if (uploadPlaceholder) uploadPlaceholder.style.display = 'flex';
-            if (newAssociateName) newAssociateName.value = '';
-            if (newAssociateDescription) newAssociateDescription.value = '';
-            
-        } catch (error) {
-            console.error('Error:', error);
-            // Show error message
-            const alert = document.createElement('div');
-            alert.className = 'alert alert-danger alert-dismissible fade show';
-            alert.innerHTML = `
-                <strong>Error!</strong> ${error.message || 'Failed to save changes. Please try again.'}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            form.insertAdjacentElement('beforebegin', alert);
-        } finally {
-            // Reset button state
-            saveButton.disabled = false;
-            saveButton.innerHTML = '<i class="fas fa-save"></i> Save All Changes';
-        }
-    });
-
-  // Handle associate image uploads
-  document.getElementById('imagePreviewContainer').addEventListener('click', () => {
-    document.getElementById('associateLogo').click();
-});
-
-document.getElementById('associateLogo').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file && file.type.match('image.*')) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-            document.getElementById('imagePreview').src = e.target.result;
-            document.getElementById('imagePreview').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
-});
-    }
-
-    // Handle adding new associate
-    document.getElementById('addAssociateBtn').addEventListener('click', function() {
-        const name = document.getElementById('newAssociateName').value.trim();
-        const description = document.getElementById('newAssociateDescription').value.trim();
-        const logo = document.getElementById('associateLogo').files[0];
-
-        if (!name || !description || !logo) {
-            alert('Please fill in all fields and upload a logo.');
-            return;
-        }
-
-        const associateId = Date.now();
-        const template = `
-            <div class="associate-card" data-id="new_${associateId}">
-                <div class="associate-content">
-                    <div class="associate-image">
-                        <img src="${document.getElementById('imagePreview').src}" alt="${name}">
-                </div>
-                    <div class="associate-details">
-                    <div class="form-group">
-                        <label>Name</label>
-                            <input type="text" class="form-control" name="new_associate_names[]" value="${name}" required>
-                    </div>
-                    <div class="form-group mt-2">
-                        <label>Description</label>
-                            <textarea class="form-control" name="new_associate_descriptions[]" rows="2" required>${description}</textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="associate-actions">
-                    <button type="button" class="btn btn-danger btn-sm delete-associate">
-                    <i class="fas fa-trash"></i> Remove
-                </button>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('existingAssociates').insertAdjacentHTML('beforeend', template);
-
-        // Clone the file input and add it to the form with a unique name
-        const fileInput = document.getElementById('associateLogo').cloneNode(true);
-        fileInput.files = document.getElementById('associateLogo').files;
-        fileInput.name = `new_associate_logo_${associateId}`;
-        fileInput.style.display = 'none';
-        document.getElementById('existingAssociates').lastElementChild.appendChild(fileInput);
-
-        // Reset form
-        document.getElementById('imagePreview').src = '';
-        document.getElementById('imagePreview').style.display = 'none';
-        document.getElementById('associateLogo').value = '';
-        document.getElementById('newAssociateName').value = '';
-        document.getElementById('newAssociateDescription').value = '';
-
-        // Add event listener for delete button
-        document.querySelectorAll('.delete-associate').forEach(button => {
-            button.addEventListener('click', function() {
-                if (confirm('Are you sure you want to remove this associate?')) {
-                    button.closest('.associate-card').remove();
-                }
-            });
     });
 });
 </script>
+{% endblock %}
 
+{% block styles %}
 <style>
 .admin-card {
     background: white;

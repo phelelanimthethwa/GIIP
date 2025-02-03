@@ -2,7 +2,7 @@
     <nav class="navbar">
         <div class="nav-container">
             <a href="{{ url_for('home') }}" class="logo">
-                <img src="{{ url_for('static', filename='images/giirlogo.jpg') }}" alt="GIIR Conference 2024" class="logo-img">
+                <img src="{{ url_for('static', filename='images/logotrans.png') }}" alt="GIIR - Global Institute on Innovative Research" class="logo-img">
             </a>
             <ul class="nav-links">
                 <li><a href="{{ url_for('about') }}">About</a></li>
@@ -10,6 +10,7 @@
                 <li><a href="{{ url_for('author_guidelines') }}">Author Guidelines</a></li>
                 <li><a href="{{ url_for('registration') }}">Register</a></li>
                 <li><a href="{{ url_for('venue') }}">Venue</a></li>
+                <li><a href="{{ url_for('contact') }}">Contact</a></li>
                 {% if current_user.is_authenticated %}
                     <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
                     <li><a href="{{ url_for('logout') }}">Logout</a></li>

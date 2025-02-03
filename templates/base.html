@@ -26,12 +26,43 @@
 
         .header {
             background-color: var(--header-background);
+            padding: 0.5rem 2rem;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0;
         }
 
         .logo-img {
-            height: 50px;
+            height: 90px;
             width: auto;
             object-fit: contain;
+            padding: 5px;
+            transition: transform 0.2s ease;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .logo-img:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 0.3rem 1rem;
+            }
+            
+            .logo-img {
+                height: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo-img {
+                height: 60px;
+            }
         }
 
         .footer {
