@@ -1246,16 +1246,42 @@ def delete_download(download_id):
 @admin_required
 def admin_registrations():
     try:
+        # Get registrations from Firebase
         registrations_ref = db.reference('registrations')
-        registrations = registrations_ref.get()
+        registrations_data = registrations_ref.get()
+        
+        # Convert to list and add the Firebase key as _id
+        registrations = []
+        if registrations_data:
+            for key, reg in registrations_data.items():
+                reg['_id'] = key  # Add Firebase key as _id
+                # Ensure all required fields exist with defaults
+                reg.setdefault('submission_date', '')
+                reg.setdefault('full_name', '')
+                reg.setdefault('email', '')
+                reg.setdefault('institution', '')
+                reg.setdefault('registration_type', '')
+                reg.setdefault('registration_period', '')
+                reg.setdefault('total_amount', 0)
+                reg.setdefault('payment_status', 'pending')
+                reg.setdefault('workshop', False)
+                reg.setdefault('banquet', False)
+                reg.setdefault('extra_paper', False)
+                registrations.append(reg)
+            
+            # Sort by submission date (newest first)
+            registrations.sort(key=lambda x: x.get('submission_date', ''), reverse=True)
+        
         return render_template('admin/manage_registrations.html', 
-                             site_design=get_site_design(), 
-                             registrations=registrations or {})
+                            registrations=registrations,
+                            site_design=get_site_design())
+                            
     except Exception as e:
-        flash('Error loading registrations: ' + str(e), 'error')
+        print(f"Error loading registrations: {str(e)}")
+        flash(f'Error loading registrations: {str(e)}', 'danger')
         return render_template('admin/manage_registrations.html', 
-                             site_design=get_site_design(), 
-                             registrations={})
+                            registrations=[],
+                            site_design=get_site_design())
 
 @app.route('/admin/registrations/<registration_id>')
 @login_required
@@ -4158,6 +4184,43 @@ def admin_contact_page_settings():
     except Exception as e:
         flash(f'Error saving contact page settings: {str(e)}', 'error')
         return redirect(url_for('admin_contact_email'))
+
+@app.route('/admin/registrations/export')
+@admin_required
+def export_registrations():
+    try:
+        # Get all registrations from Firebase
+        registrations_ref = db.reference('registrations')
+        registrations_data = registrations_ref.get()
+        
+        if not registrations_data:
+            return jsonify([])
+            
+        # Convert to list and add Firebase key as _id
+        registrations = []
+        for key, data in registrations_data.items():
+            registration = data.copy()
+            registration['_id'] = key
+            
+            # Format submission date if it exists
+            if 'submission_date' in registration:
+                try:
+                    # Assuming submission_date is stored as ISO string
+                    date_obj = datetime.fromisoformat(registration['submission_date'].replace('Z', '+00:00'))
+                    registration['submission_date'] = date_obj.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    registration['submission_date'] = registration['submission_date']
+            
+            registrations.append(registration)
+            
+        # Sort by submission date in descending order
+        registrations.sort(key=lambda x: x.get('submission_date', ''), reverse=True)
+        
+        return jsonify(registrations)
+        
+    except Exception as e:
+        app.logger.error(f"Error exporting registrations: {str(e)}")
+        return jsonify({'error': 'Failed to export registrations'}), 500
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
