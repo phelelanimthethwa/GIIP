@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, make_response, send_file
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -19,6 +19,7 @@ from PIL import Image
 from io import BytesIO
 from utils import register_filters
 from routes.user_routes import user_routes
+import io
 
 try:
     from dotenv import load_dotenv
@@ -481,19 +482,20 @@ def paper_submission():
                 flash('Only PDF files are allowed.', 'error')
                 return redirect(url_for('paper_submission'))
 
-            # Save file to local uploads directory
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'papers/{current_user.id}/{timestamp}_{secure_filename(file.filename)}'
-            upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'papers', current_user.id)
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(app.root_path, 'static', 'uploads', filename)
-            file.save(file_path)
-            
-            # Get the public URL for the file
-            file_url = url_for('static', filename=f'uploads/{filename}')
+            # Read and encode file data
+            file_data = file.read()
+            file_base64 = base64.b64encode(file_data).decode('utf-8')
+
+            # Add file data to paper_data
+            paper_data.update({
+                'file_data': file_base64,
+                'file_name': secure_filename(file.filename),
+                'file_type': file.content_type,
+                'file_size': len(file_data)
+            })
 
             # Debug print before saving
-            print("Saving paper data:", paper_data)
+            print("Saving paper data:", {k: v for k, v in paper_data.items() if k != 'file_data'})
 
             # Store paper in Firebase
             papers_ref = db.reference('papers')
@@ -2492,7 +2494,7 @@ def inject_admin_menu():
         {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
         {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
         {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
-        {'url': 'admin_papers', 'icon': 'file-alt', 'text': 'Submissions'},
+        {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},  # Changed from admin_papers to admin_submissions
         {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
         {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
         {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
@@ -3234,34 +3236,32 @@ def serve_upload(filename):
         return "Error accessing file", 500
 
 # Admin paper management routes
-@app.route('/admin/submissions')  # Keep this route for backward compatibility
-@app.route('/admin/papers')
+@app.route('/admin/submissions')
 @login_required
 @admin_required
-def admin_papers():
+def admin_submissions():
     try:
         # Get all papers from Firebase
         papers_ref = db.reference('papers')
         papers = papers_ref.get() or {}
         
-        # Debug print to check what's being retrieved
-        print("Retrieved papers:", papers)
-        
         # Sort papers by submission date (newest first)
-        papers = dict(sorted(
+        sorted_papers = dict(sorted(
             papers.items(),
             key=lambda x: x[1].get('submitted_at', ''),
             reverse=True
         ))
         
+        print("Fetched papers:", sorted_papers)  # Debug print
+        
         return render_template(
             'admin/submissions.html',
-            submissions=papers,
+            submissions=sorted_papers,
             site_design=get_site_design()
         )
     except Exception as e:
-        print(f"Error in admin_papers: {str(e)}")  # Add debug print
-        flash(f'Error loading papers: {str(e)}', 'error')
+        print(f"Error loading submissions: {str(e)}")
+        flash(f'Error loading submissions: {str(e)}', 'error')
         return render_template(
             'admin/submissions.html',
             submissions={},
@@ -4221,6 +4221,60 @@ def export_registrations():
     except Exception as e:
         app.logger.error(f"Error exporting registrations: {str(e)}")
         return jsonify({'error': 'Failed to export registrations'}), 500
+
+@app.route('/admin/papers/<paper_id>/download')
+@login_required
+@admin_required
+def download_paper(paper_id):
+    try:
+        # Get paper data from Firebase
+        paper_ref = db.reference(f'papers/{paper_id}')
+        paper = paper_ref.get()
+        
+        if not paper:
+            flash('Paper not found.', 'error')
+            return redirect(url_for('admin_submissions'))
+            
+        # Get file data from Firebase
+        file_data = paper.get('file_data')
+        if not file_data:
+            flash('Paper file not found.', 'error')
+            return redirect(url_for('admin_submissions'))
+            
+        # Decode base64 data
+        file_bytes = base64.b64decode(file_data)
+        
+        # Create file-like object
+        file_obj = io.BytesIO(file_bytes)
+        
+        # Send file
+        return send_file(
+            file_obj,
+            mimetype=paper.get('file_type', 'application/pdf'),
+            as_attachment=True,
+            download_name=paper.get('file_name', 'paper.pdf')
+        )
+        
+    except Exception as e:
+        print(f"Error downloading paper: {str(e)}")
+        flash(f'Error downloading paper: {str(e)}', 'error')
+        return redirect(url_for('admin_submissions'))
+
+def send_paper_status_notification(email, paper_title, status, comments):
+    """Send email notification about paper status update"""
+    subject = f'GIIR Conference Paper Status Update - {status.title()}'
+    body = f"""Dear Author,
+
+Your paper submission "{paper_title}" has been {status}.
+
+{f"Reviewer Comments:\n{comments}" if comments else ""}
+
+Please log in to your account to view more details.
+
+Best regards,
+GIIR Conference Team
+"""
+    send_email(email, subject, body)
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

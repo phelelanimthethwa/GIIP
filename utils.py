@@ -47,8 +47,19 @@ def get_filename(filepath):
     """Get original filename from path"""
     return os.path.basename(filepath)
 
+def status_badge(status):
+    """Convert status to badge color class"""
+    status_colors = {
+        'pending': 'warning',
+        'accepted': 'success',
+        'rejected': 'danger',
+        'revision': 'info'
+    }
+    return status_colors.get(status.lower(), 'secondary')
+
 # Register filters with Flask app
 def register_filters(app):
     app.jinja_env.filters['filesizeformat'] = format_filesize
     app.jinja_env.filters['datetime'] = format_datetime
-    app.jinja_env.filters['filename'] = get_filename 
+    app.jinja_env.filters['filename'] = get_filename
+    app.jinja_env.filters['status_badge'] = status_badge 
