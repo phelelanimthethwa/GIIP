@@ -20,6 +20,7 @@ from io import BytesIO
 from utils import register_filters
 from routes.user_routes import user_routes
 import io
+import mimetypes
 
 try:
     from dotenv import load_dotenv
@@ -118,7 +119,7 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max file size
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'}
 
 # Add these constants near the top of the file
-ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif'}
 DEFAULT_THEME = {
     'primary_color': '#007bff',
     'secondary_color': '#6c757d',
@@ -177,7 +178,8 @@ def save_associate_logo(logo_file, existing_logo=None):
         if not os.path.exists(file_path):
             raise ValueError("Failed to save logo file")
         
-        return f"/static/uploads/associates/{unique_filename}"
+        # Return the path relative to static directory without /static/ prefix
+        return f"uploads/associates/{unique_filename}"
     except Exception as e:
         raise ValueError(f"Error saving logo: {str(e)}")
 
@@ -189,48 +191,47 @@ def process_associates_data(request_form, request_files):
     existing_names = request_form.getlist('existing_associate_names[]')
     existing_descriptions = request_form.getlist('existing_associate_descriptions[]')
     existing_logos = request_form.getlist('existing_associate_logos[]')
+    existing_ids = request_form.getlist('existing_associate_ids[]')
     
     for i in range(len(existing_names)):
-        try:
-            name = existing_names[i].strip()
-            description = existing_descriptions[i].strip()
-            logo = existing_logos[i].strip()
+        name = existing_names[i].strip()
+        description = existing_descriptions[i].strip()
+        logo = existing_logos[i] if i < len(existing_logos) else None
+        
+        if name and description:
+            # Check if there's a new logo file
+            if f'associate_logo_{existing_ids[i]}' in request_files:
+                logo_file = request_files[f'associate_logo_{existing_ids[i]}']
+                if logo_file and logo_file.filename:
+                    logo = save_associate_logo(logo_file, logo)
             
-            if name and description and logo:  # Only process complete entries
-                validate_associate_data(name, description, logo)
+            if logo:  # Only add if there's a logo
                 associates.append({
                     'name': name,
                     'description': description,
                     'logo': logo
                 })
-        except Exception as e:
-            print(f"Error processing existing associate {i + 1}: {str(e)}")
-            continue
     
     # Process new associates
     new_names = request_form.getlist('new_associate_names[]')
     new_descriptions = request_form.getlist('new_associate_descriptions[]')
     
     for i in range(len(new_names)):
-        try:
-            name = new_names[i].strip()
-            description = new_descriptions[i].strip()
-            
-            if name and description:  # Only process complete entries
-                logo_file_key = f'new_associate_logo_{i}'
-                if logo_file_key in request_files:
-                    logo_file = request_files[logo_file_key]
-                    if logo_file and logo_file.filename:
-                        logo_url = save_associate_logo(logo_file)
-                        validate_associate_data(name, description, logo_url)
+        name = new_names[i].strip()
+        description = new_descriptions[i].strip()
+        
+        if name and description:
+            logo_file_key = f'new_associate_logo_{i}'
+            if logo_file_key in request_files:
+                logo_file = request_files[logo_file_key]
+                if logo_file and logo_file.filename:
+                    logo_url = save_associate_logo(logo_file)
+                    if logo_url:  # Only add if logo was successfully uploaded
                         associates.append({
                             'name': name,
                             'description': description,
                             'logo': logo_url
                         })
-        except Exception as e:
-            print(f"Error processing new associate {i + 1}: {str(e)}")
-            continue
     
     return associates
 
@@ -2325,7 +2326,8 @@ def save_associate_logo(logo_file, existing_logo=None):
         if not os.path.exists(file_path):
             raise ValueError("Failed to save logo file")
         
-        return f"/static/uploads/associates/{unique_filename}"
+        # Return the path relative to static directory without /static/ prefix
+        return f"uploads/associates/{unique_filename}"
     except Exception as e:
         raise ValueError(f"Error saving logo: {str(e)}")
 
@@ -2337,48 +2339,47 @@ def process_associates_data(request_form, request_files):
     existing_names = request_form.getlist('existing_associate_names[]')
     existing_descriptions = request_form.getlist('existing_associate_descriptions[]')
     existing_logos = request_form.getlist('existing_associate_logos[]')
+    existing_ids = request_form.getlist('existing_associate_ids[]')
     
     for i in range(len(existing_names)):
-        try:
-            name = existing_names[i].strip()
-            description = existing_descriptions[i].strip()
-            logo = existing_logos[i].strip()
+        name = existing_names[i].strip()
+        description = existing_descriptions[i].strip()
+        logo = existing_logos[i] if i < len(existing_logos) else None
+        
+        if name and description:
+            # Check if there's a new logo file
+            if f'associate_logo_{existing_ids[i]}' in request_files:
+                logo_file = request_files[f'associate_logo_{existing_ids[i]}']
+                if logo_file and logo_file.filename:
+                    logo = save_associate_logo(logo_file, logo)
             
-            if name and description and logo:  # Only process complete entries
-                validate_associate_data(name, description, logo)
+            if logo:  # Only add if there's a logo
                 associates.append({
                     'name': name,
                     'description': description,
                     'logo': logo
                 })
-        except Exception as e:
-            print(f"Error processing existing associate {i + 1}: {str(e)}")
-            continue
     
     # Process new associates
     new_names = request_form.getlist('new_associate_names[]')
     new_descriptions = request_form.getlist('new_associate_descriptions[]')
     
     for i in range(len(new_names)):
-        try:
-            name = new_names[i].strip()
-            description = new_descriptions[i].strip()
-            
-            if name and description:  # Only process complete entries
-                logo_file_key = f'new_associate_logo_{i}'
-                if logo_file_key in request_files:
-                    logo_file = request_files[logo_file_key]
-                    if logo_file and logo_file.filename:
-                        logo_url = save_associate_logo(logo_file)
-                        validate_associate_data(name, description, logo_url)
+        name = new_names[i].strip()
+        description = new_descriptions[i].strip()
+        
+        if name and description:
+            logo_file_key = f'new_associate_logo_{i}'
+            if logo_file_key in request_files:
+                logo_file = request_files[logo_file_key]
+                if logo_file and logo_file.filename:
+                    logo_url = save_associate_logo(logo_file)
+                    if logo_url:  # Only add if logo was successfully uploaded
                         associates.append({
                             'name': name,
                             'description': description,
                             'logo': logo_url
                         })
-        except Exception as e:
-            print(f"Error processing new associate {i + 1}: {str(e)}")
-            continue
     
     return associates
 
@@ -4241,19 +4242,46 @@ def download_paper(paper_id):
             flash('Paper file not found.', 'error')
             return redirect(url_for('admin_submissions'))
             
-        # Decode base64 data
-        file_bytes = base64.b64decode(file_data)
+        try:
+            # Decode base64 data
+            file_bytes = base64.b64decode(file_data)
+        except Exception as e:
+            print(f"Error decoding file data: {str(e)}")
+            flash('Error processing file data.', 'error')
+            return redirect(url_for('admin_submissions'))
         
         # Create file-like object
         file_obj = io.BytesIO(file_bytes)
         
-        # Send file
-        return send_file(
+        # Generate a clean filename
+        original_filename = paper.get('file_name', 'paper.pdf')
+        safe_filename = secure_filename(original_filename)
+        
+        # Get correct mimetype
+        mimetype = paper.get('file_type')
+        if not mimetype or mimetype == 'application/octet-stream':
+            # Try to guess mimetype from filename
+            mimetype, _ = mimetypes.guess_type(original_filename)
+            if not mimetype:
+                mimetype = 'application/pdf'  # Default to PDF
+        
+        # Log download attempt
+        print(f"Downloading paper {paper_id}: {safe_filename} ({mimetype})")
+        
+        # Send file with proper headers
+        response = send_file(
             file_obj,
-            mimetype=paper.get('file_type', 'application/pdf'),
+            mimetype=mimetype,
             as_attachment=True,
-            download_name=paper.get('file_name', 'paper.pdf')
+            download_name=safe_filename,
+            max_age=0  # Prevent caching
         )
+        
+        # Add security headers
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        
+        return response
         
     except Exception as e:
         print(f"Error downloading paper: {str(e)}")
@@ -4261,20 +4289,23 @@ def download_paper(paper_id):
         return redirect(url_for('admin_submissions'))
 
 def send_paper_status_notification(email, paper_title, status, comments):
-    """Send email notification about paper status update"""
-    subject = f'GIIR Conference Paper Status Update - {status.title()}'
-    body = f"""Dear Author,
-
-Your paper submission "{paper_title}" has been {status}.
-
-{f"Reviewer Comments:\n{comments}" if comments else ""}
-
-Please log in to your account to view more details.
-
-Best regards,
-GIIR Conference Team
-"""
-    send_email(email, subject, body)
+    """Send email notification for paper status update"""
+    subject = f"Paper Submission Status Update - {paper_title}"
+    
+    # Build the message body using string concatenation
+    body = "Dear Author,\n\n"
+    body += f"Your paper titled '{paper_title}' has been {status}.\n\n"
+    if comments:
+        body += "Reviewer Comments:\n"
+        body += comments + "\n\n"
+    body += "Best regards,\nConference Team"
+    
+    try:
+        send_email(email, subject, body)
+        return True
+    except Exception as e:
+        print("Error sending paper status notification:", str(e))
+        return False
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
