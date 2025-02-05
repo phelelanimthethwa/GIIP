@@ -152,153 +152,31 @@
     </div>
 </div>
 
-<!-- Supporters Section -->
-{% if home_content.associates %}
+<!-- Associates Section -->
+{% if home_content.associates and home_content.associates|length > 0 %}
 <section class="associates-section">
     <div class="container">
         <h2 class="section-title text-center">Our Associates</h2>
         <div class="associates-grid">
             {% for associate in home_content.associates %}
-            <div class="associate-card">
-                <div class="associate-logo">
-                    <img src="{{ associate.logo }}" alt="{{ associate.name }}">
+                {% if associate.logo %}
+                <div class="associate-card" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
+                    <div class="associate-logo">
+                        <img src="{{ url_for('static', filename=associate.logo) }}" 
+                             alt="{{ associate.name }}"
+                             class="associate-logo-img"
+                             data-fallback="{{ url_for('static', filename='images/logotrans.png') }}">
+                    </div>
+                    <div class="associate-info">
+                        <h3>{{ associate.name }}</h3>
+                        <p>{{ associate.description }}</p>
+                    </div>
                 </div>
-                <div class="associate-info">
-                    <h3>{{ associate.name }}</h3>
-                    <p>{{ associate.description }}</p>
-                </div>
-            </div>
+                {% endif %}
             {% endfor %}
         </div>
     </div>
 </section>
-
-<style>
-.associates-section {
-    padding: 2rem 0;
-    background: #fff;
-    text-align: center;
-}
-
-.section-title {
-    font-size: 2rem;
-    font-weight: 600;
-    margin-bottom: 2rem;
-    position: relative;
-    display: inline-block;
-}
-
-.section-title:after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 3px;
-    background: var(--primary-color);
-}
-
-.associates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-    margin: 2rem auto;
-    max-width: 1200px;
-    padding: 0 1rem;
-}
-
-.associate-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
-}
-
-.associate-card:hover {
-    transform: translateY(-5px);
-}
-
-.associate-logo {
-    width: 120px;
-    height: 120px;
-    margin: 0 auto 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-}
-
-.associate-logo img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    filter: grayscale(1);
-    opacity: 0.8;
-    transition: all 0.3s ease;
-}
-
-.associate-card:hover .associate-logo img {
-    filter: grayscale(0);
-    opacity: 1;
-}
-
-.associate-info h3 {
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
-    color: var(--primary-color);
-}
-
-.associate-info p {
-    font-size: 0.9rem;
-    color: var(--text-color);
-    line-height: 1.5;
-    margin: 0;
-}
-
-@media (max-width: 768px) {
-    .associates-section {
-        padding: 2rem 1rem;
-    }
-
-    .section-title {
-        font-size: 1.6rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .associates-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-
-    .associate-logo {
-        width: 100px;
-        height: 100px;
-    }
-}
-
-@media (max-width: 480px) {
-    .associate-card {
-        padding: 1rem;
-    }
-
-    .associate-logo {
-        width: 80px;
-        height: 80px;
-    }
-
-    .associate-info h3 {
-        font-size: 1.1rem;
-    }
-
-    .associate-info p {
-        font-size: 0.85rem;
-    }
-}
-</style>
 {% endif %}
 
 <style>
@@ -745,10 +623,180 @@ html {
         opacity: 1;
     }
 }
+
+.associates-section {
+    padding: 4rem 0;
+    background: #fff;
+    position: relative;
+}
+
+.associates-section:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(0,0,0,0.1), transparent);
+}
+
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
+    position: relative;
+    display: inline-block;
+    color: var(--primary-color);
+}
+
+.section-title:after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.associates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin: 0 auto;
+    max-width: 1200px;
+    padding: 0 1rem;
+}
+
+.associate-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.associate-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+}
+
+.associate-logo {
+    width: 160px;
+    height: 160px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.associate-logo img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: grayscale(1);
+    opacity: 0.8;
+    -webkit-transition: all 0.3s ease;
+    -moz-transition: all 0.3s ease;
+    transition: all 0.3s ease;
+}
+
+.associate-card:hover .associate-logo img {
+    filter: grayscale(0);
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.associate-info {
+    flex: 1;
+}
+
+.associate-info h3 {
+    font-size: 1.4rem;
+    margin-bottom: 0.8rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.associate-info p {
+    font-size: 1rem;
+    color: var(--text-color);
+    line-height: 1.6;
+    margin: 0;
+    opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+    .associates-section {
+        padding: 3rem 1rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .associates-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .associate-logo {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 1rem;
+    }
+
+    .associate-info h3 {
+        font-size: 1.2rem;
+    }
+
+    .associate-info p {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .associates-section {
+        padding: 2rem 1rem;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+    }
+
+    .associate-card {
+        padding: 1.5rem;
+    }
+
+    .associate-logo {
+        width: 100px;
+        height: 100px;
+    }
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle fallback for associate logo images
+    document.querySelectorAll('.associate-logo-img').forEach(function(img) {
+        img.addEventListener('error', function() {
+            if (this.src !== this.dataset.fallback) {
+                this.src = this.dataset.fallback;
+            }
+        });
+    });
+
     const slider = document.querySelector('.slider-container');
     const slides = document.querySelectorAll('.slide');
     const dotsContainer = document.querySelector('.slider-dots');
