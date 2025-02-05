@@ -1,0 +1,369 @@
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<!-- Chatbot Container -->
+<div class="chatbot-container" id="chatbotContainer">
+    <!-- Chat Button -->
+    <button class="chat-button" id="chatButton" onclick="toggleChat()">
+        <i class="fas fa-comments"></i>
+        <span class="notification-badge" id="notificationBadge">1</span>
+    </button>
+
+    <!-- Chat Window -->
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <div class="chat-title">
+                <i class="fas fa-robot"></i>
+                GIIP Assistant
+            </div>
+            <button class="close-button" onclick="toggleChat()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <!-- Welcome message -->
+            <div class="message bot-message">
+                <div class="message-content">
+                    Hello! 👋 I'm your GIIP Conference assistant. How can I help you today?
+                </div>
+                <div class="message-time">Just now</div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <textarea id="userInput" 
+                      placeholder="Type your message..." 
+                      rows="1"
+                      onkeydown="handleKeyPress(event)"></textarea>
+            <button onclick="sendMessage()" id="sendButton">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.chatbot-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.chat-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #4B0082;
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+.chat-button:hover {
+    transform: scale(1.1);
+}
+
+.chat-button i {
+    font-size: 24px;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-window {
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    width: 350px;
+    height: 500px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-header {
+    background: #4B0082;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.chat-title i {
+    font-size: 20px;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.close-button:hover {
+    opacity: 0.8;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 15px;
+    position: relative;
+}
+
+.bot-message {
+    align-self: flex-start;
+    background: #f0f0f0;
+}
+
+.user-message {
+    align-self: flex-end;
+    background: #4B0082;
+    color: white;
+}
+
+.message-content {
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+.message-time {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 5px;
+}
+
+.chat-input {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.chat-input textarea {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 8px 15px;
+    resize: none;
+    max-height: 100px;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.chat-input textarea:focus {
+    outline: none;
+    border-color: #4B0082;
+}
+
+.chat-input button {
+    background: #4B0082;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.chat-input button:hover {
+    transform: scale(1.1);
+}
+
+.chat-input button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Loading animation */
+.typing-indicator {
+    display: flex;
+    gap: 5px;
+    padding: 10px 15px;
+    background: #f0f0f0;
+    border-radius: 15px;
+    width: fit-content;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background: #666;
+    border-radius: 50%;
+    animation: typing 1s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0.2s; }
+.typing-dot:nth-child(2) { animation-delay: 0.3s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    .chat-window {
+        width: calc(100vw - 40px);
+        height: calc(100vh - 100px);
+        bottom: 70px;
+    }
+}
+</style>
+
+<script>
+let isTyping = false;
+
+function toggleChat() {
+    const chatWindow = document.getElementById('chatWindow');
+    const notificationBadge = document.getElementById('notificationBadge');
+    
+    if (chatWindow.style.display === 'none' || !chatWindow.style.display) {
+        chatWindow.style.display = 'flex';
+        notificationBadge.style.display = 'none';
+        document.getElementById('userInput').focus();
+    } else {
+        chatWindow.style.display = 'none';
+    }
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function formatTime() {
+    const now = new Date();
+    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function addMessage(content, isUser = false) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">${content}</div>
+        <div class="message-time">${formatTime()}</div>
+    `;
+    
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function showTypingIndicator() {
+    const messagesDiv = document.getElementById('chatMessages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.id = 'typingIndicator';
+    
+    typingDiv.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+    `;
+    
+    messagesDiv.appendChild(typingDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function removeTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const message = input.value.trim();
+    
+    if (!message || isTyping) return;
+    
+    // Clear input
+    input.value = '';
+    
+    // Add user message to chat
+    addMessage(message, true);
+    
+    // Show typing indicator
+    isTyping = true;
+    showTypingIndicator();
+    
+    try {
+        // Make API call to Google Gemini
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message })
+        });
+        
+        const data = await response.json();
+        
+        // Remove typing indicator
+        removeTypingIndicator();
+        
+        // Add bot response
+        addMessage(data.response);
+    } catch (error) {
+        console.error('Error:', error);
+        removeTypingIndicator();
+        addMessage('Sorry, I encountered an error. Please try again later.');
+    } finally {
+        isTyping = false;
+    }
+}
+
+// Auto-resize textarea
+const textarea = document.getElementById('userInput');
+textarea.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+});
+</script> 
