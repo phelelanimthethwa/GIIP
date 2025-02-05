@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, send_from_directory
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, send_from_directory, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
@@ -7,6 +7,8 @@ import hashlib
 import mimetypes
 from firebase_admin import db as firebase_db
 from utils import get_site_design
+import google.generativeai as genai
+from config import Config
 
 # Constants
 ALLOWED_PAPER_EXTENSIONS = {'pdf', 'doc', 'docx'}
@@ -342,3 +344,40 @@ def download_paper(filename):
     except Exception as e:
         flash(f'Error downloading paper: {str(e)}', 'danger')
         return redirect(url_for('dashboard'))
+
+@user_routes.route('/api/chat', methods=['POST'])
+def chat():
+    try:
+        message = request.json.get('message')
+        if not message:
+            return jsonify({'error': 'No message provided'}), 400
+
+        # Configure Gemini
+        genai.configure(api_key=Config.GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-pro')
+
+        # Create context about the GIIP Conference
+        context = """
+        I am an AI assistant for the GIIP Conference 2024. I can help with:
+        - Registration process and fees
+        - Paper submission guidelines
+        - Conference schedule and venue information
+        - Payment methods and deadlines
+        - Technical support for the submission system
+        
+        The conference focuses on academic research and innovation.
+        """
+
+        # Generate response using string concatenation
+        prompt = context + "\n\nUser: " + message + "\nAssistant:"
+        response = model.generate_content(prompt)
+        
+        return jsonify({
+            'response': response.text
+        })
+
+    except Exception as e:
+        print(f"Error in chat endpoint: {str(e)}")
+        return jsonify({
+            'error': 'An error occurred while processing your request'
+        }), 500

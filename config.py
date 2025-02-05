@@ -7,6 +7,9 @@ load_dotenv()  # Load environment variables from .env file
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-replace-in-production'
     
+    # Google Gemini Configuration
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+    
     # Upload configuration
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
