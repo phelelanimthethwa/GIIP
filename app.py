@@ -3966,11 +3966,23 @@ def process_hero_images(request):
     hero_upload_path = os.path.join(base_upload_path, 'hero')
     os.makedirs(hero_upload_path, exist_ok=True)
     
-    # Add existing images that weren't deleted
+    # Handle existing images
     if 'existing_images' in request.form:
         try:
             existing_images = json.loads(request.form['existing_images'])
-            hero_images.extend(existing_images)
+            # Only keep images that weren't marked for deletion
+            deleted_images = request.form.getlist('deleted_images[]')
+            for image in existing_images:
+                if image['url'] not in deleted_images:
+                    hero_images.append(image)
+                else:
+                    # Delete the file if it exists
+                    try:
+                        file_path = os.path.join(app.root_path, 'static', image['url'].lstrip('/static/'))
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                    except Exception as e:
+                        print(f"Error deleting hero image: {str(e)}")
         except json.JSONDecodeError as e:
             print(f"Error parsing existing images: {str(e)}")
     
@@ -3980,12 +3992,17 @@ def process_hero_images(request):
         for file in files:
             if file and file.filename and allowed_image_file(file.filename):
                 try:
+                    # Process and compress the image
+                    compressed_image = compress_image(file)
+                    
+                    # Generate unique filename
                     filename = secure_filename(file.filename)
                     unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
                     file_path = os.path.join(hero_upload_path, unique_filename)
                     
-                    # Save the file
-                    file.save(file_path)
+                    # Save the compressed image
+                    with open(file_path, 'wb') as f:
+                        f.write(compressed_image.getvalue())
                     
                     # Verify file was saved
                     if not os.path.exists(file_path):
