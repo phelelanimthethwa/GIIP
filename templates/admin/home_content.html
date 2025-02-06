@@ -351,6 +351,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('homeContentForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
+        // Disable the save button immediately to prevent double submission
+        const saveButton = document.getElementById('saveAllChanges');
+        if (saveButton.disabled) {
+            return; // Already saving
+        }
+        
+        // Show loading state
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        saveButton.disabled = true;
+        
         const formData = new FormData(this);
         
         // Add existing images that weren't deleted
@@ -374,32 +385,33 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('deleted_images[]', url);
         });
         
-        // Show loading state
-        const saveButton = document.getElementById('saveAllChanges');
-        const originalText = saveButton.innerHTML;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        saveButton.disabled = true;
-        
         fetch('/admin/home-content', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
+                // Show success message
                 alert('Content updated successfully!');
-                location.reload();
+                
+                // Reload the page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
             } else {
-                console.error('Error:', data.error);
-                alert('Error: ' + (data.error || 'Failed to update content'));
-                // Reset button state
-                saveButton.innerHTML = originalText;
-                saveButton.disabled = false;
+                throw new Error(data.error || 'Failed to update content');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error updating content');
+            alert('Error: ' + error.message);
+            
             // Reset button state
             saveButton.innerHTML = originalText;
             saveButton.disabled = false;
@@ -409,11 +421,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle image deletion
     document.querySelectorAll('.delete-image').forEach(function(button) {
         button.addEventListener('click', function() {
-            if (confirm('Are you sure you want to delete this image?')) {
-                const imageItem = this.closest('.image-item');
-                imageItem.classList.add('deleted');
-                imageItem.style.display = 'none';
-            }
+            const imageItem = this.closest('.image-item');
+            imageItem.classList.add('deleted');
+            imageItem.style.display = 'none';
         });
     });
 
