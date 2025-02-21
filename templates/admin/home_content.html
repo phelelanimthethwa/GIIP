@@ -198,17 +198,15 @@
 
             <!-- Associates Section -->
             <div class="admin-card mb-4">
-                <h2><i class="fas fa-handshake"></i> Associates</h2>
+                <h2><i class="fas fa-handshake"></i> Associate Logos</h2>
                 <div class="card-body">
-                    <!-- Existing Associates -->
+                    <!-- Existing Associate Logos -->
                     <div id="existingAssociates" class="associates-grid">
                         {% if home_content.associates %}
                             {% for associate in home_content.associates %}
                             <div class="associate-card" data-id="{{ associate.id }}">
-                                <div class="associate-content">
                                     <div class="associate-image">
-                                        <img src="{{ associate.logo if associate.logo.startswith('http') else url_for('static', filename=associate.logo.lstrip('/static/')) }}" 
-                                             alt="{{ associate.name }}">
+                                    <img src="{{ associate.logo }}" alt="Associate Logo">
                                         <input type="hidden" name="existing_associate_ids[]" value="{{ associate.id }}">
                                         <input type="hidden" name="existing_associate_logos[]" value="{{ associate.logo }}">
                                         <div class="upload-overlay">
@@ -216,19 +214,6 @@
                                             <span>Click to change logo</span>
                                         </div>
                                         <input type="file" name="associate_logo_{{ associate.id }}" class="logo-upload" accept="image/*">
-                                    </div>
-                                    <div class="associate-details">
-                                        <div class="form-group">
-                                            <label>Name</label>
-                                            <input type="text" class="form-control" name="existing_associate_names[]" 
-                                                   value="{{ associate.name }}" required>
-                                        </div>
-                                        <div class="form-group mt-2">
-                                            <label>Description</label>
-                                            <textarea class="form-control" name="existing_associate_descriptions[]" 
-                                                      rows="2" required>{{ associate.description }}</textarea>
-                                        </div>
-                                    </div>
                                 </div>
                                 <div class="associate-actions">
                                     <button type="button" class="btn btn-danger btn-sm delete-associate">
@@ -240,37 +225,21 @@
                         {% endif %}
                     </div>
 
-                    <!-- Add New Associate Form -->
+                    <!-- Add New Associate Logo -->
                     <div class="add-associate-form mt-4">
-                        <h4>Add New Associate</h4>
                         <div class="associate-card new-associate">
-                            <div class="associate-content">
-                                <div class="associate-image" id="imagePreviewContainer">
-                                    <img id="imagePreview" 
-                                         src="{{ url_for('static', filename='images/logotrans.png') }}" 
-                                         alt="Logo preview">
-                                    <div class="upload-overlay">
-                                        <i class="fas fa-upload"></i>
-                                        <span>Click to upload logo</span>
-                                    </div>
-                                    <input type="file" name="new_associate_logo_0" class="logo-upload" accept="image/*" required>
-                                </div>
-                                <div class="associate-details">
-                                    <div class="form-group">
-                                        <label>Name</label>
-                                        <input type="text" class="form-control" name="new_associate_names[]"
-                                               placeholder="Enter associate name" required>
-                                    </div>
-                                    <div class="form-group mt-2">
-                                        <label>Description</label>
-                                        <textarea class="form-control" name="new_associate_descriptions[]"
-                                                  rows="2" placeholder="Enter description" required></textarea>
-                                    </div>
+                            <div class="associate-images-preview" id="multipleImagePreviewContainer">
+                                <div class="preview-grid" id="previewGrid"></div>
+                                <div class="upload-zone">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Drop logos here or click to upload</span>
+                                    <small>(You can select multiple files)</small>
+                                    <input type="file" name="new_associate_logos" class="logo-upload" accept="image/*" multiple required>
                                 </div>
                             </div>
                             <div class="associate-actions mt-3">
-                                <button type="button" class="btn btn-primary" id="addAssociateBtn">
-                                    <i class="fas fa-plus"></i> Add Associate
+                                <button type="button" class="btn btn-primary" id="addAssociatesBtn">
+                                    <i class="fas fa-plus"></i> Add Logos
                                 </button>
                             </div>
                         </div>
@@ -335,297 +304,6 @@
         </form>
     </div>
 </div>
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Connect save button to form submission
-    document.getElementById('saveAllChanges').addEventListener('click', function() {
-        const form = document.getElementById('homeContentForm');
-        if (form) {
-            form.dispatchEvent(new Event('submit'));
-        }
-    });
-
-    // Handle image deletion
-    document.querySelectorAll('.delete-image').forEach(function(button) {
-        button.addEventListener('click', function() {
-            const imageItem = this.closest('.image-item');
-            imageItem.classList.add('deleted');
-            imageItem.style.display = 'none';
-            
-            // Trigger change event to update form state
-            document.getElementById('homeContentForm').dispatchEvent(new Event('change'));
-        });
-    });
-
-    // Handle form submission
-    document.getElementById('homeContentForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Disable the save button immediately to prevent double submission
-        const saveButton = document.getElementById('saveAllChanges');
-        if (saveButton.disabled) {
-            return; // Already saving
-        }
-        
-        // Show loading state
-        const originalText = saveButton.innerHTML;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        saveButton.disabled = true;
-        
-        const formData = new FormData(this);
-        
-        // Process existing and deleted images
-        const existingImages = [];
-        const deletedImages = [];
-        document.querySelectorAll('.image-item').forEach(function(item) {
-            if (item.style.display === 'none' || item.classList.contains('deleted')) {
-                const imageUrl = item.querySelector('img').src;
-                // For Firebase Storage URLs, we need to keep the full URL
-                const isFirebaseUrl = imageUrl.includes('firebasestorage.googleapis.com');
-                deletedImages.push(isFirebaseUrl ? imageUrl : imageUrl.replace(window.location.origin, ''));
-            } else {
-                const img = item.querySelector('img');
-                const imageUrl = img.src;
-                // For Firebase Storage URLs, we need to keep the full URL
-                const isFirebaseUrl = imageUrl.includes('firebasestorage.googleapis.com');
-                existingImages.push({
-                    url: isFirebaseUrl ? imageUrl : imageUrl.replace(window.location.origin, ''),
-                    alt: img.alt || ''
-                });
-            }
-        });
-        
-        // Add to form data
-        formData.set('existing_images', JSON.stringify(existingImages));
-        deletedImages.forEach(url => {
-            formData.append('deleted_images[]', url);
-        });
-        
-        // Submit form
-        fetch('/admin/home-content', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Show success message
-                alert('Content updated successfully!');
-                
-                // Reload the page after a short delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            } else {
-                throw new Error(data.error || 'Failed to update content');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error: ' + error.message);
-            
-            // Reset button state
-            saveButton.innerHTML = originalText;
-            saveButton.disabled = false;
-        });
-    });
-
-    // Handle hero image upload
-    document.getElementById('heroImageUpload').addEventListener('change', function(e) {
-        const files = e.target.files;
-        const maxImages = 10;
-        const currentImages = document.querySelectorAll('.image-item:not(.deleted)').length;
-        
-        if (files.length + currentImages > maxImages) {
-            alert(`You can only upload a maximum of ${maxImages} images. Please delete some existing images first.`);
-            e.target.value = '';
-            return;
-        }
-        
-        Array.from(files).forEach(file => {
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                alert(`Image ${file.name} is too large. Maximum size is 5MB`);
-                return;
-            }
-            
-            if (!file.type.match('image.*')) {
-                alert(`File ${file.name} is not an image`);
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const imageGrid = document.getElementById('heroImages');
-                const uploadBox = imageGrid.querySelector('.image-upload-box');
-                
-                const imageItem = document.createElement('div');
-                imageItem.className = 'image-item';
-                imageItem.innerHTML = `
-                    <img src="${e.target.result}" alt="${file.name}">
-                    <div class="image-actions">
-                        <button type="button" class="btn btn-sm btn-danger delete-image">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                
-                imageGrid.insertBefore(imageItem, uploadBox);
-                
-                // Add delete event listener to new image
-                const deleteButton = imageItem.querySelector('.delete-image');
-                deleteButton.addEventListener('click', function() {
-                    imageItem.classList.add('deleted');
-                    imageItem.style.display = 'none';
-                    // Trigger change event
-                    document.getElementById('homeContentForm').dispatchEvent(new Event('change'));
-                });
-            };
-            reader.readAsDataURL(file);
-        });
-        
-        // Clear the file input
-        e.target.value = '';
-    });
-
-    // Handle logo file selection
-    document.querySelectorAll('.logo-upload').forEach(function(input) {
-        input.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                    alert('Logo file size must be less than 5MB');
-                    e.target.value = '';
-                    return;
-                }
-                
-                if (!file.type.match('image.*')) {
-                    alert('Please upload an image file');
-                    e.target.value = '';
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = input.closest('.associate-image').querySelector('img');
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    });
-
-    // Handle adding new associate
-    document.getElementById('addAssociateBtn').addEventListener('click', function() {
-        const container = document.getElementById('existingAssociates');
-        const newAssociateIndex = container.children.length;
-        
-        const nameInput = document.querySelector('input[name="new_associate_names[]"]');
-        const descInput = document.querySelector('textarea[name="new_associate_descriptions[]"]');
-        const logoInput = document.querySelector('input[name="new_associate_logo_0"]');
-        
-        if (!nameInput.value.trim() || !descInput.value.trim() || !logoInput.files.length) {
-            alert('Please fill in all fields and upload a logo');
-            return;
-        }
-        
-        const newCard = document.createElement('div');
-        newCard.className = 'associate-card';
-        newCard.innerHTML = `
-            <div class="associate-content">
-                <div class="associate-image">
-                    <img src="${URL.createObjectURL(logoInput.files[0])}" 
-                         alt="${nameInput.value}"
-                         data-default="${logoInput.getAttribute('data-default')}">
-                    <div class="upload-overlay">
-                        <i class="fas fa-upload"></i>
-                        <span>Click to change logo</span>
-                    </div>
-                    <input type="file" name="new_associate_logo_${newAssociateIndex}" class="logo-upload" accept="image/*">
-                </div>
-                <div class="associate-details">
-                    <div class="form-group">
-                        <label>Name</label>
-                        <input type="text" class="form-control" name="new_associate_names[]" 
-                               value="${nameInput.value}" required>
-                    </div>
-                    <div class="form-group mt-2">
-                        <label>Description</label>
-                        <textarea class="form-control" name="new_associate_descriptions[]" 
-                                  rows="2" required>${descInput.value}</textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="associate-actions">
-                <button type="button" class="btn btn-danger btn-sm delete-associate">
-                    <i class="fas fa-trash"></i> Remove
-                </button>
-            </div>
-        `;
-        
-        container.appendChild(newCard);
-        
-        // Clear the form
-        nameInput.value = '';
-        descInput.value = '';
-        logoInput.value = '';
-        document.getElementById('imagePreview').src = logoInput.getAttribute('data-default');
-        
-        // Add event listeners to the new card
-        setupAssociateCardListeners(newCard);
-    });
-
-    // Handle deleting associates
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.delete-associate, .delete-associate *')) {
-            const card = e.target.closest('.associate-card');
-            if (confirm('Are you sure you want to remove this associate?')) {
-                card.remove();
-            }
-        }
-    });
-
-    // Setup associate card listeners
-    function setupAssociateCardListeners(card) {
-        const logoInput = card.querySelector('.logo-upload');
-        if (logoInput) {
-            logoInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                        alert('Logo file size must be less than 5MB');
-                        e.target.value = '';
-                        return;
-                    }
-                    
-                    if (!file.type.match('image.*')) {
-                        alert('Please upload an image file');
-                        e.target.value = '';
-                        return;
-                    }
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const img = logoInput.closest('.associate-image').querySelector('img');
-                        img.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-    }
-
-    // Setup existing cards
-    document.querySelectorAll('.associate-card').forEach(setupAssociateCardListeners);
-});
-</script>
-{% endblock %}
 
 {% block styles %}
 <style>
@@ -737,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Associates Section Styles */
 .associates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -746,23 +424,21 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 8px;
-    padding: 1.5rem;
+    padding: 1rem;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
 }
 
 .associate-card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.associate-content {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-}
-
 .associate-image {
-    width: 120px;
-    height: 120px;
+    width: 160px;
+    height: 160px;
     border: 2px dashed #dee2e6;
     border-radius: 8px;
     overflow: hidden;
@@ -773,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 8px;
 }
 
 .associate-image:hover .upload-overlay {
@@ -810,7 +487,8 @@ document.addEventListener('DOMContentLoaded', function() {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    padding: 8px;
+    max-width: 100%;
+    max-height: 100%;
 }
 
 .associate-image input[type="file"] {
@@ -823,14 +501,10 @@ document.addEventListener('DOMContentLoaded', function() {
     cursor: pointer;
 }
 
-.associate-details {
-    flex: 1;
-}
-
 .associate-actions {
     display: flex;
-    justify-content: flex-end;
-    margin-top: 1rem;
+    justify-content: center;
+    width: 100%;
 }
 
 .new-associate {
@@ -846,7 +520,506 @@ document.addEventListener('DOMContentLoaded', function() {
 #imagePreviewContainer:hover .upload-overlay {
     opacity: 1;
 }
-</style>
-{% endblock %}
 
-{% endblock %} 
+/* Add new styles for toast messages */
+.toast-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.toast-message.success {
+    background: #28a745;
+}
+
+.toast-message.error {
+    background: #dc3545;
+}
+
+.toast-message i {
+    font-size: 1.2rem;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Update associate card transitions */
+.associate-card {
+    transition: all 0.3s ease;
+}
+
+.associate-image {
+    position: relative;
+}
+
+.upload-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: opacity 0.3s ease;
+}
+
+.upload-overlay i {
+    font-size: 1.5rem;
+}
+
+.upload-overlay.loading {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* Add loading spinner animation */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Multiple Image Upload Styles */
+.associate-images-preview {
+    width: 100%;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.associate-images-preview:hover {
+    border-color: var(--primary-color);
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    background: white;
+    border-radius: 8px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.preview-item .remove-preview {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.preview-item .remove-preview:hover {
+    transform: scale(1.1);
+    background: #c82333;
+}
+
+.upload-zone {
+    text-align: center;
+    padding: 2rem;
+    cursor: pointer;
+}
+
+.upload-zone i {
+    font-size: 2rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.upload-zone span {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.upload-zone small {
+    color: #6c757d;
+}
+
+.upload-zone:hover {
+    background: #e9ecef;
+}
+</style>
+{% endblock styles %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Connect save button to form submission
+    document.getElementById('saveAllChanges').addEventListener('click', function() {
+        const form = document.getElementById('homeContentForm');
+        if (form) {
+            form.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // Handle image deletion
+    document.querySelectorAll('.delete-image').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const imageItem = this.closest('.image-item');
+            imageItem.classList.add('deleted');
+            imageItem.style.display = 'none';
+            
+            // Trigger change event to update form state
+            document.getElementById('homeContentForm').dispatchEvent(new Event('change'));
+        });
+    });
+
+    // Handle logo file selection with validation
+    function validateAndPreviewImage(file, imgElement) {
+        return new Promise((resolve, reject) => {
+            // Check file size
+            if (file.size > 5 * 1024 * 1024) {
+                reject('Image size must be less than 5MB');
+                return;
+            }
+
+            // Check file type
+            if (!file.type.match('image.*')) {
+                reject('Please upload an image file (PNG, JPG, JPEG, GIF)');
+                return;
+            }
+
+            // Create image object to check dimensions
+            const img = new Image();
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                img.onload = function() {
+                    const maxDimension = 2000;
+                    if (img.width > maxDimension || img.height > maxDimension) {
+                        reject(`Image dimensions must be less than ${maxDimension}x${maxDimension} pixels`);
+                        return;
+                    }
+                    
+                    // If all validations pass, update preview
+                    imgElement.src = e.target.result;
+                    resolve();
+                };
+
+                img.onerror = function() {
+                    reject('Invalid image file');
+                };
+
+                img.src = e.target.result;
+            };
+
+            reader.onerror = function() {
+                reject('Error reading file');
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Handle logo file selection
+    document.querySelectorAll('.logo-upload').forEach(function(input) {
+        input.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const img = input.closest('.associate-image').querySelector('img');
+            const originalSrc = img.src;
+            const loadingOverlay = input.closest('.associate-image').querySelector('.upload-overlay');
+            
+            // Show loading state
+            loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Validating...</span>';
+            loadingOverlay.style.opacity = '1';
+
+            try {
+                await validateAndPreviewImage(file, img);
+                loadingOverlay.innerHTML = '<i class="fas fa-check"></i><span>Image ready</span>';
+                setTimeout(() => {
+                    loadingOverlay.innerHTML = '<i class="fas fa-upload"></i><span>Click to change logo</span>';
+                    loadingOverlay.style.opacity = '0';
+                }, 1000);
+            } catch (error) {
+                alert(error);
+                input.value = '';
+                img.src = originalSrc;
+                loadingOverlay.innerHTML = '<i class="fas fa-upload"></i><span>Click to change logo</span>';
+                loadingOverlay.style.opacity = '0';
+            }
+        });
+    });
+
+    // Handle multiple logo file selection with validation
+    const logoInput = document.querySelector('input[name="new_associate_logos"]');
+    const previewGrid = document.getElementById('previewGrid');
+    const addButton = document.getElementById('addAssociatesBtn');
+    let selectedFiles = [];
+
+    function createUploadZone() {
+        return `
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span>Drop logos here or click to upload</span>
+            <small>(You can select multiple files)</small>
+            <input type="file" name="new_associate_logos" class="logo-upload" accept="image/*" multiple>
+        `;
+    }
+
+    function resetUploadZone(uploadZone) {
+        uploadZone.innerHTML = createUploadZone();
+        // Reattach event listener to new input
+        uploadZone.querySelector('input[name="new_associate_logos"]').addEventListener('change', handleFileSelect);
+    }
+
+    async function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        const uploadZone = this.closest('.upload-zone');
+        
+        if (files.length === 0) return;
+        
+        uploadZone.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Validating...</span>';
+        
+        try {
+            for (const file of files) {
+                if (file.size > 5 * 1024 * 1024) {
+                    throw new Error('Image size must be less than 5MB');
+                }
+
+                if (!file.type.match('image.*')) {
+                    throw new Error('Please upload an image file (PNG, JPG, JPEG, GIF)');
+                }
+
+                selectedFiles.push(file);
+                
+                const previewItem = document.createElement('div');
+                previewItem.className = 'preview-item';
+                const objectUrl = URL.createObjectURL(file);
+                
+                previewItem.innerHTML = `
+                    <img src="${objectUrl}" alt="Logo preview">
+                    <button type="button" class="remove-preview">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                previewGrid.appendChild(previewItem);
+                
+                // Add remove functionality
+                previewItem.querySelector('.remove-preview').addEventListener('click', function() {
+                    const index = Array.from(previewGrid.children).indexOf(previewItem);
+                    selectedFiles.splice(index, 1);
+                    previewItem.remove();
+                    URL.revokeObjectURL(objectUrl);
+                });
+            }
+            
+            resetUploadZone(uploadZone);
+            
+        } catch (error) {
+            alert(error.message);
+            resetUploadZone(uploadZone);
+        }
+    }
+
+    // Initial event listener setup
+    if (logoInput) {
+        logoInput.addEventListener('change', handleFileSelect);
+    }
+
+    // Handle adding multiple new associates
+    document.getElementById('addAssociatesBtn').addEventListener('click', async function() {
+        const container = document.getElementById('existingAssociates');
+        
+        if (selectedFiles.length === 0) {
+            alert('Please select at least one logo to upload');
+            return;
+        }
+
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            const newAssociateIndex = container.children.length;
+            const objectUrl = URL.createObjectURL(file);
+            
+            const newCard = document.createElement('div');
+            newCard.className = 'associate-card';
+            newCard.innerHTML = `
+                <div class="associate-image">
+                    <img src="${objectUrl}" alt="Associate Logo">
+                    <div class="upload-overlay">
+                        <i class="fas fa-upload"></i>
+                        <span>Click to change logo</span>
+                    </div>
+                    <input type="file" name="new_associate_logo_${newAssociateIndex}" class="logo-upload" accept="image/*">
+                </div>
+                <div class="associate-actions">
+                    <button type="button" class="btn btn-danger btn-sm delete-associate">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(newCard);
+            
+            // Create a new File object with the selected file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            newCard.querySelector('.logo-upload').files = dataTransfer.files;
+            
+            // Add event listeners to the new card
+            setupAssociateCardListeners(newCard);
+        }
+        
+        // Clear previews and selected files
+        previewGrid.innerHTML = '';
+        selectedFiles = [];
+        
+        // Reset the upload zone
+        const uploadZone = document.querySelector('.upload-zone');
+        resetUploadZone(uploadZone);
+    });
+
+    // Handle deleting associates
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.delete-associate, .delete-associate *')) {
+            const card = e.target.closest('.associate-card');
+            if (confirm('Are you sure you want to remove this logo?')) {
+                // Add fade-out animation
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.8)';
+                setTimeout(() => card.remove(), 300);
+            }
+        }
+    });
+
+    // Setup associate card listeners
+    function setupAssociateCardListeners(card) {
+        const logoInput = card.querySelector('.logo-upload');
+        if (logoInput) {
+            logoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('Logo file size must be less than 5MB');
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    if (!file.type.match('image.*')) {
+                        alert('Please upload an image file');
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = logoInput.closest('.associate-image').querySelector('img');
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }
+
+    // Setup existing cards
+    document.querySelectorAll('.associate-card').forEach(setupAssociateCardListeners);
+
+    // Handle form submission
+    document.getElementById('homeContentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Disable the save button
+        const saveButton = document.getElementById('saveAllChanges');
+        if (saveButton.disabled) return;
+        
+        saveButton.disabled = true;
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        const formData = new FormData(this);
+        
+        // Add selected files to formData
+        if (selectedFiles.length > 0) {
+            selectedFiles.forEach(file => {
+                formData.append('new_associate_logos', file);
+            });
+        }
+        
+        fetch('/admin/home-content', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                const toast = document.createElement('div');
+                toast.className = 'toast-message success';
+                toast.innerHTML = '<i class="fas fa-check-circle"></i> Content updated successfully!';
+                document.body.appendChild(toast);
+                
+                // Remove toast after delay
+                setTimeout(() => {
+                    toast.remove();
+                    window.location.reload();
+                }, 2000);
+            } else {
+                throw new Error(data.error || 'Failed to update content');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            // Show error message
+            const toast = document.createElement('div');
+            toast.className = 'toast-message error';
+            toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.message}`;
+            document.body.appendChild(toast);
+            
+            // Remove toast after delay
+            setTimeout(() => toast.remove(), 5000);
+            
+            // Reset button state
+            saveButton.innerHTML = originalText;
+            saveButton.disabled = false;
+        });
+    });
+});
+</script>
+{% endblock scripts %}
+
+{% endblock content %} 

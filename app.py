@@ -21,6 +21,7 @@ from utils import register_filters
 from routes.user_routes import user_routes
 import io
 import mimetypes
+import uuid
 
 try:
     from dotenv import load_dotenv
@@ -53,7 +54,7 @@ try:
     
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://giir-66ae6-default-rtdb.firebaseio.com',
-        'storageBucket': 'giir-66ae6.appspot.com',  # Add storage bucket configuration
+        'storageBucket': 'giir-66ae6.firebasestorage.app',  # Update storage bucket configuration
         'apiKey': os.environ.get('FIREBASE_API_KEY')
     })
     print("Firebase initialized successfully")
@@ -155,6 +156,70 @@ def validate_associate_data(name, description, logo_url):
         raise ValueError("Associate logo is required")
     return True
 
+def compress_image(file, max_size_kb=500):
+    """Compress image to reduce file size while maintaining quality"""
+    try:
+        # Read the image file
+        if hasattr(file, 'read'):
+            file.seek(0)  # Reset file pointer
+            image_data = file.read()
+            img = Image.open(BytesIO(image_data))
+        else:
+            img = Image.open(file)
+
+        # Convert to RGB if necessary
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+
+        # Initial quality
+        quality = 95
+        output = BytesIO()
+
+        # Save with initial quality
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        
+        # Binary search for optimal quality
+        while output.tell() > max_size_kb * 1024 and quality > 10:
+            output = BytesIO()
+            quality = max(quality - 5, 10)
+            img.save(output, format='JPEG', quality=quality, optimize=True)
+
+        output.seek(0)
+        return output.getvalue()
+
+    except Exception as e:
+        print(f"Error compressing image: {str(e)}")
+        # If compression fails, return original file data
+        file.seek(0)
+        return file.read()
+
+def validate_image(file):
+    """Validate image file before upload"""
+    try:
+        # Check file size (10MB limit)
+        file.seek(0, 2)  # Seek to end
+        size = file.tell()
+        file.seek(0)  # Reset file pointer
+        
+        if size > 10 * 1024 * 1024:  # 10MB
+            raise ValueError("Image size must be less than 10MB")
+
+        # Check file type
+        img = Image.open(file)
+        if img.format.upper() not in ['PNG', 'JPEG', 'JPG', 'GIF']:
+            raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
+
+        # Check dimensions (increased to 4000px)
+        max_dimension = 4000
+        if img.width > max_dimension or img.height > max_dimension:
+            raise ValueError(f"Image dimensions must be less than {max_dimension}x{max_dimension} pixels")
+
+        file.seek(0)  # Reset file pointer
+        return True
+
+    except Exception as e:
+        raise ValueError(f"Invalid image: {str(e)}")
+
 def save_associate_logo(logo_file, existing_logo=None):
     """Save associate logo to Firebase Storage and return the public URL"""
     if not logo_file or not logo_file.filename:
@@ -162,32 +227,48 @@ def save_associate_logo(logo_file, existing_logo=None):
             return existing_logo
         raise ValueError("Logo file is required")
     
-    if not allowed_image_file(logo_file.filename):
-        raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
-    
     try:
+        # Validate image
+        validate_image(logo_file)
+        
         # Initialize Firebase Storage bucket
         bucket = storage.bucket()
         
-        # Generate unique filename
-        filename = secure_filename(logo_file.filename)
-        unique_filename = f"associates/logos/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+        # Generate unique filename with original extension
+        original_filename = secure_filename(logo_file.filename)
+        ext = os.path.splitext(original_filename)[1].lower()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        unique_filename = f"home_content/associates/{timestamp}_{unique_id}{ext}"  # changed from associates/logos to home_content/associates
         
-        # Create a new blob and upload the file
+        # Create a new blob
         blob = bucket.blob(unique_filename)
         
-        # Set content type
-        content_type = logo_file.content_type or 'image/jpeg'
+        # Set content type based on file extension
+        content_type = mimetypes.guess_type(original_filename)[0] or 'image/jpeg'
         blob.content_type = content_type
         
-        # Upload the file
-        blob.upload_from_string(
-            logo_file.read(),
-            content_type=content_type
+        # Set metadata for optimization status
+        metadata = {
+            'optimized': 'false',
+            'originalName': original_filename
+        }
+        
+        # Upload the file with metadata
+        logo_file.seek(0)  # Reset file pointer
+        blob.upload_from_file(
+            logo_file,
+            content_type=content_type,
+            metadata=metadata
         )
         
         # Make the blob publicly accessible
         blob.make_public()
+        
+        # Set cache control and content encoding
+        blob.cache_control = 'public, max-age=31536000'  # Cache for 1 year
+        blob.content_encoding = 'identity'  # Preserve original encoding
+        blob.patch()
         
         # Return the public URL
         return blob.public_url
@@ -197,66 +278,57 @@ def save_associate_logo(logo_file, existing_logo=None):
         raise ValueError(f"Error saving logo: {str(e)}")
 
 def process_associates_data(request_form, request_files):
-    """Process and validate all associates data"""
+    """Process associates data including logo uploads"""
     associates = []
-    bucket = storage.bucket()
     
-    # Process existing associates
-    existing_names = request_form.getlist('existing_associate_names[]')
-    existing_descriptions = request_form.getlist('existing_associate_descriptions[]')
-    existing_logos = request_form.getlist('existing_associate_logos[]')
-    existing_ids = request_form.getlist('existing_associate_ids[]')
-    
-    for i in range(len(existing_names)):
-        name = existing_names[i].strip()
-        description = existing_descriptions[i].strip()
-        logo = existing_logos[i] if i < len(existing_logos) else None
+    try:
+        # Process existing associates
+        existing_ids = request_form.getlist('existing_associate_ids[]')
+        existing_logos = request_form.getlist('existing_associate_logos[]')
         
-        if name and description:
-            # Check if there's a new logo file
-            if f'associate_logo_{existing_ids[i]}' in request_files:
-                logo_file = request_files[f'associate_logo_{existing_ids[i]}']
-                if logo_file and logo_file.filename:
-                    # Delete old logo from Firebase Storage if it exists
-                    if logo and logo.startswith('https://storage.googleapis.com/'):
-                        try:
-                            path = logo.split('/o/')[1].split('?')[0]
-                            path = path.replace('%2F', '/')
-                            old_blob = bucket.blob(path)
-                            old_blob.delete()
-                        except Exception as e:
-                            print(f"Error deleting old logo: {str(e)}")
-                    logo = save_associate_logo(logo_file)
+        for i, associate_id in enumerate(existing_ids):
+            # Check for new logo upload
+            logo_key = f'associate_logo_{associate_id}'
+            logo_file = request_files.get(logo_key)
             
-            if logo:  # Only add if there's a logo
+            # Get existing logo
+            existing_logo = existing_logos[i] if i < len(existing_logos) else None
+            
+            try:
+                # Save new logo if provided, otherwise keep existing
+                logo_url = save_associate_logo(logo_file, existing_logo) if logo_file else existing_logo
+                
                 associates.append({
-                    'name': name,
-                    'description': description,
-                    'logo': logo
+                    'id': associate_id,
+                    'logo': logo_url
                 })
-    
-    # Process new associates
-    new_names = request_form.getlist('new_associate_names[]')
-    new_descriptions = request_form.getlist('new_associate_descriptions[]')
-    
-    for i in range(len(new_names)):
-        name = new_names[i].strip()
-        description = new_descriptions[i].strip()
+            except Exception as e:
+                print(f"Error processing existing logo {associate_id}: {str(e)}")
+                continue
         
-        if name and description:
-            logo_file_key = f'new_associate_logo_{i}'
-            if logo_file_key in request_files:
-                logo_file = request_files[logo_file_key]
-                if logo_file and logo_file.filename:
-                    logo_url = save_associate_logo(logo_file)
-                    if logo_url:
-                        associates.append({
-                            'name': name,
-                            'description': description,
-                            'logo': logo_url
-                        })
-    
-    return associates
+        # Process new associate logos
+        if 'new_associate_logos' in request_files:
+            files = request_files.getlist('new_associate_logos')
+            for file in files:
+                if not file or not file.filename:
+                    continue
+                try:
+                    # Generate a new unique ID for each logo
+                    new_id = str(uuid.uuid4())
+                    # Save the logo and get URL
+                    logo_url = save_associate_logo(file)
+                    
+                    associates.append({
+                        'id': new_id,
+                        'logo': logo_url
+                    })
+                except Exception as e:
+                    print(f"Error processing new logo {file.filename}: {str(e)}")
+        
+        return associates
+    except Exception as e:
+        print(f"Error in process_associates_data: {str(e)}")
+        raise ValueError(f"Error processing associates: {str(e)}")
 
 class User(UserMixin):
     def __init__(self, uid, email, full_name, is_admin=False):
@@ -2350,9 +2422,12 @@ def save_associate_logo(logo_file, existing_logo=None):
         content_type = logo_file.content_type or 'image/jpeg'
         blob.content_type = content_type
         
+        # Compress image if needed
+        img_data = compress_image(logo_file, max_size_kb=500)
+        
         # Upload the file
         blob.upload_from_string(
-            logo_file.read(),
+            img_data,
             content_type=content_type
         )
         
@@ -2367,66 +2442,73 @@ def save_associate_logo(logo_file, existing_logo=None):
         raise ValueError(f"Error saving logo: {str(e)}")
 
 def process_associates_data(request_form, request_files):
-    """Process and validate all associates data"""
-    associates = []
-    bucket = storage.bucket()
-    
-    # Process existing associates
-    existing_names = request_form.getlist('existing_associate_names[]')
-    existing_descriptions = request_form.getlist('existing_associate_descriptions[]')
-    existing_logos = request_form.getlist('existing_associate_logos[]')
-    existing_ids = request_form.getlist('existing_associate_ids[]')
-    
-    for i in range(len(existing_names)):
-        name = existing_names[i].strip()
-        description = existing_descriptions[i].strip()
-        logo = existing_logos[i] if i < len(existing_logos) else None
+    """Process associates data from the form submission"""
+    try:
+        associates = []
+        errors = []
+
+        # Process existing associates
+        existing_ids = request_form.getlist('existing_associate_ids[]')
+        existing_logos = request_form.getlist('existing_associate_logos[]')
         
-        if name and description:
-            # Check if there's a new logo file
-            if f'associate_logo_{existing_ids[i]}' in request_files:
-                logo_file = request_files[f'associate_logo_{existing_ids[i]}']
-                if logo_file and logo_file.filename:
-                    # Delete old logo from Firebase Storage if it exists
-                    if logo and logo.startswith('https://storage.googleapis.com/'):
-                        try:
-                            path = logo.split('/o/')[1].split('?')[0]
-                            path = path.replace('%2F', '/')
-                            old_blob = bucket.blob(path)
-                            old_blob.delete()
-                        except Exception as e:
-                            print(f"Error deleting old logo: {str(e)}")
-                    logo = save_associate_logo(logo_file)
-            
-            if logo:  # Only add if there's a logo
+        # Handle existing associates
+        for i, associate_id in enumerate(existing_ids):
+            try:
+                # Check if there's a new logo file for this existing associate
+                logo_key = f'associate_logo_{associate_id}'
+                if logo_key in request_files:
+                    # Save new logo and get URL
+                    logo_url = save_associate_logo(request_files[logo_key], existing_logos[i])
+                else:
+                    # Keep existing logo
+                    logo_url = existing_logos[i]
+                
                 associates.append({
-                    'name': name,
-                    'description': description,
-                    'logo': logo
+                    'id': associate_id,
+                    'logo': logo_url
                 })
-    
-    # Process new associates
-    new_names = request_form.getlist('new_associate_names[]')
-    new_descriptions = request_form.getlist('new_associate_descriptions[]')
-    
-    for i in range(len(new_names)):
-        name = new_names[i].strip()
-        description = new_descriptions[i].strip()
+            except Exception as e:
+                errors.append(f"Error processing existing associate {associate_id}: {str(e)}")
+
+        # Handle new associates from multiple file upload
+        if 'new_associate_logos' in request_files:
+            files = request_files.getlist('new_associate_logos')
+            for file in files:
+                try:
+                    # Generate a new unique ID for each logo
+                    new_id = str(uuid.uuid4())
+                    # Save the logo and get URL
+                    logo_url = save_associate_logo(file)
+                    
+                    associates.append({
+                        'id': new_id,
+                        'logo': logo_url
+                    })
+                except Exception as e:
+                    errors.append(f"Error processing new logo {file.filename}: {str(e)}")
         
-        if name and description:
-            logo_file_key = f'new_associate_logo_{i}'
-            if logo_file_key in request_files:
-                logo_file = request_files[logo_file_key]
-                if logo_file and logo_file.filename:
-                    logo_url = save_associate_logo(logo_file)
-                    if logo_url:
-                        associates.append({
-                            'name': name,
-                            'description': description,
-                            'logo': logo_url
-                        })
-    
-    return associates
+        # Handle individual new associate uploads (for backward compatibility)
+        for key in request_files.keys():
+            if key.startswith('new_associate_logo_') and key != 'new_associate_logos':
+                try:
+                    new_id = str(uuid.uuid4())
+                    logo_url = save_associate_logo(request_files[key])
+                    
+                    associates.append({
+                        'id': new_id,
+                        'logo': logo_url
+                    })
+                except Exception as e:
+                    errors.append(f"Error processing new associate logo: {str(e)}")
+
+        if errors:
+            raise Exception('\n'.join(errors))
+
+        return associates
+
+    except Exception as e:
+        print(f"Error in process_associates_data: {str(e)}")
+        raise e
 
 @app.route('/admin/home-content', methods=['GET', 'POST'])
 @login_required
@@ -3894,114 +3976,6 @@ def get_email_settings():
             'error': str(e)
         })
 
-def compress_image(file, max_size_kb=600):
-    """Compress an image to be under max_size_kb"""
-    img = Image.open(file)
-    
-    # Convert to RGB if image is in RGBA mode
-    if img.mode in ('RGBA', 'P'):
-        img = img.convert('RGB')
-    
-    # Initial quality
-    quality = 95
-    output = BytesIO()
-    
-    # Try compressing with different quality values
-    while quality > 5:
-        output.seek(0)
-        output.truncate(0)
-        img.save(output, format='JPEG', quality=quality, optimize=True)
-        size_kb = len(output.getvalue()) / 1024
-        
-        if size_kb <= max_size_kb:
-            break
-            
-        quality -= 5
-    
-    output.seek(0)
-    return output
-
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'}), 400
-        
-        file = request.files['file']
-        if not file or not file.filename:
-            return jsonify({'error': 'No file selected'}), 400
-
-        # Check file type
-        if not allowed_image_file(file.filename):
-            return jsonify({'error': 'Invalid file type. Only images are allowed.'}), 400
-
-        # Create upload directory if it doesn't exist
-        upload_dir = os.path.join(app.root_path, 'static', 'uploads')
-        os.makedirs(upload_dir, exist_ok=True)
-
-        # Generate unique filename
-        filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_filename = f"{timestamp}_{filename.rsplit('.', 1)[0]}.jpg"  # Force .jpg extension
-        file_path = os.path.join(upload_dir, unique_filename)
-
-        # Compress the image
-        compressed_image = compress_image(file)
-        
-        # Save the compressed file
-        with open(file_path, 'wb') as f:
-            f.write(compressed_image.getvalue())
-
-        # Generate URL for the uploaded file
-        file_url = url_for('static', filename=f'uploads/{unique_filename}')
-
-        return jsonify({
-            'success': True,
-            'url': file_url,
-            'filename': unique_filename
-        })
-
-    except Exception as e:
-        print(f"Error in upload_file: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-# Add this after the ALLOWED_IMAGE_EXTENSIONS definition
-# Default content structure
-default_content = {
-    'welcome': {
-        'title': 'Welcome to GIIR Conference 2024',
-        'message': 'Join us for the premier conference in innovative research'
-    },
-    'hero': {
-        'images': [],
-        'conference': {
-            'name': 'GIIR Conference 2024',
-            'date': 'TBA',
-            'time': 'TBA',
-            'city': 'TBA',
-            'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-        }
-    },
-    'vmo': {
-        'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-        'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
-        'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
-    },
-    'downloads': [],
-    'associates': [],
-    'footer': {
-        'contact_email': 'contact@giirconference.com',
-        'contact_phone': '+1234567890',
-        'social_media': {
-            'facebook': '',
-            'twitter': '',
-            'linkedin': ''
-        },
-        'address': 'Conference Venue, City, Country',
-        'copyright': '© 2024 GIIR Conference. All rights reserved.'
-    }
-}
-
 def process_hero_images(request):
     """Process and save hero images to Firebase Storage"""
     hero_images = []
@@ -4051,9 +4025,6 @@ def process_hero_images(request):
         for file in files:
             if file and file.filename and allowed_image_file(file.filename):
                 try:
-                    # Process and compress the image
-                    compressed_image = compress_image(file)
-                    
                     # Generate unique filename
                     filename = secure_filename(file.filename)
                     unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
@@ -4061,8 +4032,8 @@ def process_hero_images(request):
                     
                     # Upload to Firebase Storage
                     blob = bucket.blob(blob_path)
-                    blob.upload_from_string(
-                        compressed_image.getvalue(),
+                    blob.upload_from_file(
+                        file,
                         content_type=file.content_type
                     )
                     
@@ -4386,8 +4357,58 @@ def send_paper_status_notification(email, paper_title, status, comments):
         print("Error sending paper status notification:", str(e))
         return False
 
+# Default content for home page
+default_content = {
+    'welcome': {
+        'title': 'Welcome to GIIR',
+        'subtitle': 'Global Institute on Innovative Research',
+        'conference_date': 'International Conference 2024',
+        'message': 'Join us for the premier conference in innovative research'
+    },
+    'hero': {
+        'images': [],
+        'conference': {
+            'name': 'Global Institute on Innovative Research',
+            'date': 'TBA',
+            'time': 'TBA',
+            'city': 'TBA',
+            'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+        }
+    },
+    'vmo': {
+        'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+        'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
+        'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+    },
+    'downloads': [],
+    'associates': [],
+    'footer': {
+        'contact_email': '',
+        'contact_phone': '',
+        'social_media': {
+            'facebook': '',
+            'twitter': '',
+            'linkedin': ''
+        },
+        'address': '',
+        'copyright': '© ' + str(datetime.now().year) + ' Global Institute on Innovative Research. All rights reserved.'
+    }
+}
+
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
+    
+    # Use production settings if not in debug mode
+    if os.environ.get('FLASK_ENV') == 'production':
+        app.config['SESSION_COOKIE_SECURE'] = True
+        app.config['REMEMBER_COOKIE_SECURE'] = True
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    else:
+        app.run(debug=True) 
+        app.run(debug=True) 
     
     # Use production settings if not in debug mode
     if os.environ.get('FLASK_ENV') == 'production':
