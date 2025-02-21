@@ -4555,8 +4555,9 @@ default_content = {
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
     
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     if os.environ.get('FLASK_ENV') == 'production':
+        # In production, Render will provide the port via PORT environment variable
         app.run(host='0.0.0.0', port=port)
     else:
         app.run(debug=True, port=port)
