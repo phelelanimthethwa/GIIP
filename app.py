@@ -31,8 +31,24 @@ except ImportError:
 
 load_dotenv()  # Add this before creating the Flask app
 
+# Load environment variables
+load_dotenv()
+
+# Initialize Flask app
 app = Flask(__name__)
-app.config.from_object(Config)
+
+# Configure app based on environment
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config.update(
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'your-secret-key'),
+        SESSION_COOKIE_SECURE=True,
+        REMEMBER_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        REMEMBER_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax'
+    )
+else:
+    app.config['SECRET_KEY'] = 'development-key'
 
 # Register blueprints
 app.register_blueprint(user_routes)
@@ -4539,13 +4555,8 @@ default_content = {
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
     
-    # Use production settings if not in debug mode
+    port = int(os.environ.get('PORT', 5000))
     if os.environ.get('FLASK_ENV') == 'production':
-        app.config['SESSION_COOKIE_SECURE'] = True
-        app.config['REMEMBER_COOKIE_SECURE'] = True
-        app.config['SESSION_COOKIE_HTTPONLY'] = True
-        app.config['REMEMBER_COOKIE_HTTPONLY'] = True
-        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+        app.run(host='0.0.0.0', port=port)
     else:
-        app.run(debug=True)
+        app.run(debug=True, port=port)
