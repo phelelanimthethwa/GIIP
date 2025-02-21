@@ -193,30 +193,32 @@ def compress_image(file, max_size_kb=500):
         file.seek(0)
         return file.read()
 
-def validate_image(file):
-    """Validate image file before upload"""
+def validate_image(file, image_type='default'):
+    """Validate image file based on type (hero or associate)"""
+    if not file or not file.filename:
+        raise ValueError("No file provided")
+
+    if not allowed_image_file(file.filename):
+        raise ValueError("Invalid file type. Only JPG, JPEG, PNG and GIF files are allowed")
+
+    # Read image to validate dimensions
     try:
-        # Check file size (10MB limit)
-        file.seek(0, 2)  # Seek to end
-        size = file.tell()
-        file.seek(0)  # Reset file pointer
-        
-        if size > 10 * 1024 * 1024:  # 10MB
-            raise ValueError("Image size must be less than 10MB")
-
-        # Check file type
         img = Image.open(file)
-        if img.format.upper() not in ['PNG', 'JPEG', 'JPG', 'GIF']:
-            raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
-
-        # Check dimensions (increased to 4000px)
-        max_dimension = 4000
-        if img.width > max_dimension or img.height > max_dimension:
-            raise ValueError(f"Image dimensions must be less than {max_dimension}x{max_dimension} pixels")
-
-        file.seek(0)  # Reset file pointer
+        width, height = img.size
+        
+        # Different size limits for different image types
+        if image_type == 'hero':
+            if width > 4000 or height > 4000:
+                raise ValueError("Hero image dimensions must be less than 4000x4000 pixels")
+        elif image_type == 'associate':
+            if width > 1000 or height > 1000:
+                raise ValueError("Associate logo dimensions must be less than 1000x1000 pixels")
+        else:
+            if width > 2000 or height > 2000:
+                raise ValueError("Image dimensions must be less than 2000x2000 pixels")
+        
+        file.seek(0)  # Reset file pointer after reading
         return True
-
     except Exception as e:
         raise ValueError(f"Invalid image: {str(e)}")
 
@@ -228,8 +230,8 @@ def save_associate_logo(logo_file, existing_logo=None):
         raise ValueError("Logo file is required")
     
     try:
-        # Validate image
-        validate_image(logo_file)
+        # Validate image with associate type
+        validate_image(logo_file, image_type='associate')
         
         # Initialize Firebase Storage bucket
         bucket = storage.bucket()
@@ -239,7 +241,9 @@ def save_associate_logo(logo_file, existing_logo=None):
         ext = os.path.splitext(original_filename)[1].lower()
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_id = str(uuid.uuid4())[:8]
-        unique_filename = f"home_content/associates/{timestamp}_{unique_id}{ext}"  # changed from associates/logos to home_content/associates
+        
+        # Use dedicated path for associates
+        unique_filename = f"content/associates/{timestamp}_{unique_id}{ext}"
         
         # Create a new blob
         blob = bucket.blob(unique_filename)
@@ -251,26 +255,35 @@ def save_associate_logo(logo_file, existing_logo=None):
         # Set metadata for optimization status
         metadata = {
             'optimized': 'false',
-            'originalName': original_filename
+            'originalName': original_filename,
+            'timestamp': timestamp,
+            'type': 'associate_logo'  # Add type to distinguish from hero images
         }
+        blob.metadata = metadata
+        
+        # Compress image if needed
+        logo_file.seek(0)  # Reset file pointer
+        img_data = compress_image(logo_file, max_size_kb=300)  # Smaller size for logos
+        
+        # Log the upload process
+        print(f"Uploading logo: {unique_filename} with content type: {content_type}")
         
         # Upload the file with metadata
-        logo_file.seek(0)  # Reset file pointer
-        blob.upload_from_file(
-            logo_file,
-            content_type=content_type,
-            metadata=metadata
+        blob.upload_from_string(
+            img_data,
+            content_type=content_type
         )
         
         # Make the blob publicly accessible
         blob.make_public()
         
-        # Set cache control and content encoding
+        # Set cache control
         blob.cache_control = 'public, max-age=31536000'  # Cache for 1 year
-        blob.content_encoding = 'identity'  # Preserve original encoding
         blob.patch()
         
-        # Return the public URL
+        # Log successful upload
+        print(f"Successfully uploaded logo: {unique_filename} to {blob.public_url}")
+        
         return blob.public_url
         
     except Exception as e:
@@ -278,57 +291,105 @@ def save_associate_logo(logo_file, existing_logo=None):
         raise ValueError(f"Error saving logo: {str(e)}")
 
 def process_associates_data(request_form, request_files):
-    """Process associates data including logo uploads"""
-    associates = []
-    
+    """Process associates data from the form submission"""
     try:
+        # Log the keys in request_files to verify file upload
+        print("Received files in process_associates_data:", request_files.keys())
+        
+        # Check if 'new_associate_logos' is in request_files
+        if 'new_associate_logos' not in request_files:
+            print("No 'new_associate_logos' key found in request_files.")
+            raise ValueError("Logo file is required")
+        
+        # Log the file details
+        logo_file = request_files.get('new_associate_logos')
+        print("Logo file details:", logo_file)
+        
+        associates = []
+        errors = []
+        bucket = storage.bucket()
+
         # Process existing associates
         existing_ids = request_form.getlist('existing_associate_ids[]')
         existing_logos = request_form.getlist('existing_associate_logos[]')
-        
+        deleted_logos = request_form.getlist('deleted_logos[]') or []
+
+        # Handle existing associates
         for i, associate_id in enumerate(existing_ids):
-            # Check for new logo upload
-            logo_key = f'associate_logo_{associate_id}'
-            logo_file = request_files.get(logo_key)
-            
-            # Get existing logo
-            existing_logo = existing_logos[i] if i < len(existing_logos) else None
-            
             try:
-                # Save new logo if provided, otherwise keep existing
-                logo_url = save_associate_logo(logo_file, existing_logo) if logo_file else existing_logo
+                # Skip if this logo is marked for deletion
+                if existing_logos[i] in deleted_logos:
+                    try:
+                        # Extract blob path from URL
+                        blob_path = existing_logos[i].split('/o/')[1].split('?')[0]
+                        blob_path = blob_path.replace('%2F', '/')
+                        blob = bucket.blob(blob_path)
+                        if blob.exists():
+                            blob.delete()
+                            print(f"Successfully deleted associate logo: {blob_path}")
+                    except Exception as e:
+                        print(f"Error deleting old logo: {str(e)}")
+                    continue
+
+                # Check if there's a new logo file for this existing associate
+                logo_key = f'associate_logo_{associate_id}'
+                if logo_key in request_files and request_files[logo_key].filename:
+                    # Delete old logo if it exists
+                    try:
+                        old_logo_url = existing_logos[i]
+                        if old_logo_url:
+                            blob_path = old_logo_url.split('/o/')[1].split('?')[0]
+                            blob_path = blob_path.replace('%2F', '/')
+                            blob = bucket.blob(blob_path)
+                            if blob.exists():
+                                blob.delete()
+                                print(f"Successfully deleted old logo: {blob_path}")
+                    except Exception as e:
+                        print(f"Error deleting old logo: {str(e)}")
+
+                    # Save new logo and get URL
+                    logo_url = save_associate_logo(request_files[logo_key])
+                else:
+                    # Keep existing logo
+                    logo_url = existing_logos[i]
                 
                 associates.append({
                     'id': associate_id,
                     'logo': logo_url
                 })
             except Exception as e:
-                print(f"Error processing existing logo {associate_id}: {str(e)}")
-                continue
-        
-        # Process new associate logos
+                errors.append(f"Error processing existing associate {associate_id}: {str(e)}")
+
+        # Handle new associates from multiple file upload
         if 'new_associate_logos' in request_files:
             files = request_files.getlist('new_associate_logos')
             for file in files:
-                if not file or not file.filename:
-                    continue
-                try:
-                    # Generate a new unique ID for each logo
-                    new_id = str(uuid.uuid4())
-                    # Save the logo and get URL
-                    logo_url = save_associate_logo(file)
-                    
-                    associates.append({
-                        'id': new_id,
-                        'logo': logo_url
-                    })
-                except Exception as e:
-                    print(f"Error processing new logo {file.filename}: {str(e)}")
-        
+                if file and file.filename:  # Only process if there's actually a file
+                    try:
+                        # Generate a new unique ID for each logo
+                        new_id = str(uuid.uuid4())
+                        # Save the logo and get URL
+                        logo_url = save_associate_logo(file)
+                        
+                        associates.append({
+                            'id': new_id,
+                            'logo': logo_url
+                        })
+                    except Exception as e:
+                        errors.append(f"Error processing new logo {file.filename}: {str(e)}")
+
+        if errors:
+            print("Errors during associate processing:", errors)  # Debug log
+            if any("Logo file is required" in error for error in errors):
+                # If these are just "Logo file is required" errors for empty uploads, we can ignore them
+                return associates
+            raise Exception('\n'.join(errors))
+
         return associates
+
     except Exception as e:
         print(f"Error in process_associates_data: {str(e)}")
-        raise ValueError(f"Error processing associates: {str(e)}")
+        raise e
 
 class User(UserMixin):
     def __init__(self, uid, email, full_name, is_admin=False):
@@ -2444,21 +2505,62 @@ def save_associate_logo(logo_file, existing_logo=None):
 def process_associates_data(request_form, request_files):
     """Process associates data from the form submission"""
     try:
+        # Log the keys in request_files to verify file upload
+        print("Received files in process_associates_data:", request_files.keys())
+        
+        # Check if 'new_associate_logos' is in request_files
+        if 'new_associate_logos' not in request_files:
+            print("No 'new_associate_logos' key found in request_files.")
+            raise ValueError("Logo file is required")
+        
+        # Log the file details
+        logo_file = request_files.get('new_associate_logos')
+        print("Logo file details:", logo_file)
+        
         associates = []
         errors = []
+        bucket = storage.bucket()
 
         # Process existing associates
         existing_ids = request_form.getlist('existing_associate_ids[]')
         existing_logos = request_form.getlist('existing_associate_logos[]')
-        
+        deleted_logos = request_form.getlist('deleted_logos[]') or []
+
         # Handle existing associates
         for i, associate_id in enumerate(existing_ids):
             try:
+                # Skip if this logo is marked for deletion
+                if existing_logos[i] in deleted_logos:
+                    try:
+                        # Extract blob path from URL
+                        blob_path = existing_logos[i].split('/o/')[1].split('?')[0]
+                        blob_path = blob_path.replace('%2F', '/')
+                        blob = bucket.blob(blob_path)
+                        if blob.exists():
+                            blob.delete()
+                            print(f"Successfully deleted associate logo: {blob_path}")
+                    except Exception as e:
+                        print(f"Error deleting old logo: {str(e)}")
+                    continue
+
                 # Check if there's a new logo file for this existing associate
                 logo_key = f'associate_logo_{associate_id}'
-                if logo_key in request_files:
+                if logo_key in request_files and request_files[logo_key].filename:
+                    # Delete old logo if it exists
+                    try:
+                        old_logo_url = existing_logos[i]
+                        if old_logo_url:
+                            blob_path = old_logo_url.split('/o/')[1].split('?')[0]
+                            blob_path = blob_path.replace('%2F', '/')
+                            blob = bucket.blob(blob_path)
+                            if blob.exists():
+                                blob.delete()
+                                print(f"Successfully deleted old logo: {blob_path}")
+                    except Exception as e:
+                        print(f"Error deleting old logo: {str(e)}")
+
                     # Save new logo and get URL
-                    logo_url = save_associate_logo(request_files[logo_key], existing_logos[i])
+                    logo_url = save_associate_logo(request_files[logo_key])
                 else:
                     # Keep existing logo
                     logo_url = existing_logos[i]
@@ -2474,34 +2576,25 @@ def process_associates_data(request_form, request_files):
         if 'new_associate_logos' in request_files:
             files = request_files.getlist('new_associate_logos')
             for file in files:
-                try:
-                    # Generate a new unique ID for each logo
-                    new_id = str(uuid.uuid4())
-                    # Save the logo and get URL
-                    logo_url = save_associate_logo(file)
-                    
-                    associates.append({
-                        'id': new_id,
-                        'logo': logo_url
-                    })
-                except Exception as e:
-                    errors.append(f"Error processing new logo {file.filename}: {str(e)}")
-        
-        # Handle individual new associate uploads (for backward compatibility)
-        for key in request_files.keys():
-            if key.startswith('new_associate_logo_') and key != 'new_associate_logos':
-                try:
-                    new_id = str(uuid.uuid4())
-                    logo_url = save_associate_logo(request_files[key])
-                    
-                    associates.append({
-                        'id': new_id,
-                        'logo': logo_url
-                    })
-                except Exception as e:
-                    errors.append(f"Error processing new associate logo: {str(e)}")
+                if file and file.filename:  # Only process if there's actually a file
+                    try:
+                        # Generate a new unique ID for each logo
+                        new_id = str(uuid.uuid4())
+                        # Save the logo and get URL
+                        logo_url = save_associate_logo(file)
+                        
+                        associates.append({
+                            'id': new_id,
+                            'logo': logo_url
+                        })
+                    except Exception as e:
+                        errors.append(f"Error processing new logo {file.filename}: {str(e)}")
 
         if errors:
+            print("Errors during associate processing:", errors)  # Debug log
+            if any("Logo file is required" in error for error in errors):
+                # If these are just "Logo file is required" errors for empty uploads, we can ignore them
+                return associates
             raise Exception('\n'.join(errors))
 
         return associates
@@ -2514,104 +2607,99 @@ def process_associates_data(request_form, request_files):
 @login_required
 @admin_required
 def admin_home_content():
-    if not current_user.is_authenticated or not current_user.is_admin:
-        return redirect(url_for('login', next=request.url))
-
     if request.method == 'POST':
         try:
-            # Get existing content first
-            try:
-                content_ref = db.reference('home_content')
-                existing_content = content_ref.get() or default_content
-            except Exception as e:
-                print(f"Error fetching existing content: {str(e)}")
-                existing_content = default_content
+            # Log the keys in request_files to verify file upload
+            print("Received files:", request.files.keys())
+            print("Received form data:", request.form)
             
-            # Process all the form data
-            home_content = {
-                'welcome': {
-                    'title': request.form.get('welcome[title]'),
-                    'message': request.form.get('welcome[message]')
-                },
-                'hero': {
-                    'images': process_hero_images(request),
-                    'conference': {
+            # Initialize update_data
+            update_data = {}
+            
+            # Update welcome section
+            update_data['welcome'] = {
+                'title': request.form.get('welcome[title]'),
+                'subtitle': request.form.get('welcome[subtitle]'),
+                'conference_date': request.form.get('welcome[conference_date]'),
+                'message': request.form.get('welcome[message]')
+            }
+            
+            # Process hero images
+            if 'hero_images' in request.files:
+                try:
+                    hero_images = process_hero_images(request)
+                    if hero_images is not None:
+                        update_data['hero'] = {
+                            'images': hero_images,
+                            'conference': {
+                                'name': request.form.get('conference[name]'),
+                                'date': request.form.get('conference[date]'),
+                                'time': request.form.get('conference[time]'),
+                                'city': request.form.get('conference[city]'),
+                                'highlights': request.form.get('conference[highlights]')
+                            }
+                        }
+                except Exception as e:
+                    print(f"Error processing hero images: {str(e)}")
+                    return jsonify({'success': False, 'error': f'Error processing hero images: {str(e)}'}), 400
+            else:
+                # Keep existing hero section if no new images
+                content_ref = db.reference('home_content')
+                current_content = content_ref.get() or {}
+                if 'hero' in current_content:
+                    update_data['hero'] = current_content['hero']
+                    # Update conference details
+                    update_data['hero']['conference'] = {
                         'name': request.form.get('conference[name]'),
                         'date': request.form.get('conference[date]'),
                         'time': request.form.get('conference[time]'),
                         'city': request.form.get('conference[city]'),
                         'highlights': request.form.get('conference[highlights]')
                     }
-                },
-                'vmo': {
-                    'vision': request.form.get('vmo[vision]'),
-                    'mission': request.form.get('vmo[mission]'),
-                    'objectives': request.form.get('vmo[objectives]')
-                },
-                'downloads': process_downloads_data(request),
-                'footer': {
-                    'contact_email': request.form.get('footer[contact_email]'),
-                    'contact_phone': request.form.get('footer[contact_phone]'),
-                    'social_media': {
-                        'facebook': request.form.get('footer[social_media][facebook]'),
-                        'twitter': request.form.get('footer[social_media][twitter]'),
-                        'linkedin': request.form.get('footer[social_media][linkedin]')
-                    },
-                    'address': request.form.get('footer[address]'),
-                    'copyright': request.form.get('footer[copyright]')
-                }
-            }
             
             # Process associates data
             try:
                 associates = process_associates_data(request.form, request.files)
-                home_content['associates'] = associates
+                if associates:
+                    update_data['associates'] = associates
             except Exception as e:
                 print(f"Error processing associates: {str(e)}")
-                home_content['associates'] = existing_content.get('associates', [])
+                return jsonify({'success': False, 'error': str(e)}), 400
             
-            # Save to Firebase with retry
-            max_retries = 3
-            retry_count = 0
-            while retry_count < max_retries:
-                try:
-                    content_ref = db.reference('home_content')
-                    content_ref.set(home_content)
-                    break
-                except Exception as e:
-                    retry_count += 1
-                    if retry_count == max_retries:
-                        print(f"Failed to save to Firebase after {max_retries} attempts: {str(e)}")
-                        return jsonify({
-                            'success': False,
-                            'error': f"Failed to save changes: {str(e)}"
-                        }), 500
-                    print(f"Retry {retry_count} after error: {str(e)}")
+            # Update VMO section
+            update_data['vmo'] = {
+                'vision': request.form.get('vmo[vision]'),
+                'mission': request.form.get('vmo[mission]'),
+                'objectives': request.form.get('vmo[objectives]')
+            }
             
-            return jsonify({
-                'success': True,
-                'message': 'Content updated successfully'
-            })
+            # Update footer section
+            update_data['footer'] = {
+                'contact_email': request.form.get('footer[contact_email]'),
+                'contact_phone': request.form.get('footer[contact_phone]'),
+                'social_media': {
+                    'facebook': request.form.get('footer[social_media][facebook]'),
+                    'twitter': request.form.get('footer[social_media][twitter]'),
+                    'linkedin': request.form.get('footer[social_media][linkedin]')
+                },
+                'address': request.form.get('footer[address]'),
+                'copyright': request.form.get('footer[copyright]')
+            }
+            
+            # Save to Firebase
+            content_ref = db.reference('home_content')
+            content_ref.update(update_data)
+            
+            return jsonify({'success': True})
             
         except Exception as e:
-            print(f"Error saving home content: {str(e)}")
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 500
+            print(f"Error updating home content: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 400
     
-    # GET request - render template with current content
-    try:
-        content_ref = db.reference('home_content')
-        home_content = content_ref.get() or default_content
-    except Exception as e:
-        print(f"Error loading home content: {str(e)}")
-        home_content = default_content
-        flash('Error loading content. Using default values.', 'warning')
-    
-    return render_template('admin/home_content.html', 
-                         home_content=home_content,
-                         site_design=get_site_design())
+    # GET request - render template
+    content_ref = db.reference('home_content')
+    home_content = content_ref.get() or {}
+    return render_template('admin/home_content.html', home_content=home_content)
 
 # Add to admin_required routes list in base_admin.html
 @app.context_processor
@@ -3977,82 +4065,109 @@ def get_email_settings():
         })
 
 def process_hero_images(request):
-    """Process and save hero images to Firebase Storage"""
-    hero_images = []
-    bucket = storage.bucket()
-    
-    # Handle existing images
-    if 'existing_images' in request.form:
-        try:
-            existing_images = json.loads(request.form['existing_images'])
-            deleted_images = request.form.getlist('deleted_images[]')
+    """Process hero images from the form submission"""
+    try:
+        hero_images = []
+        bucket = storage.bucket()
+
+        # Get current hero images from database
+        content_ref = db.reference('home_content')
+        current_content = content_ref.get() or {}
+        current_hero_images = current_content.get('hero', {}).get('images', [])
+
+        # Handle deleted images first
+        deleted_images = request.form.getlist('deleted_hero_images[]')
+        print(f"Processing {len(deleted_images)} deleted hero images")
+        
+        for image_url in deleted_images:
+            try:
+                print(f"Deleting hero image: {image_url}")
+                # Extract blob path from URL
+                blob_path = image_url.split('/o/')[1].split('?')[0]
+                blob_path = blob_path.replace('%2F', '/')
+                blob = bucket.blob(blob_path)
+                if blob.exists():
+                    blob.delete()
+                    print(f"Successfully deleted hero image: {blob_path}")
+            except Exception as e:
+                print(f"Error deleting hero image: {str(e)}")
+
+        # Keep existing images that weren't deleted
+        for image in current_hero_images:
+            if image['url'] not in deleted_images:
+                hero_images.append(image)
+
+        # Process new hero images
+        if 'hero_images' in request.files:
+            files = request.files.getlist('hero_images')
+            print(f"Processing {len(files)} new hero images")
             
-            # Process existing images
-            for image in existing_images:
-                image_url = image.get('url', '')
-                if not image_url:
-                    continue
-                    
-                # Check if image is marked for deletion
-                if image_url not in deleted_images:
-                    hero_images.append({
-                        'url': image_url,
-                        'alt': image.get('alt', '')
-                    })
-                else:
-                    # Delete from Firebase Storage
-                    try:
-                        # Extract blob path from URL
-                        blob_path = image_url.split('/o/')[1].split('?')[0]
-                        blob_path = blob_path.replace('%2F', '/')
-                        blob = bucket.blob(blob_path)
-                        if blob.exists():
-                            blob.delete()
-                            print(f"Successfully deleted hero image from storage: {blob_path}")
-                    except Exception as e:
-                        print(f"Error deleting hero image from storage: {str(e)}")
-                        continue
-        except json.JSONDecodeError as e:
-            print(f"Error parsing existing images JSON: {str(e)}")
-            return []
-        except Exception as e:
-            print(f"Unexpected error processing existing images: {str(e)}")
-            return []
-    
-    # Handle new hero image uploads
-    if 'hero_images' in request.files:
-        files = request.files.getlist('hero_images')
-        for file in files:
-            if file and file.filename and allowed_image_file(file.filename):
+            for file in files:
                 try:
-                    # Generate unique filename
-                    filename = secure_filename(file.filename)
-                    unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                    blob_path = f"hero_images/{unique_filename}"
-                    
-                    # Upload to Firebase Storage
-                    blob = bucket.blob(blob_path)
-                    blob.upload_from_file(
-                        file,
-                        content_type=file.content_type
-                    )
-                    
-                    # Make the blob publicly accessible
-                    blob.make_public()
-                    
-                    # Get the public URL
-                    image_url = blob.public_url
-                    
-                    hero_images.append({
-                        'url': image_url,
-                        'alt': filename
-                    })
-                    print(f"Successfully uploaded hero image to storage: {blob_path}")
+                    if file and file.filename:
+                        print(f"Processing hero image: {file.filename}")
+                        
+                        # Validate image with hero type
+                        validate_image(file, image_type='hero')
+                        
+                        # Generate unique filename
+                        original_filename = secure_filename(file.filename)
+                        ext = os.path.splitext(original_filename)[1].lower()
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        unique_id = str(uuid.uuid4())[:8]
+                        
+                        # Use dedicated path for hero images
+                        unique_filename = f"content/hero_images/{timestamp}_{unique_id}{ext}"
+                        print(f"Generated unique filename: {unique_filename}")
+                        
+                        # Create a new blob
+                        blob = bucket.blob(unique_filename)
+                        
+                        # Set content type and metadata
+                        content_type = mimetypes.guess_type(original_filename)[0] or 'image/jpeg'
+                        blob.content_type = content_type
+                        blob.metadata = {
+                            'optimized': 'false',
+                            'originalName': original_filename,
+                            'timestamp': timestamp,
+                            'type': 'hero_image'
+                        }
+                        
+                        # Compress image if needed (1MB for hero images)
+                        file.seek(0)  # Reset file pointer
+                        img_data = compress_image(file, max_size_kb=1000)  # 1MB for hero images
+                        
+                        # Upload the file with metadata
+                        blob.upload_from_string(
+                            img_data,
+                            content_type=content_type
+                        )
+                        
+                        # Make the blob publicly accessible
+                        blob.make_public()
+                        
+                        # Get the public URL
+                        public_url = blob.public_url
+                        
+                        # Add to hero images list
+                        hero_images.append({
+                            'url': public_url,
+                            'alt': original_filename,
+                            'filename': unique_filename
+                        })
+                        
+                        print(f"Successfully uploaded hero image: {public_url}")
+                        
                 except Exception as e:
                     print(f"Error processing hero image {file.filename}: {str(e)}")
                     continue
-    
-    return hero_images
+
+        print(f"Final count of hero images: {len(hero_images)}")
+        return hero_images
+
+    except Exception as e:
+        print(f"Error in process_hero_images: {str(e)}")
+        raise e
 
 def process_downloads_data(request):
     """Process and save downloads data from form data"""
@@ -4407,17 +4522,4 @@ if __name__ == '__main__':
         app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
         app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
     else:
-        app.run(debug=True) 
-        app.run(debug=True) 
-    
-    # Use production settings if not in debug mode
-    if os.environ.get('FLASK_ENV') == 'production':
-        app.config['SESSION_COOKIE_SECURE'] = True
-        app.config['REMEMBER_COOKIE_SECURE'] = True
-        app.config['SESSION_COOKIE_HTTPONLY'] = True
-        app.config['REMEMBER_COOKIE_HTTPONLY'] = True
-        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
-    else:
-        app.run(debug=True) 
-        app.run(debug=True) 
+        app.run(debug=True)
