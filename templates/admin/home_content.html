@@ -207,7 +207,7 @@
                             <div class="associate-card" data-id="{{ associate.id }}">
                                 <div class="associate-content">
                                     <div class="associate-image">
-                                        <img src="{{ url_for('static', filename=associate.logo.lstrip('/static/')) }}" 
+                                        <img src="{{ associate.logo if associate.logo.startswith('http') else url_for('static', filename=associate.logo.lstrip('/static/')) }}" 
                                              alt="{{ associate.name }}">
                                         <input type="hidden" name="existing_associate_ids[]" value="{{ associate.id }}">
                                         <input type="hidden" name="existing_associate_logos[]" value="{{ associate.logo }}">
@@ -347,6 +347,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Handle image deletion
+    document.querySelectorAll('.delete-image').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const imageItem = this.closest('.image-item');
+            imageItem.classList.add('deleted');
+            imageItem.style.display = 'none';
+            
+            // Trigger change event to update form state
+            document.getElementById('homeContentForm').dispatchEvent(new Event('change'));
+        });
+    });
+
     // Handle form submission
     document.getElementById('homeContentForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -364,27 +376,34 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const formData = new FormData(this);
         
-        // Add existing images that weren't deleted
+        // Process existing and deleted images
         const existingImages = [];
         const deletedImages = [];
         document.querySelectorAll('.image-item').forEach(function(item) {
-            const imageUrl = item.querySelector('img').src;
-            const imageAlt = item.querySelector('img').alt;
-            if (!item.classList.contains('deleted')) {
-                existingImages.push({
-                    url: imageUrl.replace(window.location.origin, ''),
-                    alt: imageAlt
-                });
+            if (item.style.display === 'none' || item.classList.contains('deleted')) {
+                const imageUrl = item.querySelector('img').src;
+                // For Firebase Storage URLs, we need to keep the full URL
+                const isFirebaseUrl = imageUrl.includes('firebasestorage.googleapis.com');
+                deletedImages.push(isFirebaseUrl ? imageUrl : imageUrl.replace(window.location.origin, ''));
             } else {
-                deletedImages.push(imageUrl.replace(window.location.origin, ''));
+                const img = item.querySelector('img');
+                const imageUrl = img.src;
+                // For Firebase Storage URLs, we need to keep the full URL
+                const isFirebaseUrl = imageUrl.includes('firebasestorage.googleapis.com');
+                existingImages.push({
+                    url: isFirebaseUrl ? imageUrl : imageUrl.replace(window.location.origin, ''),
+                    alt: img.alt || ''
+                });
             }
         });
         
+        // Add to form data
         formData.set('existing_images', JSON.stringify(existingImages));
         deletedImages.forEach(url => {
             formData.append('deleted_images[]', url);
         });
         
+        // Submit form
         fetch('/admin/home-content', {
             method: 'POST',
             body: formData
@@ -418,15 +437,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Handle image deletion
-    document.querySelectorAll('.delete-image').forEach(function(button) {
-        button.addEventListener('click', function() {
-            const imageItem = this.closest('.image-item');
-            imageItem.classList.add('deleted');
-            imageItem.style.display = 'none';
-        });
-    });
-
     // Handle hero image upload
     document.getElementById('heroImageUpload').addEventListener('change', function(e) {
         const files = e.target.files;
@@ -439,15 +449,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        for (let file of files) {
+        Array.from(files).forEach(file => {
             if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                alert('Image file size must be less than 5MB');
-                continue;
+                alert(`Image ${file.name} is too large. Maximum size is 5MB`);
+                return;
             }
             
             if (!file.type.match('image.*')) {
-                alert('Please upload image files only');
-                continue;
+                alert(`File ${file.name} is not an image`);
+                return;
             }
             
             const reader = new FileReader();
@@ -469,15 +479,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 imageGrid.insertBefore(imageItem, uploadBox);
                 
                 // Add delete event listener to new image
-                imageItem.querySelector('.delete-image').addEventListener('click', function() {
-                    if (confirm('Are you sure you want to delete this image?')) {
-                        imageItem.classList.add('deleted');
-                        imageItem.style.display = 'none';
-                    }
+                const deleteButton = imageItem.querySelector('.delete-image');
+                deleteButton.addEventListener('click', function() {
+                    imageItem.classList.add('deleted');
+                    imageItem.style.display = 'none';
+                    // Trigger change event
+                    document.getElementById('homeContentForm').dispatchEvent(new Event('change'));
                 });
             };
             reader.readAsDataURL(file);
-        }
+        });
+        
+        // Clear the file input
+        e.target.value = '';
     });
 
     // Handle logo file selection

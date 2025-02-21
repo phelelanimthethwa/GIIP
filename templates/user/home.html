@@ -162,7 +162,7 @@
                 {% if associate.logo %}
                 <div class="associate-card" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
                     <div class="associate-logo">
-                        <img src="{{ url_for('static', filename=associate.logo) }}" 
+                        <img src="{{ associate.logo if associate.logo.startswith('http') else url_for('static', filename=associate.logo) }}" 
                              alt="{{ associate.name }}"
                              class="associate-logo-img"
                              data-fallback="{{ url_for('static', filename='images/logotrans.png') }}">

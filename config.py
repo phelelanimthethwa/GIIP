@@ -20,7 +20,7 @@ class Config:
         'authDomain': os.environ.get('FIREBASE_AUTH_DOMAIN'),
         'databaseURL': os.environ.get('FIREBASE_DATABASE_URL'),
         'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
-        'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET'),
+        'storageBucket': 'giir-66ae6.appspot.com',  # Corrected storage bucket format
         'messagingSenderId': os.environ.get('FIREBASE_MESSAGING_SENDER_ID'),
         'appId': os.environ.get('FIREBASE_APP_ID')
     }

@@ -3,7 +3,7 @@ from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import firebase_admin
-from firebase_admin import credentials, db, auth, firestore
+from firebase_admin import credentials, db, auth, firestore, storage
 from config import Config
 import json
 from datetime import datetime, timedelta
@@ -53,6 +53,7 @@ try:
     
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://giir-66ae6-default-rtdb.firebaseio.com',
+        'storageBucket': 'giir-66ae6.appspot.com',  # Add storage bucket configuration
         'apiKey': os.environ.get('FIREBASE_API_KEY')
     })
     print("Firebase initialized successfully")
@@ -155,7 +156,7 @@ def validate_associate_data(name, description, logo_url):
     return True
 
 def save_associate_logo(logo_file, existing_logo=None):
-    """Save associate logo and return the URL"""
+    """Save associate logo to Firebase Storage and return the public URL"""
     if not logo_file or not logo_file.filename:
         if existing_logo:
             return existing_logo
@@ -165,27 +166,40 @@ def save_associate_logo(logo_file, existing_logo=None):
         raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
     
     try:
+        # Initialize Firebase Storage bucket
+        bucket = storage.bucket()
+        
+        # Generate unique filename
         filename = secure_filename(logo_file.filename)
-        unique_filename = f"associate_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+        unique_filename = f"associates/logos/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
         
-        # Create upload directory if it doesn't exist
-        associates_upload_path = os.path.join(app.root_path, 'static', 'uploads', 'associates')
-        os.makedirs(associates_upload_path, exist_ok=True)
+        # Create a new blob and upload the file
+        blob = bucket.blob(unique_filename)
         
-        file_path = os.path.join(associates_upload_path, unique_filename)
-        logo_file.save(file_path)
+        # Set content type
+        content_type = logo_file.content_type or 'image/jpeg'
+        blob.content_type = content_type
         
-        if not os.path.exists(file_path):
-            raise ValueError("Failed to save logo file")
+        # Upload the file
+        blob.upload_from_string(
+            logo_file.read(),
+            content_type=content_type
+        )
         
-        # Return the path relative to static directory without /static/ prefix
-        return f"uploads/associates/{unique_filename}"
+        # Make the blob publicly accessible
+        blob.make_public()
+        
+        # Return the public URL
+        return blob.public_url
+        
     except Exception as e:
+        print(f"Error saving logo to Firebase Storage: {str(e)}")
         raise ValueError(f"Error saving logo: {str(e)}")
 
 def process_associates_data(request_form, request_files):
     """Process and validate all associates data"""
     associates = []
+    bucket = storage.bucket()
     
     # Process existing associates
     existing_names = request_form.getlist('existing_associate_names[]')
@@ -203,7 +217,16 @@ def process_associates_data(request_form, request_files):
             if f'associate_logo_{existing_ids[i]}' in request_files:
                 logo_file = request_files[f'associate_logo_{existing_ids[i]}']
                 if logo_file and logo_file.filename:
-                    logo = save_associate_logo(logo_file, logo)
+                    # Delete old logo from Firebase Storage if it exists
+                    if logo and logo.startswith('https://storage.googleapis.com/'):
+                        try:
+                            path = logo.split('/o/')[1].split('?')[0]
+                            path = path.replace('%2F', '/')
+                            old_blob = bucket.blob(path)
+                            old_blob.delete()
+                        except Exception as e:
+                            print(f"Error deleting old logo: {str(e)}")
+                    logo = save_associate_logo(logo_file)
             
             if logo:  # Only add if there's a logo
                 associates.append({
@@ -226,7 +249,7 @@ def process_associates_data(request_form, request_files):
                 logo_file = request_files[logo_file_key]
                 if logo_file and logo_file.filename:
                     logo_url = save_associate_logo(logo_file)
-                    if logo_url:  # Only add if logo was successfully uploaded
+                    if logo_url:
                         associates.append({
                             'name': name,
                             'description': description,
@@ -2303,7 +2326,7 @@ def validate_associate_data(name, description, logo_url):
     return True
 
 def save_associate_logo(logo_file, existing_logo=None):
-    """Save associate logo and return the URL"""
+    """Save associate logo to Firebase Storage and return the public URL"""
     if not logo_file or not logo_file.filename:
         if existing_logo:
             return existing_logo
@@ -2313,27 +2336,40 @@ def save_associate_logo(logo_file, existing_logo=None):
         raise ValueError("Invalid image format. Allowed formats: PNG, JPG, JPEG, GIF")
     
     try:
+        # Initialize Firebase Storage bucket
+        bucket = storage.bucket()
+        
+        # Generate unique filename
         filename = secure_filename(logo_file.filename)
-        unique_filename = f"associate_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+        unique_filename = f"associates/logos/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
         
-        # Create upload directory if it doesn't exist
-        associates_upload_path = os.path.join(app.root_path, 'static', 'uploads', 'associates')
-        os.makedirs(associates_upload_path, exist_ok=True)
+        # Create a new blob and upload the file
+        blob = bucket.blob(unique_filename)
         
-        file_path = os.path.join(associates_upload_path, unique_filename)
-        logo_file.save(file_path)
+        # Set content type
+        content_type = logo_file.content_type or 'image/jpeg'
+        blob.content_type = content_type
         
-        if not os.path.exists(file_path):
-            raise ValueError("Failed to save logo file")
+        # Upload the file
+        blob.upload_from_string(
+            logo_file.read(),
+            content_type=content_type
+        )
         
-        # Return the path relative to static directory without /static/ prefix
-        return f"uploads/associates/{unique_filename}"
+        # Make the blob publicly accessible
+        blob.make_public()
+        
+        # Return the public URL
+        return blob.public_url
+        
     except Exception as e:
+        print(f"Error saving logo to Firebase Storage: {str(e)}")
         raise ValueError(f"Error saving logo: {str(e)}")
 
 def process_associates_data(request_form, request_files):
     """Process and validate all associates data"""
     associates = []
+    bucket = storage.bucket()
     
     # Process existing associates
     existing_names = request_form.getlist('existing_associate_names[]')
@@ -2351,7 +2387,16 @@ def process_associates_data(request_form, request_files):
             if f'associate_logo_{existing_ids[i]}' in request_files:
                 logo_file = request_files[f'associate_logo_{existing_ids[i]}']
                 if logo_file and logo_file.filename:
-                    logo = save_associate_logo(logo_file, logo)
+                    # Delete old logo from Firebase Storage if it exists
+                    if logo and logo.startswith('https://storage.googleapis.com/'):
+                        try:
+                            path = logo.split('/o/')[1].split('?')[0]
+                            path = path.replace('%2F', '/')
+                            old_blob = bucket.blob(path)
+                            old_blob.delete()
+                        except Exception as e:
+                            print(f"Error deleting old logo: {str(e)}")
+                    logo = save_associate_logo(logo_file)
             
             if logo:  # Only add if there's a logo
                 associates.append({
@@ -2374,7 +2419,7 @@ def process_associates_data(request_form, request_files):
                 logo_file = request_files[logo_file_key]
                 if logo_file and logo_file.filename:
                     logo_url = save_associate_logo(logo_file)
-                    if logo_url:  # Only add if logo was successfully uploaded
+                    if logo_url:
                         associates.append({
                             'name': name,
                             'description': description,
@@ -3958,33 +4003,47 @@ default_content = {
 }
 
 def process_hero_images(request):
-    """Process and save hero images from form data"""
+    """Process and save hero images to Firebase Storage"""
     hero_images = []
-    
-    # Create base upload directory if it doesn't exist
-    base_upload_path = os.path.join(app.root_path, 'static', 'uploads')
-    hero_upload_path = os.path.join(base_upload_path, 'hero')
-    os.makedirs(hero_upload_path, exist_ok=True)
+    bucket = storage.bucket()
     
     # Handle existing images
     if 'existing_images' in request.form:
         try:
             existing_images = json.loads(request.form['existing_images'])
-            # Only keep images that weren't marked for deletion
             deleted_images = request.form.getlist('deleted_images[]')
+            
+            # Process existing images
             for image in existing_images:
-                if image['url'] not in deleted_images:
-                    hero_images.append(image)
+                image_url = image.get('url', '')
+                if not image_url:
+                    continue
+                    
+                # Check if image is marked for deletion
+                if image_url not in deleted_images:
+                    hero_images.append({
+                        'url': image_url,
+                        'alt': image.get('alt', '')
+                    })
                 else:
-                    # Delete the file if it exists
+                    # Delete from Firebase Storage
                     try:
-                        file_path = os.path.join(app.root_path, 'static', image['url'].lstrip('/static/'))
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
+                        # Extract blob path from URL
+                        blob_path = image_url.split('/o/')[1].split('?')[0]
+                        blob_path = blob_path.replace('%2F', '/')
+                        blob = bucket.blob(blob_path)
+                        if blob.exists():
+                            blob.delete()
+                            print(f"Successfully deleted hero image from storage: {blob_path}")
                     except Exception as e:
-                        print(f"Error deleting hero image: {str(e)}")
+                        print(f"Error deleting hero image from storage: {str(e)}")
+                        continue
         except json.JSONDecodeError as e:
-            print(f"Error parsing existing images: {str(e)}")
+            print(f"Error parsing existing images JSON: {str(e)}")
+            return []
+        except Exception as e:
+            print(f"Unexpected error processing existing images: {str(e)}")
+            return []
     
     # Handle new hero image uploads
     if 'hero_images' in request.files:
@@ -3998,25 +4057,28 @@ def process_hero_images(request):
                     # Generate unique filename
                     filename = secure_filename(file.filename)
                     unique_filename = f"hero_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                    file_path = os.path.join(hero_upload_path, unique_filename)
+                    blob_path = f"hero_images/{unique_filename}"
                     
-                    # Save the compressed image
-                    with open(file_path, 'wb') as f:
-                        f.write(compressed_image.getvalue())
+                    # Upload to Firebase Storage
+                    blob = bucket.blob(blob_path)
+                    blob.upload_from_string(
+                        compressed_image.getvalue(),
+                        content_type=file.content_type
+                    )
                     
-                    # Verify file was saved
-                    if not os.path.exists(file_path):
-                        raise Exception(f"Failed to save file: {file_path}")
+                    # Make the blob publicly accessible
+                    blob.make_public()
                     
-                    # Add to hero images list
-                    image_url = f"/static/uploads/hero/{unique_filename}"
+                    # Get the public URL
+                    image_url = blob.public_url
+                    
                     hero_images.append({
                         'url': image_url,
                         'alt': filename
                     })
-                    print(f"Successfully saved hero image: {image_url}")
+                    print(f"Successfully uploaded hero image to storage: {blob_path}")
                 except Exception as e:
-                    print(f"Error saving hero image {filename}: {str(e)}")
+                    print(f"Error processing hero image {file.filename}: {str(e)}")
                     continue
     
     return hero_images
