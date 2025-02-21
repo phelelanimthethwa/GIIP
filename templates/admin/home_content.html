@@ -786,6 +786,9 @@
 
 {% block scripts %}
 <script>
+// Add this constant at the start of the script section
+const MAX_ASSOCIATES = 10;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Connect save button to form submission
     document.getElementById('saveAllChanges').addEventListener('click', function() {
@@ -794,6 +797,43 @@ document.addEventListener('DOMContentLoaded', function() {
             form.dispatchEvent(new Event('submit'));
         }
     });
+
+    // Setup associate card listeners
+    function setupAssociateCardListeners(card) {
+        if (!card) return;
+        
+        const logoInput = card.querySelector('.logo-upload');
+        if (logoInput) {
+            logoInput.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Logo file size must be less than 5MB');
+                    e.target.value = '';
+                    return;
+                }
+                
+                if (!file.type.match('image.*')) {
+                    alert('Please upload an image file');
+                    e.target.value = '';
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const associateImage = logoInput.closest('.associate-image');
+                    if (!associateImage) return;
+                    
+                    const img = associateImage.querySelector('img');
+                    if (img) {
+                        img.src = e.target.result;
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    }
 
     // Handle image deletion
     document.querySelectorAll('.delete-image').forEach(function(button) {
@@ -860,9 +900,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = e.target.files[0];
             if (!file) return;
 
-            const img = input.closest('.associate-image').querySelector('img');
+            const associateImage = input.closest('.associate-image');
+            if (!associateImage) return;
+
+            const img = associateImage.querySelector('img');
+            const loadingOverlay = associateImage.querySelector('.upload-overlay');
+            
+            if (!img || !loadingOverlay) return;
+
             const originalSrc = img.src;
-            const loadingOverlay = input.closest('.associate-image').querySelector('.upload-overlay');
             
             // Show loading state
             loadingOverlay.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Validating...</span>';
@@ -891,26 +937,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const addButton = document.getElementById('addAssociatesBtn');
     let selectedFiles = [];
 
-    function createUploadZone() {
-        return `
-            <i class="fas fa-cloud-upload-alt"></i>
-            <span>Drop logos here or click to upload</span>
-            <small>(You can select multiple files)</small>
-            <input type="file" name="new_associate_logos" class="logo-upload" accept="image/*" multiple>
-        `;
-    }
-
-    function resetUploadZone(uploadZone) {
-        uploadZone.innerHTML = createUploadZone();
-        // Reattach event listener to new input
-        uploadZone.querySelector('input[name="new_associate_logos"]').addEventListener('change', handleFileSelect);
-    }
-
-    async function handleFileSelect(e) {
-        const files = Array.from(e.target.files);
-        const uploadZone = this.closest('.upload-zone');
+    function updateUploadZoneVisibility() {
+        const existingAssociates = document.querySelectorAll('#existingAssociates .associate-card').length;
+        const uploadZone = document.querySelector('.upload-zone');
+        const addAssociatesBtn = document.getElementById('addAssociatesBtn');
         
-        if (files.length === 0) return;
+        if (existingAssociates >= MAX_ASSOCIATES) {
+            uploadZone.style.display = 'none';
+            addAssociatesBtn.style.display = 'none';
+            // Show message about maximum limit
+            const message = document.createElement('div');
+            message.className = 'alert alert-warning mt-3';
+            message.textContent = `Maximum number of associates (${MAX_ASSOCIATES}) reached. Please remove some logos before adding new ones.`;
+            uploadZone.parentElement.appendChild(message);
+        } else {
+            uploadZone.style.display = 'block';
+            addAssociatesBtn.style.display = 'block';
+            // Remove any existing warning message
+            const existingMessage = uploadZone.parentElement.querySelector('.alert-warning');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+        }
+    }
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        const uploadZone = e.target.closest('.upload-zone');
+        
+        if (!files.length || !uploadZone || !previewGrid) return;
+        
+        const existingAssociates = document.querySelectorAll('#existingAssociates .associate-card').length;
+        const totalAssociates = existingAssociates + selectedFiles.length + files.length;
+        
+        if (totalAssociates > MAX_ASSOCIATES) {
+            alert(`You can only have a maximum of ${MAX_ASSOCIATES} associate logos. Please remove some existing logos before adding new ones.`);
+            e.target.value = '';
+            return;
+        }
         
         uploadZone.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Validating...</span>';
         
@@ -940,78 +1004,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 previewGrid.appendChild(previewItem);
                 
                 // Add remove functionality
-                previewItem.querySelector('.remove-preview').addEventListener('click', function() {
-                    const index = Array.from(previewGrid.children).indexOf(previewItem);
-                    selectedFiles.splice(index, 1);
-                    previewItem.remove();
-                    URL.revokeObjectURL(objectUrl);
-                });
+                const removeButton = previewItem.querySelector('.remove-preview');
+                if (removeButton) {
+                    removeButton.addEventListener('click', function() {
+                        const index = Array.from(previewGrid.children).indexOf(previewItem);
+                        selectedFiles.splice(index, 1);
+                        previewItem.remove();
+                        URL.revokeObjectURL(objectUrl);
+                        updateUploadZoneVisibility();
+                    });
+                }
             }
             
             resetUploadZone(uploadZone);
+            updateUploadZoneVisibility();
             
         } catch (error) {
             alert(error.message);
             resetUploadZone(uploadZone);
         }
     }
-
-    // Initial event listener setup
-    if (logoInput) {
-        logoInput.addEventListener('change', handleFileSelect);
-    }
-
-    // Handle adding multiple new associates
-    document.getElementById('addAssociatesBtn').addEventListener('click', async function() {
-        const container = document.getElementById('existingAssociates');
-        
-        if (selectedFiles.length === 0) {
-            alert('Please select at least one logo to upload');
-            return;
-        }
-
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const file = selectedFiles[i];
-            const newAssociateIndex = container.children.length;
-            const objectUrl = URL.createObjectURL(file);
-            
-            const newCard = document.createElement('div');
-            newCard.className = 'associate-card';
-            newCard.innerHTML = `
-                <div class="associate-image">
-                    <img src="${objectUrl}" alt="Associate Logo">
-                    <div class="upload-overlay">
-                        <i class="fas fa-upload"></i>
-                        <span>Click to change logo</span>
-                    </div>
-                    <input type="file" name="new_associate_logo_${newAssociateIndex}" class="logo-upload" accept="image/*">
-                </div>
-                <div class="associate-actions">
-                    <button type="button" class="btn btn-danger btn-sm delete-associate">
-                        <i class="fas fa-trash"></i> Remove
-                    </button>
-                </div>
-            `;
-            
-            container.appendChild(newCard);
-            
-            // Create a new File object with the selected file
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            newCard.querySelector('.logo-upload').files = dataTransfer.files;
-            
-            // Add event listeners to the new card
-            setupAssociateCardListeners(newCard);
-        }
-        
-        // Clear previews and selected files
-        previewGrid.innerHTML = '';
-        selectedFiles = [];
-        
-        // Reset the upload zone
-        const uploadZone = document.querySelector('.upload-zone');
-        resetUploadZone(uploadZone);
-    });
 
     // Handle deleting associates
     document.addEventListener('click', function(e) {
@@ -1021,40 +1033,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add fade-out animation
                 card.style.opacity = '0';
                 card.style.transform = 'scale(0.8)';
-                setTimeout(() => card.remove(), 300);
+                setTimeout(() => {
+                    card.remove();
+                    updateUploadZoneVisibility();
+                }, 300);
             }
         }
     });
-
-    // Setup associate card listeners
-    function setupAssociateCardListeners(card) {
-        const logoInput = card.querySelector('.logo-upload');
-        if (logoInput) {
-            logoInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                        alert('Logo file size must be less than 5MB');
-                        e.target.value = '';
-                        return;
-                    }
-                    
-                    if (!file.type.match('image.*')) {
-                        alert('Please upload an image file');
-                        e.target.value = '';
-                        return;
-                    }
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const img = logoInput.closest('.associate-image').querySelector('img');
-                        img.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-    }
 
     // Setup existing cards
     document.querySelectorAll('.associate-card').forEach(setupAssociateCardListeners);
@@ -1090,7 +1075,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add each deleted hero image URL
         deletedHeroImages.forEach(url => {
             formData.append('deleted_hero_images[]', url);
-            console.log('Adding deleted hero image:', url);
+        });
+        
+        // Handle new associate logos
+        const newAssociateCards = document.querySelectorAll('.associate-card[data-id^="new_"]');
+        newAssociateCards.forEach((card, index) => {
+            const fileInput = card.querySelector('.logo-upload');
+            if (fileInput && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                formData.append(`new_associate_logo_${index}`, file);
+                formData.append('existing_associate_ids[]', card.dataset.id);
+                formData.append('existing_associate_logos[]', '');
+            }
         });
         
         // Debug log the FormData contents
@@ -1099,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(pair[0] + ': ' + (pair[1] instanceof File ? pair[1].name : pair[1]));
         }
         
+        // Submit the form
         fetch('/admin/home-content', {
             method: 'POST',
             body: formData
@@ -1124,6 +1121,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Error:', error);
+                console.error('Server response:', text);
                 
                 // Show error message
                 const toast = document.createElement('div');
@@ -1134,6 +1132,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Remove toast after delay
                 setTimeout(() => toast.remove(), 5000);
             }
+        })
+        .catch(error => {
+            console.error('Network error:', error);
+            const toast = document.createElement('div');
+            toast.className = 'toast-message error';
+            toast.innerHTML = `<i class="fas fa-exclamation-circle"></i> Network error: ${error.message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
         })
         .finally(() => {
             // Reset button state
@@ -1218,6 +1224,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Initial setup
+    updateUploadZoneVisibility();
 });
 </script>
 {% endblock scripts %}

@@ -125,12 +125,11 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', '
 DEFAULT_THEME = {
     'primary_color': '#007bff',
     'secondary_color': '#6c757d',
-    'accent_color': '#28a745',
-    'text_color': '#333333',
-    'background_color': '#ffffff',
-    'header_background': '#f8f9fa',
-    'footer_background': '#343a40',
-    'hero_text_color': '#ffffff'
+    'accent_color': '#ffc107',
+    'text_color': '#212529',
+    'background_color': '#f8f9fa',
+    'font_family': "'Roboto', sans-serif",
+    'heading_font': "'Poppins', sans-serif"
 }
 
 # Add this near the top with other upload folder configurations
@@ -293,18 +292,7 @@ def save_associate_logo(logo_file, existing_logo=None):
 def process_associates_data(request_form, request_files):
     """Process associates data from the form submission"""
     try:
-        # Log the keys in request_files to verify file upload
         print("Received files in process_associates_data:", request_files.keys())
-        
-        # Check if 'new_associate_logos' is in request_files
-        if 'new_associate_logos' not in request_files:
-            print("No 'new_associate_logos' key found in request_files.")
-            raise ValueError("Logo file is required")
-        
-        # Log the file details
-        logo_file = request_files.get('new_associate_logos')
-        print("Logo file details:", logo_file)
-        
         associates = []
         errors = []
         bucket = storage.bucket()
@@ -312,33 +300,28 @@ def process_associates_data(request_form, request_files):
         # Process existing associates
         existing_ids = request_form.getlist('existing_associate_ids[]')
         existing_logos = request_form.getlist('existing_associate_logos[]')
-        deleted_logos = request_form.getlist('deleted_logos[]') or []
-
+        
+        print(f"Processing {len(existing_ids)} existing associates")
+        
+        # Check total number of associates (existing + new)
+        new_files = request_files.getlist('new_associate_logos')
+        total_associates = len(existing_ids) + len(new_files)
+        MAX_ASSOCIATES = 10  # Maximum number of associates allowed
+        
+        if total_associates > MAX_ASSOCIATES:
+            raise ValueError(f"Maximum number of associates ({MAX_ASSOCIATES}) exceeded. Please remove some logos before adding new ones.")
+        
         # Handle existing associates
         for i, associate_id in enumerate(existing_ids):
             try:
-                # Skip if this logo is marked for deletion
-                if existing_logos[i] in deleted_logos:
-                    try:
-                        # Extract blob path from URL
-                        blob_path = existing_logos[i].split('/o/')[1].split('?')[0]
-                        blob_path = blob_path.replace('%2F', '/')
-                        blob = bucket.blob(blob_path)
-                        if blob.exists():
-                            blob.delete()
-                            print(f"Successfully deleted associate logo: {blob_path}")
-                    except Exception as e:
-                        print(f"Error deleting old logo: {str(e)}")
-                    continue
-
-                # Check if there's a new logo file for this existing associate
+                logo_url = existing_logos[i]
                 logo_key = f'associate_logo_{associate_id}'
+                
                 if logo_key in request_files and request_files[logo_key].filename:
                     # Delete old logo if it exists
                     try:
-                        old_logo_url = existing_logos[i]
-                        if old_logo_url:
-                            blob_path = old_logo_url.split('/o/')[1].split('?')[0]
+                        if logo_url and logo_url.startswith('https://'):
+                            blob_path = logo_url.split('/o/')[1].split('?')[0]
                             blob_path = blob_path.replace('%2F', '/')
                             blob = bucket.blob(blob_path)
                             if blob.exists():
@@ -347,44 +330,44 @@ def process_associates_data(request_form, request_files):
                     except Exception as e:
                         print(f"Error deleting old logo: {str(e)}")
 
-                    # Save new logo and get URL
+                    # Save new logo
                     logo_url = save_associate_logo(request_files[logo_key])
-                else:
-                    # Keep existing logo
-                    logo_url = existing_logos[i]
                 
                 associates.append({
                     'id': associate_id,
-                    'logo': logo_url
+                    'logo': logo_url,
+                    'name': 'Associate',
+                    'description': ''
                 })
+                
             except Exception as e:
-                errors.append(f"Error processing existing associate {associate_id}: {str(e)}")
+                errors.append(f"Error processing associate {associate_id}: {str(e)}")
 
-        # Handle new associates from multiple file upload
+        # Process new associate logos from multiple file upload
         if 'new_associate_logos' in request_files:
-            files = request_files.getlist('new_associate_logos')
-            for file in files:
-                if file and file.filename:  # Only process if there's actually a file
+            new_files = request_files.getlist('new_associate_logos')
+            print(f"Processing {len(new_files)} new associate logos")
+            
+            for file in new_files:
+                if file and file.filename:
                     try:
-                        # Generate a new unique ID for each logo
-                        new_id = str(uuid.uuid4())
-                        # Save the logo and get URL
                         logo_url = save_associate_logo(file)
-                        
                         associates.append({
-                            'id': new_id,
-                            'logo': logo_url
+                            'id': str(uuid.uuid4()),
+                            'logo': logo_url,
+                            'name': 'New Associate',
+                            'description': ''
                         })
+                        print(f"Successfully added new associate logo: {logo_url}")
                     except Exception as e:
-                        errors.append(f"Error processing new logo {file.filename}: {str(e)}")
+                        print(f"Error processing new logo: {str(e)}")
+                        errors.append(str(e))
 
         if errors:
-            print("Errors during associate processing:", errors)  # Debug log
-            if any("Logo file is required" in error for error in errors):
-                # If these are just "Logo file is required" errors for empty uploads, we can ignore them
-                return associates
+            print("Errors during associate processing:", errors)
             raise Exception('\n'.join(errors))
 
+        print(f"Successfully processed {len(associates)} total associates")
         return associates
 
     except Exception as e:
@@ -424,12 +407,15 @@ def get_site_design():
 
 @app.route('/')
 def home():
+    """Render the home page"""
     try:
-        # Get home content
+        # Get home content from Firebase Realtime Database
         content_ref = db.reference('home_content')
         home_content = content_ref.get() or {
             'welcome': {
                 'title': 'Welcome to GIIR Conference 2024',
+                'subtitle': 'Global Institute on Innovative Research',
+                'conference_date': 'International Conference 2024',
                 'message': 'Join us for the premier conference in innovative research'
             },
             'hero': {
@@ -444,11 +430,11 @@ def home():
             },
             'vmo': {
                 'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-                'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
-                'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+                'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
+                'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
             },
             'downloads': [],
-            'associates': [],  # Changed from supporters to associates
+            'associates': [],
             'footer': {
                 'contact_email': 'contact@giirconference.com',
                 'contact_phone': '+1234567890',
@@ -461,54 +447,68 @@ def home():
                 'copyright': '© 2024 GIIR Conference. All rights reserved.'
             }
         }
+
+        # Ensure associates is always a list
+        if 'associates' not in home_content:
+            home_content['associates'] = []
         
-        # Get downloads
-        downloads_ref = db.reference('downloads')
-        downloads = downloads_ref.get() or []
-        
+        # Ensure each associate has required fields
+        for associate in home_content.get('associates', []):
+            if not isinstance(associate, dict):
+                continue
+            associate.setdefault('name', 'Associate')
+            associate.setdefault('description', '')
+            associate.setdefault('logo', '')
+
+        # Get site design
+        site_design = get_site_design()
+
         return render_template('user/home.html', 
                              home_content=home_content,
-                             downloads=downloads,
-                             site_design=get_site_design())
+                             site_design=site_design,
+                             page_name='home')
     except Exception as e:
-        flash(f'Error loading home page: {str(e)}', 'error')
+        print(f"Error rendering home page: {str(e)}")
+        flash('Error loading home page content', 'error')
         return render_template('user/home.html', 
                              home_content={
-                                'welcome': {
-                                    'title': 'Welcome to GIIR Conference 2024',
-                                    'message': 'Join us for the premier conference in innovative research'
-                                },
-                                'hero': {
-                                    'images': [],
-                                    'conference': {
-                                        'name': 'GIIR Conference 2024',
-                                        'date': 'TBA',
-                                        'time': 'TBA',
-                                        'city': 'TBA',
-                                        'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-                                    }
-                                },
-                                'vmo': {
-                                    'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-                                    'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
-                                    'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
-                                },
-                                'downloads': [],
-                                'associates': [],  # Changed from supporters to associates
-                                'footer': {
-                                    'contact_email': 'contact@giirconference.com',
-                                    'contact_phone': '+1234567890',
-                                    'social_media': {
-                                        'facebook': '',
-                                        'twitter': '',
-                                        'linkedin': ''
-                                    },
-                                    'address': 'Conference Venue, City, Country',
-                                    'copyright': '© 2024 GIIR Conference. All rights reserved.'
-                                }
+                                 'welcome': {
+                                     'title': 'Welcome to GIIR Conference 2024',
+                                     'subtitle': 'Global Institute on Innovative Research',
+                                     'conference_date': 'International Conference 2024',
+                                     'message': 'Join us for the premier conference in innovative research'
+                                 },
+                                 'hero': {
+                                     'images': [],
+                                     'conference': {
+                                         'name': 'GIIR Conference 2024',
+                                         'date': 'TBA',
+                                         'time': 'TBA',
+                                         'city': 'TBA',
+                                         'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+                                     }
+                                 },
+                                 'vmo': {
+                                     'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+                                     'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
+                                     'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
+                                 },
+                                 'downloads': [],
+                                 'associates': [],
+                                 'footer': {
+                                     'contact_email': 'contact@giirconference.com',
+                                     'contact_phone': '+1234567890',
+                                     'social_media': {
+                                         'facebook': '',
+                                         'twitter': '',
+                                         'linkedin': ''
+                                     },
+                                     'address': 'Conference Venue, City, Country',
+                                     'copyright': '© 2024 GIIR Conference. All rights reserved.'
+                                 }
                              },
-                             downloads=[],
-                             site_design=get_site_design())
+                             site_design=DEFAULT_THEME,
+                             page_name='home')
 
 @app.route('/about')
 def about():
@@ -2471,14 +2471,13 @@ def save_associate_logo(logo_file, existing_logo=None):
     try:
         # Initialize Firebase Storage bucket
         bucket = storage.bucket()
-        
+                            
         # Generate unique filename
         filename = secure_filename(logo_file.filename)
         unique_filename = f"associates/logos/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
         
         # Create a new blob and upload the file
         blob = bucket.blob(unique_filename)
-        
         # Set content type
         content_type = logo_file.content_type or 'image/jpeg'
         blob.content_type = content_type
@@ -2505,18 +2504,7 @@ def save_associate_logo(logo_file, existing_logo=None):
 def process_associates_data(request_form, request_files):
     """Process associates data from the form submission"""
     try:
-        # Log the keys in request_files to verify file upload
         print("Received files in process_associates_data:", request_files.keys())
-        
-        # Check if 'new_associate_logos' is in request_files
-        if 'new_associate_logos' not in request_files:
-            print("No 'new_associate_logos' key found in request_files.")
-            raise ValueError("Logo file is required")
-        
-        # Log the file details
-        logo_file = request_files.get('new_associate_logos')
-        print("Logo file details:", logo_file)
-        
         associates = []
         errors = []
         bucket = storage.bucket()
@@ -2524,33 +2512,28 @@ def process_associates_data(request_form, request_files):
         # Process existing associates
         existing_ids = request_form.getlist('existing_associate_ids[]')
         existing_logos = request_form.getlist('existing_associate_logos[]')
-        deleted_logos = request_form.getlist('deleted_logos[]') or []
-
+        
+        print(f"Processing {len(existing_ids)} existing associates")
+        
+        # Check total number of associates (existing + new)
+        new_files = request_files.getlist('new_associate_logos')
+        total_associates = len(existing_ids) + len(new_files)
+        MAX_ASSOCIATES = 10  # Maximum number of associates allowed
+        
+        if total_associates > MAX_ASSOCIATES:
+            raise ValueError(f"Maximum number of associates ({MAX_ASSOCIATES}) exceeded. Please remove some logos before adding new ones.")
+        
         # Handle existing associates
         for i, associate_id in enumerate(existing_ids):
             try:
-                # Skip if this logo is marked for deletion
-                if existing_logos[i] in deleted_logos:
-                    try:
-                        # Extract blob path from URL
-                        blob_path = existing_logos[i].split('/o/')[1].split('?')[0]
-                        blob_path = blob_path.replace('%2F', '/')
-                        blob = bucket.blob(blob_path)
-                        if blob.exists():
-                            blob.delete()
-                            print(f"Successfully deleted associate logo: {blob_path}")
-                    except Exception as e:
-                        print(f"Error deleting old logo: {str(e)}")
-                    continue
-
-                # Check if there's a new logo file for this existing associate
+                logo_url = existing_logos[i]
                 logo_key = f'associate_logo_{associate_id}'
+                
                 if logo_key in request_files and request_files[logo_key].filename:
                     # Delete old logo if it exists
                     try:
-                        old_logo_url = existing_logos[i]
-                        if old_logo_url:
-                            blob_path = old_logo_url.split('/o/')[1].split('?')[0]
+                        if logo_url and logo_url.startswith('https://'):
+                            blob_path = logo_url.split('/o/')[1].split('?')[0]
                             blob_path = blob_path.replace('%2F', '/')
                             blob = bucket.blob(blob_path)
                             if blob.exists():
@@ -2559,44 +2542,44 @@ def process_associates_data(request_form, request_files):
                     except Exception as e:
                         print(f"Error deleting old logo: {str(e)}")
 
-                    # Save new logo and get URL
+                    # Save new logo
                     logo_url = save_associate_logo(request_files[logo_key])
-                else:
-                    # Keep existing logo
-                    logo_url = existing_logos[i]
                 
                 associates.append({
                     'id': associate_id,
-                    'logo': logo_url
+                    'logo': logo_url,
+                    'name': 'Associate',
+                    'description': ''
                 })
+                
             except Exception as e:
-                errors.append(f"Error processing existing associate {associate_id}: {str(e)}")
+                errors.append(f"Error processing associate {associate_id}: {str(e)}")
 
-        # Handle new associates from multiple file upload
+        # Process new associate logos from multiple file upload
         if 'new_associate_logos' in request_files:
-            files = request_files.getlist('new_associate_logos')
-            for file in files:
-                if file and file.filename:  # Only process if there's actually a file
+            new_files = request_files.getlist('new_associate_logos')
+            print(f"Processing {len(new_files)} new associate logos")
+            
+            for file in new_files:
+                if file and file.filename:
                     try:
-                        # Generate a new unique ID for each logo
-                        new_id = str(uuid.uuid4())
-                        # Save the logo and get URL
                         logo_url = save_associate_logo(file)
-                        
                         associates.append({
-                            'id': new_id,
-                            'logo': logo_url
+                            'id': str(uuid.uuid4()),
+                            'logo': logo_url,
+                            'name': 'New Associate',
+                            'description': ''
                         })
+                        print(f"Successfully added new associate logo: {logo_url}")
                     except Exception as e:
-                        errors.append(f"Error processing new logo {file.filename}: {str(e)}")
+                        print(f"Error processing new logo: {str(e)}")
+                        errors.append(str(e))
 
         if errors:
-            print("Errors during associate processing:", errors)  # Debug log
-            if any("Logo file is required" in error for error in errors):
-                # If these are just "Logo file is required" errors for empty uploads, we can ignore them
-                return associates
+            print("Errors during associate processing:", errors)
             raise Exception('\n'.join(errors))
 
+        print(f"Successfully processed {len(associates)} total associates")
         return associates
 
     except Exception as e:
@@ -2625,46 +2608,74 @@ def admin_home_content():
             }
             
             # Process hero images
-            if 'hero_images' in request.files:
-                try:
-                    hero_images = process_hero_images(request)
-                    if hero_images is not None:
-                        update_data['hero'] = {
-                            'images': hero_images,
-                            'conference': {
-                                'name': request.form.get('conference[name]'),
-                                'date': request.form.get('conference[date]'),
-                                'time': request.form.get('conference[time]'),
-                                'city': request.form.get('conference[city]'),
-                                'highlights': request.form.get('conference[highlights]')
-                            }
-                        }
-                except Exception as e:
-                    print(f"Error processing hero images: {str(e)}")
-                    return jsonify({'success': False, 'error': f'Error processing hero images: {str(e)}'}), 400
-            else:
-                # Keep existing hero section if no new images
-                content_ref = db.reference('home_content')
-                current_content = content_ref.get() or {}
-                if 'hero' in current_content:
-                    update_data['hero'] = current_content['hero']
-                    # Update conference details
-                    update_data['hero']['conference'] = {
-                        'name': request.form.get('conference[name]'),
-                        'date': request.form.get('conference[date]'),
-                        'time': request.form.get('conference[time]'),
-                        'city': request.form.get('conference[city]'),
-                        'highlights': request.form.get('conference[highlights]')
-                    }
+            deleted_hero_images = request.form.getlist('deleted_hero_images[]')
+            print(f"Processing {len(deleted_hero_images)} deleted hero images")
             
-            # Process associates data
-            try:
-                associates = process_associates_data(request.form, request.files)
-                if associates:
-                    update_data['associates'] = associates
-            except Exception as e:
-                print(f"Error processing associates: {str(e)}")
-                return jsonify({'success': False, 'error': str(e)}), 400
+            # Get existing hero images
+            content_ref = db.reference('home_content')
+            current_content = content_ref.get() or {}
+            current_hero_images = current_content.get('hero', {}).get('images', [])
+            
+            # Remove deleted images
+            hero_images = [img for img in current_hero_images if img['url'] not in deleted_hero_images]
+            
+            # Process new hero images
+            if 'hero_images' in request.files:
+                hero_files = request.files.getlist('hero_images')
+                print(f"Processing {len(hero_files)} new hero images")
+                for file in hero_files:
+                    if file and file.filename:
+                        try:
+                            # Validate and save hero image
+                            validate_image(file, image_type='hero')
+                            
+                            # Initialize Firebase Storage bucket
+                            bucket = storage.bucket()
+                            
+                            # Generate unique filename
+                            filename = secure_filename(file.filename)
+                            unique_filename = f"hero/images/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                            
+                            # Create a new blob and upload the file
+                            blob = bucket.blob(unique_filename)
+                            
+                            # Set content type
+                            content_type = file.content_type or 'image/jpeg'
+                            blob.content_type = content_type
+                            
+                            # Compress image if needed
+                            img_data = compress_image(file, max_size_kb=800)
+                            
+                            # Upload the file
+                            blob.upload_from_string(
+                                img_data,
+                                content_type=content_type
+                            )
+                            
+                            # Make the blob publicly accessible
+                            blob.make_public()
+                            
+                            # Add to hero images list
+                            hero_images.append({
+                                'url': blob.public_url,
+                                'alt': filename
+                            })
+                            
+                        except Exception as e:
+                            print(f"Error processing hero image: {str(e)}")
+                            continue
+            
+            # Update hero section in update_data
+            update_data['hero'] = {
+                'images': hero_images,
+                'conference': {
+                    'name': request.form.get('conference[name]'),
+                    'date': request.form.get('conference[date]'),
+                    'time': request.form.get('conference[time]'),
+                    'city': request.form.get('conference[city]'),
+                    'highlights': request.form.get('conference[highlights]')
+                }
+            }
             
             # Update VMO section
             update_data['vmo'] = {
@@ -2672,6 +2683,21 @@ def admin_home_content():
                 'mission': request.form.get('vmo[mission]'),
                 'objectives': request.form.get('vmo[objectives]')
             }
+            
+            # Process associates data
+            try:
+                # Get current associates to preserve existing data
+                current_associates = current_content.get('associates', [])
+                
+                # Process new and updated associates
+                associates = process_associates_data(request.form, request.files)
+                
+                # Update associates in update_data
+                update_data['associates'] = associates
+                
+            except Exception as e:
+                print(f"Error processing associates: {str(e)}")
+                return jsonify({'success': False, 'error': f"Error processing associates: {str(e)}"}), 400
             
             # Update footer section
             update_data['footer'] = {

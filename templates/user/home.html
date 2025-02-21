@@ -159,20 +159,18 @@
         <h2 class="section-title text-center">Our Associates</h2>
         <div class="associates-grid">
             {% for associate in home_content.associates %}
-                {% if associate.logo %}
                 <div class="associate-card" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
                     <div class="associate-logo">
-                        <img src="{{ associate.logo if associate.logo.startswith('http') else url_for('static', filename=associate.logo) }}" 
-                             alt="{{ associate.name }}"
+                        <img src="{{ associate.logo }}" 
+                             alt="{{ associate.name|default('Associate Logo') }}"
                              class="associate-logo-img"
                              data-fallback="{{ url_for('static', filename='images/logotrans.png') }}">
                     </div>
                     <div class="associate-info">
-                        <h3>{{ associate.name }}</h3>
-                        <p>{{ associate.description }}</p>
+                        <h3>{{ associate.name|default('Associate') }}</h3>
+                        <p>{{ associate.description|default('') }}</p>
                     </div>
                 </div>
-                {% endif %}
             {% endfor %}
         </div>
     </div>
@@ -665,7 +663,7 @@ html {
 
 .associates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 2rem;
     margin: 0 auto;
     max-width: 1200px;
@@ -698,7 +696,7 @@ html {
     justify-content: center;
     padding: 1rem;
     background: white;
-    border-radius: 50%;
+    border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -706,17 +704,7 @@ html {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    filter: grayscale(1);
-    opacity: 0.8;
-    -webkit-transition: all 0.3s ease;
-    -moz-transition: all 0.3s ease;
     transition: all 0.3s ease;
-}
-
-.associate-card:hover .associate-logo img {
-    filter: grayscale(0);
-    opacity: 1;
-    transform: scale(1.05);
 }
 
 .associate-info {
@@ -749,14 +737,13 @@ html {
     }
 
     .associates-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1.5rem;
     }
 
     .associate-logo {
         width: 120px;
         height: 120px;
-        margin-bottom: 1rem;
     }
 
     .associate-info h3 {
