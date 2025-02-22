@@ -141,9 +141,12 @@ ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', '
 DEFAULT_THEME = {
     'primary_color': '#007bff',
     'secondary_color': '#6c757d',
-    'accent_color': '#ffc107',
-    'text_color': '#212529',
-    'background_color': '#f8f9fa',
+    'accent_color': '#28a745',
+    'text_color': '#333333',
+    'background_color': '#ffffff',
+    'header_background': '#f8f9fa',
+    'footer_background': '#343a40',
+    'hero_text_color': '#ffffff',
     'font_family': "'Roboto', sans-serif",
     'heading_font': "'Poppins', sans-serif"
 }
@@ -423,108 +426,19 @@ def get_site_design():
 
 @app.route('/')
 def home():
-    """Render the home page"""
     try:
-        # Get home content from Firebase Realtime Database
+        # Get home content from Firebase
         content_ref = db.reference('home_content')
-        home_content = content_ref.get() or {
-            'welcome': {
-                'title': 'Welcome to GIIR Conference 2024',
-                'subtitle': 'Global Institute on Innovative Research',
-                'conference_date': 'International Conference 2024',
-                'message': 'Join us for the premier conference in innovative research'
-            },
-            'hero': {
-                'images': [],
-                'conference': {
-                    'name': 'GIIR Conference 2024',
-                    'date': 'TBA',
-                    'time': 'TBA',
-                    'city': 'TBA',
-                    'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-                }
-            },
-            'vmo': {
-                'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-                'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
-                'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
-            },
-            'downloads': [],
-            'associates': [],
-            'footer': {
-                'contact_email': 'contact@giirconference.com',
-                'contact_phone': '+1234567890',
-                'social_media': {
-                    'facebook': '',
-                    'twitter': '',
-                    'linkedin': ''
-                },
-                'address': 'Conference Venue, City, Country',
-                'copyright': '© 2024 GIIR Conference. All rights reserved.'
-            }
-        }
-
-        # Ensure associates is always a list
-        if 'associates' not in home_content:
-            home_content['associates'] = []
+        home_content = content_ref.get() or {}
         
-        # Ensure each associate has required fields
-        for associate in home_content.get('associates', []):
-            if not isinstance(associate, dict):
-                continue
-            associate.setdefault('name', 'Associate')
-            associate.setdefault('description', '')
-            associate.setdefault('logo', '')
-
-        # Get site design
-        site_design = get_site_design()
-
         return render_template('user/home.html', 
-                             home_content=home_content,
-                             site_design=site_design,
-                             page_name='home')
+                            home_content=home_content,
+                            site_design=get_site_design())
     except Exception as e:
-        print(f"Error rendering home page: {str(e)}")
-        flash('Error loading home page content', 'error')
+        print(f"Error loading home content: {str(e)}")
         return render_template('user/home.html', 
-                             home_content={
-                                 'welcome': {
-                                     'title': 'Welcome to GIIR Conference 2024',
-                                     'subtitle': 'Global Institute on Innovative Research',
-                                     'conference_date': 'International Conference 2024',
-                                     'message': 'Join us for the premier conference in innovative research'
-                                 },
-                                 'hero': {
-                                     'images': [],
-                                     'conference': {
-                                         'name': 'GIIR Conference 2024',
-                                         'date': 'TBA',
-                                         'time': 'TBA',
-                                         'city': 'TBA',
-                                         'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-                                     }
-                                 },
-                                 'vmo': {
-                                     'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-                                     'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
-                                     'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
-                                 },
-                                 'downloads': [],
-                                 'associates': [],
-                                 'footer': {
-                                     'contact_email': 'contact@giirconference.com',
-                                     'contact_phone': '+1234567890',
-                                     'social_media': {
-                                         'facebook': '',
-                                         'twitter': '',
-                                         'linkedin': ''
-                                     },
-                                     'address': 'Conference Venue, City, Country',
-                                     'copyright': '© 2024 GIIR Conference. All rights reserved.'
-                                 }
-                             },
-                             site_design=DEFAULT_THEME,
-                             page_name='home')
+                            home_content={},
+                            site_design=get_site_design())
 
 @app.route('/about')
 def about():
@@ -2620,7 +2534,8 @@ def admin_home_content():
                 'title': request.form.get('welcome[title]'),
                 'subtitle': request.form.get('welcome[subtitle]'),
                 'conference_date': request.form.get('welcome[conference_date]'),
-                'message': request.form.get('welcome[message]')
+                'message': request.form.get('welcome[message]'),
+                'subtitle_marquee': 'welcome[subtitle_marquee]' in request.form
             }
             
             # Process hero images
@@ -2792,7 +2707,8 @@ def admin_design():
                 'background_color': request.form.get('background_color', DEFAULT_THEME['background_color']),
                 'header_background': request.form.get('header_background', DEFAULT_THEME['header_background']),
                 'footer_background': request.form.get('footer_background', DEFAULT_THEME['footer_background']),
-                'hero_text_color': request.form.get('hero_text_color', DEFAULT_THEME['hero_text_color'])
+                'hero_text_color': request.form.get('hero_text_color', DEFAULT_THEME['hero_text_color']),
+                'subtitle_marquee': 'subtitle_marquee' in request.form
             }
             
             # Save theme data to Firebase
@@ -2806,11 +2722,7 @@ def admin_design():
             flash(f'Error updating site design: {str(e)}', 'error')
             return redirect(url_for('admin_design'))
     
-    # Get current design settings
-    design_ref = db.reference('site_design')
-    current_design = design_ref.get() or DEFAULT_THEME
-    
-    return render_template('admin/design.html', site_design=get_site_design(), design=current_design)
+    return render_template('admin/design.html', site_design=get_site_design())
 
 @app.route('/downloads')
 def downloads():
