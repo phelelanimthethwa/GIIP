@@ -2598,6 +2598,14 @@ def admin_home_content():
                 if 'hero' in current_content and 'images' in current_content['hero']:
                     update_data['hero']['images'] = current_content['hero']['images']
 
+                # Process deleted hero images
+                deleted_images = request.form.getlist('deleted_hero_images[]')
+                if deleted_images:
+                    update_data['hero']['images'] = [
+                        img for img in update_data['hero']['images'] 
+                        if img['url'] not in deleted_images
+                    ]
+
                 # Process new hero images
                 if 'hero_images' in request.files:
                     for file in request.files.getlist('hero_images'):
@@ -2658,11 +2666,18 @@ def admin_home_content():
 
                 # Save the updated content
                 content_ref.set(update_data)
+                
+                # Check if request wants JSON response
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': True})
+                
                 flash('Home content updated successfully!', 'success')
                 return redirect(url_for('admin_home_content'))
 
             except Exception as e:
                 print(f"Error updating home content: {str(e)}")
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'error': str(e)})
                 flash('Error updating home content', 'error')
                 return redirect(url_for('admin_home_content'))
 
@@ -2672,6 +2687,8 @@ def admin_home_content():
 
     except Exception as e:
         print(f"Error in admin_home_content: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': str(e)})
         flash('Error loading home content', 'error')
         return render_template('admin/home_content.html', home_content={})
 
