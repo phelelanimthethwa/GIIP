@@ -11,7 +11,8 @@ DEFAULT_THEME = {
     'background_color': '#ffffff',
     'header_background': '#f8f9fa',
     'footer_background': '#343a40',
-    'hero_text_color': '#ffffff'
+    'hero_text_color': '#ffffff',
+    'subtitle_marquee': True  # Default to enabled
 }
 
 def get_site_design():

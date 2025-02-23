@@ -19,30 +19,40 @@
                     <div class="admin-card mb-4">
                         <h2><i class="fas fa-paint-brush"></i> Color Scheme</h2>
                         <div class="card-body">
+                            <!-- Animation Settings -->
+                            <div class="animation-settings mb-4">
+                                <h3 class="h5 mb-3">Animation Settings</h3>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="subtitle_marquee" name="subtitle_marquee" 
+                                           {% if site_design.subtitle_marquee %}checked{% endif %}>
+                                    <label class="form-check-label" for="subtitle_marquee">Enable Marquee Effect on Subtitle</label>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label class="form-label">Primary Color</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="primary_color" value="{{ design.primary_color }}"
+                                               name="primary_color" value="{{ site_design.primary_color }}"
                                                data-preview="primary">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Secondary Color</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="secondary_color" value="{{ design.secondary_color }}"
+                                               name="secondary_color" value="{{ site_design.secondary_color }}"
                                                data-preview="secondary">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Accent Color</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="accent_color" value="{{ design.accent_color }}"
+                                               name="accent_color" value="{{ site_design.accent_color }}"
                                                data-preview="accent">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Text Color</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="text_color" value="{{ design.text_color }}"
+                                               name="text_color" value="{{ site_design.text_color }}"
                                                data-preview="text">
                                     </div>
                                 </div>
@@ -50,25 +60,25 @@
                                     <div class="mb-3">
                                         <label class="form-label">Background Color</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="background_color" value="{{ design.background_color }}"
+                                               name="background_color" value="{{ site_design.background_color }}"
                                                data-preview="background">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Header Background</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="header_background" value="{{ design.header_background }}"
+                                               name="header_background" value="{{ site_design.header_background }}"
                                                data-preview="header">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Footer Background</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="footer_background" value="{{ design.footer_background }}"
+                                               name="footer_background" value="{{ site_design.footer_background }}"
                                                data-preview="footer">
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Hero Text Color</label>
                                         <input type="color" class="form-control form-control-color w-100" 
-                                               name="hero_text_color" value="{{ design.hero_text_color }}"
+                                               name="hero_text_color" value="{{ site_design.hero_text_color }}"
                                                data-preview="hero-text">
                                     </div>
                                 </div>
@@ -144,7 +154,6 @@
 }
 
 .preview-header {
-    background: v-bind(header_background);
     color: white;
     padding: 1rem;
     text-align: center;
@@ -153,7 +162,6 @@
 .preview-content {
     flex-grow: 1;
     padding: 1rem;
-    background: v-bind(background_color);
 }
 
 .preview-hero {
@@ -163,25 +171,10 @@
     margin-bottom: 1rem;
 }
 
-.preview-text {
-    color: v-bind(text_color);
-}
-
 .preview-footer {
-    background: v-bind(footer_background);
     color: white;
     padding: 1rem;
     text-align: center;
-}
-
-.btn-primary {
-    background-color: v-bind(primary_color);
-    border-color: v-bind(primary_color);
-}
-
-.btn-secondary {
-    background-color: v-bind(secondary_color);
-    border-color: v-bind(secondary_color);
 }
 </style>
 
@@ -198,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function updatePreview() {
-    const preview = document.querySelector('.preview-section');
     const colors = {
         primary: document.querySelector('[name="primary_color"]').value,
         secondary: document.querySelector('[name="secondary_color"]').value,

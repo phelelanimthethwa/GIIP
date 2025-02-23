@@ -7,7 +7,9 @@
 <div class="title-section">
     <div class="title-content">
         <h1>{{ home_content.welcome.title|default('Welcome to GIIR') }}</h1>
-        <p class="subtitle">{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</p>
+        <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
+            <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
+        </p>
         <p class="conference-date">{{ home_content.welcome.conference_date|default('International Conference 2024') }}</p>
     </div>
 </div>
@@ -250,6 +252,42 @@
     text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
     position: relative;
     z-index: 1;
+}
+
+/* Marquee Animation */
+.marquee {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+}
+
+.marquee span {
+    display: inline-block;
+    padding-left: 100%;
+    animation: marquee 15s linear infinite;
+}
+
+/* Non-marquee subtitle */
+.subtitle:not(.marquee) span {
+    display: inline-block;
+    padding: 0;
+    animation: none;
+    white-space: normal;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+/* Pause animation on hover */
+.marquee:hover span {
+    animation-play-state: paused;
 }
 
 /* Hero Section */

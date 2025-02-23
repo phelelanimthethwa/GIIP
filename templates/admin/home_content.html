@@ -36,6 +36,13 @@
                                value="{{ home_content.welcome.subtitle }}" required>
                     </div>
                     <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="subtitleMarquee" name="welcome[subtitle_marquee]" 
+                                   {% if home_content.welcome.subtitle_marquee %}checked{% endif %}>
+                            <label class="form-check-label" for="subtitleMarquee">Enable Marquee Effect on Subtitle</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
                         <label for="conferenceDate" class="form-label">Conference Date</label>
                         <input type="text" class="form-control" id="conferenceDate" name="welcome[conference_date]" 
                                value="{{ home_content.welcome.conference_date }}" required>
