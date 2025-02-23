@@ -430,10 +430,6 @@ def home():
     try:
         # Get home content from Firebase
         content_ref = db.reference('home_content')
-<<<<<<< Updated upstream
-        home_content = content_ref.get() or {}
-        
-=======
         home_content = content_ref.get() or {
             'welcome': {
                 'title': 'Welcome to GIIR Conference 2024',
@@ -450,92 +446,28 @@ def home():
                     'city': 'TBA',
                     'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
                 }
-            },
-            'vmo': {
-                'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-                'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
-                'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
-            },
-            'downloads': [],
-            'associates': [],
-            'footer': {
-                'contact_email': 'contact@giirconference.com',
-                'contact_phone': '+1234567890',
-                'social_media': {
-                    'facebook': '',
-                    'twitter': '',
-                    'linkedin': ''
-                },
-                'address': 'Conference Venue, City, Country',
-                'copyright': '© 2024 GIIR Conference. All rights reserved.'
             }
         }
         
-        # Ensure associates is always a list
-        if 'associates' not in home_content:
-            home_content['associates'] = []
-        
-        # Ensure each associate has required fields
-        for associate in home_content.get('associates', []):
-            if not isinstance(associate, dict):
-                continue
-            associate.setdefault('name', 'Associate')
-            associate.setdefault('description', '')
-            associate.setdefault('logo', '')
-
-        # Get site design
         site_design = get_site_design()
         
->>>>>>> Stashed changes
         return render_template('user/home.html', 
                             home_content=home_content,
-                            site_design=get_site_design())
+                            site_design=site_design,
+                            page_name='home')
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
         return render_template('user/home.html', 
-<<<<<<< Updated upstream
-                            home_content={},
-                            site_design=get_site_design())
-=======
-                             home_content={
+                            home_content={
                                 'welcome': {
                                     'title': 'Welcome to GIIR Conference 2024',
-                                     'subtitle': 'Global Institute on Innovative Research',
-                                     'conference_date': 'International Conference 2024',
+                                    'subtitle': 'Global Institute on Innovative Research',
+                                    'conference_date': 'International Conference 2024',
                                     'message': 'Join us for the premier conference in innovative research'
-                                },
-                                'hero': {
-                                    'images': [],
-                                    'conference': {
-                                        'name': 'GIIR Conference 2024',
-                                        'date': 'TBA',
-                                        'time': 'TBA',
-                                        'city': 'TBA',
-                                        'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-                                    }
-                                },
-                                'vmo': {
-                                    'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
-                                     'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
-                                     'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
-                                },
-                                'downloads': [],
-                                 'associates': [],
-                                'footer': {
-                                    'contact_email': 'contact@giirconference.com',
-                                    'contact_phone': '+1234567890',
-                                    'social_media': {
-                                        'facebook': '',
-                                        'twitter': '',
-                                        'linkedin': ''
-                                    },
-                                    'address': 'Conference Venue, City, Country',
-                                    'copyright': '© 2024 GIIR Conference. All rights reserved.'
                                 }
-                             },
-                             site_design=DEFAULT_THEME,
-                             page_name='home')
->>>>>>> Stashed changes
+                            },
+                            site_design=DEFAULT_THEME,
+                            page_name='home')
 
 @app.route('/about')
 def about():
@@ -2617,243 +2549,127 @@ def process_associates_data(request_form, request_files):
 @login_required
 @admin_required
 def admin_home_content():
-<<<<<<< Updated upstream
-    if request.method == 'POST':
-        try:
-            # Log the keys in request_files to verify file upload
-            print("Received files:", request.files.keys())
-            print("Received form data:", request.form)
-            
-            # Initialize update_data
-            update_data = {}
-            
-            # Update welcome section
-            update_data['welcome'] = {
-                'title': request.form.get('welcome[title]'),
-                'subtitle': request.form.get('welcome[subtitle]'),
-                'conference_date': request.form.get('welcome[conference_date]'),
-                'message': request.form.get('welcome[message]'),
-                'subtitle_marquee': 'welcome[subtitle_marquee]' in request.form
-            }
-            
-            # Process hero images
-            deleted_hero_images = request.form.getlist('deleted_hero_images[]')
-            print(f"Processing {len(deleted_hero_images)} deleted hero images")
-            
-            # Get existing hero images
-            content_ref = db.reference('home_content')
-            current_content = content_ref.get() or {}
-            current_hero_images = current_content.get('hero', {}).get('images', [])
-            
-            # Remove deleted images
-            hero_images = [img for img in current_hero_images if img['url'] not in deleted_hero_images]
-            
-            # Process new hero images
-            if 'hero_images' in request.files:
-                hero_files = request.files.getlist('hero_images')
-                print(f"Processing {len(hero_files)} new hero images")
-                for file in hero_files:
-                    if file and file.filename:
-                        try:
-                            # Validate and save hero image
-                            validate_image(file, image_type='hero')
-                            
-                            # Initialize Firebase Storage bucket
-                            bucket = storage.bucket()
-                            
-                            # Generate unique filename
-                            filename = secure_filename(file.filename)
-                            unique_filename = f"hero/images/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                            
-                            # Create a new blob and upload the file
-                            blob = bucket.blob(unique_filename)
-                            
-                            # Set content type
-                            content_type = file.content_type or 'image/jpeg'
-                            blob.content_type = content_type
-                            
-                            # Compress image if needed
-                            img_data = compress_image(file, max_size_kb=800)
-                            
-                            # Upload the file
-                            blob.upload_from_string(
-                                img_data,
-                                content_type=content_type
-                            )
-                            
-                            # Make the blob publicly accessible
-                            blob.make_public()
-                            
-                            # Add to hero images list
-                            hero_images.append({
-                                'url': blob.public_url,
-                                'alt': filename
-                            })
-                            
-                        except Exception as e:
-                            print(f"Error processing hero image: {str(e)}")
-                            continue
-            
-            # Update hero section in update_data
-            update_data['hero'] = {
-                'images': hero_images,
-                'conference': {
-                    'name': request.form.get('conference[name]'),
-                    'date': request.form.get('conference[date]'),
-                    'time': request.form.get('conference[time]'),
-                    'city': request.form.get('conference[city]'),
-                    'highlights': request.form.get('conference[highlights]')
-                }
-            }
-            
-            # Update VMO section
-            update_data['vmo'] = {
-                'vision': request.form.get('vmo[vision]'),
-                'mission': request.form.get('vmo[mission]'),
-                'objectives': request.form.get('vmo[objectives]')
-            }
-            
-            # Process associates data
-=======
     try:
-        # Initialize Firebase reference
         content_ref = db.reference('home_content')
         
         if request.method == 'POST':
->>>>>>> Stashed changes
             try:
-                # Log the keys in request_files to verify file upload
-                print("Received files:", request.files.keys())
-                print("Received form data:", request.form)
-                
-                # Initialize update_data
-                update_data = {}
-                
-                # Update welcome section
-                update_data['welcome'] = {
-                    'title': request.form.get('welcome[title]'),
-                    'subtitle': request.form.get('welcome[subtitle]'),
-                    'conference_date': request.form.get('welcome[conference_date]'),
-                    'message': request.form.get('welcome[message]')
+                # Initialize update_data with default structure
+                update_data = {
+                    'welcome': {
+                        'title': request.form.get('welcome[title]', ''),
+                        'subtitle': request.form.get('welcome[subtitle]', ''),
+                        'conference_date': request.form.get('welcome[conference_date]', ''),
+                        'message': request.form.get('welcome[message]', ''),
+                        'subtitle_marquee': 'welcome[subtitle_marquee]' in request.form
+                    },
+                    'hero': {
+                        'images': [],
+                        'conference': {
+                            'name': request.form.get('conference[name]', ''),
+                            'date': request.form.get('conference[date]', ''),
+                            'time': request.form.get('conference[time]', ''),
+                            'city': request.form.get('conference[city]', ''),
+                            'highlights': request.form.get('conference[highlights]', ''),
+                            'show_countdown': 'conference[show_countdown]' in request.form
+                        }
+                    },
+                    'vmo': {
+                        'vision': request.form.get('vmo[vision]', ''),
+                        'mission': request.form.get('vmo[mission]', ''),
+                        'objectives': request.form.get('vmo[objectives]', '')
+                    },
+                    'associates': [],
+                    'footer': {
+                        'contact_email': request.form.get('footer[contact_email]', ''),
+                        'contact_phone': request.form.get('footer[contact_phone]', ''),
+                        'address': request.form.get('footer[address]', ''),
+                        'copyright': request.form.get('footer[copyright]', ''),
+                        'social_media': {
+                            'facebook': request.form.get('footer[social_media][facebook]', ''),
+                            'twitter': request.form.get('footer[social_media][twitter]', ''),
+                            'linkedin': request.form.get('footer[social_media][linkedin]', '')
+                        }
+                    }
                 }
-                
-                # Process hero images
-                deleted_hero_images = request.form.getlist('deleted_hero_images[]')
-                print(f"Processing {len(deleted_hero_images)} deleted hero images")
-                
-                # Get existing hero images
+
+                # Get current content for existing images
                 current_content = content_ref.get() or {}
-                current_hero_images = current_content.get('hero', {}).get('images', [])
-                
-                # Remove deleted images
-                hero_images = [img for img in current_hero_images if img['url'] not in deleted_hero_images]
-                
+                if 'hero' in current_content and 'images' in current_content['hero']:
+                    update_data['hero']['images'] = current_content['hero']['images']
+
                 # Process new hero images
                 if 'hero_images' in request.files:
-                    hero_files = request.files.getlist('hero_images')
-                    print(f"Processing {len(hero_files)} new hero images")
-                    for file in hero_files:
+                    for file in request.files.getlist('hero_images'):
                         if file and file.filename:
                             try:
-                                # Validate and save hero image
                                 validate_image(file, image_type='hero')
-                                
-                                # Initialize Firebase Storage bucket
                                 bucket = storage.bucket()
-                                
-                                # Generate unique filename
                                 filename = secure_filename(file.filename)
                                 unique_filename = f"hero/images/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                                
-                                # Create a new blob and upload the file
                                 blob = bucket.blob(unique_filename)
-                                
-                                # Set content type
                                 content_type = file.content_type or 'image/jpeg'
                                 blob.content_type = content_type
-                                
-                                # Compress image if needed
                                 img_data = compress_image(file, max_size_kb=800)
-                                
-                                # Upload the file
-                                blob.upload_from_string(
-                                    img_data,
-                                    content_type=content_type
-                                )
-                                
-                                # Make the blob publicly accessible
+                                blob.upload_from_string(img_data, content_type=content_type)
                                 blob.make_public()
-                                
-                                # Add to hero images list
-                                hero_images.append({
+                                update_data['hero']['images'].append({
                                     'url': blob.public_url,
                                     'alt': filename
                                 })
-                                
                             except Exception as e:
                                 print(f"Error processing hero image: {str(e)}")
                                 continue
 
-                # Update hero section in update_data
-                update_data['hero'] = {
-                    'images': hero_images,
-                    'conference': {
-                        'name': request.form.get('conference[name]'),
-                        'date': request.form.get('conference[date]'),
-                        'time': request.form.get('conference[time]'),
-                        'city': request.form.get('conference[city]'),
-                        'highlights': request.form.get('conference[highlights]')
-                    }
-                }
+                # Process associates
+                existing_ids = request.form.getlist('existing_associate_ids[]')
+                existing_logos = request.form.getlist('existing_associate_logos[]')
                 
-                # Update VMO section
-                update_data['vmo'] = {
-                    'vision': request.form.get('vmo[vision]'),
-                    'mission': request.form.get('vmo[mission]'),
-                    'objectives': request.form.get('vmo[objectives]')
-                }
-                
-                # Process associates data
-                try:
-                    # Get current associates to preserve existing data
-                    current_associates = current_content.get('associates', [])
-                    
-                    # Process new and updated associates
-                    associates = process_associates_data(request.form, request.files)
-                    
-                    # Update associates in update_data
-                    update_data['associates'] = associates
-                    
-                except Exception as e:
-                    print(f"Error processing associates: {str(e)}")
-                    return jsonify({'success': False, 'error': f"Error processing associates: {str(e)}"}), 400
-                
-                # Update footer section
-                update_data['footer'] = {
-                    'contact_email': request.form.get('footer[contact_email]'),
-                    'contact_phone': request.form.get('footer[contact_phone]'),
-                    'social_media': {
-                        'facebook': request.form.get('footer[social_media][facebook]'),
-                        'twitter': request.form.get('footer[social_media][twitter]'),
-                        'linkedin': request.form.get('footer[social_media][linkedin]')
-                    },
-                    'address': request.form.get('footer[address]'),
-                    'copyright': request.form.get('footer[copyright]')
-                }
-                
-                # Save to Firebase
-                content_ref.update(update_data)
-                
-                return jsonify({'success': True})
-                
+                # Handle existing associates
+                for i, associate_id in enumerate(existing_ids):
+                    if i < len(existing_logos):
+                        update_data['associates'].append({
+                            'id': associate_id,
+                            'logo': existing_logos[i]
+                        })
+
+                # Process new associate logos
+                if 'new_associate_logos' in request.files:
+                    for file in request.files.getlist('new_associate_logos'):
+                        if file and file.filename:
+                            try:
+                                validate_image(file)
+                                bucket = storage.bucket()
+                                filename = secure_filename(file.filename)
+                                unique_filename = f"associates/logos/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                                blob = bucket.blob(unique_filename)
+                                content_type = file.content_type or 'image/jpeg'
+                                blob.content_type = content_type
+                                img_data = compress_image(file, max_size_kb=500)
+                                blob.upload_from_string(img_data, content_type=content_type)
+                                blob.make_public()
+                                update_data['associates'].append({
+                                    'id': str(uuid.uuid4()),
+                                    'logo': blob.public_url
+                                })
+                            except Exception as e:
+                                print(f"Error processing associate logo: {str(e)}")
+                                continue
+
+                # Save the updated content
+                content_ref.set(update_data)
+                flash('Home content updated successfully!', 'success')
+                return redirect(url_for('admin_home_content'))
+
             except Exception as e:
                 print(f"Error updating home content: {str(e)}")
-                return jsonify({'success': False, 'error': str(e)}), 400
-        
+                flash('Error updating home content', 'error')
+                return redirect(url_for('admin_home_content'))
+
         # GET request - render template
         home_content = content_ref.get() or {}
         return render_template('admin/home_content.html', home_content=home_content)
-        
+
     except Exception as e:
         print(f"Error in admin_home_content: {str(e)}")
         flash('Error loading home content', 'error')

@@ -11,6 +11,26 @@
             <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
         </p>
         <p class="conference-date">{{ home_content.welcome.conference_date|default('International Conference 2024') }}</p>
+        {% if home_content.hero.conference.show_countdown %}
+        <div class="countdown-container">
+            <div class="countdown-item">
+                <span id="countdown-days">00</span>
+                <span class="countdown-label">Days</span>
+            </div>
+            <div class="countdown-item">
+                <span id="countdown-hours">00</span>
+                <span class="countdown-label">Hours</span>
+            </div>
+            <div class="countdown-item">
+                <span id="countdown-minutes">00</span>
+                <span class="countdown-label">Minutes</span>
+            </div>
+            <div class="countdown-item">
+                <span id="countdown-seconds">00</span>
+                <span class="countdown-label">Seconds</span>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -811,6 +831,76 @@ html {
         height: 100px;
     }
 }
+
+.countdown-container {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+}
+
+.countdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+}
+
+.countdown-item span:first-child {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.countdown-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@media (max-width: 768px) {
+    .countdown-container {
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .countdown-item {
+        min-width: 60px;
+    }
+
+    .countdown-item span:first-child {
+        font-size: 1.8rem;
+    }
+
+    .countdown-label {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .countdown-container {
+        gap: 0.5rem;
+    }
+
+    .countdown-item {
+        min-width: 50px;
+    }
+
+    .countdown-item span:first-child {
+        font-size: 1.5rem;
+    }
+
+    .countdown-label {
+        font-size: 0.7rem;
+    }
+}
 </style>
 
 <script>
@@ -871,6 +961,52 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto advance slides
     if (slides.length > 1) {
         setInterval(nextSlide, 5000);
+    }
+
+    // Countdown Timer
+    function updateCountdown() {
+        const countdownContainer = document.querySelector('.countdown-container');
+        if (!countdownContainer) {
+            return; // Exit if countdown is disabled
+        }
+
+        const conferenceDate = '{{ home_content.hero.conference.date|default("") }}';
+        const conferenceTime = '{{ home_content.hero.conference.time|default("00:00") }}';
+        
+        if (!conferenceDate) {
+            return;
+        }
+
+        // Create target date by combining date and time
+        const targetDate = new Date(conferenceDate + 'T' + conferenceTime);
+        const now = new Date();
+        
+        // Calculate the difference
+        const diff = targetDate - now;
+        
+        if (diff <= 0) {
+            // Conference has started/ended
+            countdownContainer.innerHTML = '<div class="conference-status">Conference is Live!</div>';
+            return;
+        }
+        
+        // Calculate time units
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        // Update the display
+        document.getElementById('countdown-days').textContent = String(days).padStart(2, '0');
+        document.getElementById('countdown-hours').textContent = String(hours).padStart(2, '0');
+        document.getElementById('countdown-minutes').textContent = String(minutes).padStart(2, '0');
+        document.getElementById('countdown-seconds').textContent = String(seconds).padStart(2, '0');
+    }
+
+    // Only start countdown if the container exists (countdown is enabled)
+    if (document.querySelector('.countdown-container')) {
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
     }
 });
 </script>

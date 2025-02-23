@@ -125,6 +125,15 @@
                                       required>{{ home_content.hero.conference.highlights }}</textarea>
                             <small class="form-text text-muted">Enter each highlight on a new line</small>
                         </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="showCountdown" 
+                                       name="conference[show_countdown]" 
+                                       {% if home_content.hero.conference.show_countdown %}checked{% endif %}>
+                                <label class="form-check-label" for="showCountdown">Show Countdown Timer</label>
+                            </div>
+                            <small class="form-text text-muted">Enable or disable the countdown timer on the home page</small>
+                        </div>
                     </div>
                 </div>
             </div>
