@@ -417,6 +417,7 @@ def send_confirmation_email(registration_data):
 
 # Add this helper function near the top of the file
 def get_site_design():
+    """Helper function to fetch site design settings"""
     try:
         design_ref = db.reference('site_design')
         return design_ref.get() or DEFAULT_THEME
@@ -429,16 +430,112 @@ def home():
     try:
         # Get home content from Firebase
         content_ref = db.reference('home_content')
+<<<<<<< Updated upstream
         home_content = content_ref.get() or {}
         
+=======
+        home_content = content_ref.get() or {
+            'welcome': {
+                'title': 'Welcome to GIIR Conference 2024',
+                'subtitle': 'Global Institute on Innovative Research',
+                'conference_date': 'International Conference 2024',
+                'message': 'Join us for the premier conference in innovative research'
+            },
+            'hero': {
+                'images': [],
+                'conference': {
+                    'name': 'GIIR Conference 2024',
+                    'date': 'TBA',
+                    'time': 'TBA',
+                    'city': 'TBA',
+                    'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+                }
+            },
+            'vmo': {
+                'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+                'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
+                'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
+            },
+            'downloads': [],
+            'associates': [],
+            'footer': {
+                'contact_email': 'contact@giirconference.com',
+                'contact_phone': '+1234567890',
+                'social_media': {
+                    'facebook': '',
+                    'twitter': '',
+                    'linkedin': ''
+                },
+                'address': 'Conference Venue, City, Country',
+                'copyright': '© 2024 GIIR Conference. All rights reserved.'
+            }
+        }
+        
+        # Ensure associates is always a list
+        if 'associates' not in home_content:
+            home_content['associates'] = []
+        
+        # Ensure each associate has required fields
+        for associate in home_content.get('associates', []):
+            if not isinstance(associate, dict):
+                continue
+            associate.setdefault('name', 'Associate')
+            associate.setdefault('description', '')
+            associate.setdefault('logo', '')
+
+        # Get site design
+        site_design = get_site_design()
+        
+>>>>>>> Stashed changes
         return render_template('user/home.html', 
                             home_content=home_content,
                             site_design=get_site_design())
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
         return render_template('user/home.html', 
+<<<<<<< Updated upstream
                             home_content={},
                             site_design=get_site_design())
+=======
+                             home_content={
+                                'welcome': {
+                                    'title': 'Welcome to GIIR Conference 2024',
+                                     'subtitle': 'Global Institute on Innovative Research',
+                                     'conference_date': 'International Conference 2024',
+                                    'message': 'Join us for the premier conference in innovative research'
+                                },
+                                'hero': {
+                                    'images': [],
+                                    'conference': {
+                                        'name': 'GIIR Conference 2024',
+                                        'date': 'TBA',
+                                        'time': 'TBA',
+                                        'city': 'TBA',
+                                        'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+                                    }
+                                },
+                                'vmo': {
+                                    'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+                                     'mission': "GIIR's intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences",
+                                     'objectives': "To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher's work."
+                                },
+                                'downloads': [],
+                                 'associates': [],
+                                'footer': {
+                                    'contact_email': 'contact@giirconference.com',
+                                    'contact_phone': '+1234567890',
+                                    'social_media': {
+                                        'facebook': '',
+                                        'twitter': '',
+                                        'linkedin': ''
+                                    },
+                                    'address': 'Conference Venue, City, Country',
+                                    'copyright': '© 2024 GIIR Conference. All rights reserved.'
+                                }
+                             },
+                             site_design=DEFAULT_THEME,
+                             page_name='home')
+>>>>>>> Stashed changes
 
 @app.route('/about')
 def about():
@@ -2520,6 +2617,7 @@ def process_associates_data(request_form, request_files):
 @login_required
 @admin_required
 def admin_home_content():
+<<<<<<< Updated upstream
     if request.method == 'POST':
         try:
             # Log the keys in request_files to verify file upload
@@ -2616,47 +2714,150 @@ def admin_home_content():
             }
             
             # Process associates data
+=======
+    try:
+        # Initialize Firebase reference
+        content_ref = db.reference('home_content')
+        
+        if request.method == 'POST':
+>>>>>>> Stashed changes
             try:
-                # Get current associates to preserve existing data
-                current_associates = current_content.get('associates', [])
+                # Log the keys in request_files to verify file upload
+                print("Received files:", request.files.keys())
+                print("Received form data:", request.form)
                 
-                # Process new and updated associates
-                associates = process_associates_data(request.form, request.files)
+                # Initialize update_data
+                update_data = {}
                 
-                # Update associates in update_data
-                update_data['associates'] = associates
+                # Update welcome section
+                update_data['welcome'] = {
+                    'title': request.form.get('welcome[title]'),
+                    'subtitle': request.form.get('welcome[subtitle]'),
+                    'conference_date': request.form.get('welcome[conference_date]'),
+                    'message': request.form.get('welcome[message]')
+                }
+                
+                # Process hero images
+                deleted_hero_images = request.form.getlist('deleted_hero_images[]')
+                print(f"Processing {len(deleted_hero_images)} deleted hero images")
+                
+                # Get existing hero images
+                current_content = content_ref.get() or {}
+                current_hero_images = current_content.get('hero', {}).get('images', [])
+                
+                # Remove deleted images
+                hero_images = [img for img in current_hero_images if img['url'] not in deleted_hero_images]
+                
+                # Process new hero images
+                if 'hero_images' in request.files:
+                    hero_files = request.files.getlist('hero_images')
+                    print(f"Processing {len(hero_files)} new hero images")
+                    for file in hero_files:
+                        if file and file.filename:
+                            try:
+                                # Validate and save hero image
+                                validate_image(file, image_type='hero')
+                                
+                                # Initialize Firebase Storage bucket
+                                bucket = storage.bucket()
+                                
+                                # Generate unique filename
+                                filename = secure_filename(file.filename)
+                                unique_filename = f"hero/images/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                                
+                                # Create a new blob and upload the file
+                                blob = bucket.blob(unique_filename)
+                                
+                                # Set content type
+                                content_type = file.content_type or 'image/jpeg'
+                                blob.content_type = content_type
+                                
+                                # Compress image if needed
+                                img_data = compress_image(file, max_size_kb=800)
+                                
+                                # Upload the file
+                                blob.upload_from_string(
+                                    img_data,
+                                    content_type=content_type
+                                )
+                                
+                                # Make the blob publicly accessible
+                                blob.make_public()
+                                
+                                # Add to hero images list
+                                hero_images.append({
+                                    'url': blob.public_url,
+                                    'alt': filename
+                                })
+                                
+                            except Exception as e:
+                                print(f"Error processing hero image: {str(e)}")
+                                continue
+
+                # Update hero section in update_data
+                update_data['hero'] = {
+                    'images': hero_images,
+                    'conference': {
+                        'name': request.form.get('conference[name]'),
+                        'date': request.form.get('conference[date]'),
+                        'time': request.form.get('conference[time]'),
+                        'city': request.form.get('conference[city]'),
+                        'highlights': request.form.get('conference[highlights]')
+                    }
+                }
+                
+                # Update VMO section
+                update_data['vmo'] = {
+                    'vision': request.form.get('vmo[vision]'),
+                    'mission': request.form.get('vmo[mission]'),
+                    'objectives': request.form.get('vmo[objectives]')
+                }
+                
+                # Process associates data
+                try:
+                    # Get current associates to preserve existing data
+                    current_associates = current_content.get('associates', [])
+                    
+                    # Process new and updated associates
+                    associates = process_associates_data(request.form, request.files)
+                    
+                    # Update associates in update_data
+                    update_data['associates'] = associates
+                    
+                except Exception as e:
+                    print(f"Error processing associates: {str(e)}")
+                    return jsonify({'success': False, 'error': f"Error processing associates: {str(e)}"}), 400
+                
+                # Update footer section
+                update_data['footer'] = {
+                    'contact_email': request.form.get('footer[contact_email]'),
+                    'contact_phone': request.form.get('footer[contact_phone]'),
+                    'social_media': {
+                        'facebook': request.form.get('footer[social_media][facebook]'),
+                        'twitter': request.form.get('footer[social_media][twitter]'),
+                        'linkedin': request.form.get('footer[social_media][linkedin]')
+                    },
+                    'address': request.form.get('footer[address]'),
+                    'copyright': request.form.get('footer[copyright]')
+                }
+                
+                # Save to Firebase
+                content_ref.update(update_data)
+                
+                return jsonify({'success': True})
                 
             except Exception as e:
-                print(f"Error processing associates: {str(e)}")
-                return jsonify({'success': False, 'error': f"Error processing associates: {str(e)}"}), 400
-            
-            # Update footer section
-            update_data['footer'] = {
-                'contact_email': request.form.get('footer[contact_email]'),
-                'contact_phone': request.form.get('footer[contact_phone]'),
-                'social_media': {
-                    'facebook': request.form.get('footer[social_media][facebook]'),
-                    'twitter': request.form.get('footer[social_media][twitter]'),
-                    'linkedin': request.form.get('footer[social_media][linkedin]')
-                },
-                'address': request.form.get('footer[address]'),
-                'copyright': request.form.get('footer[copyright]')
-            }
-            
-            # Save to Firebase
-            content_ref = db.reference('home_content')
-            content_ref.update(update_data)
-            
-            return jsonify({'success': True})
-            
-        except Exception as e:
-            print(f"Error updating home content: {str(e)}")
-            return jsonify({'success': False, 'error': str(e)}), 400
-    
-    # GET request - render template
-    content_ref = db.reference('home_content')
-    home_content = content_ref.get() or {}
-    return render_template('admin/home_content.html', home_content=home_content)
+                print(f"Error updating home content: {str(e)}")
+                return jsonify({'success': False, 'error': str(e)}), 400
+        
+        # GET request - render template
+        home_content = content_ref.get() or {}
+        return render_template('admin/home_content.html', home_content=home_content)
+        
+    except Exception as e:
+        print(f"Error in admin_home_content: {str(e)}")
+        flash('Error loading home content', 'error')
+        return render_template('admin/home_content.html', home_content={})
 
 # Add to admin_required routes list in base_admin.html
 @app.context_processor
@@ -3173,45 +3374,11 @@ def registration_form():
                 flash('Registration fees are not configured.', 'error')
                 return redirect(url_for('home'))
             
-            # Add currency information if not present
-            if 'currency' not in fees:
-                fees['currency'] = {
-                    'code': 'ZAR',
-                    'symbol': 'R'
-                }
-            
-            # Ensure fee structure is correct
-            for period in ['early_bird', 'early', 'regular', 'late']:
-                if period in fees:
-                    if 'fees' not in fees[period]:
-                        fees[period]['fees'] = {}
-                    
-                    # Ensure all registration types have a fee
-                    for reg_type in ['student_author', 'regular_author', 'physical_delegate', 'virtual_delegate', 'listener']:
-                        if reg_type not in fees[period]['fees']:
-                            fees[period]['fees'][reg_type] = 0
-            
-            # Ensure additional items structure is correct
-            if 'additional_items' not in fees:
-                fees['additional_items'] = {
-                    'extra_paper': {
-                        'enabled': False,
-                        'fee': 0,
-                        'description': 'Submit an additional paper'
-                    },
-                    'workshop': {
-                        'enabled': False,
-                        'fee': 0,
-                        'description': 'Attend the conference workshop'
-                    },
-                    'banquet': {
-                        'enabled': False,
-                        'fee': 0,
-                        'description': 'Join the conference banquet'
-                    }
-                }
-            
-        # Get form data
+            return render_template('registration_form.html', 
+                                fees=fees,
+                                site_design=get_site_design())
+        
+        # POST request - process registration
         registration_data = {
             'full_name': current_user.full_name,
             'email': current_user.email,
@@ -3219,13 +3386,13 @@ def registration_form():
             'registration_period': request.form.get('selected_period'),
             'registration_type': request.form.get('selected_type'),
             'total_amount': float(request.form.get('total_amount', 0)),
-            'payment_reference': request.form.get('payment_reference'),
-            'submission_date': datetime.now().isoformat(),
-            'payment_status': 'pending',
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
-        }
-        
+                'payment_reference': request.form.get('payment_reference'),
+                'submission_date': datetime.now().isoformat(),
+                'payment_status': 'pending',
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+            
         # Validate registration period
         current_period = get_current_registration_period()
         if current_period == 'closed':
@@ -3274,22 +3441,22 @@ def registration_form():
             })
         
         # Save registration to Firebase Realtime Database
-        registrations_ref = db.reference('registrations')
-        new_registration = registrations_ref.push(registration_data)
-        
+            registrations_ref = db.reference('registrations')
+            new_registration = registrations_ref.push(registration_data)
+            
         # Save reference to user's registrations collection
-        user_reg_ref = db.reference(f'users/{current_user.id}/registrations/{new_registration.key}')
-        user_reg_ref.set(True)
-        
+            user_reg_ref = db.reference(f'users/{current_user.id}/registrations/{new_registration.key}')
+            user_reg_ref.set(True)
+            
         # Send confirmation email
         try:
             send_confirmation_email(registration_data)
         except Exception as e:
             print(f"Error sending confirmation email: {str(e)}")
         
-        flash('Registration submitted successfully!', 'success')
-        return redirect(url_for('dashboard'))
-        
+            flash('Registration submitted successfully!', 'success')
+            return redirect(url_for('dashboard'))
+            
     except ValueError as e:
         flash(str(e), 'error')
         return redirect(url_for('registration'))
@@ -3806,12 +3973,12 @@ def contact():
             email = request.form.get('email')
             subject = request.form.get('subject')
             message = request.form.get('message')
-            
+
             # Validate required fields
             if not all([name, email, subject, message]):
                 flash('Please fill in all required fields.', 'error')
                 return redirect(url_for('contact'))
-            
+
             # Save submission to Firebase
             submission = {
                 'name': name,
@@ -3854,7 +4021,7 @@ Message:
             
             flash('Your message has been sent successfully!', 'success')
             return redirect(url_for('contact'))
-            
+
         except Exception as e:
             flash(f'Error sending message: {str(e)}', 'error')
             return redirect(url_for('contact'))
@@ -4156,7 +4323,6 @@ def process_downloads_data(request):
                         filename = secure_filename(file.filename)
                         unique_filename = f"download_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
                         file_path = os.path.join(downloads_upload_path, unique_filename)
-                        
                         # Save the file
                         file.save(file_path)
                         
@@ -4170,9 +4336,7 @@ def process_downloads_data(request):
                     except Exception as e:
                         print(f"Error saving download file {filename}: {str(e)}")
                         continue
-            
             downloads.append(download_data)
-    
     return downloads
 
 @app.route('/admin/contact-email', methods=['GET', 'POST'])
@@ -4218,7 +4382,6 @@ def admin_contact_email():
             flash(f'Error saving email settings: {str(e)}', 'error')
             return redirect(url_for('admin_contact_email'))
     
-    # GET request - load current settings
     try:
         # Get email settings
         settings_ref = db.reference('contact_email_settings')
@@ -4227,14 +4390,16 @@ def admin_contact_email():
         # Get page settings
         page_settings_ref = db.reference('contact_page_settings')
         page_settings = page_settings_ref.get()
+        
+        return render_template('admin/contact_email.html', 
+                             settings=email_settings,
+                             page_settings=page_settings)
+                             
     except Exception as e:
         flash(f'Error loading settings: {str(e)}', 'warning')
-        email_settings = None
-        page_settings = None
-    
-    return render_template('admin/contact_email.html', 
-                         settings=email_settings,
-                         page_settings=page_settings)
+        return render_template('admin/contact_email.html',
+                             settings=None,
+                             page_settings=None)
 
 @app.route('/test-contact-email', methods=['POST'])
 @login_required
