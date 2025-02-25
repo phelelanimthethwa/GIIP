@@ -1,9 +1,11 @@
+<!-- Footer -->
 <footer class="site-footer">
     <div class="footer-content">
         <div class="footer-section">
             <h3>Contact Us</h3>
-            <p>Email: info@giirconference.com</p>
-            <p>Phone: +1 234 567 8900</p>
+            <p><i class="fas fa-envelope"></i> {{ home_content.footer.contact_email|default('info@giirconference.com') }}</p>
+            <p><i class="fas fa-phone"></i> {{ home_content.footer.contact_phone|default('+1 234 567 8900') }}</p>
+            <p><i class="fas fa-map-marker-alt"></i> {{ home_content.footer.address|default('Conference Venue, City, Country') }}</p>
         </div>
         <div class="footer-section">
             <h3>Quick Links</h3>
@@ -11,18 +13,155 @@
                 <li><a href="{{ url_for('about') }}">About</a></li>
                 <li><a href="{{ url_for('registration') }}">Register</a></li>
                 <li><a href="{{ url_for('contact') }}">Contact Us</a></li>
+                <li><a href="{{ url_for('call_for_papers') }}">Submit Paper</a></li>
+                <li><a href="{{ url_for('venue') }}">Venue</a></li>
             </ul>
         </div>
         <div class="footer-section">
             <h3>Follow Us</h3>
             <div class="social-links">
-                <a href="#"><i class="fab fa-twitter"></i></a>
-                <a href="#"><i class="fab fa-facebook"></i></a>
-                <a href="#"><i class="fab fa-linkedin"></i></a>
+                {% if home_content.footer.social_media.facebook %}
+                <a href="{{ home_content.footer.social_media.facebook }}" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                {% endif %}
+                {% if home_content.footer.social_media.twitter %}
+                <a href="{{ home_content.footer.social_media.twitter }}" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                {% endif %}
+                {% if home_content.footer.social_media.linkedin %}
+                <a href="{{ home_content.footer.social_media.linkedin }}" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
     <div class="footer-bottom">
-        <p>&copy; 2024 GIIR Conference. All rights reserved.</p>
+        <p>{{ home_content.footer.copyright|default('© ' + now.year|string + ' GIIR Conference. All rights reserved.') }}</p>
     </div>
-</footer> 
+</footer>
+
+<style>
+.site-footer {
+    background-color: var(--footer-background);
+    color: #fff;
+    padding: 3rem 0 1rem;
+    margin-top: 4rem;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.footer-section h3 {
+    color: #fff;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.footer-section h3:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 50px;
+    height: 2px;
+    background: var(--accent-color);
+}
+
+.footer-section p {
+    margin: 0.5rem 0;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.footer-section p i {
+    width: 20px;
+    margin-right: 10px;
+    color: var(--accent-color);
+}
+
+.footer-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-section ul li {
+    margin-bottom: 0.5rem;
+}
+
+.footer-section ul li a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-section ul li a:hover {
+    color: var(--accent-color);
+}
+
+.social-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.social-links a {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.social-links a:hover {
+    color: var(--accent-color);
+    transform: translateY(-3px);
+}
+
+.footer-bottom {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-bottom p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .site-footer {
+        padding: 2rem 0 1rem;
+        margin-top: 2rem;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        padding: 0 1rem;
+    }
+
+    .footer-section {
+        text-align: center;
+    }
+
+    .footer-section h3:after {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .social-links {
+        justify-content: center;
+    }
+}
+</style> 

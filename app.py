@@ -4462,6 +4462,10 @@ default_content = {
     }
 }
 
+@app.context_processor
+def inject_year():
+    return {'now': datetime.now()}
+
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
     
