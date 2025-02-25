@@ -4466,6 +4466,17 @@ default_content = {
 def inject_year():
     return {'now': datetime.now()}
 
+@app.context_processor
+def inject_home_content():
+    try:
+        # Get home content from Firebase
+        content_ref = db.reference('home_content')
+        home_content = content_ref.get() or default_content
+        return {'home_content': home_content}
+    except Exception as e:
+        print(f"Error loading home content: {str(e)}")
+        return {'home_content': default_content}
+
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
     
