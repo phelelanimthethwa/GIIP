@@ -11,129 +11,73 @@
 <div class="content-section">
     <section class="topics">
         <h2>Topics of Interest</h2>
-        <p class="section-intro">We invite high-quality original research papers in the following areas (but not limited to):</p>
+        <p class="section-intro">{{ cfp_content.topics_intro|default('We invite high-quality original research papers in the following areas (but not limited to):') }}</p>
         
         <div class="topics-grid">
+            {% set default_topics = [
+                {'title': 'Artificial Intelligence & Machine Learning', 'subtopics': ['Deep Learning and Neural Networks', 'Natural Language Processing', 'Computer Vision and Pattern Recognition', 'Reinforcement Learning', 'AI Ethics and Fairness']},
+                {'title': 'Data Science & Analytics', 'subtopics': ['Big Data Analytics', 'Predictive Analytics', 'Data Mining', 'Business Intelligence', 'Statistical Analysis']},
+                {'title': 'Internet of Things & Edge Computing', 'subtopics': ['IoT Architectures', 'Edge Computing Solutions', 'Smart Systems', 'Sensor Networks', 'IoT Security']},
+                {'title': 'Cybersecurity & Privacy', 'subtopics': ['Network Security', 'Privacy-Preserving Technologies', 'Blockchain Applications', 'Security Protocols', 'Threat Detection']}
+            ] %}
+            {% for topic in cfp_content.topics|default(default_topics) %}
             <div class="topic-card">
-                <h3>Artificial Intelligence & Machine Learning</h3>
+                <h3>{{ topic.title }}</h3>
                 <ul>
-                    <li>Deep Learning and Neural Networks</li>
-                    <li>Natural Language Processing</li>
-                    <li>Computer Vision and Pattern Recognition</li>
-                    <li>Reinforcement Learning</li>
-                    <li>AI Ethics and Fairness</li>
+                    {% for subtopic in topic.subtopics %}
+                    <li>{{ subtopic }}</li>
+                    {% endfor %}
                 </ul>
             </div>
-            
-            <div class="topic-card">
-                <h3>Data Science & Analytics</h3>
-                <ul>
-                    <li>Big Data Analytics</li>
-                    <li>Predictive Analytics</li>
-                    <li>Data Mining</li>
-                    <li>Business Intelligence</li>
-                    <li>Statistical Analysis</li>
-                </ul>
-            </div>
-            
-            <div class="topic-card">
-                <h3>Internet of Things & Edge Computing</h3>
-                <ul>
-                    <li>IoT Architectures</li>
-                    <li>Edge Computing Solutions</li>
-                    <li>Smart Systems</li>
-                    <li>Sensor Networks</li>
-                    <li>IoT Security</li>
-                </ul>
-            </div>
-            
-            <div class="topic-card">
-                <h3>Cybersecurity & Privacy</h3>
-                <ul>
-                    <li>Network Security</li>
-                    <li>Privacy-Preserving Technologies</li>
-                    <li>Blockchain Applications</li>
-                    <li>Security Protocols</li>
-                    <li>Threat Detection</li>
-                </ul>
-            </div>
+            {% endfor %}
         </div>
     </section>
 
     <section class="important-dates">
         <h2>Important Dates</h2>
         <div class="dates-grid">
+            {% for date in cfp_content.important_dates|default([
+                {'icon': 'fas fa-paper-plane', 'title': 'Paper Submission', 'date': 'March 15, 2024', 'time': '23:59 GMT'},
+                {'icon': 'fas fa-envelope-open-text', 'title': 'Notification of Acceptance', 'date': 'April 30, 2024', 'time': '23:59 GMT'},
+                {'icon': 'fas fa-check-circle', 'title': 'Camera-ready Submission', 'date': 'May 15, 2024', 'time': '23:59 GMT'}
+            ]) %}
             <div class="date-card">
                 <div class="date-icon">
-                    <i class="fas fa-paper-plane"></i>
+                    <i class="{{ date.icon }}"></i>
                 </div>
-                <h3>Paper Submission</h3>
-                <p class="date">March 15, 2024</p>
-                <p class="time">23:59 GMT</p>
+                <h3>{{ date.title }}</h3>
+                <p class="date">{{ date.date }}</p>
+                <p class="time">{{ date.time }}</p>
             </div>
-            
-            <div class="date-card">
-                <div class="date-icon">
-                    <i class="fas fa-envelope-open-text"></i>
-                </div>
-                <h3>Notification of Acceptance</h3>
-                <p class="date">April 30, 2024</p>
-                <p class="time">23:59 GMT</p>
-            </div>
-            
-            <div class="date-card">
-                <div class="date-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h3>Camera-ready Submission</h3>
-                <p class="date">May 15, 2024</p>
-                <p class="time">23:59 GMT</p>
-            </div>
+            {% endfor %}
         </div>
     </section>
 
     <section class="submission-guidelines">
         <h2>Submission Guidelines</h2>
         <div class="guidelines-grid">
+            {% for guideline in cfp_content.submission_guidelines|default([
+                {'title': 'Paper Format', 'guideline_items': ['Papers must be written in English', 'Maximum length: 8 pages including figures and references', 'Format: PDF', 'Template: IEEE Conference format', 'Font: Times New Roman, 10pt', 'Double column layout']},
+                {'title': 'Review Process', 'guideline_items': ['Double-blind peer review', 'Minimum three reviewers per paper', 'Evaluation based on originality, significance, and clarity', 'Decisions: Accept, Minor Revision, Major Revision, or Reject']},
+                {'title': 'Publication', 'guideline_items': ['Accepted papers will be published in conference proceedings', 'Indexed in major academic databases', 'Selected papers will be invited for journal special issues', 'Copyright form submission required']}
+            ]) %}
             <div class="guideline-card">
-                <h3>Paper Format</h3>
+                <h3>{{ guideline.title }}</h3>
                 <ul>
-                    <li>Papers must be written in English</li>
-                    <li>Maximum length: 8 pages including figures and references</li>
-                    <li>Format: PDF</li>
-                    <li>Template: IEEE Conference format</li>
-                    <li>Font: Times New Roman, 10pt</li>
-                    <li>Double column layout</li>
+                    {% for item in guideline.guideline_items %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
                 </ul>
             </div>
-            
-            <div class="guideline-card">
-                <h3>Review Process</h3>
-                <ul>
-                    <li>Double-blind peer review</li>
-                    <li>Minimum three reviewers per paper</li>
-                    <li>Evaluation based on originality, significance, and clarity</li>
-                    <li>Decisions: Accept, Minor Revision, Major Revision, or Reject</li>
-                </ul>
-            </div>
-            
-            <div class="guideline-card">
-                <h3>Publication</h3>
-                <ul>
-                    <li>Accepted papers will be published in conference proceedings</li>
-                    <li>Indexed in major academic databases</li>
-                    <li>Selected papers will be invited for journal special issues</li>
-                    <li>Copyright form submission required</li>
-                </ul>
-            </div>
+            {% endfor %}
         </div>
         
         <div class="submission-cta">
             <a href="{{ url_for('paper_submission') }}" class="btn btn-primary">
-                <i class="fas fa-upload"></i> Submit Your Paper
+                <i class="fas fa-upload"></i> {{ cfp_content.cta.submit_button_text|default('Submit Your Paper') }}
             </a>
-            <a href="#" class="btn btn-secondary">
-                <i class="fas fa-download"></i> Download Template
+            <a href="{{ cfp_content.cta.template_url|default('#') }}" class="btn btn-secondary">
+                <i class="fas fa-download"></i> {{ cfp_content.cta.template_button_text|default('Download Template') }}
             </a>
         </div>
     </section>

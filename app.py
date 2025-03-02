@@ -537,7 +537,94 @@ def about():
 
 @app.route('/call-for-papers')
 def call_for_papers():
-    return render_template('user/call_for_papers.html', site_design=get_site_design())
+    # Get call for papers content from Firebase
+    cfp_content = db.reference('call_for_papers_content').get() or {}
+    
+    print(f"DEBUG - User CFP - Content from database: {cfp_content}")
+    
+    # Set up default values if they don't exist in the fetched data
+    if 'cta' not in cfp_content:
+        cfp_content['cta'] = {
+            'submit_button_text': 'Submit Your Paper',
+            'template_button_text': 'Download Template',
+            'template_url': '#'
+        }
+        
+    # Ensure other required sections exist with default values
+    if 'topics_intro' not in cfp_content:
+        cfp_content['topics_intro'] = 'We invite high-quality original research papers in the following areas (but not limited to):'
+    
+    if 'topics' not in cfp_content:
+        print("DEBUG - User CFP - No topics found, using defaults")
+        cfp_content['topics'] = [
+            {
+                'title': 'Artificial Intelligence & Machine Learning',
+                'subtopics': ['Deep Learning and Neural Networks', 'Natural Language Processing', 'Computer Vision and Pattern Recognition', 'Reinforcement Learning', 'AI Ethics and Fairness']
+            },
+            {
+                'title': 'Data Science & Analytics',
+                'subtopics': ['Big Data Analytics', 'Predictive Analytics', 'Data Mining', 'Business Intelligence', 'Statistical Analysis']
+            }
+        ]
+    else:
+        print(f"DEBUG - User CFP - Topics from database: {cfp_content['topics']}")
+    
+    if 'important_dates' not in cfp_content:
+        cfp_content['important_dates'] = [
+            {
+                'icon': 'fas fa-paper-plane',
+                'title': 'Paper Submission',
+                'date': 'March 15, 2024',
+                'time': '23:59 GMT'
+            },
+            {
+                'icon': 'fas fa-envelope-open-text',
+                'title': 'Notification of Acceptance',
+                'date': 'April 30, 2024',
+                'time': '23:59 GMT'
+            }
+        ]
+    
+    if 'submission_guidelines' not in cfp_content:
+        cfp_content['submission_guidelines'] = [
+            {
+                'title': 'Paper Format',
+                'guideline_items': ['Papers must be written in English', 'Maximum length: 8 pages including figures and references']
+            },
+            {
+                'title': 'Review Process',
+                'guideline_items': ['Double-blind peer review', 'Minimum three reviewers per paper']
+            }
+        ]
+    else:
+        # Convert any guideline dictionaries to objects with proper properties to avoid the items() method conflict
+        structured_guidelines = []
+        for guideline in cfp_content['submission_guidelines']:
+            if isinstance(guideline, dict):
+                guideline_obj = {}
+                
+                # Copy all properties except 'items'
+                for key, value in guideline.items():
+                    if key != 'items':
+                        guideline_obj[key] = value
+                
+                # Add 'guideline_items' property instead of 'items' to avoid the method name conflict
+                if 'items' in guideline and isinstance(guideline['items'], list):
+                    guideline_obj['guideline_items'] = guideline['items']
+                else:
+                    guideline_obj['guideline_items'] = []
+                
+                structured_guidelines.append(guideline_obj)
+            else:
+                # If it's not a dict, create a basic structure
+                structured_guidelines.append({
+                    'title': 'Guideline',
+                    'guideline_items': []
+                })
+                
+        cfp_content['submission_guidelines'] = structured_guidelines
+    
+    return render_template('user/call_for_papers.html', site_design=get_site_design(), cfp_content=cfp_content)
 
 @app.route('/paper-submission', methods=['GET', 'POST'])
 @login_required
@@ -2699,6 +2786,7 @@ def inject_admin_menu():
         {'url': 'admin_dashboard', 'icon': 'tachometer-alt', 'text': 'Dashboard'},
         {'url': 'admin_home_content', 'icon': 'home', 'text': 'Home Content'},
         {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
+        {'url': 'admin_call_for_papers_content', 'icon': 'file-signature', 'text': 'Call for Papers Content'},
         {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
         {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
         {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},  # Changed from admin_papers to admin_submissions
@@ -4476,6 +4564,153 @@ def inject_home_content():
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
         return {'home_content': default_content}
+
+@app.route('/admin/call-for-papers-content', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_call_for_papers_content():
+    try:
+        if request.method == 'POST':
+            # Process topics of interest
+            topics = []
+            topic_titles = request.form.getlist('topic_titles[]')
+            
+            print(f"DEBUG - Admin CFP POST - Number of topics: {len(topic_titles)}")
+            print(f"DEBUG - Admin CFP POST - Topic titles: {topic_titles}")
+            
+            for i, title in enumerate(topic_titles):
+                subtopics = request.form.getlist(f'topic_subtopics[{i}][]')
+                print(f"DEBUG - Admin CFP POST - Topic {i}: {title} with {len(subtopics)} subtopics")
+                topics.append({
+                    'title': title,
+                    'subtopics': subtopics
+                })
+            
+            # Process important dates
+            important_dates = []
+            date_icons = request.form.getlist('date_icons[]')
+            date_titles = request.form.getlist('date_titles[]')
+            date_values = request.form.getlist('date_values[]')
+            date_times = request.form.getlist('date_times[]')
+            
+            for i in range(len(date_titles)):
+                important_dates.append({
+                    'icon': date_icons[i] if i < len(date_icons) else '',
+                    'title': date_titles[i],
+                    'date': date_values[i],
+                    'time': date_times[i] if i < len(date_times) else ''
+                })
+            
+            # Process submission guidelines
+            submission_guidelines = []
+            guideline_titles = request.form.getlist('guideline_titles[]')
+            
+            for i, title in enumerate(guideline_titles):
+                items = request.form.getlist(f'guideline_items[{i}][]')
+                # Store items as a proper list field, not using the dict.items method
+                submission_guidelines.append({
+                    'title': title,
+                    'guideline_items': items  # Use guideline_items instead of items for storage
+                })
+            
+            # Process CTA section
+            cta = {
+                'submit_button_text': request.form.get('submit_button_text', 'Submit Your Paper'),
+                'template_button_text': request.form.get('template_button_text', 'Download Template'),
+                'template_url': request.form.get('template_url', '#')
+            }
+            
+            # Compile the final data structure
+            cfp_content = {
+                'topics_intro': request.form.get('topics_intro', 'We invite high-quality original research papers in the following areas (but not limited to):'),
+                'topics': topics,
+                'important_dates': important_dates,
+                'submission_guidelines': submission_guidelines,
+                'cta': cta
+            }
+            
+            # Print the final structure before saving
+            print(f"DEBUG - Admin CFP POST - Final topics structure: {cfp_content['topics']}")
+            
+            # Save to Firebase
+            db.reference('call_for_papers_content').set(cfp_content)
+            flash('Call for Papers content updated successfully!', 'success')
+            return redirect(url_for('admin_call_for_papers_content'))
+        
+        # GET request - load current content
+        cfp_content = db.reference('call_for_papers_content').get() or {}
+        
+        # Set up default values if they don't exist in the fetched data
+        if 'cta' not in cfp_content:
+            cfp_content['cta'] = {
+                'submit_button_text': 'Submit Your Paper',
+                'template_button_text': 'Download Template',
+                'template_url': '#'
+            }
+            
+        # Ensure other required sections exist
+        if 'topics_intro' not in cfp_content:
+            cfp_content['topics_intro'] = 'We invite high-quality original research papers in the following areas (but not limited to):'
+            
+        if 'topics' not in cfp_content:
+            cfp_content['topics'] = []
+            
+        if 'important_dates' not in cfp_content:
+            cfp_content['important_dates'] = []
+            
+        if 'submission_guidelines' not in cfp_content:
+            cfp_content['submission_guidelines'] = []
+        else:
+            # Convert any guideline dictionaries to objects with proper properties to avoid the items() method conflict
+            structured_guidelines = []
+            for guideline in cfp_content['submission_guidelines']:
+                if isinstance(guideline, dict):
+                    guideline_obj = {}
+                    
+                    # Copy all properties except 'items'
+                    for key, value in guideline.items():
+                        if key != 'items':
+                            guideline_obj[key] = value
+                    
+                    # Handle 'items' property - migrate to guideline_items to avoid conflict
+                    # First check for guideline_items then items
+                    if 'guideline_items' in guideline and isinstance(guideline['guideline_items'], list):
+                        guideline_obj['guideline_items'] = guideline['guideline_items']
+                    elif 'items' in guideline and isinstance(guideline['items'], list):
+                        guideline_obj['guideline_items'] = guideline['items']
+                    else:
+                        guideline_obj['guideline_items'] = []
+                    
+                    structured_guidelines.append(guideline_obj)
+                else:
+                    # If it's not a dict, create a basic structure
+                    structured_guidelines.append({
+                        'title': 'Guideline',
+                        'guideline_items': []
+                    })
+                    
+            cfp_content['submission_guidelines'] = structured_guidelines
+        
+        print(f"DEBUG - Admin CFP GET - Topics from database: {cfp_content.get('topics', [])}")
+            
+        return render_template('admin/call_for_papers_content.html', cfp_content=cfp_content)
+    
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+        print(f"Error in admin_call_for_papers_content: {str(e)}")
+        # Provide complete default structure when error occurs
+        default_cfp_content = {
+            'topics_intro': 'We invite high-quality original research papers in the following areas (but not limited to):',
+            'topics': [],
+            'important_dates': [],
+            'submission_guidelines': [],
+            'cta': {
+                'submit_button_text': 'Submit Your Paper',
+                'template_button_text': 'Download Template',
+                'template_url': '#'
+            }
+        }
+        return render_template('admin/call_for_papers_content.html', cfp_content=default_cfp_content)
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app
