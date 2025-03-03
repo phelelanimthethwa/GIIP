@@ -53,9 +53,10 @@
                                 <input type="text" class="form-control" name="topic_titles[]" value="{{ topic.title }}" required>
                             </div>
                             <div class="subtopics-container">
+                                {% set outer_loop = loop %}
                                 {% for subtopic in topic.subtopics %}
                                 <div class="input-group mb-2 subtopic-item">
-                                    <input type="text" class="form-control" name="topic_subtopics[{{ loop.parent.loop.index0 }}][]" value="{{ subtopic }}" required>
+                                    <input type="text" class="form-control" name="topic_subtopics[{{ outer_loop.index0 }}][]" value="{{ subtopic }}" required>
                                     <button type="button" class="btn btn-outline-danger remove-subtopic">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -93,9 +94,20 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-3">
-                                    <label class="form-label">Icon Class</label>
-                                    <input type="text" class="form-control" name="date_icons[]" value="{{ date.icon }}" placeholder="fas fa-paper-plane">
-                                    <small class="text-muted">FontAwesome icon class</small>
+                                    <label class="form-label">Icon</label>
+                                    <select class="form-select" name="date_icons[]" required>
+                                        <option value="fas fa-paper-plane" {% if date.icon == 'fas fa-paper-plane' %}selected{% endif %}>Paper Plane</option>
+                                        <option value="fas fa-envelope-open-text" {% if date.icon == 'fas fa-envelope-open-text' %}selected{% endif %}>Envelope</option>
+                                        <option value="fas fa-check-circle" {% if date.icon == 'fas fa-check-circle' %}selected{% endif %}>Check Circle</option>
+                                        <option value="fas fa-calendar-alt" {% if date.icon == 'fas fa-calendar-alt' %}selected{% endif %}>Calendar</option>
+                                        <option value="fas fa-clock" {% if date.icon == 'fas fa-clock' %}selected{% endif %}>Clock</option>
+                                        <option value="fas fa-file-alt" {% if date.icon == 'fas fa-file-alt' %}selected{% endif %}>File</option>
+                                        <option value="fas fa-book" {% if date.icon == 'fas fa-book' %}selected{% endif %}>Book</option>
+                                        <option value="fas fa-graduation-cap" {% if date.icon == 'fas fa-graduation-cap' %}selected{% endif %}>Graduation Cap</option>
+                                        <option value="fas fa-certificate" {% if date.icon == 'fas fa-certificate' %}selected{% endif %}>Certificate</option>
+                                        <option value="fas fa-trophy" {% if date.icon == 'fas fa-trophy' %}selected{% endif %}>Trophy</option>
+                                    </select>
+                                    <small class="text-muted">Select an icon for this date</small>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Title</label>
@@ -296,9 +308,20 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3">
-                        <label class="form-label">Icon Class</label>
-                        <input type="text" class="form-control" name="date_icons[]" placeholder="fas fa-paper-plane">
-                        <small class="text-muted">FontAwesome icon class</small>
+                        <label class="form-label">Icon</label>
+                        <select class="form-select" name="date_icons[]" required>
+                            <option value="fas fa-paper-plane">Paper Plane</option>
+                            <option value="fas fa-envelope-open-text">Envelope</option>
+                            <option value="fas fa-check-circle">Check Circle</option>
+                            <option value="fas fa-calendar-alt">Calendar</option>
+                            <option value="fas fa-clock">Clock</option>
+                            <option value="fas fa-file-alt">File</option>
+                            <option value="fas fa-book">Book</option>
+                            <option value="fas fa-graduation-cap">Graduation Cap</option>
+                            <option value="fas fa-certificate">Certificate</option>
+                            <option value="fas fa-trophy">Trophy</option>
+                        </select>
+                        <small class="text-muted">Select an icon for this date</small>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Title</label>
