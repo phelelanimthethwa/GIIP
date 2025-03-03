@@ -1,0 +1,426 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Manage Call for Papers Content - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Call for Papers Content</li>
+                </ol>
+            </nav>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <!-- Topics of Interest Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Topics of Interest</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="add-topic-btn">
+                    <i class="fas fa-plus"></i> Add Topic
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="topics_intro" class="form-label">Section Introduction</label>
+                    <textarea class="form-control" id="topics_intro" name="topics_intro" rows="2" required>{{ cfp_content.topics_intro|default('We invite high-quality original research papers in the following areas (but not limited to):') }}</textarea>
+                </div>
+                
+                <div id="topics-container">
+                    {% for topic in cfp_content.topics|default([]) %}
+                    <div class="card mb-3 topic-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Topic Area</h6>
+                            <button type="button" class="btn btn-danger btn-sm remove-topic">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Topic Title</label>
+                                <input type="text" class="form-control" name="topic_titles[]" value="{{ topic.title }}" required>
+                            </div>
+                            <div class="subtopics-container">
+                                {% for subtopic in topic.subtopics %}
+                                <div class="input-group mb-2 subtopic-item">
+                                    <input type="text" class="form-control" name="topic_subtopics[{{ loop.parent.loop.index0 }}][]" value="{{ subtopic }}" required>
+                                    <button type="button" class="btn btn-outline-danger remove-subtopic">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm add-subtopic">
+                                <i class="fas fa-plus"></i> Add Subtopic
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Important Dates Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Important Dates</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="add-date-btn">
+                    <i class="fas fa-plus"></i> Add Date
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="dates-container">
+                    {% for date in cfp_content.important_dates|default([]) %}
+                    <div class="card mb-3 date-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Date Entry</h6>
+                            <button type="button" class="btn btn-danger btn-sm remove-date">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Icon Class</label>
+                                    <input type="text" class="form-control" name="date_icons[]" value="{{ date.icon }}" placeholder="fas fa-paper-plane">
+                                    <small class="text-muted">FontAwesome icon class</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" class="form-control" name="date_titles[]" value="{{ date.title }}" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Date</label>
+                                    <input type="text" class="form-control" name="date_values[]" value="{{ date.date }}" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Time</label>
+                                    <input type="text" class="form-control" name="date_times[]" value="{{ date.time }}" placeholder="23:59 GMT">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Submission Guidelines Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Submission Guidelines</h5>
+                <button type="button" class="btn btn-primary btn-sm" id="add-guideline-btn">
+                    <i class="fas fa-plus"></i> Add Guideline Category
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="guidelines-container">
+                    {% for guideline in cfp_content.submission_guidelines|default([]) %}
+                    <div class="card mb-3 guideline-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Guideline Category</h6>
+                            <button type="button" class="btn btn-danger btn-sm remove-guideline">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Category Title</label>
+                                <input type="text" class="form-control" name="guideline_titles[]" value="{{ guideline.title }}" required>
+                            </div>
+                            <div class="guidelines-items-container">
+                                {% set outer_loop = loop %}
+                                {% for item in guideline.guideline_items|default(guideline.items|default([])) %}
+                                <div class="input-group mb-2 guideline-item">
+                                    <input type="text" class="form-control" name="guideline_items[{{ outer_loop.index0 }}][]" value="{{ item }}" required>
+                                    <button type="button" class="btn btn-outline-danger remove-guideline-item">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm add-guideline-item">
+                                <i class="fas fa-plus"></i> Add Item
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Call to Action</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Submit Button Text</label>
+                            <input type="text" class="form-control" name="submit_button_text" value="{{ cfp_content.cta.submit_button_text|default('Submit Your Paper') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Template Button Text</label>
+                            <input type="text" class="form-control" name="template_button_text" value="{{ cfp_content.cta.template_button_text|default('Download Template') }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Template URL</label>
+                    <input type="text" class="form-control" name="template_url" value="{{ cfp_content.cta.template_url|default('#') }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{{ url_for('call_for_papers') }}" class="btn btn-secondary" target="_blank">
+                <i class="fas fa-eye"></i> Preview Current Page
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Topic management
+    document.getElementById('add-topic-btn').addEventListener('click', function() {
+        const container = document.getElementById('topics-container');
+        const topicIndex = container.children.length;
+        
+        const topicCard = document.createElement('div');
+        topicCard.className = 'card mb-3 topic-card';
+        topicCard.innerHTML = `
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Topic Area</h6>
+                <button type="button" class="btn btn-danger btn-sm remove-topic">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Topic Title</label>
+                    <input type="text" class="form-control" name="topic_titles[]" required>
+                </div>
+                <div class="subtopics-container">
+                    <div class="input-group mb-2 subtopic-item">
+                        <input type="text" class="form-control" name="topic_subtopics[${topicIndex}][]" required>
+                        <button type="button" class="btn btn-outline-danger remove-subtopic">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm add-subtopic">
+                    <i class="fas fa-plus"></i> Add Subtopic
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(topicCard);
+        initTopicListeners(topicCard);
+    });
+    
+    function initTopicListeners(element) {
+        // Remove topic
+        element.querySelector('.remove-topic').addEventListener('click', function() {
+            element.remove();
+            updateTopicIndices();
+        });
+        
+        // Add subtopic
+        element.querySelector('.add-subtopic').addEventListener('click', function() {
+            const subtopicsContainer = element.querySelector('.subtopics-container');
+            const topicIndex = Array.from(document.querySelectorAll('.topic-card')).indexOf(element);
+            
+            const subtopicItem = document.createElement('div');
+            subtopicItem.className = 'input-group mb-2 subtopic-item';
+            subtopicItem.innerHTML = `
+                <input type="text" class="form-control" name="topic_subtopics[${topicIndex}][]" required>
+                <button type="button" class="btn btn-outline-danger remove-subtopic">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            subtopicsContainer.appendChild(subtopicItem);
+            
+            subtopicItem.querySelector('.remove-subtopic').addEventListener('click', function() {
+                subtopicItem.remove();
+            });
+        });
+    }
+    
+    function updateTopicIndices() {
+        document.querySelectorAll('.topic-card').forEach((topicCard, topicIndex) => {
+            topicCard.querySelectorAll('.subtopic-item input').forEach(input => {
+                input.name = `topic_subtopics[${topicIndex}][]`;
+            });
+        });
+    }
+    
+    // Initialize listeners for existing topics
+    document.querySelectorAll('.topic-card').forEach(topicCard => {
+        initTopicListeners(topicCard);
+    });
+    
+    // For date cards
+    document.getElementById('add-date-btn').addEventListener('click', function() {
+        const container = document.getElementById('dates-container');
+        
+        const dateCard = document.createElement('div');
+        dateCard.className = 'card mb-3 date-card';
+        dateCard.innerHTML = `
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Date Entry</h6>
+                <button type="button" class="btn btn-danger btn-sm remove-date">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">Icon Class</label>
+                        <input type="text" class="form-control" name="date_icons[]" placeholder="fas fa-paper-plane">
+                        <small class="text-muted">FontAwesome icon class</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" name="date_titles[]" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Date</label>
+                        <input type="text" class="form-control" name="date_values[]" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Time</label>
+                        <input type="text" class="form-control" name="date_times[]" placeholder="23:59 GMT">
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(dateCard);
+        
+        dateCard.querySelector('.remove-date').addEventListener('click', function() {
+            dateCard.remove();
+        });
+    });
+    
+    // Initialize listeners for existing dates
+    document.querySelectorAll('.date-card .remove-date').forEach(button => {
+        button.addEventListener('click', function() {
+            this.closest('.date-card').remove();
+        });
+    });
+    
+    // For guideline cards
+    document.getElementById('add-guideline-btn').addEventListener('click', function() {
+        const container = document.getElementById('guidelines-container');
+        const guidelineIndex = container.children.length;
+        
+        const guidelineCard = document.createElement('div');
+        guidelineCard.className = 'card mb-3 guideline-card';
+        guidelineCard.innerHTML = `
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Guideline Category</h6>
+                <button type="button" class="btn btn-danger btn-sm remove-guideline">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Category Title</label>
+                    <input type="text" class="form-control" name="guideline_titles[]" required>
+                </div>
+                <div class="guidelines-items-container">
+                    <div class="input-group mb-2 guideline-item">
+                        <input type="text" class="form-control" name="guideline_items[${guidelineIndex}][]" required>
+                        <button type="button" class="btn btn-outline-danger remove-guideline-item">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm add-guideline-item">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(guidelineCard);
+        initGuidelineListeners(guidelineCard);
+    });
+    
+    function initGuidelineListeners(element) {
+        // Remove guideline
+        element.querySelector('.remove-guideline').addEventListener('click', function() {
+            element.remove();
+            updateGuidelineIndices();
+        });
+        
+        // Add guideline item
+        element.querySelector('.add-guideline-item').addEventListener('click', function() {
+            const itemsContainer = element.querySelector('.guidelines-items-container');
+            const guidelineIndex = Array.from(document.querySelectorAll('.guideline-card')).indexOf(element);
+            
+            const guidelineItem = document.createElement('div');
+            guidelineItem.className = 'input-group mb-2 guideline-item';
+            guidelineItem.innerHTML = `
+                <input type="text" class="form-control" name="guideline_items[${guidelineIndex}][]" required>
+                <button type="button" class="btn btn-outline-danger remove-guideline-item">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            itemsContainer.appendChild(guidelineItem);
+            
+            guidelineItem.querySelector('.remove-guideline-item').addEventListener('click', function() {
+                guidelineItem.remove();
+            });
+        });
+    }
+    
+    function updateGuidelineIndices() {
+        document.querySelectorAll('.guideline-card').forEach((guidelineCard, guidelineIndex) => {
+            guidelineCard.querySelectorAll('.guideline-item input').forEach(input => {
+                input.name = `guideline_items[${guidelineIndex}][]`;
+            });
+        });
+    }
+    
+    // Initialize listeners for existing guidelines
+    document.querySelectorAll('.guideline-card').forEach(guidelineCard => {
+        initGuidelineListeners(guidelineCard);
+    });
+    
+    // Initialize remove buttons for existing elements
+    document.querySelectorAll('.remove-subtopic').forEach(button => {
+        button.addEventListener('click', function() {
+            this.closest('.subtopic-item').remove();
+        });
+    });
+    
+    document.querySelectorAll('.remove-guideline-item').forEach(button => {
+        button.addEventListener('click', function() {
+            this.closest('.guideline-item').remove();
+        });
+    });
+});
+</script>
+{% endblock %} 
