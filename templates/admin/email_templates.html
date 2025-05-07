@@ -49,6 +49,7 @@
                         <span class="tag">{{registration_type}}</span>
                         <span class="tag">{{amount_paid}}</span>
                         <span class="tag">{{conference_dates}}</span>
+                        <span class="tag">{{support_email}}</span>
                     </div>
                 </div>
             </div>
@@ -312,21 +313,47 @@
 const defaultTemplates = {
     registration_approval: {
         name: 'Registration Approval',
-        subject: 'Your Conference Registration Has Been Approved',
-        content: `Dear {{full_name}},
+        subject: 'GIIR Conference 2024 - Registration Acceptance',
+        content: `<img src="https://yourdomain.com/static/images/giirlogo.jpg" alt="GIIR Logo" style="max-width:180px; margin-bottom:20px; display:block;">
 
-We are pleased to inform you that your registration for the conference has been approved!
+International Conference on Innovative Research (GIIR-2024)
+
+Dear {{full_name}},
+
+CONGRATULATIONS!!
+
+We are pleased to inform you that your registration for the GIIR International Conference 2024 has been successfully approved and confirmed. The conference will be organized by the GLOBAL INSTITUTE ON INNOVATIVE RESEARCH (GIIR).
 
 Registration Details:
-- Type: {{registration_type}}
+- Registration Type: {{registration_type}}
 - Amount Paid: {{amount_paid}}
+- Conference Dates: {{conference_dates}}
 
-The conference will be held on {{conference_dates}}. We will send you additional information about the schedule and venue details closer to the date.
+Your registration includes:
+• Conference programme access
+• Presentation time slot (if applicable)
+• Conference proceedings
+• Certificate of participation
+• Networking opportunities
+• Access to all conference sessions
 
-Thank you for registering for our conference. We look forward to your participation!
+Important Note:
+Please be advised that in case of any unforeseen circumstances, such as a pandemic or travel limitations, the conference may be held via virtual medium. Participants will be notified well in advance of any such changes.
 
-Best regards,
-Conference Team`
+Additional Information:
+- Conference proceedings will be published with ISBN (International Standard Book Number)
+- Detailed schedule and venue information will be sent closer to the event date
+- Virtual access details will be provided (if applicable)
+
+For any inquiries, please do not hesitate to contact our support team at {{support_email}}.
+
+We look forward to your participation in this exciting event.
+
+With Warmest Regards,
+GIIR Conference Coordinator
+Global Institute on Innovative Research (GIIR)
+
+Note: This is an automated confirmation. Please save this email for your records.`,
     },
     registration_rejection: {
         name: 'Registration Rejection',
