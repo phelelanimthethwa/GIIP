@@ -3,125 +3,295 @@
 {% block title %}Manage Downloads - Admin{% endblock %}
 
 {% block content %}
-<div class="admin-section">
-    <h1>Manage Downloads</h1>
+<div class="container-fluid px-4">
+    <h1 class="mt-4 mb-4">Manage Conference Downloads</h1>
+    <p class="text-muted">Upload and manage documents that will be available in the Conference Proceedings page</p>
 
-    <div class="admin-form-container">
-        <form method="POST" enctype="multipart/form-data" class="upload-form">
-            <div class="form-group">
-                <label for="title">Title</label>
-                <input type="text" id="title" name="title" required class="form-control">
-            </div>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-upload me-1"></i>
+                    Upload New Document
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" class="upload-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Document Title <span class="text-danger">*</span></label>
+                                    <input type="text" id="title" name="title" required class="form-control" 
+                                           placeholder="e.g., Conference Template - US Letter">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                                    <select id="category" name="category" class="form-control" required>
+                                        <option value="">Select Category</option>
+                                        <option value="manuscript_templates">Manuscript Templates</option>
+                                        <option value="author_guidelines">Author Guidelines</option>
+                                        <option value="conference_proceedings">Conference Proceedings</option>
+                                        <option value="presentation_templates">Presentation Templates</option>
+                                        <option value="bibliography_files">Bibliography Files</option>
+                                        <option value="latex_templates">LaTeX Templates</option>
+                                        <option value="general">General Documents</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="3"></textarea>
-            </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" name="description" class="form-control" rows="3" 
+                                      placeholder="Brief description of the document and its purpose"></textarea>
+                        </div>
 
-            <div class="form-group">
-                <label for="type">Document Type</label>
-                <select id="type" name="type" class="form-control">
-                    <option value="pdf">PDF</option>
-                    <option value="doc">Word Document</option>
-                    <option value="xls">Excel Spreadsheet</option>
-                    <option value="ppt">PowerPoint</option>
-                    <option value="zip">ZIP Archive</option>
-                </select>
-            </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="type" class="form-label">Document Type</label>
+                                    <select id="type" name="type" class="form-control">
+                                        <option value="pdf">PDF Document</option>
+                                        <option value="doc">Word Document (DOC)</option>
+                                        <option value="docx">Word Document (DOCX)</option>
+                                        <option value="tex">LaTeX File</option>
+                                        <option value="zip">ZIP Archive</option>
+                                        <option value="xls">Excel Spreadsheet</option>
+                                        <option value="ppt">PowerPoint</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="version" class="form-label">Version/Date</label>
+                                    <input type="text" id="version" name="version" class="form-control" 
+                                           placeholder="e.g., Updated 2024, v2.1">
+                                </div>
+                            </div>
+                        </div>
 
-            <div class="form-group">
-                <label for="file">File</label>
-                <input type="file" id="file" name="file" required class="form-control">
-                <small class="form-text text-muted">
-                    Allowed file types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, ZIP (Max size: 16MB)
-                </small>
-            </div>
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Upload File <span class="text-danger">*</span></label>
+                            <input type="file" id="file" name="file" required class="form-control">
+                            <div class="form-text">
+                                <strong>Allowed file types:</strong> PDF, DOC, DOCX, TEX, ZIP, XLS, XLSX, PPT, PPTX<br>
+                                <strong>Maximum file size:</strong> 16MB
+                            </div>
+                        </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn-submit">Upload Document</button>
+                        <div class="mb-3">
+                            <label for="external_url" class="form-label">External URL (Optional)</label>
+                            <input type="url" id="external_url" name="external_url" class="form-control" 
+                                   placeholder="https://www.overleaf.com/gallery/tagged/ieee-official">
+                            <div class="form-text">For external resources like Overleaf templates</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Upload Document
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </form>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Upload Guidelines
+                </div>
+                <div class="card-body">
+                    <h6>Categories Explained:</h6>
+                    <ul class="small">
+                        <li><strong>Manuscript Templates:</strong> Word/LaTeX templates for paper formatting</li>
+                        <li><strong>Author Guidelines:</strong> Instructions for authors</li>
+                        <li><strong>Conference Proceedings:</strong> Published conference papers</li>
+                        <li><strong>Presentation Templates:</strong> PowerPoint templates</li>
+                        <li><strong>Bibliography Files:</strong> BibTeX and reference files</li>
+                        <li><strong>LaTeX Templates:</strong> TeX files and packages</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6>Best Practices:</h6>
+                    <ul class="small">
+                        <li>Use descriptive titles (include format and page size)</li>
+                        <li>Add version information when available</li>
+                        <li>Provide clear descriptions</li>
+                        <li>Test downloads before publishing</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="downloads-list">
-        <h2>Uploaded Documents</h2>
-        {% if downloads %}
-            <div class="downloads-grid">
+    <!-- Existing Downloads -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list me-1"></i>
+            Uploaded Documents ({{ downloads|length if downloads else 0 }})
+        </div>
+        <div class="card-body">
+            {% if downloads %}
+                {% set downloads_by_category = {} %}
                 {% for id, download in downloads.items() %}
-                <div class="download-card">
-                    <div class="download-icon">
-                        <i class="fas fa-file-{{ download.type }}"></i>
-                    </div>
-                    <div class="download-info">
-                        <h3>{{ download.title }}</h3>
-                        <p>{{ download.description }}</p>
-                        <div class="download-meta">
-                            <span class="file-type">{{ download.file_type }}</span>
-                            <span class="file-size">{{ download.file_size }}</span>
+                    {% set category = download.category|default('general') %}
+                    {% if category not in downloads_by_category %}
+                        {% set _ = downloads_by_category.update({category: []}) %}
+                    {% endif %}
+                    {% set _ = downloads_by_category[category].append((id, download)) %}
+                {% endfor %}
+
+                {% for category, items in downloads_by_category.items() %}
+                <div class="category-section mb-4">
+                    <h5 class="text-primary mb-3">
+                        <i class="fas fa-folder"></i> 
+                        {{ category.replace('_', ' ').title() }}
+                        <span class="badge bg-secondary">{{ items|length }}</span>
+                    </h5>
+                    <div class="row">
+                        {% for id, download in items %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-primary h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="download-icon text-primary">
+                                            {% if download.type == 'pdf' %}
+                                                <i class="fas fa-file-pdf fa-2x"></i>
+                                            {% elif download.type in ['doc', 'docx'] %}
+                                                <i class="fas fa-file-word fa-2x"></i>
+                                            {% elif download.type == 'zip' %}
+                                                <i class="fas fa-file-archive fa-2x"></i>
+                                            {% elif download.type == 'tex' %}
+                                                <i class="fas fa-file-code fa-2x"></i>
+                                            {% else %}
+                                                <i class="fas fa-file fa-2x"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="{{ download.file_url }}" target="_blank">
+                                                    <i class="fas fa-eye"></i> Preview
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="{{ download.file_url }}" download>
+                                                    <i class="fas fa-download"></i> Download
+                                                </a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item text-danger" href="#" 
+                                                       onclick="deleteDownload('{{ id }}', '{{ download.title }}')">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <h6 class="card-title mb-2">{{ download.title }}</h6>
+                                    {% if download.description %}
+                                    <p class="card-text small text-muted mb-2">{{ download.description }}</p>
+                                    {% endif %}
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="file-info">
+                                            <span class="badge bg-info">{{ download.file_type|upper }}</span>
+                                            <small class="text-muted">{{ download.file_size }}</small>
+                                        </div>
+                                        {% if download.version %}
+                                        <small class="text-muted">{{ download.version }}</small>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if download.external_url %}
+                                    <div class="mt-2">
+                                        <a href="{{ download.external_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt"></i> External Link
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                        <div class="download-actions">
-                            <a href="{{ download.file_url }}" class="btn-download" download>
-                                <i class="fas fa-download"></i> Download
-                            </a>
-                            <form method="POST" action="{{ url_for('delete_download', download_id=id) }}" class="delete-form">
-                                <button type="submit" class="btn-delete" onclick="return confirm('Are you sure you want to delete this document?')">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                            </form>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 {% endfor %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No documents have been uploaded yet.</p>
+                    <p class="text-muted small">Upload your first document using the form above.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-        {% else %}
-            <div class="no-downloads">
-                <p>No documents have been uploaded yet.</p>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="documentName"></strong>?</p>
+                <p class="text-muted small">This action cannot be undone and the file will be permanently removed from the server.</p>
             </div>
-        {% endif %}
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Document</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-.upload-form {
-    margin-bottom: 3rem;
+.border-left-primary {
+    border-left: 0.25rem solid var(--bs-primary) !important;
 }
 
-.downloads-list h2 {
-    margin: 2rem 0;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #f0f0f0;
+.category-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
 }
 
-.download-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
+.download-icon {
+    width: 50px;
+    text-align: center;
 }
 
-.btn-delete {
-    padding: 0.8rem;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    flex: 1;
+.file-info {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.5rem;
 }
 
-.btn-delete:hover {
-    background-color: #c82333;
+.card-title {
+    line-height: 1.2;
+    font-size: 0.95rem;
 }
 
-.btn-delete i {
-    margin-right: 0.5rem;
-}
-
-.delete-form {
-    flex: 1;
+.card-text {
+    line-height: 1.3;
+    font-size: 0.85rem;
 }
 </style>
+
+<script>
+function deleteDownload(downloadId, documentName) {
+    document.getElementById('documentName').textContent = documentName;
+    document.getElementById('deleteForm').action = '/admin/downloads/delete/' + downloadId;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
 {% endblock %} 

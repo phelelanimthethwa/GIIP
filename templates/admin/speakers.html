@@ -1,0 +1,154 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Guest Speakers Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Guest Speakers Management</h1>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{{ url_for('add_speaker') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Speaker
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-microphone me-1"></i>
+            All Speakers
+        </div>
+        <div class="card-body">
+            {% if speakers %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" id="speakersTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 70px">Image</th>
+                                <th>Name</th>
+                                <th>Title</th>
+                                <th>Organization</th>
+                                <th>Status</th>
+                                <th style="width: 120px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for id, speaker in speakers.items() %}
+                            <tr>
+                                <td>
+                                    {% if speaker.profile_image %}
+                                        <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}" class="img-thumbnail" style="max-height: 50px;">
+                                    {% else %}
+                                        <div class="bg-secondary text-white rounded text-center" style="width: 50px; height: 50px; line-height: 50px;">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ speaker.name }}</td>
+                                <td>{{ speaker.title }}</td>
+                                <td>{{ speaker.organization }}</td>
+                                <td>{{ speaker.status }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('edit_speaker', speaker_id=id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger delete-speaker" data-id="{{ id }}" data-name="{{ speaker.name }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    No speakers have been added yet. <a href="{{ url_for('add_speaker') }}">Add your first speaker</a>.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the speaker <strong id="speakerName"></strong>? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Initialize DataTable
+        $('#speakersTable').DataTable({
+            order: [[1, 'asc']] // Sort by name (column 1) by default
+        });
+        
+        // Handle delete button click
+        $('.delete-speaker').on('click', function() {
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+            
+            // Set speaker name in modal
+            $('#speakerName').text(name);
+            
+            // Set up the delete confirmation button
+            $('#confirmDelete').data('id', id);
+            
+            // Show the modal
+            $('#deleteModal').modal('show');
+        });
+        
+        // Handle delete confirmation
+        $('#confirmDelete').on('click', function() {
+            const id = $(this).data('id');
+            
+            // Send delete request
+            $.ajax({
+                url: `/admin/speakers/${id}/delete`,
+                method: 'POST',
+                success: function(response) {
+                    if (response.success) {
+                        // Hide modal
+                        $('#deleteModal').modal('hide');
+                        
+                        // Show success message
+                        toastr.success('Speaker deleted successfully');
+                        
+                        // Reload page after a short delay
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        toastr.error('Error deleting speaker: ' + response.error);
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error deleting speaker';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg += ': ' + xhr.responseJSON.error;
+                    }
+                    toastr.error(errorMsg);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 

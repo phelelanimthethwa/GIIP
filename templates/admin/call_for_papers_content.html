@@ -24,6 +24,32 @@
     </div>
 
     <form method="POST" enctype="multipart/form-data">
+        <!-- Page Header Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-heading me-2"></i>Page Header</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="page_title" class="form-label">Page Title</label>
+                            <input type="text" class="form-control" id="page_title" name="page_title" 
+                                   value="{{ cfp_content.page_header.title|default('Call for Papers') }}" required>
+                            <div class="form-text">This appears as the main heading on the page</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="page_subtitle" class="form-label">Page Subtitle</label>
+                            <textarea class="form-control" id="page_subtitle" name="page_subtitle" rows="2" required>{{ cfp_content.page_header.subtitle|default('Submit your research to be part of the Global Institute on Innovative Research Conference 2024') }}</textarea>
+                            <div class="form-text">This appears below the main heading as a description</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Topics of Interest Section -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">

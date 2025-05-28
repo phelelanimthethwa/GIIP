@@ -171,33 +171,55 @@
                             <div class="download-item" data-id="{{ download.id }}">
                                 <div class="download-info">
                                     <input type="hidden" name="download_ids[]" value="{{ download.id }}">
-                                    <div class="mb-3">
-                                        <label class="form-label">Title</label>
-                                        <input type="text" class="form-control" name="download_titles[]" 
-                                               value="{{ download.title }}" required>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Template Name</label>
+                                                <input type="text" class="form-control" name="download_titles[]" 
+                                                       value="{{ download.title }}" placeholder="e.g., Conference Paper Template" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Format</label>
+                                                <select class="form-control" name="download_formats[]" required>
+                                                    <option value="">Select Format</option>
+                                                    <option value="Microsoft Word" {{ 'selected' if download.format == 'Microsoft Word' }}>Microsoft Word (.docx)</option>
+                                                    <option value="PDF" {{ 'selected' if download.format == 'PDF' }}>PDF (.pdf)</option>
+                                                    <option value="LaTeX" {{ 'selected' if download.format == 'LaTeX' }}>LaTeX (.zip)</option>
+                                                    <option value="Overleaf" {{ 'selected' if download.format == 'Overleaf' }}>Overleaf Template</option>
+                                                    <option value="Other" {{ 'selected' if download.format == 'Other' }}>Other</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Description</label>
                                         <textarea class="form-control" name="download_descriptions[]" 
-                                                  rows="2" required>{{ download.description }}</textarea>
+                                                  rows="2" placeholder="Brief description of the template..." required>{{ download.description }}</textarea>
                                     </div>
                                     {% if download.file_url %}
                                     <div class="current-file mb-3">
                                         <input type="hidden" name="download_existing_files[]" value="{{ download.file_url }}">
-                                        <span>Current file: <a href="{{ download.file_url }}" target="_blank">{{ download.file_url.split('/')[-1] }}</a></span>
-                                        <small>({{ download.file_size }})</small>
+                                        <span class="text-success">
+                                            <i class="fas fa-file-alt"></i> Current file: 
+                                            <a href="{{ download.file_url }}" target="_blank" class="text-decoration-none">
+                                                {{ download.file_url.split('/')[-1] }}
+                                            </a>
+                                        </span>
+                                        <small class="text-muted d-block">({{ download.file_size if download.file_size else 'Unknown size' }})</small>
                                     </div>
                                     {% else %}
                                     <input type="hidden" name="download_existing_files[]" value="">
                                     {% endif %}
                                     <div class="file-upload">
-                                        <label class="form-label">Upload File</label>
+                                        <label class="form-label">Upload Template File</label>
                                         <input type="file" class="form-control" name="download_file_{{ download.id }}" 
-                                               accept=".pdf,.doc,.docx">
-                                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX</small>
+                                               accept=".pdf,.doc,.docx,.zip,.tex">
+                                        <small class="text-muted">Accepted formats: PDF, DOC, DOCX, ZIP, TEX</small>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-danger delete-download">
+                                <button type="button" class="btn btn-sm btn-danger delete-download" data-id="{{ download.id }}">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
@@ -205,7 +227,7 @@
                         {% endif %}
                         <div class="download-upload">
                             <button type="button" class="btn btn-outline-primary add-download">
-                                <i class="fas fa-plus"></i> Add Download
+                                <i class="fas fa-plus"></i> Add Template
                             </button>
                         </div>
                     </div>
@@ -1103,6 +1125,91 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }.bind(this);
         reader.readAsDataURL(file);
+    }
+
+    // Downloads Management
+    let downloadCounter = 0;
+    
+    // Add download functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.add-download, .add-download *')) {
+            addDownloadItem();
+        }
+        
+        if (e.target.matches('.delete-download, .delete-download *')) {
+            const downloadItem = e.target.closest('.download-item');
+            if (confirm('Are you sure you want to delete this template?')) {
+                downloadItem.style.opacity = '0';
+                downloadItem.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    downloadItem.remove();
+                }, 300);
+            }
+        }
+    });
+    
+    function addDownloadItem() {
+        downloadCounter++;
+        const downloadId = 'new_' + downloadCounter;
+        
+        const downloadItem = document.createElement('div');
+        downloadItem.className = 'download-item';
+        downloadItem.dataset.id = downloadId;
+        
+        downloadItem.innerHTML = `
+            <div class="download-info">
+                <input type="hidden" name="download_ids[]" value="${downloadId}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Template Name</label>
+                            <input type="text" class="form-control" name="download_titles[]" 
+                                   placeholder="e.g., Conference Paper Template" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Format</label>
+                            <select class="form-control" name="download_formats[]" required>
+                                <option value="">Select Format</option>
+                                <option value="Microsoft Word">Microsoft Word (.docx)</option>
+                                <option value="PDF">PDF (.pdf)</option>
+                                <option value="LaTeX">LaTeX (.zip)</option>
+                                <option value="Overleaf">Overleaf Template</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" name="download_descriptions[]" 
+                              rows="2" placeholder="Brief description of the template..." required></textarea>
+                </div>
+                <input type="hidden" name="download_existing_files[]" value="">
+                <div class="file-upload">
+                    <label class="form-label">Upload Template File</label>
+                    <input type="file" class="form-control" name="download_file_${downloadId}" 
+                           accept=".pdf,.doc,.docx,.zip,.tex" required>
+                    <small class="text-muted">Accepted formats: PDF, DOC, DOCX, ZIP, TEX</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-danger delete-download" data-id="${downloadId}">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        `;
+        
+        const downloadUpload = document.querySelector('.download-upload');
+        downloadUpload.parentNode.insertBefore(downloadItem, downloadUpload);
+        
+        // Add smooth animation
+        downloadItem.style.opacity = '0';
+        downloadItem.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            downloadItem.style.transition = 'all 0.3s ease';
+            downloadItem.style.opacity = '1';
+            downloadItem.style.transform = 'scale(1)';
+        }, 10);
     }
 
     // Handle form submission

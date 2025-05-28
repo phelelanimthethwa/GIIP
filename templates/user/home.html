@@ -143,32 +143,77 @@
     </div>
 </div>
 
+<!-- Guest Speakers Section -->
+{% if featured_speakers %}
+<div class="guest-speakers-section">
+    <div class="container">
+        <h2 class="section-title text-center">Guest Speakers</h2>
+        <div class="speakers-preview">
+            {% for speaker in featured_speakers %}
+            <div class="speaker-preview-card">
+                <div class="speaker-preview-image">
+                    {% if speaker.profile_image %}
+                        <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}">
+                    {% else %}
+                        <div class="speaker-placeholder d-flex align-items-center justify-content-center bg-secondary text-white">
+                            <i class="fas fa-user fa-3x"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <h3 class="speaker-preview-name">{{ speaker.name }}</h3>
+                <p class="speaker-preview-title">{{ speaker.title }}{% if speaker.organization %}, {{ speaker.organization }}{% endif %}</p>
+                {% if speaker.bio %}
+                <p class="speaker-preview-bio">{{ speaker.bio|truncate(100) }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('guest_speakers') }}" class="btn btn-primary">View All Speakers</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Downloads Section -->
 <div class="downloads-section">
     <h2>Important Downloads</h2>
-    <div class="downloads-grid">
-        {% if home_content.downloads %}
-            {% for download in home_content.downloads %}
-            <div class="download-card">
-                <div class="download-icon">
-                    <i class="fas fa-file-{{ download.type }}"></i>
-                </div>
-                <div class="download-info">
-                    <h3>{{ download.title }}</h3>
-                    <p>{{ download.description }}</p>
-                    <div class="download-meta">
-                        <span class="file-type">{{ download.file_type }}</span>
-                        <span class="file-size">{{ download.file_size }}</span>
+    <div class="downloads-preview">
+        {% if home_content.downloads and home_content.downloads|length > 0 %}
+            <div class="downloads-grid">
+                {% for download in home_content.downloads[:3] %}
+                <div class="download-card">
+                    <div class="download-icon">
+                        <i class="fas fa-file-{{ download.type }}"></i>
                     </div>
-                    <a href="{{ download.file_url }}" class="btn-download" download>
-                        <i class="fas fa-download"></i> Download
-                    </a>
+                    <div class="download-info">
+                        <h3>{{ download.title }}</h3>
+                        <p>{{ download.description[:100] }}{% if download.description|length > 100 %}...{% endif %}</p>
+                        <div class="download-meta">
+                            <span class="file-type">{{ download.file_type }}</span>
+                            <span class="file-size">{{ download.file_size }}</span>
+                        </div>
+                    </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            
+            <div class="text-center mt-4">
+                <p class="lead mb-3">Access conference templates, author guidelines, and more resources</p>
+                <a href="{{ url_for('conference_proceedings') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-folder-open me-2"></i>
+                    View Conference Proceedings
+                </a>
+            </div>
         {% else %}
-            <div class="no-downloads">
-                <p>No documents available for download at this time.</p>
+            <div class="text-center py-4">
+                <i class="fas fa-file-download fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Conference Resources Coming Soon</h4>
+                <p class="text-muted">Templates, guidelines, and proceedings will be available shortly.</p>
+                <a href="{{ url_for('conference_proceedings') }}" class="btn btn-outline-primary mt-3">
+                    <i class="fas fa-folder-open me-2"></i>
+                    Visit Conference Proceedings
+                </a>
             </div>
         {% endif %}
     </div>
@@ -900,6 +945,68 @@ html {
     .countdown-label {
         font-size: 0.7rem;
     }
+}
+
+/* Add styles for the speaker-preview section */
+.speakers-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: center;
+    margin: 2rem 0;
+}
+
+.speaker-preview-card {
+    width: 300px;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.speaker-preview-card:hover {
+    transform: translateY(-5px);
+}
+
+.speaker-preview-image {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--primary-color);
+}
+
+.speaker-preview-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.speaker-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+.speaker-preview-name {
+    font-size: 1.4rem;
+    margin-bottom: 0.3rem;
+    color: var(--primary-color);
+}
+
+.speaker-preview-title {
+    font-size: 1rem;
+    color: var(--secondary-color);
+    margin-bottom: 0.5rem;
+}
+
+.speaker-preview-bio {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    line-height: 1.5;
 }
 </style>
 

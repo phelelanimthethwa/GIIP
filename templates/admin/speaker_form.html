@@ -1,0 +1,124 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ action }} Speaker{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">{{ action }} Speaker</h1>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{{ url_for('admin_speakers') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Speakers
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-user-edit me-1"></i>
+            Speaker Information
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" id="speakerForm">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" required value="{{ speaker.name if speaker else '' }}">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" required 
+                               placeholder="e.g., Professor, Dr., CEO" value="{{ speaker.title if speaker else '' }}">
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="organization" class="form-label">Organization <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="organization" name="organization" required
+                               placeholder="e.g., University of Science, Tech Company Inc." value="{{ speaker.organization if speaker else '' }}">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="status" class="form-label">Speaker Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="current" {% if speaker and speaker.status == 'current' %}selected{% endif %}>Current Speaker</option>
+                            <option value="past" {% if speaker and speaker.status == 'past' %}selected{% endif %}>Past Speaker</option>
+                        </select>
+                        <small class="text-muted">Past speakers will appear in a separate section</small>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="profile_image" class="form-label">Profile Image</label>
+                        <input type="file" class="form-control" id="profile_image" name="profile_image" accept="image/*">
+                        <small class="text-muted">Recommended size: 400x400px. Maximum 2MB.</small>
+                        
+                        {% if speaker and speaker.profile_image %}
+                        <div class="mt-2">
+                            <label>Current Image:</label>
+                            <div class="mt-1">
+                                <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}" class="img-thumbnail" style="max-height: 100px;">
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="bio" class="form-label">Biography</label>
+                    <textarea class="form-control" id="bio" name="bio" rows="5" 
+                              placeholder="Brief biography of the speaker">{{ speaker.bio if speaker else '' }}</textarea>
+                </div>
+                
+                <div class="mt-4 text-end">
+                    <a href="{{ url_for('admin_speakers') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Speaker</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Form validation
+        $('#speakerForm').submit(function(e) {
+            let valid = true;
+            const required = ['name', 'title', 'organization'];
+            
+            // Check required fields
+            required.forEach(function(field) {
+                const value = $('#' + field).val();
+                if (!value || !value.trim()) {
+                    toastr.error(`${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
+                    $('#' + field).addClass('is-invalid');
+                    valid = false;
+                } else {
+                    $('#' + field).removeClass('is-invalid');
+                }
+            });
+            
+            // Validate image file size if selected
+            const profileImage = $('#profile_image')[0];
+            if (profileImage && profileImage.files && profileImage.files[0]) {
+                const fileSize = profileImage.files[0].size / 1024 / 1024; // in MB
+                if (fileSize > 2) {
+                    toastr.error('Profile image must be less than 2MB');
+                    $('#profile_image').addClass('is-invalid');
+                    valid = false;
+                } else {
+                    $('#profile_image').removeClass('is-invalid');
+                }
+            }
+            
+            return valid;
+        });
+    });
+</script>
+{% endblock %} 

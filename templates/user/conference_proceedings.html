@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Conference Proceedings - GIIR Conference{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Page Header -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <h1 class="display-4 mb-3" style="color: var(--primary-color);">Conference Proceedings</h1>
+            <p class="lead mb-3">Manuscript templates and guidelines for conference paper submission</p>
+            <hr class="w-25 mx-auto" style="border-color: var(--primary-color); border-width: 3px;">
+        </div>
+    </div>
+
+    <!-- Introduction Section -->
+    <div class="info-section mb-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="content-card">
+                    <h3 class="mb-4" style="color: var(--primary-color);">
+                        <i class="fas fa-info-circle me-2"></i>About Conference Proceedings
+                    </h3>
+                    <p class="lead">The purpose of a conference template is to provide a consistent format for papers appearing in the conference proceedings. GIIR Conference strongly encourages use of the conference manuscript templates provided below.</p>
+                    
+                    <div class="alert alert-warning mt-4" role="alert">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle fa-lg"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="alert-heading">Important Notice</h5>
+                                <p class="mb-1">Conference templates contain guidance text for composing and formatting conference papers. Please ensure that all guidance text is removed from your conference paper prior to submission to the conference.</p>
+                                <hr>
+                                <p class="mb-0"><strong>Failure to remove template text from your paper may result in your paper not being published.</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Downloads/Templates Section -->
+    {% if downloads %}
+        <!-- Dynamic Format-based Categories -->
+        {% for format_type, downloads_list in downloads.items() %}
+            {% if downloads_list %}
+            <div class="template-category mb-5">
+                <h3 class="category-title">
+                    <i class="{{ category_info[format_type].icon }} me-2"></i>{{ category_info[format_type].title }}
+                </h3>
+                <p class="category-description text-muted mb-4">{{ category_info[format_type].description }}</p>
+                
+                <div class="template-grid">
+                    {% for template in downloads_list %}
+                    <div class="template-card">
+                        <div class="template-icon">
+                            {% if template.file_type == 'pdf' %}
+                                <i class="fas fa-file-pdf fa-3x text-danger"></i>
+                            {% elif template.file_type in ['doc', 'docx'] %}
+                                <i class="fas fa-file-word fa-3x text-primary"></i>
+                            {% elif template.file_type == 'zip' %}
+                                <i class="fas fa-file-archive fa-3x text-warning"></i>
+                            {% elif template.file_type == 'tex' %}
+                                <i class="fas fa-file-code fa-3x text-success"></i>
+                            {% elif template.format == 'Overleaf' %}
+                                <i class="fas fa-share-alt fa-3x text-info"></i>
+                            {% else %}
+                                <i class="fas fa-file fa-3x text-secondary"></i>
+                            {% endif %}
+                        </div>
+                        <div class="template-info">
+                            <h5>{{ template.title }}</h5>
+                            <p class="text-muted">{{ template.description or 'Conference template for manuscript preparation' }}</p>
+                            <div class="template-meta d-flex align-items-center gap-3">
+                                <span class="badge bg-secondary">{{ template.format }}</span>
+                                {% if template.size %}
+                                <small class="text-muted">({{ template.size }})</small>
+                                {% endif %}
+                                {% if template.updated_at %}
+                                <small class="text-success">Updated {{ template.updated_at[:10] }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="template-actions">
+                            {% if template.url and template.url != '#' %}
+                                {% if template.format == 'Overleaf' %}
+                                <a href="{{ template.url }}" class="btn btn-info" target="_blank">
+                                    <i class="fas fa-external-link-alt me-1"></i>Open in Overleaf
+                                </a>
+                                {% else %}
+                                <a href="{{ template.url }}" class="btn btn-primary" download>
+                                    <i class="fas fa-download me-1"></i>Download
+                                </a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Format-specific instructions -->
+                {% if format_type == 'LaTeX' %}
+                <div class="mt-4 p-4 bg-light rounded">
+                    <h6 class="mb-3"><i class="fas fa-lightbulb text-warning me-2"></i>LaTeX Template Instructions</h6>
+                    <ul class="mb-2">
+                        <li>Be sure to use the template's conference mode</li>
+                        <li>Include all necessary bibliography files</li>
+                        <li>Template files may be updated without notice</li>
+                    </ul>
+                    <p class="mb-0"><strong>Overleaf Users:</strong> Templates are also available in the Overleaf gallery for online collaborative editing.</p>
+                </div>
+                {% elif format_type == 'Microsoft Word' %}
+                <div class="mt-4 p-4 bg-light rounded">
+                    <h6 class="mb-3"><i class="fas fa-info-circle text-primary me-2"></i>Microsoft Word Instructions</h6>
+                    <ul class="mb-0">
+                        <li>Ensure all guidance text is removed before submission</li>
+                        <li>Follow the template formatting guidelines strictly</li>
+                        <li>Save your document in .docx format for submission</li>
+                    </ul>
+                </div>
+                {% elif format_type == 'Overleaf' %}
+                <div class="mt-4 p-4 bg-light rounded">
+                    <h6 class="mb-3"><i class="fas fa-share-alt text-info me-2"></i>Overleaf Instructions</h6>
+                    <ul class="mb-0">
+                        <li>Templates are available for online collaborative editing</li>
+                        <li>No software installation required</li>
+                        <li>Automatic compilation and real-time preview</li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <!-- No Templates Available -->
+        <div class="text-center py-5">
+            <i class="fas fa-folder-open fa-5x text-muted mb-4"></i>
+            <h3 class="text-muted">No Templates Available</h3>
+            <p class="lead text-muted">Conference templates will be available soon. Please check back later.</p>
+            <a href="{{ url_for('home') }}" class="btn btn-primary mt-3">
+                <i class="fas fa-home me-1"></i>Back to Home
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Notes Section -->
+    <div class="notes-section mt-5 pt-4 border-top">
+        <h4 style="color: var(--primary-color);" class="mb-4">
+            <i class="fas fa-sticky-note me-2"></i>Important Notes
+        </h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="note-card">
+                    <h6><i class="fas fa-users text-primary me-2"></i>For Conference Organizers</h6>
+                    <p class="small text-muted">The use of conference manuscript templates will greatly reduce the chance for errors in metadata and indexing. Using these templates helps ensure proper formatting and reduces publication delays.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="note-card">
+                    <h6><i class="fas fa-link text-info me-2"></i>Linking Guidelines</h6>
+                    <p class="small text-muted">You may link to this webpage in its entirety. Individual file links may be updated or replaced without notice, so direct page linking is recommended.</p>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="note-card">
+                    <h6><i class="fas fa-award text-success me-2"></i>Template Acknowledgement</h6>
+                    <p class="small text-muted">Grateful acknowledgement is made to the academic community and professional organizations that have contributed to the development of these standardized conference templates.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Updated styles for better organization */
+.info-section {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 2rem;
+}
+
+.content-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.templates-section {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.template-category {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 2rem;
+}
+
+.template-category:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.category-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.template-card {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.template-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color);
+}
+
+.template-icon {
+    flex-shrink: 0;
+}
+
+.template-info {
+    flex: 1;
+}
+
+.template-info h5 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+}
+
+.template-actions {
+    flex-shrink: 0;
+}
+
+.template-actions .btn {
+    min-width: 120px;
+}
+
+.notes-section {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 2rem;
+}
+
+.note-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color);
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.note-card h6 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Alert customization */
+.alert-warning {
+    border-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+.alert-warning .alert-heading {
+    color: #856404;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .template-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .template-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .template-actions .btn {
+        width: 100%;
+    }
+    
+    .info-section,
+    .templates-section,
+    .notes-section {
+        padding: 1.5rem;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .template-card {
+        padding: 1rem;
+    }
+    
+    .note-card {
+        padding: 1rem;
+    }
+}
+</style>
+{% endblock %} 

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Call for Papers - GIIR Conference 2024{% endblock %}
+{% block title %}{{ cfp_content.page_header.title|default('Call for Papers') }} - GIIR Conference 2024{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Call for Papers</h1>
-    <p>Submit your research to be part of the Global Institute on Innovative Research Conference 2024</p>
+    <h1>{{ cfp_content.page_header.title|default('Call for Papers') }}</h1>
+    <p>{{ cfp_content.page_header.subtitle|default('Submit your research to be part of the Global Institute on Innovative Research Conference 2024') }}</p>
 </div>
 
 <div class="content-section">

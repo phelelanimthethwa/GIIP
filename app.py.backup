@@ -78,25 +78,12 @@ try:
     # Initialize Firebase with options from serviceAccountKey.json
     firebase_options = {
         'databaseURL': 'https://giir-66ae6-default-rtdb.firebaseio.com',
-        'storageBucket': 'giir-66ae6.firebasestorage.app',
+        'storageBucket': 'giir-66ae6.appspot.com', 
         'apiKey': firebase_api_key  # Use API key from .env
     }
     
     # Initialize the Firebase app
     firebase_admin.initialize_app(cred, firebase_options)
-    
-    # Test Firebase Storage connection
-    try:
-        bucket = storage.bucket('giir-66ae6.firebasestorage.app')
-        print(f"Firebase Storage bucket initialized: {bucket.name}")
-        # Test if bucket exists by trying to get its metadata
-        try:
-            bucket.get_blob('test-connection')  # This will succeed even if blob doesn't exist
-            print("Firebase Storage bucket is accessible")
-        except Exception as bucket_test:
-            print(f"Firebase Storage bucket test: {str(bucket_test)}")
-    except Exception as storage_init_error:
-        print(f"Firebase Storage initialization warning: {str(storage_init_error)}")
     
     # Store Firebase config in app.config for easier access later
     app.config['FIREBASE_CONFIG'] = {
@@ -104,7 +91,7 @@ try:
         'authDomain': 'giir-66ae6.firebaseapp.com',
         'databaseURL': 'https://giir-66ae6-default-rtdb.firebaseio.com',
         'projectId': 'giir-66ae6',
-        'storageBucket': 'giir-66ae6.firebasestorage.app',
+        'storageBucket': 'giir-66ae6.appspot.com',
     }
     
     print("Firebase initialized successfully")
@@ -168,7 +155,7 @@ def format_date(date_str):
 # Add this configuration after other app configurations
 app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max file size
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'tex'}
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip'}
 
 # Add these constants near the top of the file
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif'}
@@ -483,28 +470,11 @@ def home():
             }
         }
         
-        # Get speakers for home page display
-        speakers_ref = db.reference('speakers')
-        speakers_data = speakers_ref.get() or {}
-        
-        # Convert speakers to list and add ids
-        featured_speakers = []
-        for key, speaker in speakers_data.items():
-            # Only include current speakers, not past ones
-            if speaker.get('status') != 'past':
-                speaker['id'] = key
-                featured_speakers.append(speaker)
-            
-        # Sort speakers by name and limit to 2 for home page display
-        featured_speakers.sort(key=lambda x: x.get('name', '').lower())
-        featured_speakers = featured_speakers[:2]  # Only show up to 2 speakers on home page
-        
         site_design = get_site_design()
         
         return render_template('user/home.html', 
                             home_content=home_content,
                             site_design=site_design,
-                            featured_speakers=featured_speakers,
                             page_name='home')
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
@@ -517,7 +487,6 @@ def home():
                                     'message': 'Join us for the premier conference in innovative research'
                                 }
                             },
-                            featured_speakers=[],
                             site_design=DEFAULT_THEME,
                             page_name='home')
 
@@ -595,12 +564,6 @@ def call_for_papers():
     print(f"DEBUG - User CFP - Content from database: {cfp_content}")
     
     # Set up default values if they don't exist in the fetched data
-    if 'page_header' not in cfp_content:
-        cfp_content['page_header'] = {
-            'title': 'Call for Papers',
-            'subtitle': 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024'
-        }
-        
     if 'cta' not in cfp_content:
         cfp_content['cta'] = {
             'submit_button_text': 'Submit Your Paper',
@@ -819,46 +782,9 @@ def venue():
 
 @app.route('/guest-speakers')
 def guest_speakers():
-    try:
-        # Get speakers from Firebase
-        speakers_ref = db.reference('speakers')
-        speakers_data = speakers_ref.get() or {}
-        
-        # Convert to list and add IDs
-        all_speakers = []
-        current_speakers = []
-        past_speakers = []
-        
-        for key, speaker in speakers_data.items():
-            speaker['id'] = key  # Add the Firebase key as id
-            all_speakers.append(speaker)
-            
-            # Add to appropriate list based on status
-            if speaker.get('status') == 'past':
-                past_speakers.append(speaker)
-            else:
-                # Default to current if status is not set or is 'current'
-                current_speakers.append(speaker)
-        
-        # Sort speakers by name
-        all_speakers.sort(key=lambda x: x.get('name', '').lower())
-        current_speakers.sort(key=lambda x: x.get('name', '').lower())
-        past_speakers.sort(key=lambda x: x.get('name', '').lower())
-        
-        return render_template('user/guest_speakers.html', 
-                             site_design=get_site_design(),
-                             speakers=all_speakers,
-                             current_speakers=current_speakers,
-                             past_speakers=past_speakers)
-                             
-    except Exception as e:
-        print(f"Error loading guest speakers: {str(e)}")
-        flash('Error loading guest speakers content.', 'error')
-        return render_template('user/guest_speakers.html', 
-                             site_design=get_site_design(),
-                             speakers=[],
-                             current_speakers=[],
-                             past_speakers=[])
+    # In the future, this data could come from Firebase
+    # For now, we're using static placeholder data
+    return render_template('user/guest_speakers.html', site_design=get_site_design())
 
 @app.route('/video-conference')
 def video_conference():
@@ -896,9 +822,15 @@ def login():
                             'email': email,
                             'full_name': user.display_name or email.split('@')[0],
                             'created_at': datetime.now().isoformat(),
-                            'is_admin': True  # Set as admin since we're using the admin credentials
+                            'is_admin': True,  # Set as admin since we're using the admin credentials
+                            'last_login': datetime.now().isoformat()
                         }
                         ref.set(user_data)
+                    else:
+                        # Update last login time
+                        ref.update({
+                            'last_login': datetime.now().isoformat()
+                        })
                     
                     is_admin = user_data.get('is_admin', True)  # Default to True for admin account
                     display_name = user_data.get('full_name', email.split('@')[0])
@@ -1499,31 +1431,27 @@ def admin_downloads():
                 new_download = {
                     'title': request.form.get('title'),
                     'description': request.form.get('description'),
-                    'category': request.form.get('category', 'general'),
-                    'version': request.form.get('version', ''),
-                    'external_url': request.form.get('external_url', ''),
                     'file_url': f"/static/uploads/documents/{unique_filename}",
                     'file_type': filename.rsplit('.', 1)[1].lower(),
                     'file_size': file_size_str,
                     'uploaded_at': datetime.now().isoformat(),
-                    'type': request.form.get('type', 'pdf'),
-                    'uploaded_by': current_user.email
+                    'type': request.form.get('type', 'pdf')  # Default to pdf if not specified
                 }
                 downloads_ref.push(new_download)
                 
-                flash('Document uploaded successfully!', 'success')
+                flash('File uploaded successfully!', 'success')
                 return redirect(url_for('admin_downloads'))
                 
             except Exception as e:
                 flash(f'Error uploading file: {str(e)}', 'error')
                 return redirect(request.url)
         else:
-            flash('Invalid file type. Please upload PDF, DOC, DOCX, TEX, ZIP, XLS, XLSX, PPT, or PPTX files.', 'error')
+            flash('Invalid file type', 'error')
             return redirect(request.url)
     
     # Get all downloads for display
     downloads_ref = db.reference('downloads')
-    downloads = downloads_ref.get() or {}
+    downloads = downloads_ref.get()
     return render_template('admin/downloads.html', site_design=get_site_design(), downloads=downloads)
 
 @app.route('/admin/downloads/delete/<download_id>', methods=['POST'])
@@ -2858,9 +2786,6 @@ def admin_home_content():
                                 print(f"Error processing associate logo: {str(e)}")
                                 continue
 
-                # Process downloads
-                update_data['downloads'] = process_downloads_data(request)
-
                 # Save the updated content
                 content_ref.set(update_data)
                 
@@ -2900,7 +2825,6 @@ def inject_admin_menu():
         {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
         {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
         {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},  # Changed from admin_papers to admin_submissions
-        {'url': 'admin_speakers', 'icon': 'microphone', 'text': 'Guest Speakers'},
         {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
         {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
         {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
@@ -2910,7 +2834,8 @@ def inject_admin_menu():
         {'url': 'admin_contact_email', 'icon': 'envelope', 'text': 'Contact Settings'},
         {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
         {'url': 'admin_email_settings', 'icon': 'envelope-open', 'text': 'Email Settings'},
-        {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
+        {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'},
+        {'url': 'admin_profile', 'icon': 'user', 'text': 'My Profile'}
     ]
     return dict(admin_menu=admin_menu)
 
@@ -4326,123 +4251,49 @@ def process_downloads_data(request):
     """Process and save downloads data from form data"""
     downloads = []
     
+    # Create base upload directory if it doesn't exist
+    base_upload_path = os.path.join(app.root_path, 'static', 'uploads')
+    downloads_upload_path = os.path.join(base_upload_path, 'downloads')
+    os.makedirs(downloads_upload_path, exist_ok=True)
+    
     # Process existing downloads
-    existing_ids = request.form.getlist('download_ids[]')
     existing_titles = request.form.getlist('download_titles[]')
     existing_descriptions = request.form.getlist('download_descriptions[]')
-    existing_formats = request.form.getlist('download_formats[]')
     existing_files = request.form.getlist('download_existing_files[]')
     
     for i in range(len(existing_titles)):
         if existing_titles[i].strip():  # Only process if title exists
-            download_id = existing_ids[i] if i < len(existing_ids) else f'new_{i}'
-            download_format = existing_formats[i] if i < len(existing_formats) else 'Other'
-            
             download_data = {
-                'id': download_id,
                 'title': existing_titles[i],
-                'description': existing_descriptions[i] if i < len(existing_descriptions) else '',
-                'format': download_format,
-                'file_url': existing_files[i] if i < len(existing_files) and existing_files[i] else None,
-                'file_type': '',  # Will be updated if file is uploaded
-                'file_size': '',  # Will be updated if file is uploaded
-                'updated_at': datetime.now().isoformat()
+                'description': existing_descriptions[i],
+                'file_url': existing_files[i] if existing_files[i] else None,
+                'file_type': 'pdf',  # Default type
+                'file_size': '0 KB'  # Default size
             }
             
             # Handle new file upload for existing download
-            file_key = f'download_file_{download_id}'
+            file_key = f'download_file_{i}'
             if file_key in request.files:
                 file = request.files[file_key]
                 if file and file.filename and allowed_file(file.filename):
                     try:
                         filename = secure_filename(file.filename)
-                        file_extension = filename.rsplit('.', 1)[1].lower()
+                        unique_filename = f"download_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                        file_path = os.path.join(downloads_upload_path, unique_filename)
+                        # Save the file
+                        file.save(file_path)
                         
-                        # Calculate file size
-                        file.seek(0, 2)  # Seek to end
-                        file_size_bytes = file.tell()
-                        file.seek(0)  # Reset file pointer
-                        
-                        if file_size_bytes < 1024 * 1024:  # Less than 1MB
-                            file_size_formatted = f"{file_size_bytes / 1024:.1f} KB"
-                        else:  # 1MB or larger
-                            file_size_formatted = f"{file_size_bytes / (1024 * 1024):.1f} MB"
-                        
-                        # Try Firebase Storage with better error handling
-                        try:
-                            # Create unique filename with timestamp
-                            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                            firebase_filename = f"downloads/templates/{timestamp}_{filename}"
-                            
-                            # Use the correct bucket name
-                            bucket = storage.bucket('giir-66ae6.firebasestorage.app')
-                            print(f"Using Firebase Storage bucket: {bucket.name}")
-                            
-                            # Create blob
-                            blob = bucket.blob(firebase_filename)
-                            
-                            # Set content type based on file extension
-                            content_type_map = {
-                                'pdf': 'application/pdf',
-                                'doc': 'application/msword',
-                                'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                'xls': 'application/vnd.ms-excel',
-                                'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                'ppt': 'application/vnd.ms-powerpoint',
-                                'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                                'zip': 'application/zip',
-                                'tex': 'text/plain',
-                                'txt': 'text/plain'
-                            }
-                            content_type = content_type_map.get(file_extension, 'application/octet-stream')
-                            
-                            # Upload file with metadata
-                            file.seek(0)  # Reset file pointer
-                            blob.upload_from_file(
-                                file, 
-                                content_type=content_type
-                            )
-                            
-                            # Make blob publicly accessible
-                            blob.make_public()
-                            
-                            # Get the public URL
-                            file_url = blob.public_url
-                            
-                            # Update download data
-                            download_data.update({
-                                'file_url': file_url,
-                                'file_type': file_extension,
-                                'file_size': file_size_formatted,
-                                'firebase_path': firebase_filename
-                            })
-                            
-                            print(f"Successfully uploaded template file to Firebase Storage: {firebase_filename}")
-                            print(f"Public URL: {file_url}")
-                            
-                        except Exception as storage_error:
-                            print(f"Firebase Storage error: {str(storage_error)}")
-                            print(f"Error type: {type(storage_error).__name__}")
-                            
-                            # Provide helpful error message
-                            error_msg = str(storage_error).lower()
-                            if 'bucket does not exist' in error_msg or '404' in error_msg:
-                                print("SOLUTION: Please enable Firebase Storage in your Firebase Console:")
-                                print("1. Go to https://console.firebase.google.com/")
-                                print("2. Select your project (giir-66ae6)")
-                                print("3. Go to Storage in the left menu")
-                                print("4. Click 'Get started' to enable Firebase Storage")
-                                print("5. Choose your storage location and security rules")
-                            
-                            # Skip this file and continue with others
-                            continue
-                        
+                        # Update download data
+                        file_size = os.path.getsize(file_path)
+                        download_data.update({
+                            'file_url': f"/static/uploads/downloads/{unique_filename}",
+                            'file_type': filename.rsplit('.', 1)[1].lower(),
+                            'file_size': f"{file_size / 1024:.1f} KB"
+                        })
                     except Exception as e:
-                        print(f"Error processing download file {filename}: {str(e)}")
+                        print(f"Error saving download file {filename}: {str(e)}")
                         continue
-                        
             downloads.append(download_data)
-    
     return downloads
 
 @app.route('/admin/contact-email', methods=['GET', 'POST'])
@@ -4756,12 +4607,6 @@ def inject_home_content():
 def admin_call_for_papers_content():
     try:
         if request.method == 'POST':
-            # Process page header
-            page_header = {
-                'title': request.form.get('page_title', 'Call for Papers'),
-                'subtitle': request.form.get('page_subtitle', 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024')
-            }
-            
             # Process topics of interest
             topics = []
             topic_titles = request.form.getlist('topic_titles[]')
@@ -4813,7 +4658,6 @@ def admin_call_for_papers_content():
             
             # Compile the final data structure
             cfp_content = {
-                'page_header': page_header,
                 'topics_intro': request.form.get('topics_intro', 'We invite high-quality original research papers in the following areas (but not limited to):'),
                 'topics': topics,
                 'important_dates': important_dates,
@@ -4833,12 +4677,6 @@ def admin_call_for_papers_content():
         cfp_content = db.reference('call_for_papers_content').get() or {}
         
         # Set up default values if they don't exist in the fetched data
-        if 'page_header' not in cfp_content:
-            cfp_content['page_header'] = {
-                'title': 'Call for Papers',
-                'subtitle': 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024'
-            }
-            
         if 'cta' not in cfp_content:
             cfp_content['cta'] = {
                 'submit_button_text': 'Submit Your Paper',
@@ -4858,8 +4696,39 @@ def admin_call_for_papers_content():
             
         if 'submission_guidelines' not in cfp_content:
             cfp_content['submission_guidelines'] = []
+        else:
+            # Convert any guideline dictionaries to objects with proper properties to avoid the items() method conflict
+            structured_guidelines = []
+            for guideline in cfp_content['submission_guidelines']:
+                if isinstance(guideline, dict):
+                    guideline_obj = {}
+                    
+                    # Copy all properties except 'items'
+                    for key, value in guideline.items():
+                        if key != 'items':
+                            guideline_obj[key] = value
+                    
+                    # Handle 'items' property - migrate to guideline_items to avoid conflict
+                    # First check for guideline_items then items
+                    if 'guideline_items' in guideline and isinstance(guideline['guideline_items'], list):
+                        guideline_obj['guideline_items'] = guideline['guideline_items']
+                    elif 'items' in guideline and isinstance(guideline['items'], list):
+                        guideline_obj['guideline_items'] = guideline['items']
+                    else:
+                        guideline_obj['guideline_items'] = []
+                    
+                    structured_guidelines.append(guideline_obj)
+                else:
+                    # If it's not a dict, create a basic structure
+                    structured_guidelines.append({
+                        'title': 'Guideline',
+                        'guideline_items': []
+                    })
+                    
+            cfp_content['submission_guidelines'] = structured_guidelines
         
-        print(f"DEBUG - Admin CFP GET - Final CFP content: {cfp_content}")
+        print(f"DEBUG - Admin CFP GET - Topics from database: {cfp_content.get('topics', [])}")
+            
         return render_template('admin/call_for_papers_content.html', cfp_content=cfp_content)
     
     except Exception as e:
@@ -4867,10 +4736,6 @@ def admin_call_for_papers_content():
         print(f"Error in admin_call_for_papers_content: {str(e)}")
         # Provide complete default structure when error occurs
         default_cfp_content = {
-            'page_header': {
-                'title': 'Call for Papers',
-                'subtitle': 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024'
-            },
             'topics_intro': 'We invite high-quality original research papers in the following areas (but not limited to):',
             'topics': [],
             'important_dates': [],
@@ -4883,377 +4748,103 @@ def admin_call_for_papers_content():
         }
         return render_template('admin/call_for_papers_content.html', cfp_content=default_cfp_content)
 
-@app.route('/admin/speakers', methods=['GET'])
+@app.route('/profile')
 @login_required
-@admin_required
-def admin_speakers():
-    try:
-        # Get all speakers from Firebase
-        speakers_ref = db.reference('speakers')
-        speakers = speakers_ref.get() or {}
-        
-        # Sort speakers by name
-        sorted_speakers = dict(sorted(
-            speakers.items(),
-            key=lambda x: x[1].get('name', '').lower()
-        ))
-        
-        return render_template(
-            'admin/speakers.html',
-            speakers=sorted_speakers,
-            site_design=get_site_design()
-        )
-    except Exception as e:
-        flash(f'Error loading speakers: {str(e)}', 'error')
-        return render_template(
-            'admin/speakers.html',
-            speakers={},
-            site_design=get_site_design()
-        )
+def profile():
+    return render_template('user/account/profile.html')
 
-@app.route('/admin/speakers/new', methods=['GET', 'POST'])
+@app.route('/admin/profile', methods=['GET', 'POST'])
 @login_required
 @admin_required
-def add_speaker():
+def admin_profile():
     if request.method == 'POST':
         try:
-            # Get form data
-            speaker_data = {
-                'name': request.form.get('name', '').strip(),
-                'title': request.form.get('title', '').strip(),
-                'organization': request.form.get('organization', '').strip(),
-                'bio': request.form.get('bio', '').strip(),
-                'status': request.form.get('status', 'current'),  # Default to 'current' if not provided
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
+            action = request.form.get('action')
             
-            # Validate required fields
-            required_fields = ['name', 'title', 'organization']
-            for field in required_fields:
-                if not speaker_data.get(field):
-                    flash(f'Field "{field}" is required.', 'error')
-                    return redirect(url_for('add_speaker'))
-            
-            # Handle profile image upload
-            if 'profile_image' in request.files:
-                file = request.files['profile_image']
-                if file and file.filename and allowed_image_file(file.filename):
-                    try:
-                        # Create speakers directory if it doesn't exist
-                        upload_folder = os.path.join(app.static_folder, 'uploads', 'speakers')
-                        os.makedirs(upload_folder, exist_ok=True)
-                        
-                        # Generate unique filename
-                        original_filename = secure_filename(file.filename)
-                        ext = os.path.splitext(original_filename)[1].lower()
-                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                        unique_id = str(uuid.uuid4())[:8]
-                        unique_filename = f"{timestamp}_{unique_id}{ext}"
-                        file_path = os.path.join(upload_folder, unique_filename)
-                        
-                        # Compress image if needed
-                        img_data = compress_image(file, max_size_kb=500)
-                        
-                        # Save the file
-                        with open(file_path, 'wb') as f:
-                            if isinstance(img_data, bytes):
-                                f.write(img_data)
-                            else:
-                                file.seek(0)
-                                file.save(file_path)
-                        
-                        # Add image URL to speaker data (relative to static folder)
-                        speaker_data['profile_image'] = url_for('static', filename=f'uploads/speakers/{unique_filename}')
-                    except Exception as e:
-                        print(f"Error uploading profile image: {str(e)}")
-                        flash(f'Error uploading profile image: {str(e)}', 'error')
-                        return redirect(url_for('add_speaker'))
-            
-            # Save speaker to Firebase
-            speakers_ref = db.reference('speakers')
-            new_speaker = speakers_ref.push(speaker_data)
-            
-            flash('Speaker added successfully!', 'success')
-            return redirect(url_for('admin_speakers'))
-            
-        except Exception as e:
-            flash(f'Error adding speaker: {str(e)}', 'error')
-            return redirect(url_for('add_speaker'))
-    
-    # GET request - render form
-    return render_template(
-        'admin/speaker_form.html',
-        speaker=None,
-        action="Add",
-        site_design=get_site_design()
-    )
-
-@app.route('/admin/speakers/<speaker_id>', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def edit_speaker(speaker_id):
-    # Get speaker data
-    speaker_ref = db.reference(f'speakers/{speaker_id}')
-    speaker = speaker_ref.get()
-    
-    if not speaker:
-        flash('Speaker not found.', 'error')
-        return redirect(url_for('admin_speakers'))
-    
-    if request.method == 'POST':
-        try:
-            # Get form data
-            speaker_data = {
-                'name': request.form.get('name', '').strip(),
-                'title': request.form.get('title', '').strip(),
-                'organization': request.form.get('organization', '').strip(),
-                'bio': request.form.get('bio', '').strip(),
-                'status': request.form.get('status', 'current'),  # Default to 'current' if not provided
-                'updated_at': datetime.now().isoformat()
-            }
-            
-            # Validate required fields
-            required_fields = ['name', 'title', 'organization']
-            for field in required_fields:
-                if not speaker_data.get(field):
-                    flash(f'Field "{field}" is required.', 'error')
-                    return redirect(url_for('edit_speaker', speaker_id=speaker_id))
-            
-            # Handle profile image upload
-            if 'profile_image' in request.files:
-                file = request.files['profile_image']
-                if file and file.filename and allowed_image_file(file.filename):
-                    try:
-                        # Create speakers directory if it doesn't exist
-                        upload_folder = os.path.join(app.static_folder, 'uploads', 'speakers')
-                        os.makedirs(upload_folder, exist_ok=True)
-                        
-                        # Delete old image if exists and is a local file
-                        if speaker.get('profile_image'):
-                            try:
-                                old_image_url = speaker['profile_image']
-                                if '/static/uploads/speakers/' in old_image_url:
-                                    # Extract filename from URL
-                                    old_filename = old_image_url.split('/static/uploads/speakers/')[1]
-                                    old_path = os.path.join(upload_folder, old_filename)
-                                    
-                                    # Delete file if exists
-                                    if os.path.exists(old_path):
-                                        os.remove(old_path)
-                                        print(f"Successfully deleted old speaker image: {old_path}")
-                            except Exception as e:
-                                print(f"Error deleting old speaker image: {str(e)}")
-                        
-                        # Generate unique filename
-                        original_filename = secure_filename(file.filename)
-                        ext = os.path.splitext(original_filename)[1].lower()
-                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                        unique_id = str(uuid.uuid4())[:8]
-                        unique_filename = f"{timestamp}_{unique_id}{ext}"
-                        file_path = os.path.join(upload_folder, unique_filename)
-                        
-                        # Compress image if needed
-                        img_data = compress_image(file, max_size_kb=500)
-                        
-                        # Save the file
-                        with open(file_path, 'wb') as f:
-                            if isinstance(img_data, bytes):
-                                f.write(img_data)
-                            else:
-                                file.seek(0)
-                                file.save(file_path)
-                        
-                        # Add image URL to speaker data (relative to static folder)
-                        speaker_data['profile_image'] = url_for('static', filename=f'uploads/speakers/{unique_filename}')
-                    except Exception as e:
-                        print(f"Error uploading profile image: {str(e)}")
-                        flash(f'Error uploading profile image: {str(e)}', 'error')
-                        return redirect(url_for('edit_speaker', speaker_id=speaker_id))
-            else:
-                # Keep existing profile image
-                speaker_data['profile_image'] = speaker.get('profile_image', '')
-            
-            # Update speaker in Firebase
-            speaker_ref.update(speaker_data)
-            
-            flash('Speaker updated successfully!', 'success')
-            return redirect(url_for('admin_speakers'))
-            
-        except Exception as e:
-            flash(f'Error updating speaker: {str(e)}', 'error')
-            return redirect(url_for('edit_speaker', speaker_id=speaker_id))
-    
-    # GET request - render form with speaker data
-    return render_template(
-        'admin/speaker_form.html',
-        speaker=speaker,
-        speaker_id=speaker_id,
-        action="Edit",
-        site_design=get_site_design()
-    )
-
-@app.route('/admin/speakers/<speaker_id>/delete', methods=['POST'])
-@login_required
-@admin_required
-def delete_speaker(speaker_id):
-    try:
-        # Get speaker data
-        speaker_ref = db.reference(f'speakers/{speaker_id}')
-        speaker = speaker_ref.get()
-        
-        if not speaker:
-            return jsonify({'success': False, 'error': 'Speaker not found'}), 404
-        
-        # Delete profile image if exists
-        if speaker.get('profile_image'):
-            try:
-                # For local file storage
-                image_url = speaker['profile_image']
-                if '/static/uploads/speakers/' in image_url:
-                    # Extract filename from URL
-                    filename = image_url.split('/static/uploads/speakers/')[1]
-                    file_path = os.path.join(app.static_folder, 'uploads', 'speakers', filename)
-                    
-                    # Delete file if exists
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        print(f"Successfully deleted speaker image: {file_path}")
-            except Exception as e:
-                print(f"Error deleting speaker image: {str(e)}")
-        
-        # Delete speaker from Firebase
-        speaker_ref.delete()
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error deleting speaker: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# Add this context processor after existing ones
-@app.context_processor
-def inject_has_speakers():
-    try:
-        # Check if there are any speakers in Firebase
-        speakers_ref = db.reference('speakers')
-        speakers_data = speakers_ref.get() or {}
-        has_speakers = len(speakers_data) > 0
-        
-        # Count current and past speakers
-        current_speakers_count = sum(1 for s in speakers_data.values() if s.get('status') != 'past')
-        past_speakers_count = sum(1 for s in speakers_data.values() if s.get('status') == 'past')
-        
-        return {
-            'has_speakers': has_speakers,
-            'has_current_speakers': current_speakers_count > 0,
-            'has_past_speakers': past_speakers_count > 0
-        }
-    except Exception as e:
-        print(f"Error checking speakers: {str(e)}")
-        return {
-            'has_speakers': False,
-            'has_current_speakers': False,
-            'has_past_speakers': False
-        }
-
-@app.context_processor
-def inject_admin_menu():
-    admin_menu = [
-        {'url': 'admin_dashboard', 'icon': 'tachometer-alt', 'text': 'Dashboard'},
-        {'url': 'admin_home_content', 'icon': 'home', 'text': 'Home Content'},
-        {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
-        {'url': 'admin_call_for_papers_content', 'icon': 'file-signature', 'text': 'Call for Papers Content'},
-        {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
-        {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
-        {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},  # Changed from admin_papers to admin_submissions
-        {'url': 'admin_speakers', 'icon': 'microphone', 'text': 'Guest Speakers'},
-        {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
-        {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
-        {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
-        {'url': 'admin_announcements', 'icon': 'bullhorn', 'text': 'Announcements'},
-        {'url': 'admin_downloads', 'icon': 'download', 'text': 'Downloads'},
-        {'url': 'admin_author_guidelines', 'icon': 'book', 'text': 'Author Guidelines'},
-        {'url': 'admin_contact_email', 'icon': 'envelope', 'text': 'Contact Settings'},
-        {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
-        {'url': 'admin_email_settings', 'icon': 'envelope-open', 'text': 'Email Settings'},
-        {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
-    ]
-    return dict(admin_menu=admin_menu)
-
-@app.route('/conference-proceedings')
-def conference_proceedings():
-    """Conference Proceedings page with organized downloads"""
-    try:
-        # Get home content from Firebase which contains downloads
-        home_content_ref = db.reference('home_content')
-        home_content = home_content_ref.get() or {}
-        
-        # Get downloads from home content
-        downloads_data = home_content.get('downloads', [])
-        
-        # Organize downloads by format
-        organized_downloads = {}
-        format_categories = {
-            'Microsoft Word': {
-                'title': 'Microsoft Word Templates',
-                'description': 'Conference paper templates in Microsoft Word format (.docx)',
-                'icon': 'fas fa-file-word text-primary'
-            },
-            'PDF': {
-                'title': 'PDF Documents',
-                'description': 'Guidelines, instructions, and reference documents in PDF format',
-                'icon': 'fas fa-file-pdf text-danger'
-            },
-            'LaTeX': {
-                'title': 'LaTeX Templates',
-                'description': 'LaTeX templates and packages for manuscript preparation',
-                'icon': 'fas fa-file-code text-success'
-            },
-            'Overleaf': {
-                'title': 'Overleaf Templates',
-                'description': 'Online collaborative LaTeX templates available in Overleaf',
-                'icon': 'fas fa-share-alt text-info'
-            },
-            'Other': {
-                'title': 'Additional Resources',
-                'description': 'Other important documents and resources for conference participants',
-                'icon': 'fas fa-folder text-secondary'
-            }
-        }
-        
-        # Process downloads if they exist
-        if downloads_data:
-            for download in downloads_data:
-                format_type = download.get('format', 'Other')
-                if format_type not in organized_downloads:
-                    organized_downloads[format_type] = []
+            # Handle profile update
+            if action == 'update_profile':
+                # Get form data
+                full_name = request.form.get('full_name')
                 
-                # Prepare download item with proper structure
-                download_item = {
-                    'title': download.get('title', 'Untitled'),
-                    'description': download.get('description', ''),
-                    'format': format_type,
-                    'file_type': download.get('file_type', ''),
-                    'size': download.get('file_size', ''),
-                    'url': download.get('file_url', '#'),
-                    'updated_at': download.get('updated_at', '')
-                }
-                organized_downloads[format_type].append(download_item)
+                # Validate data
+                if not full_name:
+                    flash('Full name is required', 'error')
+                    return redirect(url_for('admin_profile'))
+                
+                # Update user data in Firebase
+                user_ref = db.reference(f'users/{current_user.id}')
+                user_data = user_ref.get() or {}
+                
+                # Update fields
+                user_data['full_name'] = full_name
+                user_data['updated_at'] = datetime.now().isoformat()
+                
+                # Save changes
+                user_ref.update(user_data)
+                
+                # Update display name in Firebase Auth
+                auth.update_user(
+                    current_user.id,
+                    display_name=full_name
+                )
+                
+                flash('Profile updated successfully', 'success')
+                return redirect(url_for('admin_profile'))
+                
+            # Handle password change
+            elif action == 'change_password':
+                current_password = request.form.get('current_password')
+                new_password = request.form.get('new_password')
+                confirm_password = request.form.get('confirm_password')
+                
+                # Validate passwords
+                if not all([current_password, new_password, confirm_password]):
+                    flash('All password fields are required', 'error')
+                    return redirect(url_for('admin_profile'))
+                    
+                if new_password != confirm_password:
+                    flash('New passwords do not match', 'error')
+                    return redirect(url_for('admin_profile'))
+                    
+                if len(new_password) < 8:
+                    flash('Password must be at least 8 characters long', 'error')
+                    return redirect(url_for('admin_profile'))
+                
+                # Since we can't verify the current password directly with Firebase Admin SDK,
+                # we'll use a hardcoded check for the admin account for demonstration purposes.
+                # In a real-world application, you would use Firebase Authentication REST API 
+                # with API key to verify the current password.
+                if current_user.email == "admin@giirconference.com" and current_password != "Admin@2024!":
+                    flash('Current password is incorrect', 'error')
+                    return redirect(url_for('admin_profile'))
+                
+                # Update password in Firebase Auth
+                auth.update_user(
+                    current_user.id,
+                    password=new_password
+                )
+                
+                flash('Password changed successfully', 'success')
+                return redirect(url_for('admin_profile'))
+                
+        except Exception as e:
+            flash(f'Error updating profile: {str(e)}', 'error')
+            return redirect(url_for('admin_profile'))
+    
+    # GET request - fetch current profile data
+    try:
+        user_ref = db.reference(f'users/{current_user.id}')
+        user_data = user_ref.get() or {}
         
-        # Sort downloads within each format by title
-        for format_type in organized_downloads:
-            organized_downloads[format_type].sort(key=lambda x: x['title'].lower())
-        
-        return render_template('user/conference_proceedings.html', 
-                             downloads=organized_downloads,
-                             category_info=format_categories,
-                             site_design=get_site_design())
+        return render_template('admin/profile.html', 
+                            user_data=user_data,
+                            site_design=get_site_design())
+                            
     except Exception as e:
-        flash('Error loading conference proceedings.', 'error')
-        return render_template('user/conference_proceedings.html', 
-                             downloads={},
-                             category_info={},
-                             site_design=get_site_design())
+        flash(f'Error loading profile: {str(e)}', 'error')
+        return render_template('admin/profile.html', 
+                            user_data={},
+                            site_design=get_site_design())
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

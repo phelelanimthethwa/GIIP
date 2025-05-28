@@ -6,8 +6,12 @@
             </a>
             <ul class="nav-links">
                 <li><a href="{{ url_for('about') }}">About</a></li>
+                {% if has_speakers %}
+                <li><a href="{{ url_for('guest_speakers') }}">Guest Speakers</a></li>
+                {% endif %}
                 <li><a href="{{ url_for('call_for_papers') }}">Submit Paper</a></li>
                 <li><a href="{{ url_for('author_guidelines') }}">Author Guidelines</a></li>
+                <li><a href="{{ url_for('conference_proceedings') }}">Conference Proceedings</a></li>
                 <li><a href="{{ url_for('registration') }}">Register</a></li>
                 <li><a href="{{ url_for('venue') }}">Venue</a></li>
                 <li><a href="{{ url_for('contact') }}">Contact</a></li>
