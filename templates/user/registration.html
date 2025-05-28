@@ -507,159 +507,150 @@ firebase.initializeApp(firebaseConfig);
     color: var(--text-secondary);
 }
 
-/* Period Selection Styles */
-.period-selection {
-    margin-bottom: 2rem;
-}
-
-.period-options {
+/* Registration Cards Styling */
+.period-options, .type-options {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
 }
 
-.period-card {
+.period-card, .type-card {
     position: relative;
-    border-radius: 8px;
+    border: 2px solid #e1e8ed;
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    background: #ffffff;
     overflow: hidden;
 }
 
-.period-card input[type="radio"] {
+.period-card:hover, .type-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.period-card input[type="radio"], .type-card input[type="radio"] {
     position: absolute;
     opacity: 0;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
 }
 
-.period-card label {
-    display: block;
-    padding: 1.5rem;
-    background: var(--background-color);
-    border: 2px solid transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.period-card input[type="radio"]:checked + label {
+.period-card input[type="radio"]:checked + label, 
+.type-card input[type="radio"]:checked + label {
     border-color: var(--primary-color);
-    background: white;
 }
 
-.period-card.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.period-card.disabled label {
-    cursor: not-allowed;
-}
-
-.period-header {
+.period-card input[type="radio"]:checked + label::before, 
+.type-card input[type="radio"]:checked + label::before {
+    content: '✓';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    background: var(--primary-color);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 0 16px 0 16px;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    justify-content: center;
+    font-size: 18px;
 }
 
-.period-header i {
-    font-size: 1.2rem;
+.period-header, .type-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e1e8ed;
+}
+
+.period-header i, .type-header i {
+    font-size: 1.5rem;
     color: var(--primary-color);
 }
 
-.period-header h4 {
+.period-header h4, .type-header h4 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2c3e50;
 }
 
 .deadline {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    display: block;
-    margin-top: 0.25rem;
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    color: #666;
 }
 
 .seats-remaining {
+    margin: 1rem 0;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    text-align: center;
     font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-top: 0.5rem;
+    color: #666;
 }
 
 .seats-remaining .count {
-    font-weight: bold;
+    font-weight: 600;
     color: var(--primary-color);
 }
 
-/* Type Selection Styles */
-.type-selection {
-    margin-top: 2rem;
+.benefits-list {
+    margin-top: 1rem;
 }
 
-.type-group {
-    margin-bottom: 2rem;
-}
-
-.type-group h4 {
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--background-color);
-}
-
-.type-options {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.type-card {
-    position: relative;
-}
-
-.type-card input[type="radio"] {
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-}
-
-.type-card label {
-    display: block;
-    padding: 1.5rem;
-    background: var(--background-color);
-    border: 2px solid transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.type-card input[type="radio"]:checked + label {
-    border-color: var(--primary-color);
-    background: white;
-}
-
-.type-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.type-header i {
-    font-size: 1.2rem;
-    color: var(--primary-color);
-}
-
-.type-header h4 {
-    margin: 0;
+.benefits-list h5 {
     font-size: 1rem;
+    margin-bottom: 0.75rem;
+    color: #2c3e50;
+}
+
+.benefits-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.benefits-list li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.benefits-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0.5rem;
+    color: var(--primary-color);
 }
 
 .type-price {
-    font-size: 1.2rem;
-    font-weight: bold;
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
     color: var(--primary-color);
+}
+
+.period-card.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: #f8f9fa;
+}
+
+.period-card.disabled:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 /* Additional Items Styles */
@@ -940,50 +931,22 @@ firebase.initializeApp(firebaseConfig);
     display: block;
 }
 
+/* Responsive adjustments */
 @media (max-width: 768px) {
     .registration-step {
         padding: 1.5rem;
     }
-
-    .period-options,
-    .type-options,
-    .additional-items {
+    
+    .period-options, .type-options {
         grid-template-columns: 1fr;
     }
-
-    .step-actions {
-        flex-direction: column;
-    }
-
-    .step-actions button {
-        width: 100%;
-    }
-
-    .details-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .detail-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
-    }
-
-    .additional-items {
-        grid-template-columns: 1fr;
-    }
-
-    .item-card {
+    
+    .period-card, .type-card {
         padding: 1.25rem;
     }
-
-    .item-header i {
-        font-size: 1.25rem;
-        padding: 0.5rem;
-    }
-
-    .item-price {
-        font-size: 1.2rem;
+    
+    .period-header h4, .type-header h4 {
+        font-size: 1.1rem;
     }
 }
 </style>
