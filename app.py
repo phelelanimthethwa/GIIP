@@ -815,7 +815,7 @@ def venue():
     except Exception as e:
         print(f"Error getting venue content: {str(e)}")
         
-    return render_template('user/venue.html', venue_content=venue_content)
+    return render_template('user/venue.html', venue_content=venue_content, site_design=get_site_design())
 
 @app.route('/guest-speakers')
 def guest_speakers():
@@ -862,12 +862,12 @@ def guest_speakers():
 
 @app.route('/video-conference')
 def video_conference():
-    return render_template('user/video_conference.html')
+    return render_template('user/video_conference.html', site_design=get_site_design())
 
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('user/account/profile.html')
+    return render_template('user/account/profile.html', site_design=get_site_design())
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
