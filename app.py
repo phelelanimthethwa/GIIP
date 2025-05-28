@@ -1992,7 +1992,7 @@ def create_announcement():
         content = request.form.get('content')
         announcement_type = request.form.get('type')
         is_pinned = request.form.get('is_pinned') == 'on'
-        should_send_email = request.form.get('send_email') == 'on'  # Renamed variable
+        should_send_email = request.form.get('send_email') == 'on'
         scheduled_date = request.form.get('announcement_date')
         scheduled_time = request.form.get('announcement_time')
         timezone = request.form.get('timezone')
@@ -5254,6 +5254,9 @@ def conference_proceedings():
                              downloads={},
                              category_info={},
                              site_design=get_site_design())
+
+    """Test page for new navigation"""
+    return render_template('test_nav.html', site_design=get_site_design())
 
 if __name__ == '__main__':
     create_admin_user()  # Create admin user when starting the app

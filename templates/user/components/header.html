@@ -4,22 +4,107 @@
             <a href="{{ url_for('home') }}" class="logo">
                 <img src="{{ url_for('static', filename='images/logotrans.png') }}" alt="GIIR - Global Institute on Innovative Research" class="logo-img">
             </a>
-            <ul class="nav-links">
-                <li><a href="{{ url_for('about') }}">About</a></li>
-                {% if has_speakers %}
-                <li><a href="{{ url_for('guest_speakers') }}">Guest Speakers</a></li>
-                {% endif %}
-                <li><a href="{{ url_for('call_for_papers') }}">Submit Paper</a></li>
-                <li><a href="{{ url_for('author_guidelines') }}">Author Guidelines</a></li>
-                <li><a href="{{ url_for('conference_proceedings') }}">Conference Proceedings</a></li>
-                <li><a href="{{ url_for('registration') }}">Register</a></li>
-                <li><a href="{{ url_for('venue') }}">Venue</a></li>
-                <li><a href="{{ url_for('contact') }}">Contact</a></li>
+            
+            <!-- Mobile menu toggle -->
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul class="nav-links" id="navLinks">
+                <!-- About Dropdown -->
+                <li class="nav-item dropdown">
+                    <a href="#" class="nav-link dropdown-toggle" role="button" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-info-circle"></i> About
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('about') }}" class="dropdown-item">
+                            <i class="fas fa-university"></i> About Conference
+                        </a></li>
+                        <li><a href="{{ url_for('guest_speakers') }}" class="dropdown-item">
+                            <i class="fas fa-microphone"></i> Guest Speakers
+                        </a></li>
+                    </ul>
+                </li>
+
+                <!-- Call for Papers - Standalone -->
+                <li class="nav-item">
+                    <a href="{{ url_for('call_for_papers') }}" class="nav-link">
+                        <i class="fas fa-file-signature"></i> Call for Papers
+                    </a>
+                </li>
+
+                <!-- Papers Dropdown -->
+                <li class="nav-item dropdown">
+                    <a href="#" class="nav-link dropdown-toggle" role="button" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-file-alt"></i> Papers
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('paper_submission') }}" class="dropdown-item">
+                            <i class="fas fa-upload"></i> Submit Paper
+                        </a></li>
+                        <li><a href="{{ url_for('author_guidelines') }}" class="dropdown-item">
+                            <i class="fas fa-book"></i> Author Guidelines
+                        </a></li>
+                        <li><a href="{{ url_for('conference_proceedings') }}" class="dropdown-item">
+                            <i class="fas fa-download"></i> Templates & Proceedings
+                        </a></li>
+                    </ul>
+                </li>
+
+                <!-- Venue & Location - Standalone -->
+                <li class="nav-item">
+                    <a href="{{ url_for('venue') }}" class="nav-link">
+                        <i class="fas fa-map-marker-alt"></i> Venue & Location
+                    </a>
+                </li>
+
+                <!-- Register -->
+                <li class="nav-item">
+                    <a href="{{ url_for('registration') }}" class="nav-link">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                </li>
+
+                <!-- Contact -->
+                <li class="nav-item">
+                    <a href="{{ url_for('contact') }}" class="nav-link">
+                        <i class="fas fa-envelope"></i> Contact
+                    </a>
+                </li>
+
+                <!-- Account Dropdown -->
                 {% if current_user.is_authenticated %}
-                    <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                <li class="nav-item dropdown user-menu">
+                    <a href="#" class="nav-link dropdown-toggle" role="button" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-user-circle"></i> {{ current_user.full_name or current_user.email.split('@')[0] }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a href="{{ url_for('dashboard') }}" class="dropdown-item">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a></li>
+                        <li><a href="{{ url_for('profile') }}" class="dropdown-item">
+                            <i class="fas fa-user-edit"></i> Profile
+                        </a></li>
+                        {% if current_user.is_admin %}
+                        <li><div class="dropdown-divider"></div></li>
+                        <li><a href="{{ url_for('admin_dashboard') }}" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Admin Panel
+                        </a></li>
+                        {% endif %}
+                        <li><div class="dropdown-divider"></div></li>
+                        <li><a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a></li>
+                    </ul>
+                </li>
                 {% else %}
-                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                <li class="nav-item">
+                    <a href="{{ url_for('login') }}" class="nav-link login-btn">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                </li>
                 {% endif %}
             </ul>
         </div>

@@ -7,9 +7,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% set primary_rgb = site_design.primary_color|replace('#', '')|string %}
+    {% if primary_rgb|length == 6 %}
+        {% set r = (primary_rgb[0:2]|int(base=16)) %}
+        {% set g = (primary_rgb[2:4]|int(base=16)) %}
+        {% set b = (primary_rgb[4:6]|int(base=16)) %}
+    {% else %}
+        {% set r, g, b = 0, 123, 255 %}
+    {% endif %}
+    
     <style>
         :root {
             --primary-color: {{ site_design.primary_color }};
+            --primary-color-rgb: {{ r }}, {{ g }}, {{ b }};
             --secondary-color: {{ site_design.secondary_color }};
             --accent-color: {{ site_design.accent_color }};
             --text-color: {{ site_design.text_color }};
@@ -22,6 +32,7 @@
         body {
             color: var(--text-color);
             background-color: var(--background-color);
+            padding-top: 100px;
         }
 
         .header {
@@ -50,6 +61,10 @@
         }
 
         @media (max-width: 768px) {
+            body {
+                padding-top: 80px;
+            }
+            
             .header {
                 padding: 0.3rem 1rem;
             }
@@ -105,21 +120,67 @@
 
     <script>
         // Mobile menu toggle
-        document.getElementById('menuToggle').addEventListener('click', function() {
-            document.getElementById('navLinks').classList.toggle('show');
-        });
-
-        // Close menu when clicking outside
-        document.addEventListener('click', function(event) {
-            const navLinks = document.getElementById('navLinks');
-            const menuToggle = document.getElementById('menuToggle');
-            if (!navLinks.contains(event.target) && !menuToggle.contains(event.target)) {
-                navLinks.classList.remove('show');
-            }
-        });
-
-        // Auto-hide flash messages
         document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.getElementById('menuToggle');
+            const navLinks = document.getElementById('navLinks');
+            const dropdowns = document.querySelectorAll('.dropdown');
+
+            // Mobile menu toggle functionality
+            if (menuToggle && navLinks) {
+                menuToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    navLinks.classList.toggle('show');
+                    menuToggle.classList.toggle('active');
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!navLinks.contains(event.target) && !menuToggle.contains(event.target)) {
+                        navLinks.classList.remove('show');
+                        menuToggle.classList.remove('active');
+                        // Close all mobile dropdowns
+                        dropdowns.forEach(dropdown => {
+                            dropdown.classList.remove('active');
+                        });
+                    }
+                });
+            }
+
+            // Mobile dropdown functionality
+            if (window.innerWidth <= 768) {
+                dropdowns.forEach(dropdown => {
+                    const toggle = dropdown.querySelector('.dropdown-toggle');
+                    if (toggle) {
+                        toggle.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // Close other dropdowns
+                            dropdowns.forEach(otherDropdown => {
+                                if (otherDropdown !== dropdown) {
+                                    otherDropdown.classList.remove('active');
+                                }
+                            });
+                            
+                            // Toggle current dropdown
+                            dropdown.classList.toggle('active');
+                        });
+                    }
+                });
+            }
+
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    navLinks.classList.remove('show');
+                    menuToggle.classList.remove('active');
+                    dropdowns.forEach(dropdown => {
+                        dropdown.classList.remove('active');
+                    });
+                }
+            });
+
+            // Auto-hide flash messages
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(function(alert) {
                 setTimeout(function() {
