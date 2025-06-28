@@ -83,6 +83,16 @@
             </div>
         </div>
 
+        <!-- Invitation Letter Guidelines -->
+        <div class="form-section">
+            <h2><i class="fas fa-envelope"></i> Invitation Letter Information</h2>
+            <div class="form-group">
+                <label for="invitation_letter">Invitation Letter Guidelines</label>
+                <textarea id="invitation_letter" name="invitation_letter" class="form-control rich-editor" rows="8">{{ guidelines.invitation_letter if guidelines else '' }}</textarea>
+                <small class="form-text text-muted">Provide information about invitation letters, visa application process, and requirements.</small>
+            </div>
+        </div>
+
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save"></i> Save Changes

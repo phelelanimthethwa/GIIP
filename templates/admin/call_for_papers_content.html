@@ -180,7 +180,11 @@
                             </div>
                             <div class="guidelines-items-container">
                                 {% set outer_loop = loop %}
-                                {% for item in guideline.guideline_items|default(guideline.items|default([])) %}
+                                {% set guideline_items = guideline.guideline_items|default([]) %}
+                                {% if not guideline_items and guideline.title %}
+                                    {% set guideline_items = [guideline.title] %}
+                                {% endif %}
+                                {% for item in guideline_items %}
                                 <div class="input-group mb-2 guideline-item">
                                     <input type="text" class="form-control" name="guideline_items[{{ outer_loop.index0 }}][]" value="{{ item }}" required>
                                     <button type="button" class="btn btn-outline-danger remove-guideline-item">
@@ -195,6 +199,47 @@
                         </div>
                     </div>
                     {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Plagiarism Policy Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-shield-alt me-2"></i>Plagiarism Policy & Publication Ethics</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="plagiarism_policy_enabled" name="plagiarism_policy_enabled" 
+                               {% if cfp_content.plagiarism_policy and cfp_content.plagiarism_policy.enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="plagiarism_policy_enabled">
+                            Enable Plagiarism Policy Section
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="plagiarism-policy-details" style="{% if not cfp_content.plagiarism_policy or not cfp_content.plagiarism_policy.enabled %}display: none;{% endif %}">
+                    <div class="mb-3">
+                        <label for="plagiarism_policy_title" class="form-label">Section Title</label>
+                        <input type="text" class="form-control" id="plagiarism_policy_title" name="plagiarism_policy_title" 
+                               value="{{ cfp_content.plagiarism_policy.title if cfp_content.plagiarism_policy else 'Plagiarism Policy & Publication Ethics' }}">
+                        <div class="form-text">The heading for this section</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="plagiarism_policy_content" class="form-label">Policy Content</label>
+                        <textarea class="form-control" id="plagiarism_policy_content" name="plagiarism_policy_content" rows="6">{{ cfp_content.plagiarism_policy.content if cfp_content.plagiarism_policy else '' }}</textarea>
+                        <div class="form-text">The main content explaining your plagiarism policy. The URL link will be automatically added at the end.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="turnitin_url" class="form-label">Turnitin URL</label>
+                        <input type="url" class="form-control" id="turnitin_url" name="turnitin_url" 
+                               value="{{ cfp_content.plagiarism_policy.turnitin_url if cfp_content.plagiarism_policy else 'https://www.turnitin.com/' }}" 
+                               placeholder="https://www.turnitin.com/">
+                        <div class="form-text">URL that will open in a new tab when clicked</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -470,6 +515,16 @@ document.addEventListener('DOMContentLoaded', function() {
             this.closest('.guideline-item').remove();
         });
     });
+    
+    // Plagiarism Policy toggle
+    const plagiarismCheckbox = document.getElementById('plagiarism_policy_enabled');
+    const plagiarismDetails = document.getElementById('plagiarism-policy-details');
+    
+    if (plagiarismCheckbox && plagiarismDetails) {
+        plagiarismCheckbox.addEventListener('change', function() {
+            plagiarismDetails.style.display = this.checked ? 'block' : 'none';
+        });
+    }
 });
 </script>
 {% endblock %} 

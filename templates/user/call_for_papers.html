@@ -71,7 +71,25 @@
             </div>
             {% endfor %}
         </div>
-        
+    </section>
+
+    <!-- Plagiarism Policy Section -->
+    {% if cfp_content.plagiarism_policy and cfp_content.plagiarism_policy.enabled %}
+    <section class="plagiarism-policy">
+        <h2>{{ cfp_content.plagiarism_policy.title }}</h2>
+        <div class="policy-content">
+            <p>{{ cfp_content.plagiarism_policy.content }}</p>
+            <p>
+                <a href="{{ cfp_content.plagiarism_policy.turnitin_url }}" target="_blank" rel="noopener noreferrer" class="turnitin-link">
+                    {{ cfp_content.plagiarism_policy.turnitin_url }}
+                    <i class="fas fa-external-link-alt"></i>
+                </a>
+            </p>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="submission-guidelines">
         <div class="submission-cta">
             <a href="{{ url_for('paper_submission') }}" class="btn btn-primary">
                 <i class="fas fa-upload"></i> {{ cfp_content.cta.submit_button_text|default('Submit Your Paper') }}
@@ -82,4 +100,78 @@
         </div>
     </section>
 </div>
+
+<style>
+/* Plagiarism Policy Section */
+.plagiarism-policy {
+    background: linear-gradient(135deg, #fff3cd 0%, #fef9e7 100%);
+    border: 1px solid #ffc107;
+    border-radius: 10px;
+    padding: 2rem;
+    margin: 2rem 0;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.1);
+}
+
+.plagiarism-policy h2 {
+    color: #856404;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.plagiarism-policy h2::before {
+    content: "⚠️";
+    font-size: 1.2em;
+}
+
+.policy-content {
+    color: #856404;
+    line-height: 1.6;
+}
+
+.policy-content p {
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.turnitin-link {
+    color: #0066cc;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    transition: all 0.3s ease;
+}
+
+.turnitin-link:hover {
+    color: #004499;
+    text-decoration: underline;
+    transform: translateX(3px);
+}
+
+.turnitin-link i {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .plagiarism-policy {
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    
+    .plagiarism-policy h2 {
+        font-size: 1.3rem;
+    }
+    
+    .policy-content p {
+        font-size: 0.95rem;
+    }
+}
+</style>
 {% endblock %} 

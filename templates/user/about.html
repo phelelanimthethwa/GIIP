@@ -139,6 +139,62 @@
             {% endif %}
         </div>
     </section>
+
+    <!-- Future Conference Section -->
+    {% if about_content.future_conferences and about_content.future_conferences.section_enabled %}
+        {% for conference in about_content.future_conferences.conferences %}
+            {% if conference.enabled %}
+            <section class="future-conference">
+                <div class="future-conference-badge">UPCOMING</div>
+                <div class="future-year">{{ conference.year }}</div>
+                <h2 class="future-title">{{ conference.title }}</h2>
+                
+                <div class="future-info-grid">
+                    <div class="future-info-card">
+                        <div class="future-info-header">
+                            <i class="fas fa-calendar-alt"></i>
+                            <h4>DATES</h4>
+                        </div>
+                        <div class="future-info-content">
+                            {% for date in conference.dates %}
+                            <div class="future-date-item">
+                                <span class="date-bullet">•</span>
+                                <span class="date-text">{{ date.date }} {{ date.month }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="future-info-card">
+                        <div class="future-info-header">
+                            <i class="fas fa-globe"></i>
+                            <h4>PLATFORM</h4>
+                        </div>
+                        <div class="future-info-content">
+                            <span class="platform-text">{{ conference.platform }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="future-info-card">
+                        <div class="future-info-header">
+                            <i class="fas fa-paper-plane"></i>
+                            <h4>CONFERENCE CALL</h4>
+                        </div>
+                        <div class="future-info-content">
+                            <p>Submit an Abstract / full paper</p>
+                            {% for date in conference.dates %}
+                            <div class="ref-code-item">
+                                <span class="ref-label">Ref Code:</span>
+                                <code class="ref-code">{{ date.ref_code }}</code>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
 </div>
 
 <style>
@@ -354,6 +410,123 @@
     color: #666;
 }
 
+/* Future Conference */
+.future-conference {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+    padding: 2.5rem;
+    margin-bottom: 4rem;
+    border: 2px solid var(--primary-color);
+    position: relative;
+}
+
+.future-conference::before {
+    content: "UPCOMING";
+    position: absolute;
+    top: -12px;
+    left: 2rem;
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.future-conference h2 {
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 2rem;
+}
+
+.future-conf-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.future-year {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.future-title {
+    font-size: 1.4rem;
+    color: #333;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.future-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.future-info-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.future-info-item h4 {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dates-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dates-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+    font-weight: 500;
+}
+
+.dates-list li:last-child {
+    border-bottom: none;
+}
+
+.dates-list li::before {
+    content: "•";
+    color: var(--primary-color);
+    font-weight: bold;
+    display: inline-block;
+    width: 1em;
+    margin-right: 0.5rem;
+}
+
+.ref-codes {
+    margin-top: 1rem;
+}
+
+.ref-code {
+    background: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #666;
+    border-left: 3px solid var(--primary-color);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .page-header h1 {
@@ -370,6 +543,30 @@
 
     .col-md-4 {
         width: 50%;
+    }
+
+    .future-conference {
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+
+    .future-year {
+        font-size: 2.5rem;
+    }
+
+    .future-title {
+        font-size: 1.2rem;
+    }
+
+    .future-info-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .future-conference::before {
+        left: 1rem;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.8rem;
     }
 }
 

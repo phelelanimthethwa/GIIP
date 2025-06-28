@@ -568,7 +568,14 @@ def about():
                     'location': 'Tokyo, Japan',
                     'highlight': '450+ Attendees'
                 }
-            ]
+            ],
+            'future_conference': {
+                'enabled': False,
+                'year': '',
+                'title': '',
+                'platform': 'Physical',
+                'dates': []
+            }
         }
         
         return render_template('user/about.html', about_content=about_content, site_design=get_site_design())
@@ -3070,8 +3077,67 @@ def admin_about_content():
                         request.form.getlist('conference_locations[]'),
                         request.form.getlist('conference_highlights[]')
                     )
-                ]
+                ],
+                'future_conference': {
+                    'enabled': False,
+                    'year': '',
+                    'title': '',
+                    'platform': 'Physical',
+                    'dates': []
+                }
             }
+            
+            # Handle future conference data
+            future_conference_enabled = request.form.get('future_conference_enabled') == 'on'
+            if future_conference_enabled:
+                # Handle multiple future conferences
+                future_conferences = []
+                conference_years = request.form.getlist('future_conference_years[]')
+                conference_titles = request.form.getlist('future_conference_titles[]')
+                conference_platforms = request.form.getlist('future_conference_platforms[]')
+                conference_enabled_flags = request.form.getlist('future_conference_individual_enabled[]')
+                
+                for i in range(len(conference_years)):
+                    if i < len(conference_titles) and i < len(conference_platforms):
+                        # Handle dates for this specific conference
+                        conference_dates = []
+                        # Get dates for this specific conference (using indexed naming)
+                        dates_key = f'future_conference_dates_{i}[]'
+                        months_key = f'future_conference_months_{i}[]'
+                        refs_key = f'future_conference_ref_codes_{i}[]'
+                        
+                        future_dates = request.form.getlist(dates_key)
+                        future_months = request.form.getlist(months_key)
+                        future_ref_codes = request.form.getlist(refs_key)
+                        
+                        for j in range(len(future_dates)):
+                            if j < len(future_months) and j < len(future_ref_codes):
+                                conference_dates.append({
+                                    'date': future_dates[j],
+                                    'month': future_months[j],
+                                    'ref_code': future_ref_codes[j]
+                                })
+                        
+                        # Check if this specific conference is enabled
+                        conf_enabled = len(conference_enabled_flags) > i and conference_enabled_flags[i] == 'on'
+                        
+                        future_conferences.append({
+                            'enabled': conf_enabled,
+                            'year': conference_years[i],
+                            'title': conference_titles[i],
+                            'platform': conference_platforms[i],
+                            'dates': conference_dates
+                        })
+                
+                about_content['future_conferences'] = {
+                    'section_enabled': True,
+                    'conferences': future_conferences
+                }
+            else:
+                about_content['future_conferences'] = {
+                    'section_enabled': False,
+                    'conferences': []
+                }
             
             # Save to Firebase
             db.reference('about_content').set(about_content)
@@ -3122,7 +3188,11 @@ def admin_about_content():
                     'location': 'Tokyo, Japan',
                     'highlight': '450+ Attendees'
                 }
-            ]
+            ],
+            'future_conferences': {
+                'section_enabled': False,
+                'conferences': []
+            }
         }
         
         return render_template('admin/about_content.html', 
@@ -3511,7 +3581,8 @@ def admin_author_guidelines():
                 'abstract_guidelines': request.form.get('abstract_guidelines', ''),
                 'paper_guidelines': request.form.get('paper_guidelines', ''),
                 'oral_guidelines': request.form.get('oral_guidelines', ''),
-                'virtual_guidelines': request.form.get('virtual_guidelines', '')
+                'virtual_guidelines': request.form.get('virtual_guidelines', ''),
+                'invitation_letter': request.form.get('invitation_letter', '')
             }
 
             # Handle template file uploads
@@ -4811,6 +4882,14 @@ def admin_call_for_papers_content():
                 'template_url': request.form.get('template_url', '#')
             }
             
+            # Process Plagiarism Policy section
+            plagiarism_policy = {
+                'enabled': request.form.get('plagiarism_policy_enabled') == 'on',
+                'title': request.form.get('plagiarism_policy_title', 'Plagiarism Policy & Publication Ethics'),
+                'content': request.form.get('plagiarism_policy_content', ''),
+                'turnitin_url': request.form.get('turnitin_url', 'https://www.turnitin.com/')
+            }
+            
             # Compile the final data structure
             cfp_content = {
                 'page_header': page_header,
@@ -4818,6 +4897,7 @@ def admin_call_for_papers_content():
                 'topics': topics,
                 'important_dates': important_dates,
                 'submission_guidelines': submission_guidelines,
+                'plagiarism_policy': plagiarism_policy,
                 'cta': cta
             }
             
@@ -4859,6 +4939,24 @@ def admin_call_for_papers_content():
         if 'submission_guidelines' not in cfp_content:
             cfp_content['submission_guidelines'] = []
         
+        # Fix existing submission guidelines structure
+        for guideline in cfp_content['submission_guidelines']:
+            # If guideline doesn't have guideline_items field, but has title, convert it
+            if 'guideline_items' not in guideline and 'title' in guideline:
+                # Move the title content to guideline_items as a single item
+                title_content = guideline['title']
+                guideline['guideline_items'] = [title_content] if title_content else []
+                guideline['title'] = 'Research Guidelines'  # Set a default category title
+            
+        # Ensure plagiarism policy section exists
+        if 'plagiarism_policy' not in cfp_content:
+            cfp_content['plagiarism_policy'] = {
+                'enabled': False,
+                'title': 'Plagiarism Policy & Publication Ethics',
+                'content': 'The 9th International Academic Conference on Education follows strict anti-plagiarism policies and, as such, checks every submission for plagiarism using Turnitin. All articles submitted to the conference first undergo a plagiarism check before being sent to our scientific committee for review. The submission will be automatically rejected at any time if found plagiarized. If you\'d like to find out more information about the Turnitin software, click on the following link:',
+                'turnitin_url': 'https://www.turnitin.com/'
+            }
+        
         print(f"DEBUG - Admin CFP GET - Final CFP content: {cfp_content}")
         return render_template('admin/call_for_papers_content.html', cfp_content=cfp_content)
     
@@ -4875,6 +4973,12 @@ def admin_call_for_papers_content():
             'topics': [],
             'important_dates': [],
             'submission_guidelines': [],
+            'plagiarism_policy': {
+                'enabled': False,
+                'title': 'Plagiarism Policy & Publication Ethics',
+                'content': 'The 9th International Academic Conference on Education follows strict anti-plagiarism policies and, as such, checks every submission for plagiarism using Turnitin. All articles submitted to the conference first undergo a plagiarism check before being sent to our scientific committee for review. The submission will be automatically rejected at any time if found plagiarized. If you\'d like to find out more information about the Turnitin software, click on the following link:',
+                'turnitin_url': 'https://www.turnitin.com/'
+            },
             'cta': {
                 'submit_button_text': 'Submit Your Paper',
                 'template_button_text': 'Download Template',

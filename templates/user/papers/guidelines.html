@@ -73,6 +73,23 @@
             {% endif %}
         </div>
     </section>
+
+    <section class="invitation-letter">
+        <h2>INVITATION LETTER</h2>
+        <div class="guidelines-content">
+            {% if guidelines and guidelines.invitation_letter %}
+                {{ guidelines.invitation_letter|safe }}
+            {% else %}
+                <p>A Letter of Invitation is a proof that your paper submission and registration application are accepted by the conference committee board. It will be stated in English and may help with your visa application. However, it does not guarantee you a visa.</p>
+                
+                <p>Invitation letters will only be issued once your registration and payment have been completed.</p>
+                
+                <p>In order to request an invitation letter, just e-mail us the Registration and proof of Payment. For those who require a visa, please note that the Organizing Committee has no control over the visa application process, or the decision of the visa adjudicator in the embassy or consulate. The conference cannot be responsible for actual visa issuances.</p>
+                
+                <p>Should your application be denied, we cannot change the decision of the Ministry of Foreign Affairs, nor will we engage in discussion or correspondence with the Ministry of Foreign Affairs or the Embassy on behalf of the applicant.</p>
+            {% endif %}
+        </div>
+    </section>
 </div>
 
 <style>

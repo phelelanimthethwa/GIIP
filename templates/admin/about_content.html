@@ -179,6 +179,110 @@
             </div>
         </div>
 
+        <!-- Future Conference Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Future Conferences</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="future_conference_enabled" name="future_conference_enabled" 
+                               {% if about_content.future_conferences and about_content.future_conferences.section_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="future_conference_enabled">
+                            Enable Future Conferences Section
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="future-conferences-container">
+                    {% if about_content.future_conferences and about_content.future_conferences.conferences %}
+                        {% for conference in about_content.future_conferences.conferences %}
+                        <div class="future-conference-item border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Conference {{ loop.index }}</h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFutureConference(this)">
+                                    <i class="fas fa-trash"></i> Remove
+                                </button>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="future_conference_individual_enabled[]" 
+                                           {% if conference.enabled %}checked{% endif %}>
+                                    <label class="form-check-label">
+                                        Enable this conference
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Year</label>
+                                    <input type="text" class="form-control" name="future_conference_years[]" 
+                                           value="{{ conference.year }}" placeholder="2026">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Platform</label>
+                                    <select class="form-control" name="future_conference_platforms[]">
+                                        <option value="Physical" {% if conference.platform == 'Physical' %}selected{% endif %}>Physical</option>
+                                        <option value="Virtual" {% if conference.platform == 'Virtual' %}selected{% endif %}>Virtual</option>
+                                        <option value="Hybrid" {% if conference.platform == 'Hybrid' %}selected{% endif %}>Hybrid</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Conference Title</label>
+                                <input type="text" class="form-control" name="future_conference_titles[]" 
+                                       value="{{ conference.title }}" 
+                                       placeholder="2nd International Conference on Education, Teaching and Learning (ETL-2026)">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Conference Dates</label>
+                                <div class="conference-dates-container" data-conference-index="{{ loop.index0 }}">
+                                    {% if conference.dates %}
+                                        {% for date in conference.dates %}
+                                        <div class="conference-date-item mb-2">
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <input type="text" class="form-control" name="future_conference_dates_{{ loop.index0 }}[]" 
+                                                           value="{{ date.date }}" placeholder="XXXXX">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <input type="text" class="form-control" name="future_conference_months_{{ loop.index0 }}[]" 
+                                                           value="{{ date.month }}" placeholder="February 2026">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="text" class="form-control" name="future_conference_ref_codes_{{ loop.index0 }}[]" 
+                                                           value="{{ date.ref_code }}" placeholder="February#ETL:2026">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeConferenceDate(this)">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addConferenceDate({{ loop.index0 }})">
+                                    <i class="fas fa-plus"></i> Add Date
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                
+                <button type="button" class="btn btn-outline-primary" onclick="addFutureConference()">
+                    <i class="fas fa-plus"></i> Add Future Conference
+                </button>
+            </div>
+        </div>
+
         <div class="card-footer text-end">
             <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
@@ -306,5 +410,105 @@ function previewImage(input) {
         reader.readAsDataURL(input.files[0]);
     }
 }
+
+function addFutureConference() {
+    const container = document.getElementById('future-conferences-container');
+    const conferenceCount = container.querySelectorAll('.future-conference-item').length;
+    const template = `
+        <div class="future-conference-item border rounded p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Conference ${conferenceCount + 1}</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFutureConference(this)">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" name="future_conference_individual_enabled[]">
+                    <label class="form-check-label">
+                        Enable this conference
+                    </label>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Year</label>
+                    <input type="text" class="form-control" name="future_conference_years[]" placeholder="2026">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Platform</label>
+                    <select class="form-control" name="future_conference_platforms[]">
+                        <option value="Physical">Physical</option>
+                        <option value="Virtual">Virtual</option>
+                        <option value="Hybrid">Hybrid</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Conference Title</label>
+                <input type="text" class="form-control" name="future_conference_titles[]" 
+                       placeholder="2nd International Conference on Education, Teaching and Learning (ETL-2026)">
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Conference Dates</label>
+                <div class="conference-dates-container" data-conference-index="${conferenceCount}">
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addConferenceDate(${conferenceCount})">
+                    <i class="fas fa-plus"></i> Add Date
+                </button>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', template);
+}
+
+function removeFutureConference(button) {
+    button.closest('.future-conference-item').remove();
+}
+
+function addConferenceDate(conferenceIndex) {
+    const container = document.querySelector(`.conference-dates-container[data-conference-index="${conferenceIndex}"]`);
+    const template = `
+        <div class="conference-date-item mb-2">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="future_conference_dates_${conferenceIndex}[]" placeholder="XXXXX">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="future_conference_months_${conferenceIndex}[]" placeholder="February 2026">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="future_conference_ref_codes_${conferenceIndex}[]" placeholder="February#ETL:2026">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeConferenceDate(this)">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', template);
+}
+
+function removeConferenceDate(button) {
+    button.closest('.conference-date-item').remove();
+}
+
+// Toggle future conference details
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('future_conference_enabled');
+    const details = document.getElementById('future-conferences-container');
+    
+    if (checkbox && details) {
+        checkbox.addEventListener('change', function() {
+            details.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+});
 </script>
 {% endblock %} 
