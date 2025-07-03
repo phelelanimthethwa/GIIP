@@ -1,0 +1,166 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Paper Submission Settings - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-file-upload"></i> Paper Submission Settings</h1>
+            <p>Configure paper submission form fields, validation rules, and options</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="content-section">
+        <form method="POST" class="needs-validation" novalidate>
+            
+            <!-- Page Configuration -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-cog"></i> Page Configuration</h2>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="page_title" class="form-label">Page Title</label>
+                                <input type="text" class="form-control" id="page_title" name="page_title" 
+                                       value="{{ settings.page.title if settings and settings.page else 'Submit Your Paper' }}" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="page_description" class="form-label">Page Description</label>
+                                <textarea class="form-control" id="page_description" name="page_description" rows="3" required>{{ settings.page.description if settings and settings.page else 'Please fill out the form below to submit your paper for review.' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="max_file_size" class="form-label">Maximum File Size (MB)</label>
+                                <input type="number" class="form-control" id="max_file_size" name="max_file_size" 
+                                       value="{{ settings.files.max_size_mb if settings and settings.files else '10' }}" min="1" max="100" required>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="form-label">Allowed File Types</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="allow_pdf" name="allowed_file_types" value="pdf" 
+                                           {% if not settings or not settings.files or 'pdf' in (settings.files.allowed_types or ['pdf']) %}checked{% endif %}>
+                                    <label class="form-check-label" for="allow_pdf">PDF (.pdf)</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="allow_doc" name="allowed_file_types" value="doc" 
+                                           {% if settings and settings.files and 'doc' in (settings.files.allowed_types or []) %}checked{% endif %}>
+                                    <label class="form-check-label" for="allow_doc">Word Document (.doc, .docx)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Research Areas Configuration -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-microscope"></i> Research Areas</h2>
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label class="form-label">Available Research Areas</label>
+                        <div id="research-areas-container">
+                            {% if settings and settings.fields and settings.fields.research_areas %}
+                                {% for area in settings.fields.research_areas %}
+                                <div class="research-area-item mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="research_areas[]" value="{{ area.value }}" placeholder="Research area value">
+                                        <input type="text" class="form-control" name="research_area_labels[]" value="{{ area.label }}" placeholder="Display label">
+                                        <button type="button" class="btn btn-danger" onclick="removeResearchArea(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Default research areas -->
+                                <div class="research-area-item mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="research_areas[]" value="artificial_intelligence" placeholder="Research area value">
+                                        <input type="text" class="form-control" name="research_area_labels[]" value="Artificial Intelligence" placeholder="Display label">
+                                        <button type="button" class="btn btn-danger" onclick="removeResearchArea(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="research-area-item mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="research_areas[]" value="machine_learning" placeholder="Research area value">
+                                        <input type="text" class="form-control" name="research_area_labels[]" value="Machine Learning" placeholder="Display label">
+                                        <button type="button" class="btn btn-danger" onclick="removeResearchArea(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="research-area-item mb-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" name="research_areas[]" value="data_science" placeholder="Research area value">
+                                        <input type="text" class="form-control" name="research_area_labels[]" value="Data Science" placeholder="Display label">
+                                        <button type="button" class="btn btn-danger" onclick="removeResearchArea(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addResearchArea()">
+                            <i class="fas fa-plus"></i> Add Research Area
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.research-area-item {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+function addResearchArea() {
+    const container = document.getElementById('research-areas-container');
+    const newItem = document.createElement('div');
+    newItem.className = 'research-area-item mb-2';
+    newItem.innerHTML = `
+        <div class="input-group">
+            <input type="text" class="form-control" name="research_areas[]" placeholder="Research area value">
+            <input type="text" class="form-control" name="research_area_labels[]" placeholder="Display label">
+            <button type="button" class="btn btn-danger" onclick="removeResearchArea(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(newItem);
+}
+
+function removeResearchArea(button) {
+    button.closest('.research-area-item').remove();
+}
+</script>
+{% endblock %}

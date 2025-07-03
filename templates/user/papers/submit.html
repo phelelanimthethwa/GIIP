@@ -104,9 +104,9 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Submit Your Paper</h1>
+    <h1>{{ paper_settings.page.title if paper_settings and paper_settings.page else 'Submit Your Paper' }}</h1>
     {% if conferences|length > 1 %}
-    <p>Please select a conference and fill out the form below to submit your paper</p>
+    <p>{{ paper_settings.page.description if paper_settings and paper_settings.page else 'Please select a conference and fill out the form below to submit your paper' }}</p>
     {% elif conferences|length == 1 %}
     {% for conf_id, conf_data in conferences.items() %}
     <p>Submit your paper to {{ conf_data.basic_info.name }}</p>
@@ -173,26 +173,40 @@
                 <label for="research_area">Research Area *</label>
                 <select id="research_area" name="research_area" class="form-control" required>
                     <option value="">Select Research Area</option>
-                    <option value="artificial_intelligence">Artificial Intelligence</option>
-                    <option value="machine_learning">Machine Learning</option>
-                    <option value="data_science">Data Science</option>
-                    <option value="computer_vision">Computer Vision</option>
-                    <option value="natural_language_processing">Natural Language Processing</option>
-                    <option value="robotics">Robotics</option>
-                    <option value="cybersecurity">Cybersecurity</option>
-                    <option value="cloud_computing">Cloud Computing</option>
-                    <option value="internet_of_things">Internet of Things</option>
-                    <option value="blockchain">Blockchain</option>
-                    <option value="other">Other</option>
+                    {% if paper_settings and paper_settings.fields and paper_settings.fields.research_areas %}
+                        {% for area in paper_settings.fields.research_areas %}
+                        <option value="{{ area.value }}">{{ area.label }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Default research areas if no admin settings -->
+                        <option value="artificial_intelligence">Artificial Intelligence</option>
+                        <option value="machine_learning">Machine Learning</option>
+                        <option value="data_science">Data Science</option>
+                        <option value="computer_vision">Computer Vision</option>
+                        <option value="natural_language_processing">Natural Language Processing</option>
+                        <option value="robotics">Robotics</option>
+                        <option value="cybersecurity">Cybersecurity</option>
+                        <option value="cloud_computing">Cloud Computing</option>
+                        <option value="internet_of_things">Internet of Things</option>
+                        <option value="blockchain">Blockchain</option>
+                        <option value="other">Other</option>
+                    {% endif %}
                 </select>
             </div>
             <div class="form-group">
                 <label for="presentation_type">Presentation Type *</label>
                 <select id="presentation_type" name="presentation_type" class="form-control" required>
                     <option value="">Select Presentation Type</option>
-                    <option value="oral">Oral Presentation</option>
-                    <option value="poster">Poster Presentation</option>
-                    <option value="virtual">Virtual Presentation</option>
+                    {% if paper_settings and paper_settings.fields and paper_settings.fields.presentation_types %}
+                        {% for type in paper_settings.fields.presentation_types %}
+                        <option value="{{ type.value }}">{{ type.label }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Default presentation types if no admin settings -->
+                        <option value="oral">Oral Presentation</option>
+                        <option value="poster">Poster Presentation</option>
+                        <option value="virtual">Virtual Presentation</option>
+                    {% endif %}
                 </select>
             </div>
         </div>
@@ -225,13 +239,20 @@
         <div class="form-section">
             <h3><i class="fas fa-upload"></i> Paper Upload</h3>
             <div class="form-group">
-                <label for="paper_file">Upload Paper * (PDF only)</label>
-                <input type="file" id="paper_file" name="paper_file" class="form-control" accept=".pdf" required>
-                <small class="form-text text-muted">Maximum file size: 10MB</small>
+                {% set file_types = paper_settings.files.allowed_types if paper_settings and paper_settings.files else ['pdf'] %}
+                {% set max_size = paper_settings.files.max_size_mb if paper_settings and paper_settings.files else 10 %}
+                <label for="paper_file">Upload Paper * 
+                    ({% if 'pdf' in file_types and 'doc' in file_types %}PDF or Word documents{% elif 'pdf' in file_types %}PDF only{% elif 'doc' in file_types %}Word documents only{% else %}PDF only{% endif %})
+                </label>
+                <input type="file" id="paper_file" name="paper_file" class="form-control" 
+                       accept="{% if 'pdf' in file_types %}.pdf{% endif %}{% if 'doc' in file_types %},.doc,.docx{% endif %}" required>
+                <small class="form-text text-muted">Maximum file size: {{ max_size }}MB</small>
             </div>
         </div>
 
+        {% if not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha %}
         <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+        {% endif %}
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Submit Paper</button>
@@ -486,18 +507,20 @@ document.getElementById('paperSubmissionForm').addEventListener('submit', functi
         submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
         submitButton.disabled = true;
         
-        // Check if reCAPTCHA is completed
+        // Check if reCAPTCHA is completed (only if enabled)
+        {% if not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha %}
         const recaptchaResponse = grecaptcha.getResponse();
         if (!recaptchaResponse) {
             showError('Please complete the reCAPTCHA verification.');
             return;
         }
+        {% endif %}
         
         // Check file size
         const fileInput = document.getElementById('paper_file');
-        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        const maxSize = {{ max_size }} * 1024 * 1024; // {{ max_size }}MB in bytes
         if (fileInput.files[0] && fileInput.files[0].size > maxSize) {
-            showError('File size exceeds 10MB limit. Please choose a smaller file.');
+            showError('File size exceeds {{ max_size }}MB limit. Please choose a smaller file.');
             return;
         }
         

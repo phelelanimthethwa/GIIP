@@ -531,6 +531,10 @@ def call_for_papers():
 @app.route('/paper-submission', methods=['GET', 'POST'])
 @login_required
 def paper_submission():
+    # Get paper submission settings from Firebase
+    settings_ref = db.reference('paper_submission_settings')
+    paper_settings = settings_ref.get() or {}
+    
     # Get all conferences for selection
     conferences = get_all_conferences()
     
@@ -551,7 +555,8 @@ def paper_submission():
                 flash('Please select a conference for your paper submission.', 'error')
                 return render_template('user/papers/submit.html', 
                                      site_design=get_site_design(),
-                                     conferences=available_conferences)
+                                     conferences=available_conferences,
+                                     paper_settings=paper_settings)
             
             # If only one conference or none selected, use first/default
             if not selected_conference_id and available_conferences:
@@ -674,11 +679,13 @@ def paper_submission():
             flash(f'Error submitting paper: {str(e)}', 'error')
             return render_template('user/papers/submit.html', 
                                  site_design=get_site_design(),
-                                 conferences=available_conferences)
+                                 conferences=available_conferences,
+                                 paper_settings=paper_settings)
 
     return render_template('user/papers/submit.html', 
                          site_design=get_site_design(),
-                         conferences=available_conferences)
+                         conferences=available_conferences,
+                         paper_settings=paper_settings)
 
 @app.route('/author-guidelines')
 def author_guidelines():
@@ -5102,6 +5109,7 @@ def inject_admin_menu():
         {'text': 'About Content', 'url': 'admin_about_content', 'icon': 'info-circle'},
         {'text': 'Author Guidelines', 'url': 'admin_author_guidelines', 'icon': 'book'},
         {'text': 'Call for Papers', 'url': 'admin_call_for_papers_content', 'icon': 'file-alt'},
+        {'text': 'Paper Submission Settings', 'url': 'admin_paper_submission_settings', 'icon': 'file-upload'},
         {'text': 'Design Settings', 'url': 'admin_design', 'icon': 'palette'},
         {'text': 'Venue', 'url': 'admin_venue', 'icon': 'map-marker-alt'},
         {'text': 'Speakers', 'url': 'admin_speakers', 'icon': 'microphone'},
@@ -5545,6 +5553,108 @@ def dashboard():
                              registrations={},
                              submissions={},
                              site_design=get_site_design())
+
+@app.route('/admin/paper-submission-settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_paper_submission_settings():
+    try:
+        if request.method == 'POST':
+            # Build research areas list
+            research_areas = []
+            areas = request.form.getlist('research_areas[]')
+            area_labels = request.form.getlist('research_area_labels[]')
+            for i, area in enumerate(areas):
+                if area and i < len(area_labels) and area_labels[i]:
+                    research_areas.append({
+                        'value': area,
+                        'label': area_labels[i]
+                    })
+            
+            # Build presentation types list
+            presentation_types = []
+            types = request.form.getlist('presentation_types[]')
+            type_labels = request.form.getlist('presentation_type_labels[]')
+            for i, ptype in enumerate(types):
+                if ptype and i < len(type_labels) and type_labels[i]:
+                    presentation_types.append({
+                        'value': ptype,
+                        'label': type_labels[i]
+                    })
+            
+            # Get allowed file types
+            allowed_file_types = request.form.getlist('allowed_file_types')
+            if not allowed_file_types:
+                allowed_file_types = ['pdf']  # Default to PDF
+            
+            # Build settings object
+            paper_settings = {
+                'page': {
+                    'title': request.form.get('page_title', 'Submit Your Paper'),
+                    'description': request.form.get('page_description', 'Please fill out the form below to submit your paper for review.')
+                },
+                'files': {
+                    'max_size_mb': int(request.form.get('max_file_size', 10)),
+                    'allowed_types': allowed_file_types
+                },
+                'fields': {
+                    'title': {
+                        'enabled': True,
+                        'required': True
+                    },
+                    'abstract': {
+                        'enabled': True,
+                        'required': True,
+                        'min_words': int(request.form.get('abstract_min_words', 100)),
+                        'max_words': int(request.form.get('abstract_max_words', 500))
+                    },
+                    'keywords': {
+                        'enabled': True,
+                        'required': True
+                    },
+                    'research_areas': research_areas,
+                    'presentation_types': presentation_types
+                },
+                'authors': {
+                    'max_count': int(request.form.get('max_authors', 10)),
+                    'require_institution': request.form.get('require_institution') == 'on',
+                    'require_orcid': request.form.get('require_orcid') == 'on',
+                    'require_biography': request.form.get('require_biography') == 'on'
+                },
+                'security': {
+                    'enable_recaptcha': request.form.get('enable_recaptcha') == 'on',
+                    'enable_plagiarism_check': request.form.get('enable_plagiarism_check') == 'on'
+                },
+                'deadlines': {
+                    'submission': request.form.get('submission_deadline', ''),
+                    'allow_late': request.form.get('allow_late_submissions') == 'on'
+                },
+                'notifications': {
+                    'notify_admin': request.form.get('notify_admin') == 'on',
+                    'send_confirmation': request.form.get('send_confirmation') == 'on',
+                    'admin_email': request.form.get('admin_email', '')
+                },
+                'updated_at': datetime.now().isoformat(),
+                'updated_by': current_user.email
+            }
+            
+            # Save to Firebase
+            settings_ref = db.reference('paper_submission_settings')
+            settings_ref.set(paper_settings)
+            
+            flash('Paper submission settings updated successfully!', 'success')
+            return redirect(url_for('admin_paper_submission_settings'))
+        
+        # GET request - load current settings
+        settings_ref = db.reference('paper_submission_settings')
+        settings = settings_ref.get()
+        
+        return render_template('admin/paper_submission_settings.html', 
+                             settings=settings,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash(f'Error managing paper submission settings: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     # Create admin user on startup
