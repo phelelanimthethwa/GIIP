@@ -333,6 +333,8 @@ function addCoAuthor() {
             setTimeout(() => firstInput.focus(), 300);
         }
         
+    } catch (error) {
+        console.error('Error adding co-author:', error);
     } finally {
         isProcessing = false;
     }
