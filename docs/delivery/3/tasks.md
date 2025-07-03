@@ -8,7 +8,7 @@ This document lists all tasks associated with PBI 3.
 
 | Task ID | Name | Status | Description |
 | :------ | :--------------------------------------- | :------- | :--------------------------------- |
-| 3-1 | [Fix Co-author Addition in Paper Submission](./3-1.md) | Proposed | Debug and fix JavaScript functionality for adding/removing co-authors in paper submission forms |
+| 3-1 | [Fix Co-author Addition in Paper Submission](./3-1.md) | Done | Debug and fix JavaScript functionality for adding/removing co-authors in paper submission forms |
 | 3-2 | [Implement User Profile Editing](./3-2.md) | Proposed | Create user profile editing template and backend functionality to allow users to update their information |
 | 3-3 | [Fix Admin Speakers Display Issue](./3-3.md) | Proposed | Debug and fix admin speakers interface to properly display and manage speaker data |
 | 3-4 | [Fix Author Guidelines Download and Upload](./3-4.md) | Proposed | Fix file download mechanisms for users and upload functionality for admins in author guidelines |
