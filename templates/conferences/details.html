@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}{{ conference.basic_info.name }} - {{ conference.basic_info.year }}{% endblock %}
+
+{% block content %}
+<!-- Conference Hero Section -->
+<div class="conference-hero">
+    <div class="hero-overlay">
+        <div class="hero-content">
+            <div class="conference-badge">
+                <span class="status-badge status-{{ conference.basic_info.status }}">
+                    {% if conference.basic_info.status == 'active' %}
+                        🟢 Registration Open
+                    {% elif conference.basic_info.status == 'upcoming' %}
+                        🟡 Upcoming Event
+                    {% elif conference.basic_info.status == 'closed' %}
+                        🔴 Registration Closed
+                    {% else %}
+                        ⚪ {{ conference.basic_info.status|title }}
+                    {% endif %}
+                </span>
+            </div>
+            <h1>{{ conference.basic_info.name }}</h1>
+            <p class="hero-description">{{ conference.basic_info.description }}</p>
+            
+            <div class="conference-meta">
+                <div class="meta-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>{{ conference.basic_info.location }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ conference.basic_info.timezone }}</span>
+                </div>
+                {% if conference.basic_info.website %}
+                <div class="meta-item">
+                    <i class="fas fa-globe"></i>
+                    <a href="{{ conference.basic_info.website }}" target="_blank">Official Website</a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="hero-actions">
+                {% if conference.basic_info.status == 'active' %}
+                    {% if conference.settings.registration_enabled %}
+                    <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-ticket-alt"></i> Register Now
+                    </a>
+                    {% endif %}
+                    {% if conference.settings.paper_submission_enabled %}
+                    <a href="{{ url_for('conference_paper_submission', conference_id=conference_id) }}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-file-upload"></i> Submit Paper
+                    </a>
+                    {% endif %}
+                {% endif %}
+                <a href="{{ url_for('conference_discover') }}" class="btn btn-outline btn-lg">
+                    <i class="fas fa-arrow-left"></i> All Conferences
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="conference-details-grid">
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- About Section -->
+            <div class="detail-card">
+                <h2><i class="fas fa-info-circle"></i> About This Conference</h2>
+                <div class="content-text">
+                    <p>{{ conference.basic_info.description }}</p>
+                    <p>This conference brings together researchers, academics, and industry professionals to share innovative research and foster collaboration in various fields of study.</p>
+                </div>
+            </div>
+            
+            <!-- Key Features -->
+            <div class="detail-card">
+                <h2><i class="fas fa-star"></i> Conference Features</h2>
+                <div class="features-grid">
+                    {% if conference.settings.registration_enabled %}
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Registration Open</h4>
+                            <p>Multiple registration types available for different participant categories</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if conference.settings.paper_submission_enabled %}
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Paper Submissions</h4>
+                            <p>Submit your research papers for peer review and presentation</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if conference.settings.review_enabled %}
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Peer Review</h4>
+                            <p>Rigorous peer review process ensuring quality presentations</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-certificate"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Certification</h4>
+                            <p>Receive certificates of participation and presentation</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Networking</h4>
+                            <p>Connect with researchers and professionals in your field</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h4>Proceedings</h4>
+                            <p>Published proceedings with ISBN for accepted papers</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="sidebar">
+            
+            <!-- Quick Info Card -->
+            <div class="sidebar-card">
+                <h3><i class="fas fa-info-circle"></i> Quick Information</h3>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="label">Conference Year:</span>
+                        <span class="value">{{ conference.basic_info.year }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Start Date:</span>
+                        <span class="value">{{ conference.basic_info.start_date|format_date }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">End Date:</span>
+                        <span class="value">{{ conference.basic_info.end_date|format_date }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Location:</span>
+                        <span class="value">{{ conference.basic_info.location }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Time Zone:</span>
+                        <span class="value">{{ conference.basic_info.timezone }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Status:</span>
+                        <span class="value status-{{ conference.basic_info.status }}">{{ conference.basic_info.status|title }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contact Information -->
+            <div class="sidebar-card">
+                <h3><i class="fas fa-envelope"></i> Contact Information</h3>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <a href="mailto:info@conference.org">info@conference.org</a>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-globe"></i>
+                        <span>www.conference.org</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.conference-hero {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 4rem 2rem;
+    margin: 0 -2rem 3rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.conference-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.1);
+    z-index: 1;
+}
+
+.hero-overlay {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.conference-badge {
+    margin-bottom: 1.5rem;
+}
+
+.status-badge {
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1rem;
+    display: inline-block;
+}
+
+.status-active, .status-upcoming, .status-closed { 
+    background: rgba(255,255,255,0.2); 
+}
+
+.hero-content h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    line-height: 1.2;
+}
+
+.hero-description {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.conference-meta {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.meta-item i {
+    opacity: 0.8;
+}
+
+.meta-item a {
+    color: white;
+    text-decoration: none;
+}
+
+.meta-item a:hover {
+    text-decoration: underline;
+}
+
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: white;
+    color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.btn-outline {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255,255,255,0.5);
+}
+
+.btn-outline:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.conference-details-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.detail-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.detail-card h2 {
+    margin: 0 0 1.5rem 0;
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.content-text {
+    line-height: 1.7;
+    color: #555;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.feature-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.feature-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.feature-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #333;
+}
+
+.feature-content p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.sidebar-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.sidebar-card h3 {
+    margin: 0 0 1rem 0;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.info-item .label {
+    font-weight: 600;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.info-item .value {
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.contact-item i {
+    color: var(--primary-color);
+    width: 16px;
+}
+
+.contact-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .conference-hero {
+        padding: 2rem 1rem;
+        margin: 0 -1rem 2rem;
+    }
+    
+    .hero-content h1 {
+        font-size: 2rem;
+    }
+    
+    .hero-description {
+        font-size: 1rem;
+    }
+    
+    .conference-meta {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .hero-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .conference-details-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .detail-card, .sidebar-card {
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

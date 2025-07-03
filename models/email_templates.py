@@ -18,9 +18,10 @@ GIIR Conference Team
 PAPER_SUBMISSION_CONFIRMATION = """
 Dear {author_name},
 
-Thank you for submitting your paper to GIIR Conference 2024.
+Thank you for submitting your paper to {conference_name}.
 
 Submission Details:
+- Conference: {conference_name}
 - Paper Title: {paper_title}
 - Presentation Type: {presentation_type}
 - Submission ID: {paper_id}
@@ -28,7 +29,7 @@ Submission Details:
 We will review your submission and get back to you soon.
 
 Best regards,
-GIIR Conference Team
+{conference_name} Conference Team
 """
 
 PAPER_STATUS_UPDATE = {

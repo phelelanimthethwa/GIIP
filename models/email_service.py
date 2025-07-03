@@ -11,11 +11,17 @@ class EmailService:
         Generic email sending function
         """
         try:
+            # Check if email is configured
+            sender = current_app.config.get('MAIL_DEFAULT_SENDER')
+            if not sender:
+                print("Warning: Email not configured (MAIL_DEFAULT_SENDER missing)")
+                return False
+                
             msg = Message(
                 subject=subject,
                 recipients=[to],
                 body=body,
-                sender=current_app.config['MAIL_DEFAULT_SENDER']
+                sender=sender
             )
             self.mail.send(msg)
             return True
@@ -42,12 +48,14 @@ class EmailService:
         """
         Send paper submission confirmation email
         """
-        subject = 'Paper Submission Confirmation'
+        conference_name = paper_data.get('conference_name', 'GIIR Conference 2024')
+        subject = f'Paper Submission Confirmation - {conference_name}'
         body = PAPER_SUBMISSION_CONFIRMATION.format(
             author_name=paper_data['authors'][0]['name'],
             paper_title=paper_data['paper_title'],
             presentation_type=paper_data['presentation_type'],
-            paper_id=paper_data['paper_id']
+            paper_id=paper_data['paper_id'],
+            conference_name=conference_name
         )
         return self.send_email(paper_data['user_email'], subject, body)
 

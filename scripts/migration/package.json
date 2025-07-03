@@ -1,0 +1,25 @@
+{
+  "name": "giir-migration-scripts",
+  "version": "1.0.0",
+  "description": "Migration scripts for GIIR Conference System multi-conference implementation",
+  "main": "index.js",
+  "scripts": {
+    "phase-a": "node run-phase-a.bat",
+    "backup": "bash 1-backup-database.sh",
+    "create-schema": "node 2-create-default-conference.js",
+    "deploy-rules": "node 3-deploy-security-rules.js",
+    "test-migration": "node test-migration.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {},
+  "author": "GIIR Conference System",
+  "license": "MIT",
+  "keywords": [
+    "firebase",
+    "migration",
+    "multi-conference",
+    "database"
+  ]
+} 

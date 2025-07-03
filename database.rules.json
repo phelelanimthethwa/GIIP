@@ -3,11 +3,24 @@
     ".read": "auth != null",
     ".write": "auth != null",
     "users": {
-      ".indexOn": ["email", "is_admin"],
+      ".indexOn": ["email", "is_admin", "is_global_admin"],
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true)",
-        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true)"
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true || root.child('users').child(auth.uid).child('is_global_admin').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('is_admin').val() === true || root.child('users').child(auth.uid).child('is_global_admin').val() === true)"
       }
+    },
+    "conferences": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$conference_id": {
+        "basic_info": {
+          ".read": true
+        }
+      }
+    },
+    "global_settings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "payment_proofs": {
       ".indexOn": ["upload_date", "status"],
@@ -43,31 +56,80 @@
         ".write": "auth != null && (newData.child('email').val() === auth.token.email || root.child('users').child(auth.uid).child('is_admin').val() === true)"
       }
     },
+    "papers": {
+      ".indexOn": ["email", "status"],
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
     "registration_fees": {
       ".read": true,
-      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+      ".write": "auth != null"
     },
     "venue": {
       ".read": true,
-      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+      ".write": "auth != null"
+    },
+    "venue_details": {
+      ".read": true,
+      ".write": "auth != null"
     },
     "downloads": {
       ".read": true,
-      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
+      ".write": "auth != null",
       ".indexOn": ["category", "type"]
     },
     "contact_email_settings": {
-      ".read": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "contact_page_settings": {
       ".read": true,
-      ".write": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true"
+      ".write": "auth != null"
     },
     "contact_submissions": {
-      ".read": "auth != null && root.child('users').child(auth.uid).child('is_admin').val() === true",
+      ".read": "auth != null",
       ".write": true,
       ".indexOn": ["email", "submitted_at"]
+    },
+    "email_settings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "email_templates": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "announcements": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "schedule": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "speakers": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "site_design": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "home_content": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "about_content": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "call_for_papers_content": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "author_guidelines": {
+      ".read": true,
+      ".write": "auth != null"
     }
   }
 } 

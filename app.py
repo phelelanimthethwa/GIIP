@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, make_response, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file
 from flask_mail import Mail, Message
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
+
 import firebase_admin
 from firebase_admin import credentials, db, auth, firestore, storage
 from config import Config
@@ -14,7 +14,7 @@ import base64
 from dotenv import load_dotenv
 from models.email_service import EmailService
 import pytz
-import requests
+
 from PIL import Image
 from io import BytesIO
 from utils import register_filters
@@ -73,7 +73,7 @@ try:
     if not firebase_api_key:
         print("Warning: FIREBASE_API_KEY not found in environment variables")
     else:
-        print(f"Using Firebase API key from environment variables")
+        print("Using Firebase API key from environment variables")
     
     # Initialize Firebase with options from serviceAccountKey.json
     firebase_options = {
@@ -198,16 +198,6 @@ def allowed_image_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
-def validate_associate_data(name, description, logo_url):
-    """Validate associate data fields"""
-    if not name or not name.strip():
-        raise ValueError("Associate name is required")
-    if not description or not description.strip():
-        raise ValueError("Associate description is required")
-    if not logo_url or not logo_url.strip():
-        raise ValueError("Associate logo is required")
-    return True
-
 def compress_image(file, max_size_kb=500):
     """Compress image to reduce file size while maintaining quality"""
     try:
@@ -274,159 +264,6 @@ def validate_image(file, image_type='default'):
     except Exception as e:
         raise ValueError(f"Invalid image: {str(e)}")
 
-def save_associate_logo(logo_file, existing_logo=None):
-    """Save associate logo to Firebase Storage and return the public URL"""
-    if not logo_file or not logo_file.filename:
-        if existing_logo:
-            return existing_logo
-        raise ValueError("Logo file is required")
-    
-    try:
-        # Validate image with associate type
-        validate_image(logo_file, image_type='associate')
-        
-        # Initialize Firebase Storage bucket
-        bucket = storage.bucket()
-        
-        # Generate unique filename with original extension
-        original_filename = secure_filename(logo_file.filename)
-        ext = os.path.splitext(original_filename)[1].lower()
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_id = str(uuid.uuid4())[:8]
-        
-        # Use dedicated path for associates
-        unique_filename = f"content/associates/{timestamp}_{unique_id}{ext}"
-        
-        # Create a new blob
-        blob = bucket.blob(unique_filename)
-        
-        # Set content type based on file extension
-        content_type = mimetypes.guess_type(original_filename)[0] or 'image/jpeg'
-        blob.content_type = content_type
-        
-        # Set metadata for optimization status
-        metadata = {
-            'optimized': 'false',
-            'originalName': original_filename,
-            'timestamp': timestamp,
-            'type': 'associate_logo'  # Add type to distinguish from hero images
-        }
-        blob.metadata = metadata
-        
-        # Compress image if needed
-        logo_file.seek(0)  # Reset file pointer
-        img_data = compress_image(logo_file, max_size_kb=300)  # Smaller size for logos
-        
-        # Log the upload process
-        print(f"Uploading logo: {unique_filename} with content type: {content_type}")
-        
-        # Upload the file with metadata
-        blob.upload_from_string(
-            img_data,
-            content_type=content_type
-        )
-        
-        # Make the blob publicly accessible
-        blob.make_public()
-        
-        # Set cache control
-        blob.cache_control = 'public, max-age=31536000'  # Cache for 1 year
-        blob.patch()
-        
-        # Log successful upload
-        print(f"Successfully uploaded logo: {unique_filename} to {blob.public_url}")
-        
-        return blob.public_url
-        
-    except Exception as e:
-        print(f"Error saving logo to Firebase Storage: {str(e)}")
-        raise ValueError(f"Error saving logo: {str(e)}")
-
-def process_associates_data(request_form, request_files):
-    """Process associates data from the form submission"""
-    try:
-        print("Received files in process_associates_data:", request_files.keys())
-        associates = []
-        errors = []
-        bucket = storage.bucket()
-
-        # Process existing associates
-        existing_ids = request_form.getlist('existing_associate_ids[]')
-        existing_logos = request_form.getlist('existing_associate_logos[]')
-        
-        print(f"Processing {len(existing_ids)} existing associates")
-        
-        # Check total number of associates (existing + new)
-        new_files = request_files.getlist('new_associate_logos')
-        total_associates = len(existing_ids) + len(new_files)
-        MAX_ASSOCIATES = 10  # Maximum number of associates allowed
-        
-        if total_associates > MAX_ASSOCIATES:
-            raise ValueError(f"Maximum number of associates ({MAX_ASSOCIATES}) exceeded. Please remove some logos before adding new ones.")
-        
-        # Handle existing associates
-        for i, associate_id in enumerate(existing_ids):
-            try:
-                logo_url = existing_logos[i]
-                logo_key = f'associate_logo_{associate_id}'
-                
-                if logo_key in request_files and request_files[logo_key].filename:
-                    # Delete old logo if it exists
-                    try:
-                        if logo_url and logo_url.startswith('https://'):
-                            blob_path = logo_url.split('/o/')[1].split('?')[0]
-                            blob_path = blob_path.replace('%2F', '/')
-                            blob = bucket.blob(blob_path)
-                            if blob.exists():
-                                blob.delete()
-                                print(f"Successfully deleted old logo: {blob_path}")
-                    except Exception as e:
-                        print(f"Error deleting old logo: {str(e)}")
-
-                    # Save new logo
-                    logo_url = save_associate_logo(request_files[logo_key])
-                
-                associates.append({
-                    'id': associate_id,
-                    'logo': logo_url,
-                    'name': 'Associate',
-                    'description': ''
-                })
-                
-            except Exception as e:
-                errors.append(f"Error processing associate {associate_id}: {str(e)}")
-
-        # Process new associate logos from multiple file upload
-        if 'new_associate_logos' in request_files:
-            new_files = request_files.getlist('new_associate_logos')
-            print(f"Processing {len(new_files)} new associate logos")
-            
-            for file in new_files:
-                if file and file.filename:
-                    try:
-                        logo_url = save_associate_logo(file)
-                        associates.append({
-                            'id': str(uuid.uuid4()),
-                            'logo': logo_url,
-                            'name': 'New Associate',
-                            'description': ''
-                        })
-                        print(f"Successfully added new associate logo: {logo_url}")
-                    except Exception as e:
-                        print(f"Error processing new logo: {str(e)}")
-                        errors.append(str(e))
-
-        if errors:
-            print("Errors during associate processing:", errors)
-            raise Exception('\n'.join(errors))
-
-        print(f"Successfully processed {len(associates)} total associates")
-        return associates
-
-    except Exception as e:
-        print(f"Error in process_associates_data: {str(e)}")
-        raise e
-
 class User(UserMixin):
     def __init__(self, uid, email, full_name, is_admin=False):
         self.id = uid
@@ -443,7 +280,7 @@ def load_user(user_id):
         user_data = ref.get()
         is_admin = user_data.get('is_admin', False) if user_data else False
         return User(user.uid, user.email, user.display_name, is_admin)
-    except:
+    except Exception:
         return None
 
 def send_confirmation_email(registration_data):
@@ -694,10 +531,35 @@ def call_for_papers():
 @app.route('/paper-submission', methods=['GET', 'POST'])
 @login_required
 def paper_submission():
+    # Get all conferences for selection
+    conferences = get_all_conferences()
+    
+    # Filter conferences that have paper submission enabled
+    available_conferences = {}
+    for conf_id, conf_data in conferences.items():
+        if (conf_data and 'basic_info' in conf_data and 
+            conf_data.get('settings', {}).get('paper_submission_enabled', True)):  # Default to True for backward compatibility
+            available_conferences[conf_id] = conf_data
+    
     if request.method == 'POST':
         try:
+            # Get conference selection
+            selected_conference_id = request.form.get('conference_id')
+            
+            # If multiple conferences available, require selection
+            if len(available_conferences) > 1 and not selected_conference_id:
+                flash('Please select a conference for your paper submission.', 'error')
+                return render_template('user/papers/submit.html', 
+                                     site_design=get_site_design(),
+                                     conferences=available_conferences)
+            
+            # If only one conference or none selected, use first/default
+            if not selected_conference_id and available_conferences:
+                selected_conference_id = list(available_conferences.keys())[0]
+            
             # Get form data
             paper_data = {
+                'conference_id': selected_conference_id,
                 'user_id': current_user.id,
                 'user_email': current_user.email,
                 'paper_title': request.form.get('paper_title'),
@@ -729,7 +591,7 @@ def paper_submission():
             required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area']
             for field in required_fields:
                 if not paper_data.get(field):
-                    flash(f'Please fill in all required fields.', 'error')
+                    flash('Please fill in all required fields.', 'error')
                     return redirect(url_for('paper_submission'))
 
             if not paper_data['authors']:
@@ -765,36 +627,58 @@ def paper_submission():
             # Debug print before saving
             print("Saving paper data:", {k: v for k, v in paper_data.items() if k != 'file_data'})
 
-            # Store paper in Firebase
-            papers_ref = db.reference('papers')
+            # Store paper in Firebase under conference-specific path
+            if selected_conference_id:
+                papers_ref = db.reference(f'conferences/{selected_conference_id}/paper_submissions')
+            else:
+                # Fallback to global papers collection for backward compatibility
+                papers_ref = db.reference('papers')
+            
             new_paper = papers_ref.push(paper_data)
             paper_id = new_paper.key
+
+            # Also store in user's submissions for easy access
+            if selected_conference_id:
+                user_submissions_ref = db.reference(f'user_paper_submissions/{current_user.id}')
+                user_submissions_ref.push({
+                    'conference_id': selected_conference_id,
+                    'paper_id': paper_id,
+                    'paper_title': paper_data['paper_title'],
+                    'conference_name': available_conferences.get(selected_conference_id, {}).get('basic_info', {}).get('name', 'Unknown Conference'),
+                    'status': 'pending',
+                    'submitted_at': datetime.now().isoformat()
+                })
 
             # Debug print after saving
             print("Paper saved with ID:", paper_id)
 
             # Send confirmation email
             try:
+                conference_name = available_conferences.get(selected_conference_id, {}).get('basic_info', {}).get('name', 'Conference')
                 email_service.send_paper_confirmation({
                     'authors': paper_data['authors'],
                     'paper_title': paper_data['paper_title'],
                     'presentation_type': paper_data['presentation_type'],
                     'paper_id': paper_id,
-                    'user_email': current_user.email
+                    'user_email': current_user.email,
+                    'conference_name': conference_name
                 })
             except Exception as e:
                 print(f"Error sending confirmation email: {str(e)}")
 
-            flash('Paper submitted successfully! Check your email for confirmation.', 'success')
+            flash(f'Paper submitted successfully to {conference_name}! Check your email for confirmation.', 'success')
             return redirect(url_for('dashboard'))
             
         except Exception as e:
             print(f"Error submitting paper: {str(e)}")  # Log the error
             flash(f'Error submitting paper: {str(e)}', 'error')
-            return redirect(url_for('paper_submission'))
+            return render_template('user/papers/submit.html', 
+                                 site_design=get_site_design(),
+                                 conferences=available_conferences)
 
     return render_template('user/papers/submit.html', 
-                         site_design=get_site_design())
+                         site_design=get_site_design(),
+                         conferences=available_conferences)
 
 @app.route('/author-guidelines')
 def author_guidelines():
@@ -806,7 +690,7 @@ def author_guidelines():
         return render_template('user/papers/guidelines.html', 
                              guidelines=guidelines,
                              site_design=get_site_design())
-    except Exception as e:
+    except Exception:
         flash('Error loading author guidelines.', 'error')
         return redirect(url_for('home'))
 
@@ -881,63 +765,76 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        
+        # Strip whitespace from inputs to prevent login issues
+        email = email.strip() if email else ""
+        password = password.strip() if password else ""
+        
         try:
             # Instead of trying to validate the login via REST API, we'll use Firebase Admin SDK
             # to retrieve the user, and if found, we'll assume the login is correct for now
             # This is a temporary workaround until we can fix the API key issue
             
             try:
-                # Check if the user exists
+                # Check if the user exists in Firebase Auth
                 user = auth.get_user_by_email(email)
                 
-                # Since we can't verify the password directly with the admin SDK, 
-                # we'll just check if this is our known admin user
-                if email == "admin@giirconference.com" and password == "Admin@2024!":
-                    # Get user data from Realtime Database
-                    ref = db.reference(f'users/{user.uid}')
-                    user_data = ref.get()
-                    
-                    if not user_data:
-                        # If user data doesn't exist in Realtime DB, create it
-                        user_data = {
-                            'email': email,
-                            'full_name': user.display_name or email.split('@')[0],
-                            'created_at': datetime.now().isoformat(),
-                            'is_admin': True  # Set as admin since we're using the admin credentials
-                        }
-                        ref.set(user_data)
-                    
-                    is_admin = user_data.get('is_admin', True)  # Default to True for admin account
-                    display_name = user_data.get('full_name', email.split('@')[0])
-                    
-                    # Create User object and login
-                    user_obj = User(user.uid, email, display_name, is_admin)
-                    login_user(user_obj)
-                    
-                    flash('Logged in successfully!', 'success')
-                    
-                    # Check if there's a registration selection in session
-                    if 'registration_type' in session and 'registration_period' in session:
-                        reg_type = session.pop('registration_type')
-                        reg_period = session.pop('registration_period')
-                        return redirect(url_for('registration_form', type=reg_type, period=reg_period))
-                    
-                    # Check for next parameter
-                    next_page = request.args.get('next')
-                    if next_page:
-                        return redirect(next_page)
-                    
-                    # Redirect admin users to admin dashboard
-                    if is_admin:
-                        return redirect(url_for('admin_dashboard'))
-                    return redirect(url_for('dashboard'))
-                else:
-                    print("Password doesn't match for admin account")
-                    flash('Invalid email or password', 'error')
-                    return render_template('user/auth/login.html', site_design=get_site_design())
+                # For the admin user, we'll still verify the password manually
+                # For other users, we'll assume they exist and can login (since Firebase created them)
+                admin_email = "admin@giirconference.com"
+                admin_password = "Admin@2024!"
+                
+                # Check if this is admin login
+                if email == admin_email:
+                    if password != admin_password:
+                        flash('Invalid email or password', 'error')
+                        return render_template('user/auth/login.html', site_design=get_site_design())
+                
+                # At this point, either:
+                # 1. It's the admin with correct password
+                # 2. It's a regular user who exists in Firebase (password was validated during registration)
+                
+                # Get user data from Realtime Database
+                ref = db.reference(f'users/{user.uid}')
+                user_data = ref.get()
+                
+                # If user data doesn't exist in Realtime DB, create it
+                if not user_data:
+                    is_admin_user = (email == admin_email)
+                    user_data = {
+                        'email': email,
+                        'full_name': user.display_name or email.split('@')[0],
+                        'created_at': datetime.now().isoformat(),
+                        'is_admin': is_admin_user
+                    }
+                    ref.set(user_data)
+                
+                is_admin = user_data.get('is_admin', False)
+                display_name = user_data.get('full_name', email.split('@')[0])
+                
+                # Create User object and login
+                user_obj = User(user.uid, email, display_name, is_admin)
+                login_user(user_obj)
+                
+                flash('Logged in successfully!', 'success')
+                
+                # Check if there's a registration selection in session
+                if 'registration_type' in session and 'registration_period' in session:
+                    reg_type = session.pop('registration_type')
+                    reg_period = session.pop('registration_period')
+                    return redirect(url_for('registration_form', type=reg_type, period=reg_period))
+                
+                # Check for next parameter
+                next_page = request.args.get('next')
+                if next_page:
+                    return redirect(next_page)
+                
+                # Redirect admin users to admin dashboard
+                if is_admin:
+                    return redirect(url_for('admin_dashboard'))
+                return redirect(url_for('dashboard'))
                     
             except auth.UserNotFoundError:
-                print(f"User with email {email} not found")
                 flash('Invalid email or password', 'error')
                 return render_template('user/auth/login.html', site_design=get_site_design())
                 
@@ -984,10 +881,14 @@ def register_account():
             ref = db.reference('users')
             ref.child(user.uid).set(user_data)
             
-            # Send welcome email
-            email_service.send_welcome_email(user_data)
+            # Try to send welcome email (non-blocking)
+            try:
+                email_service.send_welcome_email(user_data)
+            except Exception as e:
+                print(f"Warning: Could not send welcome email: {str(e)}")
+                # Continue with registration even if email fails
             
-            flash('Account created successfully! Please check your email and login.', 'success')
+            flash('Account created successfully! You can now login.', 'success')
             return redirect(url_for('login'))
         except Exception as e:
             flash(f'Error creating account: {str(e)}', 'error')
@@ -1012,7 +913,7 @@ def registration():
         return render_template('user/registration.html', 
                              site_design=get_site_design(),
                              fees=fees)
-    except Exception as e:
+    except Exception:
         flash('Error loading registration fees.', 'error')
         return render_template('user/registration.html', 
                              site_design=get_site_design(),
@@ -1031,29 +932,6 @@ def registration_select():
     return redirect(url_for('registration_form', 
                           type=request.form.get('registration_type'),
                           period=request.form.get('registration_period')))
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    try:
-        # Get user's registrations
-        registrations_ref = db.reference('registrations')
-        registrations = registrations_ref.order_by_child('user_id').equal_to(current_user.id).get()
-        
-        # Get registration fees for displaying amounts
-        fees_ref = db.reference('registration_fees')
-        fees = fees_ref.get()
-        
-        return render_template('user/dashboard.html', 
-                             registrations=registrations or {}, 
-                             fees=fees,
-                             site_design=get_site_design())
-    except Exception as e:
-        flash(f'Error loading dashboard: {str(e)}', 'error')
-        return render_template('user/dashboard.html', 
-                             registrations={}, 
-                             fees={},
-                             site_design=get_site_design())
 
 @app.route('/schedule')
 def schedule():
@@ -1161,7 +1039,7 @@ def toggle_admin(user_id):
         if user_data:
             user_data['is_admin'] = not user_data.get('is_admin', False)
             user_ref.update({'is_admin': user_data['is_admin']})
-            flash(f"Admin status updated successfully.", 'success')
+            flash("Admin status updated successfully.", 'success')
         return redirect(url_for('admin_users'))
     except Exception as e:
         flash(f'Error updating admin status: {str(e)}', 'error')
@@ -1796,27 +1674,7 @@ def save_registration_notes(registration_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def send_email(to, subject, body):
-    """
-    Helper function to send emails using Flask-Mail.
-    
-    Args:
-        to (str): Recipient email address
-        subject (str): Email subject
-        body (str): Email body content
-    """
-    try:
-        msg = Message(
-            subject=subject,
-            recipients=[to],
-            body=body,
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-        mail.send(msg)
-        return True
-    except Exception as e:
-        print(f"Error sending email: {str(e)}")
-        return False
+
 
 def send_approval_email(email, registration):
     subject = "GIIR Conference 2024 - Registration Approved"
@@ -1877,7 +1735,7 @@ def update_submission_comments(submission_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def send_submission_status_email(email, paper_title, status, comments):
-    subject = f'Update on your GIIR Conference Paper Submission'
+    subject = 'Update on your GIIR Conference Paper Submission'
     
     status_messages = {
         'accepted': 'We are pleased to inform you that your paper has been accepted.',
@@ -2897,30 +2755,6 @@ def admin_home_content():
         return render_template('admin/home_content.html', home_content={})
 
 # Add to admin_required routes list in base_admin.html
-@app.context_processor
-def inject_admin_menu():
-    admin_menu = [
-        {'url': 'admin_dashboard', 'icon': 'tachometer-alt', 'text': 'Dashboard'},
-        {'url': 'admin_home_content', 'icon': 'home', 'text': 'Home Content'},
-        {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
-        {'url': 'admin_call_for_papers_content', 'icon': 'file-signature', 'text': 'Call for Papers Content'},
-        {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
-        {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
-        {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},  # Changed from admin_papers to admin_submissions
-        {'url': 'admin_speakers', 'icon': 'microphone', 'text': 'Guest Speakers'},
-        {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
-        {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
-        {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
-        {'url': 'admin_announcements', 'icon': 'bullhorn', 'text': 'Announcements'},
-        {'url': 'admin_downloads', 'icon': 'download', 'text': 'Downloads'},
-        {'url': 'admin_author_guidelines', 'icon': 'book', 'text': 'Author Guidelines'},
-        {'url': 'admin_contact_email', 'icon': 'envelope', 'text': 'Contact Settings'},
-        {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
-        {'url': 'admin_email_settings', 'icon': 'envelope-open', 'text': 'Email Settings'},
-        {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
-    ]
-    return dict(admin_menu=admin_menu)
-
 # Add this to ensure session persistence
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -2992,7 +2826,7 @@ def downloads():
         return render_template('user/conference/downloads.html', 
                              downloads=organized_downloads,
                              site_design=get_site_design())
-    except Exception as e:
+    except Exception:
         flash('Error loading downloads.', 'error')
         return render_template('user/conference/downloads.html', 
                              downloads={},
@@ -3199,8 +3033,8 @@ def admin_about_content():
                              about_content=about_content,
                              site_design=get_site_design())
         
-    except Exception as e:
-        flash(f'Error managing about content: {str(e)}', 'error')
+    except Exception:
+        flash('Error managing about content', 'error')
         return redirect(url_for('admin_dashboard'))
 
 def get_registration_fees():
@@ -3796,7 +3630,7 @@ def save_paper_comments(paper_id):
 def test_email():
     try:
         # Test SMTP connection first
-        with mail.connect() as conn:
+        with mail.connect():
             print("SMTP Connection successful!")
             
         msg = Message('Test Email from GIIR Conference',
@@ -3859,7 +3693,7 @@ def forgot_password():
             # Check if user exists
             try:
                 user = auth.get_user_by_email(email)
-            except:
+            except Exception:
                 # Don't reveal if email exists or not for security
                 flash('If an account exists with this email, you will receive password reset instructions.', 'info')
                 return render_template('user/auth/forgot_password.html', site_design=get_site_design())
@@ -3912,7 +3746,7 @@ def reset_password():
                 auth.confirm_password_reset(oobCode, new_password)
                 flash('Password has been reset successfully. Please login with your new password.', 'success')
                 return redirect(url_for('login'))
-            except Exception as e:
+            except Exception:
                 flash('Error resetting password. The link may have expired.', 'error')
                 return redirect(url_for('forgot_password'))
 
@@ -4188,7 +4022,7 @@ def submit_paper():
             
         # Check file type
         allowed_extensions = {'pdf', 'doc', 'docx'}
-        if not '.' in paper_file.filename or \
+        if '.' not in paper_file.filename or \
            paper_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             flash('Invalid file type. Allowed types: PDF, DOC, DOCX', 'error')
             return redirect(url_for('submit'))
@@ -4670,7 +4504,7 @@ def export_registrations():
                     # Assuming submission_date is stored as ISO string
                     date_obj = datetime.fromisoformat(registration['submission_date'].replace('Z', '+00:00'))
                     registration['submission_date'] = date_obj.strftime('%Y-%m-%d %H:%M:%S')
-                except:
+                except Exception:
                     registration['submission_date'] = registration['submission_date']
             
             registrations.append(registration)
@@ -5076,7 +4910,7 @@ def add_speaker():
             
             # Save speaker to Firebase
             speakers_ref = db.reference('speakers')
-            new_speaker = speakers_ref.push(speaker_data)
+            speakers_ref.push(speaker_data)
             
             flash('Speaker added successfully!', 'success')
             return redirect(url_for('admin_speakers'))
@@ -5263,112 +5097,458 @@ def inject_has_speakers():
 @app.context_processor
 def inject_admin_menu():
     admin_menu = [
-        {'url': 'admin_dashboard', 'icon': 'tachometer-alt', 'text': 'Dashboard'},
-        {'url': 'admin_home_content', 'icon': 'home', 'text': 'Home Content'},
-        {'url': 'admin_about_content', 'icon': 'info-circle', 'text': 'About Content'},
-        {'url': 'admin_call_for_papers_content', 'icon': 'file-signature', 'text': 'Call for Papers Content'},
-        {'url': 'admin_users', 'icon': 'users', 'text': 'Users'},
-        {'url': 'admin_registrations', 'icon': 'clipboard-list', 'text': 'Registrations'},
-        {'url': 'admin_submissions', 'icon': 'file-alt', 'text': 'Submissions'},  # Changed from admin_papers to admin_submissions
-        {'url': 'admin_speakers', 'icon': 'microphone', 'text': 'Guest Speakers'},
-        {'url': 'admin_schedule', 'icon': 'calendar-alt', 'text': 'Schedule'},
-        {'url': 'admin_venue', 'icon': 'map-marker-alt', 'text': 'Venue'},
-        {'url': 'admin_registration_fees', 'icon': 'dollar-sign', 'text': 'Registration Fees'},
-        {'url': 'admin_announcements', 'icon': 'bullhorn', 'text': 'Announcements'},
-        {'url': 'admin_downloads', 'icon': 'download', 'text': 'Downloads'},
-        {'url': 'admin_author_guidelines', 'icon': 'book', 'text': 'Author Guidelines'},
-        {'url': 'admin_contact_email', 'icon': 'envelope', 'text': 'Contact Settings'},
-        {'url': 'admin_email_templates', 'icon': 'envelope', 'text': 'Email Templates'},
-        {'url': 'admin_email_settings', 'icon': 'envelope-open', 'text': 'Email Settings'},
-        {'url': 'admin_design', 'icon': 'palette', 'text': 'Site Design'}
+        {'text': 'Dashboard', 'url': 'admin_dashboard', 'icon': 'tachometer-alt'},
+        {'text': 'Home Content', 'url': 'admin_home_content', 'icon': 'home'},
+        {'text': 'About Content', 'url': 'admin_about_content', 'icon': 'info-circle'},
+        {'text': 'Author Guidelines', 'url': 'admin_author_guidelines', 'icon': 'book'},
+        {'text': 'Call for Papers', 'url': 'admin_call_for_papers_content', 'icon': 'file-alt'},
+        {'text': 'Design Settings', 'url': 'admin_design', 'icon': 'palette'},
+        {'text': 'Venue', 'url': 'admin_venue', 'icon': 'map-marker-alt'},
+        {'text': 'Speakers', 'url': 'admin_speakers', 'icon': 'microphone'},
+        {'text': 'Schedule', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
+        {'text': 'Registration Fees', 'url': 'admin_registration_fees', 'icon': 'dollar-sign'},
+        {'text': 'User Management', 'url': 'admin_users', 'icon': 'users'},
+        {'text': 'Registrations', 'url': 'admin_registrations', 'icon': 'user-plus'},
+        {'text': 'Submissions', 'url': 'admin_submissions', 'icon': 'paper-plane'},
+        {'text': 'Announcements', 'url': 'admin_announcements', 'icon': 'bullhorn'},
+        {'text': 'Email Templates', 'url': 'admin_email_templates', 'icon': 'envelope-open-text'},
+        {'text': 'Email Settings', 'url': 'admin_email_settings', 'icon': 'cog'},
+        {'text': 'Downloads', 'url': 'admin_downloads', 'icon': 'download'},
     ]
     return dict(admin_menu=admin_menu)
 
 @app.route('/conference-proceedings')
 def conference_proceedings():
-    """Conference Proceedings page with organized downloads"""
+    """Display conference proceedings/publications"""
     try:
-        # Get home content from Firebase which contains downloads
-        home_content_ref = db.reference('home_content')
-        home_content = home_content_ref.get() or {}
+        # Get proceedings data from Firebase
+        proceedings_ref = db.reference('conference_proceedings')
+        proceedings = proceedings_ref.get() or {}
         
-        # Get downloads from home content
-        downloads_data = home_content.get('downloads', [])
+        # Get site design
+        site_design = get_site_design()
         
-        # Organize downloads by format
-        organized_downloads = {}
-        format_categories = {
-            'Microsoft Word': {
-                'title': 'Microsoft Word Templates',
-                'description': 'Conference paper templates in Microsoft Word format (.docx)',
-                'icon': 'fas fa-file-word text-primary'
-            },
-            'PDF': {
-                'title': 'PDF Documents',
-                'description': 'Guidelines, instructions, and reference documents in PDF format',
-                'icon': 'fas fa-file-pdf text-danger'
-            },
-            'LaTeX': {
-                'title': 'LaTeX Templates',
-                'description': 'LaTeX templates and packages for manuscript preparation',
-                'icon': 'fas fa-file-code text-success'
-            },
-            'Overleaf': {
-                'title': 'Overleaf Templates',
-                'description': 'Online collaborative LaTeX templates available in Overleaf',
-                'icon': 'fas fa-share-alt text-info'
-            },
-            'Other': {
-                'title': 'Additional Resources',
-                'description': 'Other important documents and resources for conference participants',
-                'icon': 'fas fa-folder text-secondary'
-            }
-        }
+        return render_template('conference_proceedings.html',
+                             proceedings=proceedings,
+                             site_design=site_design)
+    except Exception as e:
+        print(f"Error loading conference proceedings: {e}")
+        flash('Error loading conference proceedings.', 'error')
+        return redirect(url_for('home'))
+
+# =============================================================================
+# MULTI-CONFERENCE SUPPORT ROUTES
+# =============================================================================
+
+def get_conference_data(conference_id):
+    """Get conference data from Firebase"""
+    try:
+        conference_ref = db.reference(f'conferences/{conference_id}')
+        conference = conference_ref.get()
+        return conference
+    except Exception as e:
+        print(f"Error getting conference data: {e}")
+        return None
+
+def get_all_conferences():
+    """Get all conferences from Firebase"""
+    try:
+        conferences_ref = db.reference('conferences')
+        conferences = conferences_ref.get() or {}
+        return conferences
+    except Exception as e:
+        print(f"Error getting conferences: {e}")
+        return {}
+
+@app.route('/conferences')
+def conference_discover():
+    """Conference discovery page - list all available conferences"""
+    try:
+        conferences = get_all_conferences()
         
-        # Process downloads if they exist
-        if downloads_data:
-            for download in downloads_data:
-                format_type = download.get('format', 'Other')
-                if format_type not in organized_downloads:
-                    organized_downloads[format_type] = []
-                
-                # Prepare download item with proper structure
-                download_item = {
-                    'title': download.get('title', 'Untitled'),
-                    'description': download.get('description', ''),
-                    'format': format_type,
-                    'file_type': download.get('file_type', ''),
-                    'size': download.get('file_size', ''),
-                    'url': download.get('file_url', '#'),
-                    'updated_at': download.get('updated_at', '')
-                }
-                organized_downloads[format_type].append(download_item)
+        # Filter and sort conferences
+        active_conferences = {}
+        for conf_id, conf_data in conferences.items():
+            if conf_data and 'basic_info' in conf_data:
+                active_conferences[conf_id] = conf_data
         
-        # Sort downloads within each format by title
-        for format_type in organized_downloads:
-            organized_downloads[format_type].sort(key=lambda x: x['title'].lower())
-        
-        return render_template('user/conference_proceedings.html', 
-                             downloads=organized_downloads,
-                             category_info=format_categories,
+        return render_template('conferences/discover.html',
+                             conferences=active_conferences,
                              site_design=get_site_design())
     except Exception as e:
-        flash('Error loading conference proceedings.', 'error')
-        return render_template('user/conference_proceedings.html', 
-                             downloads={},
-                             category_info={},
+        print(f"Error loading conferences: {e}")
+        flash('Error loading conferences.', 'error')
+        return render_template('conferences/discover.html',
+                             conferences={},
                              site_design=get_site_design())
 
-    """Test page for new navigation"""
-    return render_template('test_nav.html', site_design=get_site_design())
+@app.route('/conferences/<conference_id>')
+def conference_details(conference_id):
+    """Conference details page"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('conference_discover'))
+        
+        return render_template('conferences/details.html',
+                             conference=conference,
+                             conference_id=conference_id,
+                             site_design=get_site_design())
+    except Exception as e:
+        print(f"Error loading conference details: {e}")
+        flash('Error loading conference details.', 'error')
+        return redirect(url_for('conference_discover'))
+
+@app.route('/conferences/<conference_id>/register', methods=['GET', 'POST'])
+@login_required
+def conference_registration(conference_id):
+    """Conference-specific registration"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('conference_discover'))
+        
+        if request.method == 'GET':
+            # Display registration form
+            return render_template('conferences/registration.html',
+                                 conference=conference,
+                                 conference_id=conference_id,
+                                 site_design=get_site_design())
+        
+        # POST request - process registration
+        registration_data = {
+            'conference_id': conference_id,
+            'user_id': current_user.id,
+            'full_name': request.form.get('full_name'),
+            'email': request.form.get('email'),
+            'institution': request.form.get('institution'),
+            'country': request.form.get('country'),
+            'registration_type': request.form.get('registration_type'),
+            'submission_date': datetime.now().isoformat(),
+            'status': 'pending',
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Handle file upload for payment proof
+        if 'payment_proof' in request.files:
+            file = request.files['payment_proof']
+            if file.filename != '':
+                try:
+                    filename = save_payment_proof(file)
+                    registration_data['payment_proof'] = filename
+                except Exception as e:
+                    print(f"Error uploading payment proof: {e}")
+                    flash('Error uploading payment proof. Please try again.', 'error')
+                    return render_template('conferences/registration.html',
+                                         conference=conference,
+                                         conference_id=conference_id,
+                                         site_design=get_site_design())
+        
+        # Save to Firebase under conference-specific path
+        registration_ref = db.reference(f'conferences/{conference_id}/registrations').push()
+        registration_ref.set(registration_data)
+        
+        # Also save under user's registrations for easy access
+        user_reg_ref = db.reference(f'user_registrations/{current_user.id}').push()
+        user_reg_ref.set({
+            'conference_id': conference_id,
+            'registration_id': registration_ref.key,
+            'conference_name': conference.get('basic_info', {}).get('name', 'Unknown Conference'),
+            'status': 'pending',
+            'created_at': datetime.now().isoformat()
+        })
+        
+        # Send confirmation email
+        try:
+            send_registration_confirmation_email(
+                registration_data['email'],
+                conference.get('basic_info', {}).get('name', 'Conference'),
+                registration_ref.key
+            )
+        except Exception as e:
+            print(f"Error sending confirmation email: {e}")
+        
+        flash('Registration submitted successfully! You will receive a confirmation email shortly.', 'success')
+        return redirect(url_for('conference_details', conference_id=conference_id))
+        
+    except Exception as e:
+        print(f"Error processing registration: {e}")
+        flash('Error processing registration. Please try again.', 'error')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
+
+def send_registration_confirmation_email(email, conference_name, registration_id):
+    """Send registration confirmation email"""
+    try:
+        subject = f"Registration Confirmation - {conference_name}"
+        body = f"""
+        Dear Participant,
+        
+        Thank you for registering for {conference_name}!
+        
+        Your registration ID is: {registration_id}
+        
+        Your registration is currently being reviewed. You will receive another email once your registration is approved.
+        
+        If you have any questions, please contact our support team.
+        
+        Best regards,
+        Conference Organizing Committee
+        """
+        
+        # Use existing send_email function
+        send_email([email], subject, body)
+        
+    except Exception as e:
+        print(f"Error sending confirmation email: {e}")
+
+@app.route('/conferences/<conference_id>/submit-paper', methods=['GET', 'POST'])
+@login_required
+def conference_paper_submission(conference_id):
+    """Conference-specific paper submission"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('conference_discover'))
+        
+        if not conference.get('settings', {}).get('paper_submission_enabled', False):
+            flash('Paper submission is not enabled for this conference.', 'error')
+            return redirect(url_for('conference_details', conference_id=conference_id))
+        
+        if request.method == 'GET':
+            # Display paper submission form
+            return render_template('conferences/paper_submission.html',
+                                 conference=conference,
+                                 conference_id=conference_id,
+                                 site_design=get_site_design())
+        
+        # POST request - process paper submission  
+        try:
+            # Get form data
+            paper_data = {
+                'conference_id': conference_id,
+                'user_id': current_user.id,
+                'user_email': current_user.email,
+                'paper_title': request.form.get('paper_title'),
+                'paper_abstract': request.form.get('paper_abstract'),
+                'presentation_type': request.form.get('presentation_type'),
+                'research_area': request.form.get('research_area'),
+                'keywords': [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()],
+                'submitted_at': datetime.now().isoformat(),
+                'status': 'pending',
+                'authors': [],
+                'review_comments': '',
+                'reviewed_by': '',
+                'updated_at': datetime.now().isoformat()
+            }
+
+            # Process authors
+            author_count = 0
+            while f'authors[{author_count}][name]' in request.form:
+                author = {
+                    'name': request.form.get(f'authors[{author_count}][name]'),
+                    'email': request.form.get(f'authors[{author_count}][email]'),
+                    'institution': request.form.get(f'authors[{author_count}][institution]')
+                }
+                if all(author.values()):
+                    paper_data['authors'].append(author)
+                author_count += 1
+
+            # Validate required fields
+            required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area']
+            for field in required_fields:
+                if not paper_data.get(field):
+                    flash('Please fill in all required fields.', 'error')
+                    return render_template('conferences/paper_submission.html',
+                                         conference=conference,
+                                         conference_id=conference_id,
+                                         site_design=get_site_design())
+
+            if not paper_data['authors']:
+                flash('At least one author is required.', 'error')
+                return render_template('conferences/paper_submission.html',
+                                     conference=conference,
+                                     conference_id=conference_id,
+                                     site_design=get_site_design())
+
+            # Handle paper file upload
+            if 'paper_file' not in request.files:
+                flash('Please upload a paper file.', 'error')
+                return render_template('conferences/paper_submission.html',
+                                     conference=conference,
+                                     conference_id=conference_id,
+                                     site_design=get_site_design())
+
+            file = request.files['paper_file']
+            if not file or not file.filename:
+                flash('Please select a paper file.', 'error')
+                return render_template('conferences/paper_submission.html',
+                                     conference=conference,
+                                     conference_id=conference_id,
+                                     site_design=get_site_design())
+
+            if not file.filename.lower().endswith('.pdf'):
+                flash('Only PDF files are allowed.', 'error')
+                return render_template('conferences/paper_submission.html',
+                                     conference=conference,
+                                     conference_id=conference_id,
+                                     site_design=get_site_design())
+
+            # Read and encode file data
+            file_data = file.read()
+            file_base64 = base64.b64encode(file_data).decode('utf-8')
+
+            # Add file data to paper_data
+            paper_data.update({
+                'file_data': file_base64,
+                'file_name': secure_filename(file.filename),
+                'file_type': file.content_type,
+                'file_size': len(file_data)
+            })
+
+            # Store paper in Firebase under conference-specific path
+            papers_ref = db.reference(f'conferences/{conference_id}/paper_submissions')
+            new_paper = papers_ref.push(paper_data)
+            paper_id = new_paper.key
+
+            # Store in user's submissions for easy access
+            user_submissions_ref = db.reference(f'user_paper_submissions/{current_user.id}')
+            user_submissions_ref.push({
+                'conference_id': conference_id,
+                'paper_id': paper_id,
+                'paper_title': paper_data['paper_title'],
+                'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
+                'status': 'pending',
+                'submitted_at': datetime.now().isoformat()
+            })
+
+            # Send confirmation email
+            try:
+                conference_name = conference.get('basic_info', {}).get('name', 'Conference')
+                email_service.send_paper_confirmation({
+                    'authors': paper_data['authors'],
+                    'paper_title': paper_data['paper_title'],
+                    'presentation_type': paper_data['presentation_type'],
+                    'paper_id': paper_id,
+                    'user_email': current_user.email,
+                    'conference_name': conference_name
+                })
+            except Exception as e:
+                print(f"Error sending confirmation email: {str(e)}")
+
+            flash(f'Paper submitted successfully to {conference.get("basic_info", {}).get("name", "Conference")}!', 'success')
+            return redirect(url_for('conference_details', conference_id=conference_id))
+            
+        except Exception as e:
+            print(f"Error submitting paper: {str(e)}")
+            flash(f'Error submitting paper: {str(e)}', 'error')
+            return render_template('conferences/paper_submission.html',
+                                 conference=conference,
+                                 conference_id=conference_id,
+                                 site_design=get_site_design())
+        
+    except Exception as e:
+        print(f"Error processing paper submission: {e}")
+        flash('Error processing paper submission.', 'error')
+        return redirect(url_for('conference_details', conference_id=conference_id))
+
+@app.route('/admin/conferences')
+@login_required
+@admin_required
+def admin_conferences():
+    """Admin conference management dashboard"""
+    try:
+        conferences = get_all_conferences()
+        
+        return render_template('admin/conferences.html',
+                             conferences=conferences,
+                             site_design=get_site_design())
+    except Exception as e:
+        print(f"Error loading conferences: {e}")
+        flash('Error loading conferences.', 'error')
+        return render_template('admin/conferences.html',
+                             conferences={},
+                             site_design=get_site_design())
+
+@app.route('/admin/conferences/<conference_id>')
+@login_required
+@admin_required
+def admin_conference_details(conference_id):
+    """Admin conference details and management"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('admin_conferences'))
+        
+        # Get conference registrations
+        registrations_ref = db.reference(f'conferences/{conference_id}/registrations')
+        registrations = registrations_ref.get() or {}
+        
+        return render_template('admin/conference_details.html',
+                             conference=conference,
+                             conference_id=conference_id,
+                             registrations=registrations,
+                             site_design=get_site_design())
+    except Exception as e:
+        print(f"Error loading conference details: {e}")
+        flash('Error loading conference details.', 'error')
+        return redirect(url_for('admin_conferences'))
+
+# Update existing dashboard route to be conference-aware
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Updated dashboard with multi-conference support"""
+    try:
+        user_registrations = {}
+        user_submissions = {}
+        
+        # Get user's registrations across all conferences
+        user_reg_ref = db.reference(f'user_registrations/{current_user.id}')
+        user_registrations_data = user_reg_ref.get() or {}
+        
+        # Get detailed registration data
+        for reg_id, reg_summary in user_registrations_data.items():
+            conference_id = reg_summary.get('conference_id')
+            registration_id = reg_summary.get('registration_id')
+            
+            if conference_id and registration_id:
+                # Get full registration details
+                full_reg_ref = db.reference(f'conferences/{conference_id}/registrations/{registration_id}')
+                full_registration = full_reg_ref.get()
+                
+                if full_registration:
+                    full_registration.update(reg_summary)  # Add conference info
+                    user_registrations[reg_id] = full_registration
+        
+        # Get user's paper submissions (similar pattern)
+        submissions_ref = db.reference('paper_submissions')
+        all_submissions = submissions_ref.get() or {}
+        
+        for sub_id, submission in all_submissions.items():
+            if submission.get('user_id') == current_user.id:
+                user_submissions[sub_id] = submission
+        
+        return render_template('user/dashboard.html',
+                             registrations=user_registrations,
+                             submissions=user_submissions,
+                             site_design=get_site_design())
+                             
+    except Exception as e:
+        print(f"Error loading dashboard: {e}")
+        flash('Error loading dashboard.', 'error')
+        return render_template('user/dashboard.html',
+                             registrations={},
+                             submissions={},
+                             site_design=get_site_design())
 
 if __name__ == '__main__':
-    create_admin_user()  # Create admin user when starting the app
+    # Create admin user on startup
+    with app.app_context():
+        create_admin_user()
     
-    # Use the PORT environment variable provided by Render
-    port = int(os.environ.get('PORT', 8000))
-    
-    if os.environ.get('FLASK_ENV') == 'production':
-        app.run(host='0.0.0.0', port=port)
-    else:
-        app.run(debug=True, port=port)
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Paper - {{ conference.basic_info.name }}{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<style>
+.submission-form {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.conference-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.conference-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+}
+
+.conference-header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+.author-entry {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+.author-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.author-header h4 {
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-outline-primary {
+    margin-bottom: 1.5rem;
+}
+
+.g-recaptcha {
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .submission-form {
+        padding: 1rem;
+    }
+    
+    .conference-header {
+        padding: 1rem;
+    }
+    
+    .conference-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions button {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="conference-header">
+    <h1><i class="fas fa-file-alt"></i> Submit Paper to {{ conference.basic_info.name }}</h1>
+    <p>
+        {% if conference.basic_info.date %}
+        Conference Date: {{ conference.basic_info.date }}
+        {% endif %}
+        {% if conference.basic_info.location %}
+        | Location: {{ conference.basic_info.location }}
+        {% endif %}
+    </p>
+</div>
+
+<div class="content-section">
+    <form id="paperSubmissionForm" method="POST" enctype="multipart/form-data" class="submission-form">
+        <div class="form-section">
+            <h3><i class="fas fa-file-alt"></i> Paper Details</h3>
+            <div class="form-group">
+                <label for="paper_title">Paper Title *</label>
+                <input type="text" id="paper_title" name="paper_title" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="paper_abstract">Abstract *</label>
+                <textarea id="paper_abstract" name="paper_abstract" class="form-control" rows="5" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="keywords">Keywords * (comma-separated)</label>
+                <input type="text" id="keywords" name="keywords" class="form-control" placeholder="e.g., AI, Machine Learning, Data Science" required>
+            </div>
+            <div class="form-group">
+                <label for="research_area">Research Area *</label>
+                <select id="research_area" name="research_area" class="form-control" required>
+                    <option value="">Select Research Area</option>
+                    <option value="artificial_intelligence">Artificial Intelligence</option>
+                    <option value="machine_learning">Machine Learning</option>
+                    <option value="data_science">Data Science</option>
+                    <option value="computer_vision">Computer Vision</option>
+                    <option value="natural_language_processing">Natural Language Processing</option>
+                    <option value="robotics">Robotics</option>
+                    <option value="cybersecurity">Cybersecurity</option>
+                    <option value="cloud_computing">Cloud Computing</option>
+                    <option value="internet_of_things">Internet of Things</option>
+                    <option value="blockchain">Blockchain</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="presentation_type">Presentation Type *</label>
+                <select id="presentation_type" name="presentation_type" class="form-control" required>
+                    <option value="">Select Presentation Type</option>
+                    <option value="oral">Oral Presentation</option>
+                    <option value="poster">Poster Presentation</option>
+                    <option value="virtual">Virtual Presentation</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="fas fa-users"></i> Authors</h3>
+            <div id="authors-container">
+                <!-- Primary Author (always present) -->
+                <div class="author-entry">
+                    <h4>Primary Author</h4>
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="authors[0][name]" class="form-control" value="{{ current_user.full_name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="authors[0][email]" class="form-control" value="{{ current_user.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Institution/Organization *</label>
+                        <input type="text" name="authors[0][institution]" class="form-control" required>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-outline-primary" onclick="addCoAuthor()">
+                <i class="fas fa-plus"></i> Add Co-Author
+            </button>
+        </div>
+
+        <div class="form-section">
+            <h3><i class="fas fa-upload"></i> Paper Upload</h3>
+            <div class="form-group">
+                <label for="paper_file">Upload Paper * (PDF only)</label>
+                <input type="file" id="paper_file" name="paper_file" class="form-control" accept=".pdf" required>
+                <small class="form-text text-muted">Maximum file size: 10MB</small>
+            </div>
+        </div>
+
+        <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Submit Paper
+            </button>
+            <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Conference
+            </a>
+        </div>
+    </form>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Submitting your paper...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script>
+let authorCount = 1;
+
+function addCoAuthor() {
+    const container = document.getElementById('authors-container');
+    const newAuthor = document.createElement('div');
+    newAuthor.className = 'author-entry';
+    newAuthor.innerHTML = `
+        <div class="author-header">
+            <h4>Co-Author ${authorCount}</h4>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeCoAuthor(this)">
+                <i class="fas fa-times"></i> Remove
+            </button>
+        </div>
+        <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="authors[${authorCount}][name]" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="authors[${authorCount}][email]" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>Institution/Organization *</label>
+            <input type="text" name="authors[${authorCount}][institution]" class="form-control" required>
+        </div>
+    `;
+    container.appendChild(newAuthor);
+    authorCount++;
+}
+
+function removeCoAuthor(button) {
+    const authorEntry = button.closest('.author-entry');
+    authorEntry.remove();
+    updateCoAuthorNumbers();
+}
+
+function updateCoAuthorNumbers() {
+    const coAuthors = document.querySelectorAll('.author-entry:not(:first-child)');
+    coAuthors.forEach((author, index) => {
+        const number = index + 1;
+        author.querySelector('h4').textContent = `Co-Author ${number}`;
+        author.querySelectorAll('input').forEach(input => {
+            const fieldName = input.name.split('[')[2].replace(']', '');
+            input.name = `authors[${number}][${fieldName}]`;
+        });
+    });
+    authorCount = coAuthors.length + 1;
+}
+
+// Form validation and submission
+document.getElementById('paperSubmissionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Check if reCAPTCHA is completed
+    const recaptchaResponse = grecaptcha.getResponse();
+    if (!recaptchaResponse) {
+        alert('Please complete the reCAPTCHA verification.');
+        return;
+    }
+    
+    // Check file size
+    const fileInput = document.getElementById('paper_file');
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (fileInput.files[0] && fileInput.files[0].size > maxSize) {
+        alert('File size exceeds 10MB limit. Please choose a smaller file.');
+        return;
+    }
+
+    // Validate all required fields
+    const requiredFields = this.querySelectorAll('[required]');
+    let isValid = true;
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            isValid = false;
+            field.classList.add('is-invalid');
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    // Submit the form if all validations pass
+    this.submit();
+});
+</script>
+{% endblock %} 

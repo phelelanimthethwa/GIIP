@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+
+{% block title %}Available Conferences - Multi-Conference Portal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Available Conferences</h1>
+    <p>Discover and participate in academic conferences worldwide</p>
+</div>
+
+<div class="content-section">
+    <!-- Search and Filter Section -->
+    <div class="search-filters">
+        <div class="search-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="conferenceSearch" placeholder="Search conferences by name, topic, or location...">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-status="all">All Conferences</button>
+                <button class="filter-btn" data-status="active">Open for Registration</button>
+                <button class="filter-btn" data-status="upcoming">Upcoming</button>
+                <button class="filter-btn" data-status="past">Past Events</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conferences Grid -->
+    <div class="conferences-grid" id="conferencesGrid">
+        {% for conference_id, conference in conferences.items() %}
+        <div class="conference-card" data-status="{{ conference.basic_info.status }}" data-conference="{{ conference_id }}">
+            <div class="conference-header">
+                <div class="conference-badge">
+                    <span class="badge status-{{ conference.basic_info.status }}">
+                        {% if conference.basic_info.status == 'active' %}
+                            🟢 Open
+                        {% elif conference.basic_info.status == 'upcoming' %}
+                            🟡 Upcoming
+                        {% elif conference.basic_info.status == 'closed' %}
+                            🔴 Closed
+                        {% else %}
+                            ⚪ {{ conference.basic_info.status|title }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="conference-year">{{ conference.basic_info.year }}</div>
+            </div>
+
+            <div class="conference-content">
+                <h3 class="conference-title">{{ conference.basic_info.name }}</h3>
+                <p class="conference-description">{{ conference.basic_info.description }}</p>
+                
+                <div class="conference-details">
+                    <div class="detail-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ conference.basic_info.location or 'Location TBD' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ conference.basic_info.timezone }}</span>
+                    </div>
+                    {% if conference.basic_info.website %}
+                    <div class="detail-item">
+                        <i class="fas fa-globe"></i>
+                        <a href="{{ conference.basic_info.website }}" target="_blank">Conference Website</a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="conference-features">
+                    {% if conference.settings.registration_enabled %}
+                    <span class="feature-tag">
+                        <i class="fas fa-user-plus"></i> Registration Open
+                    </span>
+                    {% endif %}
+                    {% if conference.settings.paper_submission_enabled %}
+                    <span class="feature-tag">
+                        <i class="fas fa-file-upload"></i> Paper Submissions
+                    </span>
+                    {% endif %}
+                    {% if conference.settings.review_enabled %}
+                    <span class="feature-tag">
+                        <i class="fas fa-eye"></i> Peer Review
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="conference-actions">
+                {% if conference.basic_info.status == 'active' %}
+                    {% if conference.settings.registration_enabled %}
+                    <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-ticket-alt"></i> Register Now
+                    </a>
+                    {% endif %}
+                    {% if conference.settings.paper_submission_enabled %}
+                    <a href="{{ url_for('conference_paper_submission', conference_id=conference_id) }}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-file-upload"></i> Submit Paper
+                    </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ url_for('conference_details', conference_id=conference_id) }}" 
+                       class="btn btn-outline">
+                        <i class="fas fa-info-circle"></i> View Details
+                    </a>
+                {% endif %}
+                
+                <button class="btn btn-icon favorite-btn" data-conference="{{ conference_id }}" title="Add to Favorites">
+                    <i class="far fa-heart"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not conferences %}
+        <div class="empty-state">
+            <i class="fas fa-calendar-times fa-4x"></i>
+            <h3>No Conferences Available</h3>
+            <p>Check back later for upcoming conferences or contact the administrator.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 12px;
+    margin: 0 -2rem 3rem;
+    padding: 3rem 2rem;
+}
+
+.search-filters {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.search-box {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.search-box i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    border: 2px solid #e1e8ed;
+    border-radius: 50px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.search-box input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.filter-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #e1e8ed;
+    background: white;
+    border-radius: 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.filter-btn:hover, .filter-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.conferences-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.conference-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    border: 1px solid #e1e8ed;
+}
+
+.conference-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.conference-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.conference-badge .badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.status-active { background: #d4edda; color: #155724; }
+.status-upcoming { background: #fff3cd; color: #856404; }
+.status-closed { background: #f8d7da; color: #721c24; }
+
+.conference-year {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.conference-content {
+    padding: 1.5rem;
+}
+
+.conference-title {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.3;
+}
+
+.conference-description {
+    color: #666;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.conference-details {
+    margin-bottom: 1.5rem;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    color: #555;
+}
+
+.detail-item i {
+    width: 16px;
+    color: var(--primary-color);
+}
+
+.detail-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.conference-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.feature-tag {
+    background: #f8f9fa;
+    color: #666;
+    padding: 0.4rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.875rem;
+    border: 1px solid #e9ecef;
+}
+
+.feature-tag i {
+    margin-right: 0.4rem;
+    color: var(--primary-color);
+}
+
+.conference-actions {
+    padding: 1.5rem;
+    background: #f8f9fa;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    flex: 1;
+    justify-content: center;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--secondary-color);
+    color: white;
+}
+
+.btn-outline {
+    background: white;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+}
+
+.btn-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #e1e8ed;
+    flex: none;
+}
+
+.favorite-btn.active {
+    color: #e74c3c;
+    border-color: #e74c3c;
+}
+
+.favorite-btn.active i {
+    color: #e74c3c;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #666;
+}
+
+.empty-state i {
+    color: #ddd;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .conferences-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .search-container {
+        gap: 1rem;
+    }
+    
+    .filter-buttons {
+        gap: 0.5rem;
+    }
+    
+    .filter-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .conference-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .btn {
+        flex: none;
+        width: 100%;
+    }
+    
+    .btn-icon {
+        width: 100%;
+        border-radius: 8px;
+        height: auto;
+        padding: 0.75rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('conferenceSearch');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const conferenceCards = document.querySelectorAll('.conference-card');
+    const favoriteButtons = document.querySelectorAll('.favorite-btn');
+
+    // Search filter
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        conferenceCards.forEach(card => {
+            const title = card.querySelector('.conference-title').textContent.toLowerCase();
+            const description = card.querySelector('.conference-description').textContent.toLowerCase();
+            const location = card.querySelector('.detail-item span').textContent.toLowerCase();
+            
+            if (title.includes(searchTerm) || description.includes(searchTerm) || location.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+
+    // Status filter
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active button
+            filterButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const status = this.dataset.status;
+            
+            conferenceCards.forEach(card => {
+                const cardStatus = card.dataset.status;
+                
+                if (status === 'all' || cardStatus === status) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Favorite functionality
+    favoriteButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const conferenceId = this.dataset.conference;
+            const icon = this.querySelector('i');
+            
+            if (this.classList.contains('active')) {
+                // Remove from favorites
+                this.classList.remove('active');
+                icon.className = 'far fa-heart';
+                removeFavorite(conferenceId);
+            } else {
+                // Add to favorites
+                this.classList.add('active');
+                icon.className = 'fas fa-heart';
+                addFavorite(conferenceId);
+            }
+        });
+    });
+
+    // Load favorites from localStorage
+    loadFavorites();
+});
+
+function addFavorite(conferenceId) {
+    let favorites = JSON.parse(localStorage.getItem('favoriteConferences') || '[]');
+    if (!favorites.includes(conferenceId)) {
+        favorites.push(conferenceId);
+        localStorage.setItem('favoriteConferences', JSON.stringify(favorites));
+    }
+}
+
+function removeFavorite(conferenceId) {
+    let favorites = JSON.parse(localStorage.getItem('favoriteConferences') || '[]');
+    favorites = favorites.filter(id => id !== conferenceId);
+    localStorage.setItem('favoriteConferences', JSON.stringify(favorites));
+}
+
+function loadFavorites() {
+    const favorites = JSON.parse(localStorage.getItem('favoriteConferences') || '[]');
+    favorites.forEach(conferenceId => {
+        const btn = document.querySelector(`[data-conference="${conferenceId}"]`);
+        if (btn) {
+            btn.classList.add('active');
+            btn.querySelector('i').className = 'fas fa-heart';
+        }
+    });
+}
+</script>
+{% endblock %}
