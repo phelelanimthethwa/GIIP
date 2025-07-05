@@ -3,440 +3,531 @@
 {% block title %}Guest Speakers - GIIR Conference{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 py-5">
-    <!-- Page Header -->
-    <div class="row mb-5">
-        <div class="col-12 text-center">
-            <h1 class="display-4 mb-3" style="color: var(--primary-color);">Guest Speakers</h1>
-            <p class="lead mb-3">Meet our distinguished speakers and experts</p>
-            <hr class="w-25 mx-auto" style="border-color: var(--primary-color); border-width: 3px;">
-        </div>
+<div class="page-header">
+    <div class="header-content">
+        <h1><i class="fas fa-microphone"></i> Guest Speakers</h1>
+        <p>Meet our distinguished speakers and experts</p>
     </div>
+</div>
 
+<div class="content-section">
     {% if speakers and (current_speakers or past_speakers) %}
     
     <!-- Current Speakers Section -->
     {% if current_speakers %}
-    <div class="row mb-5">
-        <div class="col-12">
-            <h2 class="text-center mb-5" style="color: var(--primary-color);">Featured Speakers</h2>
+    <div class="speakers-section">
+        <div class="section-header">
+            <h2><i class="fas fa-star"></i> Featured Speakers</h2>
+            <p>Our current conference speakers</p>
         </div>
-    </div>
-    <div class="row g-4 mb-5 justify-content-center">
-        {% for speaker in current_speakers %}
-        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-10 d-flex justify-content-center">
-            <div class="card speaker-card shadow">
-                <div class="card-body text-center d-flex flex-column">
-                    <div class="speaker-image-container mb-4">
-                        {% if speaker.profile_image %}
-                        <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}" class="speaker-image">
-                        {% else %}
-                        <div class="speaker-placeholder">
-                            <i class="fas fa-user fa-4x"></i>
+        
+        <div class="speakers-grid">
+            {% for speaker in current_speakers %}
+            <div class="speaker-card">
+                <div class="speaker-image-container">
+                    {% if speaker.profile_image %}
+                    <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}" class="speaker-image" loading="lazy">
+                    {% else %}
+                    <div class="speaker-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="speaker-content">
+                    <h3 class="speaker-name">{{ speaker.name }}</h3>
+                    <p class="speaker-title">{{ speaker.title }}</p>
+                    <p class="speaker-organization">{{ speaker.organization }}</p>
+                    
+                    {% if speaker.bio %}
+                    <div class="speaker-bio">
+                        <p class="bio-text">{{ speaker.bio[:200] }}{% if speaker.bio|length > 200 %}...{% endif %}</p>
+                        {% if speaker.bio|length > 200 %}
+                        <button class="btn btn-outline-primary btn-sm read-more-btn" 
+                                onclick="toggleBio('bio-{{ loop.index }}')">
+                            Read More
+                        </button>
+                        <div class="bio-full" id="bio-{{ loop.index }}" style="display: none;">
+                            <p>{{ speaker.bio }}</p>
                         </div>
                         {% endif %}
                     </div>
-                    <div class="speaker-info flex-grow-1">
-                        <h4 class="card-title mb-3" style="color: var(--primary-color);">{{ speaker.name }}</h4>
-                        <p class="card-text text-muted mb-2 speaker-title">{{ speaker.title }}</p>
-                        <p class="card-text mb-3 speaker-org" style="color: var(--primary-color);"><strong>{{ speaker.organization }}</strong></p>
-                        
-                        {% if speaker.bio %}
-                        <div class="speaker-bio mt-auto">
-                            <p class="text-muted small bio-text">{{ speaker.bio[:150] }}{% if speaker.bio|length > 150 %}...{% endif %}</p>
-                            {% if speaker.bio|length > 150 %}
-                            <button class="btn btn-outline-primary btn-sm speaker-btn mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#bio{{ loop.index }}" aria-expanded="false">
-                                Read More
-                            </button>
-                            <div class="collapse mt-3" id="bio{{ loop.index }}">
-                                <p class="text-muted small bio-text">{{ speaker.bio[150:] }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
+                    {% endif %}
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     {% endif %}
     
     <!-- Past Speakers Section -->
     {% if past_speakers %}
-    <div class="row mb-5">
-        <div class="col-12 text-center">
-            <h2 class="text-center mb-5" style="color: var(--secondary-color);">Past Speakers</h2>
+    <div class="speakers-section past-speakers">
+        <div class="section-header">
+            <h2><i class="fas fa-history"></i> Past Speakers</h2>
+            <p>Previous conference speakers</p>
         </div>
-    </div>
-    <div class="row g-4 justify-content-center">
-        {% for speaker in past_speakers %}
-        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-10 d-flex justify-content-center">
-            <div class="card speaker-card past-speaker shadow">
-                <div class="card-body text-center d-flex flex-column">
-                    <div class="speaker-image-container mb-4">
-                        {% if speaker.profile_image %}
-                        <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}" class="speaker-image past-speaker-img">
-                        {% else %}
-                        <div class="speaker-placeholder past-speaker-placeholder">
-                            <i class="fas fa-user fa-4x"></i>
+        
+        <div class="speakers-grid">
+            {% for speaker in past_speakers %}
+            <div class="speaker-card past-speaker">
+                <div class="speaker-image-container">
+                    {% if speaker.profile_image %}
+                    <img src="{{ speaker.profile_image }}" alt="{{ speaker.name }}" class="speaker-image" loading="lazy">
+                    {% else %}
+                    <div class="speaker-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="speaker-content">
+                    <h3 class="speaker-name">{{ speaker.name }}</h3>
+                    <p class="speaker-title">{{ speaker.title }}</p>
+                    <p class="speaker-organization">{{ speaker.organization }}</p>
+                    
+                    {% if speaker.bio %}
+                    <div class="speaker-bio">
+                        <p class="bio-text">{{ speaker.bio[:200] }}{% if speaker.bio|length > 200 %}...{% endif %}</p>
+                        {% if speaker.bio|length > 200 %}
+                        <button class="btn btn-outline-secondary btn-sm read-more-btn" 
+                                onclick="toggleBio('past-bio-{{ loop.index }}')">
+                            Read More
+                        </button>
+                        <div class="bio-full" id="past-bio-{{ loop.index }}" style="display: none;">
+                            <p>{{ speaker.bio }}</p>
                         </div>
                         {% endif %}
                     </div>
-                    <div class="speaker-info flex-grow-1">
-                        <h4 class="card-title mb-3" style="color: var(--secondary-color);">{{ speaker.name }}</h4>
-                        <p class="card-text text-muted mb-2 speaker-title">{{ speaker.title }}</p>
-                        <p class="card-text mb-3 speaker-org" style="color: var(--secondary-color);"><strong>{{ speaker.organization }}</strong></p>
-                        
-                        {% if speaker.bio %}
-                        <div class="speaker-bio mt-auto">
-                            <p class="text-muted small bio-text">{{ speaker.bio[:150] }}{% if speaker.bio|length > 150 %}...{% endif %}</p>
-                            {% if speaker.bio|length > 150 %}
-                            <button class="btn btn-outline-secondary btn-sm speaker-btn-past mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#pastBio{{ loop.index }}" aria-expanded="false">
-                                Read More
-                            </button>
-                            <div class="collapse mt-3" id="pastBio{{ loop.index }}">
-                                <p class="text-muted small bio-text">{{ speaker.bio[150:] }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
+                    {% endif %}
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     {% endif %}
     
     {% else %}
     <!-- No Speakers Message -->
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6 text-center">
-            <div class="py-5">
-                <i class="fas fa-users fa-5x mb-4" style="color: var(--secondary-color);"></i>
-                <h3 style="color: var(--secondary-color);">No Speakers Announced Yet</h3>
-                <p class="lead text-muted">Our distinguished speakers will be announced soon.</p>
-                <a href="{{ url_for('home') }}" class="btn btn-primary btn-lg mt-3" style="background-color: var(--primary-color); border-color: var(--primary-color);">
-                    <i class="fas fa-home"></i> Back to Home
-                </a>
-            </div>
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="fas fa-users"></i>
         </div>
+        <h3>No Speakers Announced Yet</h3>
+        <p>Our distinguished speakers will be announced soon. Check back later for updates.</p>
+        <a href="{{ url_for('home') }}" class="btn btn-primary">
+            <i class="fas fa-home"></i> Back to Home
+        </a>
     </div>
     {% endif %}
 </div>
 
 <style>
-/* Use admin-configurable design variables */
-:root {
-    --card-border-radius: 20px;
-    --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-    --card-shadow-hover: 0 15px 35px rgba(0, 0, 0, 0.2);
-    --transition-speed: 0.3s;
-    --image-size: 160px;
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 3rem 0;
+    text-align: center;
+    margin-bottom: 3rem;
 }
 
-/* Ensure Bootstrap grid works properly */
-.row {
-    display: flex !important;
-    flex-wrap: wrap !important;
+.header-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
 }
 
-.col-xl-3, .col-lg-4, .col-md-6, .col-sm-10 {
-    display: flex !important;
-    flex-direction: column !important;
+.header-content p {
+    font-size: 1.2rem;
+    opacity: 0.9;
 }
 
-/* Center cards in their columns */
-.justify-content-center > [class*="col-"] {
-    display: flex !important;
-    justify-content: center !important;
+/* Content Section */
+.content-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
 }
 
-.speaker-card {
-    transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
-    border: none;
-    border-radius: var(--card-border-radius);
-    overflow: hidden;
-    width: 100%;
-    max-width: 380px;
-    min-height: 480px;
-    display: flex !important;
-    flex-direction: column !important;
-    background-color: var(--background-color);
-    box-shadow: var(--card-shadow);
-    position: relative;
+/* Speakers Section */
+.speakers-section {
+    margin-bottom: 4rem;
 }
 
-.speaker-card .card-body {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.section-header h2 {
+    color: var(--primary-color);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.section-header p {
     color: var(--text-color);
-    padding: 2rem 2rem;
+    font-size: 1.1rem;
+    opacity: 0.8;
+}
+
+/* Speakers Grid */
+.speakers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Speaker Card */
+.speaker-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
 }
 
 .speaker-card:hover {
     transform: translateY(-8px);
-    box-shadow: var(--card-shadow-hover) !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
 }
 
-/* Center image container */
+/* Speaker Image */
 .speaker-image-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-shrink: 0;
-    margin: 0 auto;
+    padding: 2rem 2rem 1rem;
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     position: relative;
 }
 
 .speaker-image {
-    width: var(--image-size);
-    height: var(--image-size);
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
     object-fit: cover;
-    border-radius: 50%;
-    border: 5px solid var(--primary-color);
-    transition: all var(--transition-speed) ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    display: block;
-    margin: 0 auto;
-}
-
-.speaker-placeholder {
-    width: var(--image-size);
-    height: var(--image-size);
-    background-color: var(--secondary-color);
-    color: var(--background-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 5px solid var(--primary-color);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    margin: 0 auto;
-}
-
-.past-speaker .speaker-image {
-    border-color: var(--secondary-color);
-    filter: grayscale(15%);
-    opacity: 0.85;
-}
-
-.past-speaker-placeholder {
-    border-color: var(--secondary-color);
-    background-color: var(--secondary-color);
+    border: 5px solid white;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
 }
 
 .speaker-card:hover .speaker-image {
     transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* Speaker info styling */
-.speaker-info {
+.speaker-placeholder {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 5px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.speaker-placeholder i {
+    font-size: 3rem;
+    color: white;
+}
+
+/* Speaker Content */
+.speaker-content {
+    padding: 1.5rem 2rem 2rem;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+}
+
+.speaker-name {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
     text-align: center;
 }
 
-.card-title {
-    font-size: 1.4rem;
-    font-weight: 600;
-    line-height: 1.3;
-    margin-bottom: 0.75rem !important;
-}
-
 .speaker-title {
+    color: var(--text-color);
     font-size: 1.1rem;
     font-style: italic;
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    opacity: 0.8;
 }
 
-.speaker-org {
+.speaker-organization {
+    color: var(--secondary-color);
+    font-weight: 600;
     font-size: 1rem;
-    margin-bottom: 1rem !important;
+    margin-bottom: 1rem;
+    text-align: center;
 }
 
+/* Speaker Bio */
 .speaker-bio {
-    text-align: left;
-    flex-grow: 1;
-    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .bio-text {
+    color: var(--text-color);
     font-size: 0.95rem;
-    line-height: 1.5;
-    text-align: left;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    flex: 1;
 }
 
-.past-speaker {
-    opacity: 0.92;
+.bio-full {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.past-speaker:hover {
+.bio-full p {
+    color: var(--text-color);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Read More Button */
+.read-more-btn {
+    align-self: flex-start;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.read-more-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Past Speakers */
+.past-speakers .speaker-card {
+    opacity: 0.85;
+}
+
+.past-speakers .speaker-card:hover {
     opacity: 1;
 }
 
-/* Button styling using admin colors */
-.speaker-btn {
-    color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
+.past-speakers .speaker-image-container {
+    background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
 }
 
-.speaker-btn:hover {
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    color: var(--background-color) !important;
-    transform: translateY(-1px);
+.past-speakers .speaker-name {
+    color: var(--secondary-color);
 }
 
-.speaker-btn-past {
-    color: var(--secondary-color) !important;
-    border-color: var(--secondary-color) !important;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
+.past-speakers .speaker-organization {
+    color: var(--accent-color);
 }
 
-.speaker-btn-past:hover {
-    background-color: var(--secondary-color) !important;
-    border-color: var(--secondary-color) !important;
-    color: var(--background-color) !important;
-    transform: translateY(-1px);
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
 }
 
-/* Grid spacing */
-.g-4 > * {
-    padding: 1rem !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 1200px) {
-    :root {
-        --image-size: 140px;
-    }
-    
-    .col-xl-3 {
-        flex: 0 0 25% !important;
-        max-width: 25% !important;
-    }
-    
-    .speaker-card {
-        max-width: 360px;
-    }
-}
-
-@media (max-width: 992px) {
-    :root {
-        --image-size: 130px;
-    }
-    
-    .col-lg-4 {
-        flex: 0 0 33.333333% !important;
-        max-width: 33.333333% !important;
-    }
-    
-    .speaker-card {
-        max-width: 340px;
-        min-height: 450px;
-    }
-    
-    .speaker-card .card-body {
-        padding: 1.75rem 1.75rem;
-    }
-}
-
-@media (max-width: 768px) {
-    :root {
-        --image-size: 120px;
-    }
-    
-    .col-md-6 {
-        flex: 0 0 50% !important;
-        max-width: 50% !important;
-    }
-    
-    .display-4 {
-        font-size: 2.5rem;
-    }
-    
-    .speaker-card {
-        max-width: 320px;
-        min-height: 420px;
-    }
-    
-    .speaker-card .card-body {
-        padding: 1.5rem 1.5rem;
-    }
-}
-
-@media (max-width: 576px) {
-    :root {
-        --image-size: 110px;
-    }
-    
-    .col-sm-10 {
-        flex: 0 0 83.333333% !important;
-        max-width: 83.333333% !important;
-    }
-    
-    .container-fluid {
-        padding-left: 15px;
-        padding-right: 15px;
-    }
-    
-    .display-4 {
-        font-size: 2rem;
-    }
-    
-    .speaker-card {
-        max-width: 100%;
-        min-height: 400px;
-    }
-    
-    .speaker-card .card-body {
-        padding: 1.5rem 1.25rem;
-    }
-    
-    .speaker-placeholder i {
-        font-size: 3rem !important;
-    }
-}
-
-/* Force grid layout and centering */
-.row.g-4 {
-    margin: 0 -1rem;
-}
-
-.row.g-4 > [class*="col-"] {
-    padding: 0 1rem;
+.empty-icon {
+    font-size: 4rem;
+    color: var(--secondary-color);
     margin-bottom: 2rem;
 }
 
-/* Ensure proper text color inheritance */
-.card-text {
+.empty-state h3 {
     color: var(--text-color);
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
 }
 
-.text-muted {
-    color: rgba(var(--text-color-rgb), 0.7) !important;
+.empty-state p {
+    color: var(--text-color);
+    font-size: 1.1rem;
+    opacity: 0.8;
+    margin-bottom: 2rem;
 }
 
-/* Additional centering for better alignment */
-.justify-content-center {
-    justify-content: center !important;
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-header {
+        padding: 2rem 0;
+    }
+    
+    .header-content h1 {
+        font-size: 2rem;
+    }
+    
+    .header-content p {
+        font-size: 1rem;
+    }
+    
+    .speakers-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .speaker-card {
+        min-height: 450px;
+    }
+    
+    .speaker-image-container {
+        padding: 1.5rem 1.5rem 1rem;
+    }
+    
+    .speaker-image,
+    .speaker-placeholder {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .speaker-content {
+        padding: 1rem 1.5rem 1.5rem;
+    }
+    
+    .speaker-name {
+        font-size: 1.3rem;
+    }
+    
+    .section-header h2 {
+        font-size: 1.6rem;
+    }
 }
 
-.d-flex.justify-content-center {
-    display: flex !important;
-    justify-content: center !important;
+@media (max-width: 480px) {
+    .content-section {
+        padding: 0 0.5rem;
+    }
+    
+    .speaker-image-container {
+        padding: 1rem 1rem 0.5rem;
+    }
+    
+    .speaker-image,
+    .speaker-placeholder {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .speaker-placeholder i {
+        font-size: 2rem;
+    }
+    
+    .speaker-content {
+        padding: 0.75rem 1rem 1rem;
+    }
+    
+    .speaker-name {
+        font-size: 1.2rem;
+    }
+    
+    .speaker-title {
+        font-size: 1rem;
+    }
+    
+    .speaker-organization {
+        font-size: 0.9rem;
+    }
+}
+
+/* Animation for bio toggle */
+.bio-full {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ensure proper color inheritance */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    opacity: 0.9;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-secondary {
+    color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
 }
 </style>
 
-<!-- Bootstrap JS for collapse functionality -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleBio(bioId) {
+    const bioElement = document.getElementById(bioId);
+    const button = bioElement.previousElementSibling;
+    
+    if (bioElement.style.display === 'none') {
+        bioElement.style.display = 'block';
+        button.textContent = 'Read Less';
+    } else {
+        bioElement.style.display = 'none';
+        button.textContent = 'Read More';
+    }
+}
+
+// Add smooth scrolling for better UX
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+    
+    // Add loading animation for images
+    const images = document.querySelectorAll('.speaker-image');
+    images.forEach(img => {
+        img.addEventListener('load', function() {
+            this.style.opacity = '1';
+        });
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.3s ease';
+    });
+});
+</script>
 {% endblock %} 

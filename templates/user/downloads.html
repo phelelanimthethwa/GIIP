@@ -23,9 +23,15 @@
                         <span class="file-type">{{ download.file_type }}</span>
                         <span class="file-size">{{ download.file_size }}</span>
                     </div>
-                    <a href="{{ download.file_url }}" class="btn-download" download>
-                        <i class="fas fa-download"></i> Download
-                    </a>
+                    {% if 'firebasestorage.googleapis.com' in download.file_url %}
+                        <a href="{{ url_for('download_firebase_file', url=download.file_url) }}" class="btn-download">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    {% else %}
+                        <a href="{{ download.file_url }}" class="btn-download" download>
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}

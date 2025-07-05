@@ -4,35 +4,43 @@
 
 {% block content %}
 <div class="container py-5">
-    <!-- Page Header -->
+    <!-- Enhanced Page Header with Animation -->
     <div class="row mb-5">
         <div class="col-12 text-center">
-            <h1 class="display-4 mb-3" style="color: var(--primary-color);">Conference Proceedings</h1>
-            <p class="lead mb-3">Manuscript templates and guidelines for conference paper submission</p>
-            <hr class="w-25 mx-auto" style="border-color: var(--primary-color); border-width: 3px;">
+            <div class="hero-section">
+                <div class="hero-icon">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h1 class="display-4 mb-3 hero-title">{{ content.page_title if content else 'Conference Proceedings' }}</h1>
+                <p class="lead mb-3 hero-subtitle">{{ content.page_subtitle if content else 'Manuscript templates and guidelines for conference paper submission' }}</p>
+                <div class="hero-divider"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Introduction Section -->
-    <div class="info-section mb-5">
+    <!-- Enhanced Introduction Section -->
+    <div class="info-section mb-5 animate-on-scroll">
         <div class="row">
             <div class="col-12">
                 <div class="content-card">
-                    <h3 class="mb-4" style="color: var(--primary-color);">
-                        <i class="fas fa-info-circle me-2"></i>About Conference Proceedings
-                    </h3>
-                    <p class="lead">The purpose of a conference template is to provide a consistent format for papers appearing in the conference proceedings. GIIR Conference strongly encourages use of the conference manuscript templates provided below.</p>
+                    <div class="section-header">
+                        <div class="header-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <h3 class="mb-4">About Conference Proceedings</h3>
+                    </div>
+                    <p class="lead">{{ content.hero_description if content else 'The purpose of a conference template is to provide a consistent format for papers appearing in the conference proceedings. GIIR Conference strongly encourages use of the conference manuscript templates provided below.' }}</p>
                     
-                    <div class="alert alert-warning mt-4" role="alert">
-                        <div class="d-flex">
-                            <div class="flex-shrink-0">
-                                <i class="fas fa-exclamation-triangle fa-lg"></i>
+                    <div class="alert alert-warning mt-4 enhanced-alert" role="alert">
+                        <div class="alert-content">
+                            <div class="alert-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
                             </div>
-                            <div class="flex-grow-1 ms-3">
-                                <h5 class="alert-heading">Important Notice</h5>
-                                <p class="mb-1">Conference templates contain guidance text for composing and formatting conference papers. Please ensure that all guidance text is removed from your conference paper prior to submission to the conference.</p>
-                                <hr>
-                                <p class="mb-0"><strong>Failure to remove template text from your paper may result in your paper not being published.</strong></p>
+                            <div class="alert-body">
+                                <h5 class="alert-heading">{{ content.important_notice_title if content else 'Important Notice' }}</h5>
+                                <p class="mb-1">{{ content.important_notice_content if content else 'Conference templates contain guidance text for composing and formatting conference papers. Please ensure that all guidance text is removed from your conference paper prior to submission to the conference.' }}</p>
+                                <div class="alert-divider"></div>
+                                <p class="mb-0"><strong>{{ content.important_notice_warning if content else 'Failure to remove template text from your paper may result in your paper not being published.' }}</strong></p>
                             </div>
                         </div>
                     </div>
@@ -41,57 +49,66 @@
         </div>
     </div>
 
-    <!-- Downloads/Templates Section -->
+    <!-- Enhanced Downloads/Templates Section -->
     {% if downloads %}
         <!-- Dynamic Format-based Categories -->
         {% for format_type, downloads_list in downloads.items() %}
             {% if downloads_list %}
-            <div class="template-category mb-5">
-                <h3 class="category-title">
-                    <i class="{{ category_info[format_type].icon }} me-2"></i>{{ category_info[format_type].title }}
-                </h3>
-                <p class="category-description text-muted mb-4">{{ category_info[format_type].description }}</p>
+            <div class="template-category mb-5 animate-on-scroll">
+                <div class="category-header">
+                    <div class="category-icon">
+                        <i class="{{ category_info[format_type].icon }}"></i>
+                    </div>
+                    <div class="category-content">
+                        <h3 class="category-title">{{ category_info[format_type].title }}</h3>
+                        <p class="category-description">{{ category_info[format_type].description }}</p>
+                    </div>
+                </div>
                 
                 <div class="template-grid">
                     {% for template in downloads_list %}
-                    <div class="template-card">
-                        <div class="template-icon">
-                            {% if template.file_type == 'pdf' %}
-                                <i class="fas fa-file-pdf fa-3x text-danger"></i>
-                            {% elif template.file_type in ['doc', 'docx'] %}
-                                <i class="fas fa-file-word fa-3x text-primary"></i>
-                            {% elif template.file_type == 'zip' %}
-                                <i class="fas fa-file-archive fa-3x text-warning"></i>
-                            {% elif template.file_type == 'tex' %}
-                                <i class="fas fa-file-code fa-3x text-success"></i>
-                            {% elif template.format == 'Overleaf' %}
-                                <i class="fas fa-share-alt fa-3x text-info"></i>
-                            {% else %}
-                                <i class="fas fa-file fa-3x text-secondary"></i>
-                            {% endif %}
+                    <div class="template-card animate-on-scroll">
+                        <div class="template-icon-wrapper">
+                            <div class="template-icon">
+                                {% if template.file_type == 'pdf' %}
+                                    <i class="fas fa-file-pdf"></i>
+                                {% elif template.file_type in ['doc', 'docx'] %}
+                                    <i class="fas fa-file-word"></i>
+                                {% elif template.file_type == 'zip' %}
+                                    <i class="fas fa-file-archive"></i>
+                                {% elif template.file_type == 'tex' %}
+                                    <i class="fas fa-file-code"></i>
+                                {% elif template.format == 'Overleaf' %}
+                                    <i class="fas fa-share-alt"></i>
+                                {% else %}
+                                    <i class="fas fa-file"></i>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="template-info">
-                            <h5>{{ template.title }}</h5>
-                            <p class="text-muted">{{ template.description or 'Conference template for manuscript preparation' }}</p>
-                            <div class="template-meta d-flex align-items-center gap-3">
-                                <span class="badge bg-secondary">{{ template.format }}</span>
+                            <h5 class="template-title">{{ template.title }}</h5>
+                            <p class="template-description">{{ template.description or 'Conference template for manuscript preparation' }}</p>
+                            <div class="template-meta">
+                                <span class="badge format-badge">{{ template.format }}</span>
                                 {% if template.size %}
-                                <small class="text-muted">({{ template.size }})</small>
+                                <span class="size-info">{{ template.size }}</span>
                                 {% endif %}
                                 {% if template.updated_at %}
-                                <small class="text-success">Updated {{ template.updated_at[:10] }}</small>
+                                <span class="update-info">Updated {{ template.updated_at[:10] }}</span>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="template-actions">
                             {% if template.url and template.url != '#' %}
                                 {% if template.format == 'Overleaf' %}
-                                <a href="{{ template.url }}" class="btn btn-info" target="_blank">
-                                    <i class="fas fa-external-link-alt me-1"></i>Open in Overleaf
+                                <a href="{{ template.url }}" class="btn btn-action btn-overleaf" target="_blank">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    <span>Open in Overleaf</span>
                                 </a>
                                 {% else %}
-                                <a href="{{ template.url }}" class="btn btn-primary" download>
-                                    <i class="fas fa-download me-1"></i>Download
+                                <a href="{{ template.url }}" class="btn btn-action btn-download" download>
+                                    <i class="fas fa-download"></i>
+                                    <span>Download</span>
                                 </a>
                                 {% endif %}
                             {% endif %}
@@ -100,30 +117,39 @@
                     {% endfor %}
                 </div>
                 
-                <!-- Format-specific instructions -->
+                <!-- Enhanced Format-specific instructions -->
                 {% if format_type == 'LaTeX' %}
-                <div class="mt-4 p-4 bg-light rounded">
-                    <h6 class="mb-3"><i class="fas fa-lightbulb text-warning me-2"></i>LaTeX Template Instructions</h6>
-                    <ul class="mb-2">
+                <div class="instruction-card instruction-latex">
+                    <div class="instruction-header">
+                        <i class="fas fa-lightbulb"></i>
+                        <h6>LaTeX Template Instructions</h6>
+                    </div>
+                    <ul>
                         <li>Be sure to use the template's conference mode</li>
                         <li>Include all necessary bibliography files</li>
                         <li>Template files may be updated without notice</li>
                     </ul>
-                    <p class="mb-0"><strong>Overleaf Users:</strong> Templates are also available in the Overleaf gallery for online collaborative editing.</p>
+                    <p class="instruction-note"><strong>Overleaf Users:</strong> Templates are also available in the Overleaf gallery for online collaborative editing.</p>
                 </div>
                 {% elif format_type == 'Microsoft Word' %}
-                <div class="mt-4 p-4 bg-light rounded">
-                    <h6 class="mb-3"><i class="fas fa-info-circle text-primary me-2"></i>Microsoft Word Instructions</h6>
-                    <ul class="mb-0">
+                <div class="instruction-card instruction-word">
+                    <div class="instruction-header">
+                        <i class="fas fa-info-circle"></i>
+                        <h6>Microsoft Word Instructions</h6>
+                    </div>
+                    <ul>
                         <li>Ensure all guidance text is removed before submission</li>
                         <li>Follow the template formatting guidelines strictly</li>
                         <li>Save your document in .docx format for submission</li>
                     </ul>
                 </div>
                 {% elif format_type == 'Overleaf' %}
-                <div class="mt-4 p-4 bg-light rounded">
-                    <h6 class="mb-3"><i class="fas fa-share-alt text-info me-2"></i>Overleaf Instructions</h6>
-                    <ul class="mb-0">
+                <div class="instruction-card instruction-overleaf">
+                    <div class="instruction-header">
+                        <i class="fas fa-share-alt"></i>
+                        <h6>Overleaf Instructions</h6>
+                    </div>
+                    <ul>
                         <li>Templates are available for online collaborative editing</li>
                         <li>No software installation required</li>
                         <li>Automatic compilation and real-time preview</li>
@@ -134,41 +160,62 @@
             {% endif %}
         {% endfor %}
     {% else %}
-        <!-- No Templates Available -->
-        <div class="text-center py-5">
-            <i class="fas fa-folder-open fa-5x text-muted mb-4"></i>
-            <h3 class="text-muted">No Templates Available</h3>
-            <p class="lead text-muted">Conference templates will be available soon. Please check back later.</p>
-            <a href="{{ url_for('home') }}" class="btn btn-primary mt-3">
-                <i class="fas fa-home me-1"></i>Back to Home
+        <!-- Enhanced No Templates Available -->
+        <div class="empty-state animate-on-scroll">
+            <div class="empty-icon">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>{{ content.empty_state_title if content else 'No Templates Available' }}</h3>
+            <p class="lead">{{ content.empty_state_message if content else 'Conference templates will be available soon. Please check back later.' }}</p>
+            <a href="{{ url_for('home') }}" class="btn btn-primary btn-home">
+                <i class="fas fa-home"></i>
+                <span>Back to Home</span>
             </a>
         </div>
     {% endif %}
 
-    <!-- Notes Section -->
-    <div class="notes-section mt-5 pt-4 border-top">
-        <h4 style="color: var(--primary-color);" class="mb-4">
-            <i class="fas fa-sticky-note me-2"></i>Important Notes
-        </h4>
+    <!-- Enhanced Notes Section -->
+    <div class="notes-section mt-5 pt-4 animate-on-scroll">
+        <div class="notes-header">
+            <div class="notes-icon">
+                <i class="fas fa-sticky-note"></i>
+            </div>
+            <h4>{{ content.notes_section_title if content else 'Important Notes' }}</h4>
+        </div>
         <div class="row">
             <div class="col-md-6">
-                <div class="note-card">
-                    <h6><i class="fas fa-users text-primary me-2"></i>For Conference Organizers</h6>
-                    <p class="small text-muted">The use of conference manuscript templates will greatly reduce the chance for errors in metadata and indexing. Using these templates helps ensure proper formatting and reduces publication delays.</p>
+                <div class="note-card note-organizers">
+                    <div class="note-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="note-content">
+                        <h6>{{ content.note_organizers_title if content else 'For Conference Organizers' }}</h6>
+                        <p>{{ content.note_organizers_content if content else 'The use of conference manuscript templates will greatly reduce the chance for errors in metadata and indexing. Using these templates helps ensure proper formatting and reduces publication delays.' }}</p>
+                    </div>
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="note-card">
-                    <h6><i class="fas fa-link text-info me-2"></i>Linking Guidelines</h6>
-                    <p class="small text-muted">You may link to this webpage in its entirety. Individual file links may be updated or replaced without notice, so direct page linking is recommended.</p>
+                <div class="note-card note-linking">
+                    <div class="note-icon">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div class="note-content">
+                        <h6>{{ content.note_linking_title if content else 'Linking Guidelines' }}</h6>
+                        <p>{{ content.note_linking_content if content else 'You may link to this webpage in its entirety. Individual file links may be updated or replaced without notice, so direct page linking is recommended.' }}</p>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="row mt-3">
             <div class="col-12">
-                <div class="note-card">
-                    <h6><i class="fas fa-award text-success me-2"></i>Template Acknowledgement</h6>
-                    <p class="small text-muted">Grateful acknowledgement is made to the academic community and professional organizations that have contributed to the development of these standardized conference templates.</p>
+                <div class="note-card note-acknowledgement">
+                    <div class="note-icon">
+                        <i class="fas fa-award"></i>
+                    </div>
+                    <div class="note-content">
+                        <h6>{{ content.note_acknowledgement_title if content else 'Template Acknowledgement' }}</h6>
+                        <p>{{ content.note_acknowledgement_content if content else 'Grateful acknowledgement is made to the academic community and professional organizations that have contributed to the development of these standardized conference templates.' }}</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -176,155 +223,647 @@
 </div>
 
 <style>
-/* Updated styles for better organization */
+/* CSS Variables for site design colors */
+:root {
+    --primary-color: {{ site_design.primary_color if site_design else '#007bff' }};
+    --secondary-color: {{ site_design.secondary_color if site_design else '#6c757d' }};
+    --accent-color: {{ site_design.accent_color if site_design else '#28a745' }};
+    --text-color: {{ site_design.text_color if site_design else '#333' }};
+    --background-color: {{ site_design.background_color if site_design else '#ffffff' }};
+    --header-background: {{ site_design.header_background if site_design else '#f8f9fa' }};
+    --footer-background: {{ site_design.footer_background if site_design else '#343a40' }};
+    --hero-text-color: {{ site_design.hero_text_color if site_design else '#ffffff' }};
+}
+
+/* Enhanced Hero Section */
+.hero-section {
+    position: relative;
+    padding: 3rem 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border-radius: 20px;
+    color: var(--hero-text-color);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+}
+
+.hero-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+.hero-title {
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    animation: slideInDown 1s ease-out;
+}
+
+.hero-subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    animation: slideInUp 1s ease-out 0.3s both;
+}
+
+.hero-divider {
+    width: 80px;
+    height: 4px;
+    background: var(--hero-text-color);
+    margin: 2rem auto 0;
+    border-radius: 2px;
+    animation: expandWidth 1s ease-out 0.6s both;
+}
+
+/* Enhanced Info Section */
 .info-section {
-    background: #f8f9fa;
-    border-radius: 15px;
-    padding: 2rem;
+    background: linear-gradient(135deg, var(--header-background), #ffffff);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0,0,0,0.05);
 }
 
 .content-card {
     background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.templates-section {
-    background: white;
+    padding: 2.5rem;
     border-radius: 15px;
-    padding: 2rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0,0,0,0.05);
 }
 
-.section-title {
-    font-size: 1.8rem;
-    font-weight: 600;
-    border-bottom: 2px solid var(--primary-color);
-    padding-bottom: 1rem;
+.section-header {
+    display: flex;
+    align-items: center;
     margin-bottom: 2rem;
 }
 
-.template-category {
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 2rem;
+.header-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.5rem;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-.template-category:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+.section-header h3 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Enhanced Alert */
+.enhanced-alert {
+    border: none;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    box-shadow: 0 5px 20px rgba(255, 193, 7, 0.2);
+}
+
+.alert-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.alert-icon {
+    width: 50px;
+    height: 50px;
+    background: #ffc107;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.alert-body {
+    flex: 1;
+}
+
+.alert-heading {
+    color: #856404;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.alert-divider {
+    height: 2px;
+    background: linear-gradient(90deg, #ffc107, transparent);
+    margin: 1rem 0;
+    border-radius: 1px;
+}
+
+/* Enhanced Template Categories */
+.template-category {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin-bottom: 3rem;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.category-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.category-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.5rem;
+    color: white;
+    font-size: 2rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.category-content {
+    flex: 1;
 }
 
 .category-title {
-    font-size: 1.4rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    color: #333;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
 }
 
+.category-description {
+    color: var(--secondary-color);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Enhanced Template Grid */
 .template-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
 }
 
 .template-card {
-    background: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border: 2px solid #e9ecef;
+    border-radius: 20px;
+    padding: 2rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.template-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
 }
 
 .template-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
     border-color: var(--primary-color);
 }
 
-.template-icon {
+.template-card:hover::before {
+    transform: scaleX(1);
+}
+
+.template-icon-wrapper {
     flex-shrink: 0;
+}
+
+.template-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.template-card:hover .template-icon {
+    transform: scale(1.1) rotate(5deg);
 }
 
 .template-info {
     flex: 1;
 }
 
-.template-info h5 {
+.template-title {
     color: var(--primary-color);
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 0.5rem;
-    line-height: 1.3;
+    font-size: 1.2rem;
+}
+
+.template-description {
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.template-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.format-badge {
+    background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.size-info, .update-info {
+    color: var(--secondary-color);
+    font-size: 0.9rem;
 }
 
 .template-actions {
     flex-shrink: 0;
 }
 
-.template-actions .btn {
-    min-width: 120px;
+.btn-action {
+    padding: 0.8rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    border: none;
+    min-width: 140px;
+    justify-content: center;
 }
 
-.notes-section {
-    background: #f8f9fa;
+.btn-download {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+}
+
+.btn-overleaf {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    color: white;
+    text-decoration: none;
+}
+
+/* Enhanced Instruction Cards */
+.instruction-card {
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
     border-radius: 15px;
     padding: 2rem;
+    margin-top: 2rem;
+    border-left: 5px solid var(--primary-color);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+.instruction-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.instruction-header i {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.instruction-latex .instruction-header i {
+    background: linear-gradient(135deg, #ffc107, #ff8f00);
+}
+
+.instruction-word .instruction-header i {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.instruction-overleaf .instruction-header i {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.instruction-card h6 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin: 0;
+}
+
+.instruction-card ul {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.instruction-card li {
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+}
+
+.instruction-note {
+    color: var(--accent-color);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Enhanced Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+    font-size: 5rem;
+    color: var(--secondary-color);
+    margin-bottom: 2rem;
+    opacity: 0.6;
+}
+
+.empty-state h3 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--secondary-color);
+    margin-bottom: 2rem;
+}
+
+.btn-home {
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-home:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    color: white;
+    text-decoration: none;
+}
+
+/* Enhanced Notes Section */
+.notes-section {
+    background: linear-gradient(135deg, var(--header-background), #ffffff);
+    border-radius: 20px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.notes-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.notes-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.5rem;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.notes-header h4 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin: 0;
 }
 
 .note-card {
     background: white;
-    padding: 1.5rem;
-    border-radius: 10px;
-    border-left: 4px solid var(--primary-color);
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+    border-radius: 15px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
 }
 
-.note-card h6 {
-    margin-bottom: 1rem;
-    color: #333;
+.note-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.note-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.note-organizers .note-icon {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+}
+
+.note-linking .note-icon {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.note-acknowledgement .note-icon {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.note-content {
+    flex: 1;
+}
+
+.note-content h6 {
+    color: var(--primary-color);
     font-weight: 600;
+    margin-bottom: 1rem;
 }
 
-/* Alert customization */
-.alert-warning {
-    border-color: #ffc107;
-    background-color: rgba(255, 193, 7, 0.1);
+.note-content p {
+    color: var(--secondary-color);
+    margin: 0;
+    line-height: 1.6;
 }
 
-.alert-warning .alert-heading {
-    color: #856404;
+/* Animations */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
 }
 
-/* Responsive adjustments */
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes expandWidth {
+    from { width: 0; }
+    to { width: 80px; }
+}
+
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+}
+
+.animate-on-scroll.animated {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .hero-icon {
+        font-size: 3rem;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
     .template-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 1.5rem;
     }
     
     .template-card {
         flex-direction: column;
         text-align: center;
         gap: 1rem;
+        padding: 1.5rem;
     }
     
-    .template-actions .btn {
+    .template-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+    
+    .btn-action {
         width: 100%;
+        justify-content: center;
     }
     
     .info-section,
-    .templates-section,
+    .template-category,
     .notes-section {
         padding: 1.5rem;
     }
     
-    .section-title {
-        font-size: 1.5rem;
+    .category-header,
+    .notes-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .category-icon,
+    .notes-icon {
+        margin-right: 0;
+    }
+    
+    .note-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
     }
 }
 
@@ -334,8 +873,8 @@
         padding-right: 15px;
     }
     
-    .display-4 {
-        font-size: 2rem;
+    .hero-title {
+        font-size: 1.8rem;
     }
     
     .template-card {
@@ -345,6 +884,34 @@
     .note-card {
         padding: 1rem;
     }
+    
+    .content-card {
+        padding: 1.5rem;
+    }
 }
+
+/* JavaScript for scroll animations */
 </style>
+
+<script>
+// Intersection Observer for scroll animations
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('animated');
+        }
+    });
+}, observerOptions);
+
+// Observe all elements with animate-on-scroll class
+document.addEventListener('DOMContentLoaded', () => {
+    const animatedElements = document.querySelectorAll('.animate-on-scroll');
+    animatedElements.forEach(el => observer.observe(el));
+});
+</script>
 {% endblock %} 

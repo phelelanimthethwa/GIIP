@@ -25,7 +25,15 @@
     <form method="POST" class="guidelines-form" enctype="multipart/form-data">
         <!-- Abstract Guidelines -->
         <div class="form-section">
-            <h2><i class="fas fa-file-alt"></i> Abstract Guidelines</h2>
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Abstract Guidelines</h2>
+                    <p class="section-description">Define requirements and templates for abstract submissions</p>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="abstract_guidelines">Abstract Guidelines</label>
                 <textarea id="abstract_guidelines" name="abstract_guidelines" class="form-control rich-editor" rows="6">{{ guidelines.abstract_guidelines if guidelines else '' }}</textarea>
@@ -45,7 +53,15 @@
 
         <!-- Full Paper Guidelines -->
         <div class="form-section">
-            <h2><i class="fas fa-file-pdf"></i> Full Paper Guidelines</h2>
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Full Paper Guidelines</h2>
+                    <p class="section-description">Set standards for complete paper submissions</p>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="paper_guidelines">Full Paper Guidelines</label>
                 <textarea id="paper_guidelines" name="paper_guidelines" class="form-control rich-editor" rows="8">{{ guidelines.paper_guidelines if guidelines else '' }}</textarea>
@@ -65,7 +81,15 @@
 
         <!-- Oral Presentation Guidelines -->
         <div class="form-section">
-            <h2><i class="fas fa-microphone"></i> Oral Presentation Guidelines</h2>
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Oral Presentation Guidelines</h2>
+                    <p class="section-description">Define requirements for in-person presentations</p>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="oral_guidelines">Oral Presentation Guidelines</label>
                 <textarea id="oral_guidelines" name="oral_guidelines" class="form-control rich-editor" rows="6">{{ guidelines.oral_guidelines if guidelines else '' }}</textarea>
@@ -75,7 +99,15 @@
 
         <!-- Virtual Presentation Guidelines -->
         <div class="form-section">
-            <h2><i class="fas fa-video"></i> Virtual Presentation Guidelines</h2>
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-video"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Virtual Presentation Guidelines</h2>
+                    <p class="section-description">Set standards for online presentations</p>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="virtual_guidelines">Virtual Presentation Guidelines</label>
                 <textarea id="virtual_guidelines" name="virtual_guidelines" class="form-control rich-editor" rows="6">{{ guidelines.virtual_guidelines if guidelines else '' }}</textarea>
@@ -85,7 +117,15 @@
 
         <!-- Invitation Letter Guidelines -->
         <div class="form-section">
-            <h2><i class="fas fa-envelope"></i> Invitation Letter Information</h2>
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Invitation Letter Information</h2>
+                    <p class="section-description">Provide visa and invitation letter details</p>
+                </div>
+            </div>
             <div class="form-group">
                 <label for="invitation_letter">Invitation Letter Guidelines</label>
                 <textarea id="invitation_letter" name="invitation_letter" class="form-control rich-editor" rows="8">{{ guidelines.invitation_letter if guidelines else '' }}</textarea>
@@ -105,74 +145,363 @@
 {% block styles %}
 {{ super() }}
 <style>
+    /* !important declarations to override base styles */
     .guidelines-form {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 2rem;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+        padding: 2rem !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        min-height: 100vh !important;
+        border-radius: 20px !important;
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
     }
 
     .form-section {
-        background: white;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        background: white !important;
+        border-radius: 20px !important;
+        padding: 3rem !important;
+        margin-bottom: 3rem !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+        border: 3px solid #ff6b6b !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        transform: scale(1) !important;
     }
 
-    .form-section h2 {
-        color: var(--primary-color);
-        font-size: 1.4rem;
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+    .form-section::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 8px !important;
+        background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1) !important;
+        opacity: 1 !important;
+        transition: opacity 0.3s ease !important;
+    }
+
+    .form-section:hover {
+        transform: scale(1.02) translateY(-5px) !important;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2) !important;
+        border-color: #4ecdc4 !important;
+    }
+
+    .section-header {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 2rem !important;
+        margin-bottom: 2.5rem !important;
+        padding-bottom: 2rem !important;
+        border-bottom: 3px solid #f8f9fa !important;
+    }
+
+    .section-icon {
+        width: 80px !important;
+        height: 80px !important;
+        background: linear-gradient(135deg, #ff6b6b, #4ecdc4) !important;
+        border-radius: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: white !important;
+        font-size: 2rem !important;
+        box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4) !important;
+        flex-shrink: 0 !important;
+        animation: pulse 2s infinite !important;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .section-title h2 {
+        color: #2c3e50 !important;
+        font-size: 2rem !important;
+        font-weight: 800 !important;
+        margin: 0 0 0.5rem 0 !important;
+        line-height: 1.2 !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    .section-description {
+        color: #6c757d !important;
+        font-size: 1.2rem !important;
+        margin: 0 !important;
+        line-height: 1.4 !important;
+        font-weight: 500 !important;
     }
 
     .form-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 2.5rem !important;
+        position: relative !important;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0 !important;
     }
 
     label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        display: block;
+        font-weight: 700 !important;
+        margin-bottom: 1rem !important;
+        display: block !important;
+        color: #2c3e50 !important;
+        font-size: 1.3rem !important;
+        letter-spacing: 0.025em !important;
+        text-transform: uppercase !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important;
     }
 
     .rich-editor {
-        width: 100%;
-        min-height: 150px;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
-        line-height: 1.5;
+        width: 100% !important;
+        min-height: 200px !important;
+        padding: 1.5rem !important;
+        border: 3px solid #e9ecef !important;
+        border-radius: 15px !important;
+        font-size: 1.1rem !important;
+        line-height: 1.6 !important;
+        transition: all 0.3s ease !important;
+        background: #fafbfc !important;
+        color: #495057 !important;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    .rich-editor:focus {
+        outline: none !important;
+        border-color: #4ecdc4 !important;
+        box-shadow: 0 0 0 5px rgba(78, 205, 196, 0.2) !important;
+        background: white !important;
+        transform: scale(1.01) !important;
     }
 
     .custom-file {
-        margin-bottom: 0.5rem;
+        margin-bottom: 1rem !important;
+        position: relative !important;
+    }
+
+    .custom-file-input {
+        position: absolute !important;
+        left: -9999px !important;
+    }
+
+    .custom-file-label {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 1rem !important;
+        padding: 1.5rem 2rem !important;
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+        border: 3px dashed #dee2e6 !important;
+        border-radius: 15px !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        font-weight: 600 !important;
+        color: #6c757d !important;
+        min-height: 80px !important;
+        width: 100% !important;
+        justify-content: center !important;
+        font-size: 1.1rem !important;
+    }
+
+    .custom-file-label:hover {
+        border-color: #4ecdc4 !important;
+        background: linear-gradient(135deg, #e3f2fd, #f3e5f5) !important;
+        color: #4ecdc4 !important;
+        transform: translateY(-3px) !important;
+        box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3) !important;
+    }
+
+    .custom-file-label::before {
+        content: '\f093' !important;
+        font-family: 'Font Awesome 5 Free' !important;
+        font-weight: 900 !important;
+        font-size: 1.5rem !important;
+    }
+
+    .form-text {
+        font-size: 1rem !important;
+        margin-top: 0.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        font-weight: 500 !important;
+    }
+
+    .form-text.text-muted {
+        color: #6c757d !important;
+    }
+
+    .form-text.text-success {
+        color: #28a745 !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+    }
+
+    .form-text.text-success::before {
+        content: '\f00c' !important;
+        font-family: 'Font Awesome 5 Free' !important;
+        font-weight: 900 !important;
+        font-size: 1.2rem !important;
     }
 
     .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 2rem;
+        display: flex !important;
+        justify-content: center !important;
+        margin-top: 4rem !important;
+        padding: 3rem !important;
+        background: white !important;
+        border-radius: 20px !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+        border: 3px solid #4ecdc4 !important;
     }
 
     .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 1rem !important;
+        padding: 1.5rem 3rem !important;
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+        background: linear-gradient(135deg, #ff6b6b, #4ecdc4) !important;
+        border: none !important;
+        border-radius: 15px !important;
+        color: white !important;
+        cursor: pointer !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4) !important;
+        min-width: 250px !important;
+        justify-content: center !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-5px) scale(1.05) !important;
+        box-shadow: 0 20px 40px rgba(255, 107, 107, 0.6) !important;
+        background: linear-gradient(135deg, #ff5252, #26d0ce) !important;
+    }
+
+    .btn-primary:active {
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    .alert {
+        border-radius: 15px !important;
+        border: none !important;
+        padding: 1.5rem 2rem !important;
+        margin-bottom: 2rem !important;
+        font-weight: 600 !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+        animation: slideInDown 0.5s ease-out !important;
+        font-size: 1.1rem !important;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
+        color: #155724 !important;
+        border-left: 5px solid #28a745 !important;
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb) !important;
+        color: #721c24 !important;
+        border-left: 5px solid #dc3545 !important;
+    }
+
+    .alert-warning {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+        color: #856404 !important;
+        border-left: 5px solid #ffc107 !important;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1, #bee5eb) !important;
+        color: #0c5460 !important;
+        border-left: 5px solid #17a2b8 !important;
+    }
+
+    .close-alert {
+        background: none !important;
+        border: none !important;
+        font-size: 1.8rem !important;
+        font-weight: bold !important;
+        color: inherit !important;
+        cursor: pointer !important;
+        float: right !important;
+        margin-left: 1rem !important;
+        opacity: 0.7 !important;
+        transition: opacity 0.3s ease !important;
+    }
+
+    .close-alert:hover {
+        opacity: 1 !important;
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0 !important;
+            transform: translateY(-30px) !important;
+        }
+        to {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
     }
 
     @media (max-width: 768px) {
         .guidelines-form {
-            padding: 1rem;
+            padding: 1rem !important;
         }
 
         .form-section {
-            padding: 1.5rem;
+            padding: 2rem !important;
+            margin-bottom: 2rem !important;
+        }
+
+        .section-header {
+            flex-direction: column !important;
+            gap: 1rem !important;
+            text-align: center !important;
+        }
+
+        .section-icon {
+            width: 60px !important;
+            height: 60px !important;
+            font-size: 1.5rem !important;
+        }
+
+        .section-title h2 {
+            font-size: 1.6rem !important;
+        }
+
+        .btn-primary {
+            width: 100% !important;
+            padding: 1.2rem 2rem !important;
+        }
+
+        .form-actions {
+            padding: 2rem !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .guidelines-form {
+            padding: 0.5rem !important;
+        }
+
+        .form-section {
+            padding: 1.5rem !important;
+        }
+
+        .section-title h2 {
+            font-size: 1.4rem !important;
+        }
+
+        .rich-editor {
+            min-height: 180px !important;
+            padding: 1.2rem !important;
         }
     }
 </style>
@@ -192,13 +521,47 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
-    // Update file input labels
+    // Update file input labels with enhanced UX
     document.querySelectorAll('.custom-file-input').forEach(input => {
         input.addEventListener('change', function(e) {
-            const fileName = e.target.files[0].name;
+            const fileName = e.target.files[0]?.name || 'Choose file';
             const label = e.target.nextElementSibling;
             label.textContent = fileName;
+            
+            if (e.target.files[0]) {
+                label.style.borderColor = '#28a745';
+                label.style.background = 'linear-gradient(135deg, #d4edda, #c3e6cb)';
+                label.style.color = '#155724';
+            } else {
+                label.style.borderColor = '#dee2e6';
+                label.style.background = 'linear-gradient(135deg, #f8f9fa, #e9ecef)';
+                label.style.color = '#6c757d';
+            }
         });
+    });
+
+    // Add smooth scrolling for better UX
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add loading state to submit button
+    const form = document.querySelector('.guidelines-form');
+    const submitBtn = form.querySelector('.btn-primary');
+    
+    form.addEventListener('submit', function() {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
     });
 });
 </script>

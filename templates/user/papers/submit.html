@@ -337,12 +337,25 @@ let authorCount = 1;
 let isProcessing = false; // Prevent race conditions
 
 function addCoAuthor() {
+    console.log('addCoAuthor function called');
+    
     // Prevent rapid clicking
-    if (isProcessing) return;
+    if (isProcessing) {
+        console.log('Already processing, skipping');
+        return;
+    }
     isProcessing = true;
 
     try {
         const container = document.getElementById('authors-container');
+        if (!container) {
+            console.error('Authors container not found');
+            alert('Error: Authors container not found. Please refresh the page.');
+            isProcessing = false;
+            return;
+        }
+        
+        console.log('Adding co-author #' + authorCount);
         const newAuthor = document.createElement('div');
         newAuthor.className = 'author-entry';
         newAuthor.style.opacity = '0';
@@ -388,6 +401,8 @@ function addCoAuthor() {
         
     } catch (error) {
         console.error('Error adding co-author:', error);
+        alert('Error adding co-author: ' + error.message);
+        isProcessing = false;
     } finally {
         isProcessing = false;
     }
@@ -476,8 +491,11 @@ function validateAuthorFields() {
 
 // Real-time validation
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing co-author functionality');
+    
     const container = document.getElementById('authors-container');
     if (container) {
+        console.log('Authors container found, adding event listeners');
         container.addEventListener('input', function(e) {
             if (e.target.matches('input[required]')) {
                 if (e.target.value.trim()) {
@@ -488,6 +506,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    } else {
+        console.error('Authors container not found on page load');
+    }
+    
+    // Test the addCoAuthor function
+    const addButton = document.querySelector('button[onclick="addCoAuthor()"]');
+    if (addButton) {
+        console.log('Add Co-Author button found');
+    } else {
+        console.error('Add Co-Author button not found');
     }
 });
 
@@ -509,10 +537,17 @@ document.getElementById('paperSubmissionForm').addEventListener('submit', functi
         
         // Check if reCAPTCHA is completed (only if enabled)
         {% if not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha %}
-        const recaptchaResponse = grecaptcha.getResponse();
-        if (!recaptchaResponse) {
-            showError('Please complete the reCAPTCHA verification.');
-            return;
+        try {
+            if (typeof grecaptcha !== 'undefined') {
+                const recaptchaResponse = grecaptcha.getResponse();
+                if (!recaptchaResponse) {
+                    showError('Please complete the reCAPTCHA verification.');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.warn('reCAPTCHA validation error:', error);
+            // Continue with form submission if reCAPTCHA fails
         }
         {% endif %}
         

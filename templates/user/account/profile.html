@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - GIIR Conference 2024{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-user-circle"></i> My Profile</h1>
+    <p>Manage your account information and preferences</p>
+</div>
+
+<div class="content-section">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="profile-container">
+        <!-- Profile Information Card -->
+        <div class="profile-card">
+            <div class="card-header">
+                <h2><i class="fas fa-user"></i> Profile Information</h2>
+            </div>
+            <div class="card-content">
+                <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data" class="profile-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="full_name">Full Name *</label>
+                            <input type="text" id="full_name" name="full_name" value="{{ current_user.full_name }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" name="email" value="{{ current_user.email }}" required readonly>
+                            <small class="form-text">Email cannot be changed. Contact support if needed.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="institution">Institution/Organization</label>
+                            <input type="text" id="institution" name="institution" value="{{ current_user.institution or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <input type="text" id="department" name="department" value="{{ current_user.department or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="title">Title/Position</label>
+                            <input type="text" id="title" name="title" value="{{ current_user.title or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" value="{{ current_user.phone or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="country">Country</label>
+                            <select id="country" name="country">
+                                <option value="">Select Country</option>
+                                <option value="South Africa" {% if current_user.country == 'South Africa' %}selected{% endif %}>South Africa</option>
+                                <option value="United States" {% if current_user.country == 'United States' %}selected{% endif %}>United States</option>
+                                <option value="United Kingdom" {% if current_user.country == 'United Kingdom' %}selected{% endif %}>United Kingdom</option>
+                                <option value="Canada" {% if current_user.country == 'Canada' %}selected{% endif %}>Canada</option>
+                                <option value="Australia" {% if current_user.country == 'Australia' %}selected{% endif %}>Australia</option>
+                                <option value="Germany" {% if current_user.country == 'Germany' %}selected{% endif %}>Germany</option>
+                                <option value="France" {% if current_user.country == 'France' %}selected{% endif %}>France</option>
+                                <option value="Japan" {% if current_user.country == 'Japan' %}selected{% endif %}>Japan</option>
+                                <option value="China" {% if current_user.country == 'China' %}selected{% endif %}>China</option>
+                                <option value="India" {% if current_user.country == 'India' %}selected{% endif %}>India</option>
+                                <option value="Brazil" {% if current_user.country == 'Brazil' %}selected{% endif %}>Brazil</option>
+                                <option value="Other" {% if current_user.country == 'Other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input type="text" id="city" name="city" value="{{ current_user.city or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bio">Biography/Research Interests</label>
+                        <textarea id="bio" name="bio" rows="4" placeholder="Tell us about your research interests and background...">{{ current_user.bio or '' }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="website">Website/Research Profile</label>
+                        <input type="url" id="website" name="website" value="{{ current_user.website or '' }}" placeholder="https://example.com">
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Account Settings Card -->
+        <div class="profile-card">
+            <div class="card-header">
+                <h2><i class="fas fa-cog"></i> Account Settings</h2>
+            </div>
+            <div class="card-content">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h3>Change Password</h3>
+                        <p>Update your account password for enhanced security</p>
+                    </div>
+                    <button class="btn btn-outline-primary" onclick="showPasswordModal()">
+                        <i class="fas fa-key"></i> Change Password
+                    </button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h3>Email Preferences</h3>
+                        <p>Manage your email notification settings</p>
+                    </div>
+                    <button class="btn btn-outline-secondary" onclick="showEmailModal()">
+                        <i class="fas fa-envelope"></i> Manage Notifications
+                    </button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h3>Account Status</h3>
+                        <p>Your account is currently <span class="status-active">Active</span></p>
+                    </div>
+                    <span class="badge badge-success">Verified</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h3>Member Since</h3>
+                        <p>{{ current_user.created_at|datetime if current_user.created_at else 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conference Activity Card -->
+        <div class="profile-card">
+            <div class="card-header">
+                <h2><i class="fas fa-chart-line"></i> Conference Activity</h2>
+            </div>
+            <div class="card-content">
+                <div class="activity-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ registrations|length if registrations else 0 }}</div>
+                        <div class="stat-label">Registrations</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ submissions|length if submissions else 0 }}</div>
+                        <div class="stat-label">Paper Submissions</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ conferences|length if conferences else 0 }}</div>
+                        <div class="stat-label">Conferences</div>
+                    </div>
+                </div>
+
+                {% if registrations %}
+                <div class="recent-activity">
+                    <h3>Recent Registrations</h3>
+                    <div class="activity-list">
+                        {% for reg_id, reg in registrations.items() %}
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-ticket-alt"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">{{ reg.registration_type|replace('_', ' ')|title }}</div>
+                                <div class="activity-meta">{{ reg.created_at|datetime }}</div>
+                            </div>
+                            <div class="activity-status">
+                                <span class="status-badge status-{{ reg.status|lower }}">{{ reg.status|title }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Password Change Modal -->
+<div id="passwordModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-key"></i> Change Password</h3>
+            <span class="close" onclick="closePasswordModal()">&times;</span>
+        </div>
+        <form method="POST" action="{{ url_for('change_password') }}" class="password-form">
+            <div class="form-group">
+                <label for="current_password">Current Password</label>
+                <input type="password" id="current_password" name="current_password" required>
+            </div>
+            <div class="form-group">
+                <label for="new_password">New Password</label>
+                <input type="password" id="new_password" name="new_password" required>
+                <small class="form-text">Password must be at least 8 characters long</small>
+            </div>
+            <div class="form-group">
+                <label for="confirm_new_password">Confirm New Password</label>
+                <input type="password" id="confirm_new_password" name="confirm_new_password" required>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Password</button>
+                <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Email Preferences Modal -->
+<div id="emailModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-envelope"></i> Email Preferences</h3>
+            <span class="close" onclick="closeEmailModal()">&times;</span>
+        </div>
+        <form method="POST" action="{{ url_for('update_email_preferences') }}" class="email-form">
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="notify_registration" {% if current_user.email_preferences.notify_registration %}checked{% endif %}>
+                    Registration confirmations and updates
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="notify_papers" {% if current_user.email_preferences.notify_papers %}checked{% endif %}>
+                    Paper submission status updates
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="notify_announcements" {% if current_user.email_preferences.notify_announcements %}checked{% endif %}>
+                    Conference announcements and news
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="notify_schedule" {% if current_user.email_preferences.notify_schedule %}checked{% endif %}>
+                    Schedule changes and reminders
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Preferences</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEmailModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .profile-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+    .profile-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: var(--primary-color);
+        color: white;
+        padding: 1.5rem;
+    }
+
+    .card-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .card-content {
+        padding: 2rem;
+    }
+
+    .profile-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-color);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 0.75rem;
+        border: 2px solid #e1e5e9;
+        border-radius: 5px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .form-group input[readonly] {
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+
+    .form-text {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e1e5e9;
+    }
+
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+
+    .setting-info h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        color: var(--text-color);
+    }
+
+    .setting-info p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .status-active {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .activity-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+    }
+
+    .activity-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .activity-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-title {
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    .activity-meta {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-approved {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-rejected {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 0;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        background: var(--primary-color);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px 10px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+    }
+
+    .close {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover {
+        opacity: 0.7;
+    }
+
+    .password-form,
+    .email-form {
+        padding: 2rem;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .setting-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .activity-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .modal-content {
+            width: 95%;
+            margin: 10% auto;
+        }
+    }
+</style>
+
+<script>
+    function showPasswordModal() {
+        document.getElementById('passwordModal').style.display = 'block';
+    }
+
+    function closePasswordModal() {
+        document.getElementById('passwordModal').style.display = 'none';
+    }
+
+    function showEmailModal() {
+        document.getElementById('emailModal').style.display = 'block';
+    }
+
+    function closeEmailModal() {
+        document.getElementById('emailModal').style.display = 'none';
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        const passwordModal = document.getElementById('passwordModal');
+        const emailModal = document.getElementById('emailModal');
+        
+        if (event.target === passwordModal) {
+            closePasswordModal();
+        }
+        if (event.target === emailModal) {
+            closeEmailModal();
+        }
+    }
+
+    // Password confirmation validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const newPassword = document.getElementById('new_password');
+        const confirmPassword = document.getElementById('confirm_new_password');
+        
+        if (newPassword && confirmPassword) {
+            confirmPassword.addEventListener('input', function() {
+                if (newPassword.value !== confirmPassword.value) {
+                    confirmPassword.setCustomValidity('Passwords do not match');
+                } else {
+                    confirmPassword.setCustomValidity('');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

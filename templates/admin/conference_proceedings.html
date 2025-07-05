@@ -1,0 +1,250 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Conference Proceedings - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mt-4 mb-2">Conference Proceedings Management</h1>
+            <p class="text-muted">Manage the content and templates for the Conference Proceedings page</p>
+        </div>
+        <div>
+            <a href="{{ url_for('conference_proceedings') }}" target="_blank" class="btn btn-outline-primary">
+                <i class="fas fa-eye"></i> View Page
+            </a>
+        </div>
+    </div>
+
+    <!-- Content Management Section -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-edit me-2"></i>
+                    Page Content Management
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_conference_proceedings_content') }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="page_title" class="form-label">Page Title</label>
+                                    <input type="text" id="page_title" name="page_title" class="form-control" 
+                                           value="{{ content.page_title if content else 'Conference Proceedings' }}"
+                                           placeholder="Conference Proceedings">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="page_subtitle" class="form-label">Page Subtitle</label>
+                                    <input type="text" id="page_subtitle" name="page_subtitle" class="form-control" 
+                                           value="{{ content.page_subtitle if content else 'Manuscript templates and guidelines for conference paper submission' }}"
+                                           placeholder="Manuscript templates and guidelines for conference paper submission">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="hero_description" class="form-label">Hero Section Description</label>
+                            <textarea id="hero_description" name="hero_description" class="form-control" rows="3"
+                                      placeholder="The purpose of a conference template is to provide a consistent format for papers appearing in the conference proceedings. GIIR Conference strongly encourages use of the conference manuscript templates provided below.">{{ content.hero_description if content else 'The purpose of a conference template is to provide a consistent format for papers appearing in the conference proceedings. GIIR Conference strongly encourages use of the conference manuscript templates provided below.' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="important_notice_title" class="form-label">Important Notice Title</label>
+                            <input type="text" id="important_notice_title" name="important_notice_title" class="form-control" 
+                                   value="{{ content.important_notice_title if content else 'Important Notice' }}"
+                                   placeholder="Important Notice">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="important_notice_content" class="form-label">Important Notice Content</label>
+                            <textarea id="important_notice_content" name="important_notice_content" class="form-control" rows="4"
+                                      placeholder="Conference templates contain guidance text for composing and formatting conference papers. Please ensure that all guidance text is removed from your conference paper prior to submission to the conference.">{{ content.important_notice_content if content else 'Conference templates contain guidance text for composing and formatting conference papers. Please ensure that all guidance text is removed from your conference paper prior to submission to the conference.' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="important_notice_warning" class="form-label">Important Notice Warning</label>
+                            <input type="text" id="important_notice_warning" name="important_notice_warning" class="form-control" 
+                                   value="{{ content.important_notice_warning if content else 'Failure to remove template text from your paper may result in your paper not being published.' }}"
+                                   placeholder="Failure to remove template text from your paper may result in your paper not being published.">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes_section_title" class="form-label">Notes Section Title</label>
+                            <input type="text" id="notes_section_title" name="notes_section_title" class="form-control" 
+                                   value="{{ content.notes_section_title if content else 'Important Notes' }}"
+                                   placeholder="Important Notes">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="note_organizers_title" class="form-label">For Conference Organizers Title</label>
+                                    <input type="text" id="note_organizers_title" name="note_organizers_title" class="form-control" 
+                                           value="{{ content.note_organizers_title if content else 'For Conference Organizers' }}"
+                                           placeholder="For Conference Organizers">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="note_organizers_content" class="form-label">For Conference Organizers Content</label>
+                                    <textarea id="note_organizers_content" name="note_organizers_content" class="form-control" rows="3"
+                                              placeholder="The use of conference manuscript templates will greatly reduce the chance for errors in metadata and indexing. Using these templates helps ensure proper formatting and reduces publication delays.">{{ content.note_organizers_content if content else 'The use of conference manuscript templates will greatly reduce the chance for errors in metadata and indexing. Using these templates helps ensure proper formatting and reduces publication delays.' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="note_linking_title" class="form-label">Linking Guidelines Title</label>
+                                    <input type="text" id="note_linking_title" name="note_linking_title" class="form-control" 
+                                           value="{{ content.note_linking_title if content else 'Linking Guidelines' }}"
+                                           placeholder="Linking Guidelines">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="note_linking_content" class="form-label">Linking Guidelines Content</label>
+                                    <textarea id="note_linking_content" name="note_linking_content" class="form-control" rows="3"
+                                              placeholder="You may link to this webpage in its entirety. Individual file links may be updated or replaced without notice, so direct page linking is recommended.">{{ content.note_linking_content if content else 'You may link to this webpage in its entirety. Individual file links may be updated or replaced without notice, so direct page linking is recommended.' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="note_acknowledgement_title" class="form-label">Template Acknowledgement Title</label>
+                            <input type="text" id="note_acknowledgement_title" name="note_acknowledgement_title" class="form-control" 
+                                   value="{{ content.note_acknowledgement_title if content else 'Template Acknowledgement' }}"
+                                   placeholder="Template Acknowledgement">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="note_acknowledgement_content" class="form-label">Template Acknowledgement Content</label>
+                            <textarea id="note_acknowledgement_content" name="note_acknowledgement_content" class="form-control" rows="3"
+                                      placeholder="Grateful acknowledgement is made to the academic community and professional organizations that have contributed to the development of these standardized conference templates.">{{ content.note_acknowledgement_content if content else 'Grateful acknowledgement is made to the academic community and professional organizations that have contributed to the development of these standardized conference templates.' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="empty_state_title" class="form-label">Empty State Title (When No Templates)</label>
+                            <input type="text" id="empty_state_title" name="empty_state_title" class="form-control" 
+                                   value="{{ content.empty_state_title if content else 'No Templates Available' }}"
+                                   placeholder="No Templates Available">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="empty_state_message" class="form-label">Empty State Message</label>
+                            <textarea id="empty_state_message" name="empty_state_message" class="form-control" rows="2"
+                                      placeholder="Conference templates will be available soon. Please check back later.">{{ content.empty_state_message if content else 'Conference templates will be available soon. Please check back later.' }}</textarea>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" style="padding: 12px 24px; font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 20px; border: 3px solid #007bff; box-shadow: 0 4px 8px rgba(0,123,255,0.3);">
+                                <i class="fas fa-save me-2"></i> Save Content Changes
+                            </button>
+                        </div>
+                        <!-- Debug: Save button should be visible above this comment -->
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Content Guidelines
+                </div>
+                <div class="card-body">
+                    <h6>Content Management Tips:</h6>
+                    <ul class="small">
+                        <li><strong>Page Title:</strong> Main heading displayed at the top</li>
+                        <li><strong>Subtitle:</strong> Brief description under the main title</li>
+                        <li><strong>Hero Description:</strong> Main introduction text</li>
+                        <li><strong>Important Notice:</strong> Critical information for users</li>
+                        <li><strong>Notes Section:</strong> Additional helpful information</li>
+                    </ul>
+                    
+                    <hr>
+                    
+                    <h6>Best Practices:</h6>
+                    <ul class="small">
+                        <li>Keep titles concise and clear</li>
+                        <li>Use professional, academic tone</li>
+                        <li>Make important notices stand out</li>
+                        <li>Test content changes on the live page</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template File Management -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-file-upload me-2"></i>
+            Template File Management
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Template Management Moved to Downloads</strong>
+                    </div>
+                    <p class="text-muted mb-4">
+                        Conference proceedings templates are now managed through the Downloads section. 
+                        This provides a unified interface for all document management including templates, 
+                        guidelines, and other conference materials.
+                    </p>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin_downloads') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-external-link-alt me-2"></i>
+                            Go to Downloads Management
+                        </a>
+                        <a href="{{ url_for('conference_proceedings') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-eye me-2"></i>
+                            View Conference Proceedings Page
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Template Management
+                        </div>
+                        <div class="card-body">
+                            <h6>What's Available:</h6>
+                            <ul class="small">
+                                <li><strong>Manuscript Templates:</strong> Word/LaTeX templates</li>
+                                <li><strong>Author Guidelines:</strong> Submission instructions</li>
+                                <li><strong>Conference Proceedings:</strong> Published papers</li>
+                                <li><strong>Presentation Templates:</strong> PowerPoint templates</li>
+                                <li><strong>Bibliography Files:</strong> BibTeX references</li>
+                                <li><strong>LaTeX Templates:</strong> TeX files and packages</li>
+                            </ul>
+                            
+                            <hr>
+                            
+                            <h6>Benefits:</h6>
+                            <ul class="small">
+                                <li>Unified document management</li>
+                                <li>Better organization by category</li>
+                                <li>Consistent upload interface</li>
+                                <li>Centralized file storage</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function deleteTemplate(templateId, templateName) {
+    document.getElementById('templateName').textContent = templateName;
+    document.getElementById('deleteForm').action = '/admin/conference-proceedings/delete/' + templateId;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %} 

@@ -17,9 +17,15 @@
             
             {% if guidelines and guidelines.abstract_template %}
                 <div class="template-download">
-                    <a href="{{ guidelines.abstract_template }}" class="btn btn-primary">
-                        <i class="fas fa-download"></i> Download Abstract Template
-                    </a>
+                    {% if 'firebasestorage.googleapis.com' in guidelines.abstract_template %}
+                        <a href="{{ url_for('download_firebase_file', url=guidelines.abstract_template) }}" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download Abstract Template
+                        </a>
+                    {% else %}
+                        <a href="{{ guidelines.abstract_template }}" class="btn btn-primary" download>
+                            <i class="fas fa-download"></i> Download Abstract Template
+                        </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
@@ -37,9 +43,15 @@
             
             {% if guidelines and guidelines.paper_template %}
                 <div class="template-download">
-                    <a href="{{ guidelines.paper_template }}" class="btn btn-primary">
-                        <i class="fas fa-download"></i> Download Paper Template
-                    </a>
+                    {% if 'firebasestorage.googleapis.com' in guidelines.paper_template %}
+                        <a href="{{ url_for('download_firebase_file', url=guidelines.paper_template) }}" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download Paper Template
+                        </a>
+                    {% else %}
+                        <a href="{{ guidelines.paper_template }}" class="btn btn-primary" download>
+                            <i class="fas fa-download"></i> Download Paper Template
+                        </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
