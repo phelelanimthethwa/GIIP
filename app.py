@@ -5598,6 +5598,150 @@ def get_conference_data(conference_id):
         print(f"Error getting conference data: {e}")
         return None
 
+def _get_about_content_conference(conference_id: str):
+    """Resolve a conference-like object from Admin About Content future_conferences when using synthetic IDs.
+
+    Synthetic ID pattern: about_future_{year}_{idx}
+    """
+    try:
+        if not conference_id or not conference_id.startswith('about_future_'):
+            return None
+
+        # Timezone setup
+        sast_tz = pytz.timezone('Africa/Johannesburg')
+
+        # Local helpers (match discover route)
+        def _parse_date(value):
+            try:
+                if not value:
+                    return None
+                text = str(value)
+                dt = None
+                try:
+                    dt = datetime.fromisoformat(text.replace('Z', '+00:00'))
+                except Exception:
+                    dt = datetime.strptime(text, '%Y-%m-%d')
+                if getattr(dt, 'tzinfo', None) is None:
+                    dt = sast_tz.localize(dt)
+                else:
+                    dt = dt.astimezone(sast_tz)
+                return dt
+            except Exception:
+                return None
+
+        month_map = {
+            'jan': 1, 'january': 1,
+            'feb': 2, 'february': 2,
+            'mar': 3, 'march': 3,
+            'apr': 4, 'april': 4,
+            'may': 5,
+            'jun': 6, 'june': 6,
+            'jul': 7, 'july': 7,
+            'aug': 8, 'august': 8,
+            'sep': 9, 'sept': 9, 'september': 9,
+            'oct': 10, 'october': 10,
+            'nov': 11, 'november': 11,
+            'dec': 12, 'december': 12,
+        }
+
+        def _build_date(y_str, d_entry):
+            try:
+                day_raw = d_entry.get('date')
+                month_raw = d_entry.get('month')
+                day = str(day_raw).strip() if day_raw is not None else ''
+                month_txt = str(month_raw).strip().lower() if month_raw is not None else ''
+                month_num = None
+                if month_txt.isdigit():
+                    try:
+                        month_num = int(month_txt)
+                    except Exception:
+                        month_num = None
+                if month_num is None:
+                    month_num = month_map.get(month_txt)
+                if not (y_str and day and month_num):
+                    return None
+                iso_str = f"{int(y_str):04d}-{int(month_num):02d}-{int(day):02d}"
+                return _parse_date(iso_str)
+            except Exception:
+                return None
+
+        about_content = db.reference('about_content').get() or {}
+        future_section = (about_content.get('future_conferences') or {})
+        if not (future_section.get('section_enabled') and isinstance(future_section.get('conferences'), list)):
+            return None
+
+        # Extract index from id
+        # Expected pattern: about_future_{year}_{idx}
+        try:
+            parts = conference_id.split('_')
+            idx = int(parts[-1])
+        except Exception:
+            idx = None
+
+        # Iterate and match by index order
+        current_idx = -1
+        for conf in future_section['conferences']:
+            if not conf or not conf.get('enabled'):
+                continue
+            current_idx += 1
+            if idx is not None and current_idx != idx:
+                continue
+
+            year = str(conf.get('year') or '').strip()
+            title = (conf.get('title') or '').strip()
+            dates = conf.get('dates') or []
+            if not (title and year and dates):
+                continue
+
+            start_dt = _build_date(year, dates[0]) if dates else None
+            end_dt = _build_date(year, dates[-1]) if dates else start_dt
+            if not start_dt:
+                continue
+
+            now_sast = datetime.now(sast_tz)
+            if start_dt and now_sast < start_dt:
+                status_val = 'upcoming'
+            elif end_dt and now_sast > end_dt:
+                status_val = 'past'
+            else:
+                status_val = 'active'
+
+            platform = (conf.get('platform') or '').strip()
+            desc_bits = []
+            if platform:
+                desc_bits.append(f"Platform: {platform}")
+            if dates:
+                human_dates = ", ".join([
+                    f"{d.get('date')}/{d.get('month')}" for d in dates if d
+                ])
+                if human_dates:
+                    desc_bits.append(f"Dates: {human_dates}")
+            description = " | ".join(desc_bits)
+
+            return {
+                'basic_info': {
+                    'name': title,
+                    'year': year,
+                    'description': description,
+                    'start_date': start_dt.isoformat() if start_dt else '',
+                    'end_date': end_dt.isoformat() if end_dt else '',
+                    'location': '',
+                    'timezone': 'Africa/Johannesburg',
+                    'website': '',
+                    'status': status_val
+                },
+                'settings': {
+                    'registration_enabled': False if status_val == 'past' else False,
+                    'paper_submission_enabled': False,
+                    'review_enabled': False
+                }
+            }
+
+        return None
+    except Exception as e:
+        print(f"Error resolving about_content conference: {e}")
+        return None
+
 def get_all_conferences():
     """Get all conferences from Firebase"""
     try:
@@ -5614,15 +5758,232 @@ def conference_discover():
     try:
         conferences = get_all_conferences()
         
-        # Filter and sort conferences
-        active_conferences = {}
-        for conf_id, conf_data in conferences.items():
-            if conf_data and 'basic_info' in conf_data:
-                active_conferences[conf_id] = conf_data
-        
-        return render_template('conferences/discover.html',
-                             conferences=active_conferences,
-                             site_design=get_site_design())
+        # Normalize, compute status, and sort
+        normalized_conferences = {}
+        # Use South African Standard Time (UTC+02:00) for all comparisons
+        sast_tz = pytz.timezone('Africa/Johannesburg')
+        now = datetime.now(sast_tz)
+
+        # Helper to parse to SAST aware datetimes
+        def _parse_date(value):
+            """Parse to timezone-aware datetime in SAST. If input has timezone, convert to SAST; otherwise assume SAST."""
+            try:
+                if not value:
+                    return None
+                text = str(value)
+                dt = None
+                try:
+                    # Handle ISO strings, with or without timezone
+                    dt = datetime.fromisoformat(text.replace('Z', '+00:00'))
+                except Exception:
+                    # Fallback to common date-only format
+                    dt = datetime.strptime(text, '%Y-%m-%d')
+                if getattr(dt, 'tzinfo', None) is None:
+                    # Assume SAST if tz is missing
+                    dt = sast_tz.localize(dt)
+                else:
+                    # Convert any tz-aware datetime to SAST
+                    dt = dt.astimezone(sast_tz)
+                return dt
+            except Exception:
+                return None
+
+        # 1) Pull future/upcoming conferences from admin About Content
+        try:
+            about_content = db.reference('about_content').get() or {}
+            future_section = (about_content.get('future_conferences') or {})
+            about_confs_only = []
+            if future_section.get('section_enabled') and isinstance(future_section.get('conferences'), list):
+                month_map = {
+                    'jan': 1, 'january': 1,
+                    'feb': 2, 'february': 2,
+                    'mar': 3, 'march': 3,
+                    'apr': 4, 'april': 4,
+                    'may': 5,
+                    'jun': 6, 'june': 6,
+                    'jul': 7, 'july': 7,
+                    'aug': 8, 'august': 8,
+                    'sep': 9, 'sept': 9, 'september': 9,
+                    'oct': 10, 'october': 10,
+                    'nov': 11, 'november': 11,
+                    'dec': 12, 'december': 12,
+                }
+
+                for idx, conf in enumerate(future_section['conferences']):
+                    if not conf or not conf.get('enabled'):
+                        continue
+                    year = str(conf.get('year') or '').strip()
+                    title = (conf.get('title') or '').strip()
+                    dates = conf.get('dates') or []
+                    # Build start/end from first/last provided date entry
+                    def _build_date(d_entry):
+                        try:
+                            day_raw = d_entry.get('date')
+                            month_raw = d_entry.get('month')
+                            # Coerce types
+                            day = str(day_raw).strip() if day_raw is not None else ''
+                            month_txt = str(month_raw).strip().lower() if month_raw is not None else ''
+                            # Support numeric months (e.g., '9' or '09' or 9)
+                            month_num = None
+                            if month_txt.isdigit():
+                                try:
+                                    month_num = int(month_txt)
+                                except Exception:
+                                    month_num = None
+                            if month_num is None:
+                                month_num = month_map.get(month_txt)
+                            if not (year and day and month_num):
+                                return None
+                            # zero-pad month/day
+                            y = int(year)
+                            m = int(month_num)
+                            d = int(day)
+                            iso_str = f"{y:04d}-{m:02d}-{d:02d}"
+                            return _parse_date(iso_str)
+                        except Exception as e:
+                            print(f"_build_date parse error: {e} | entry={d_entry}")
+                            return None
+
+                    start_dt = _build_date(dates[0]) if dates else None
+                    end_dt = _build_date(dates[-1]) if dates else start_dt
+
+                    # Skip incomplete entries (avoid dummy placeholders)
+                    if not title or not year or not start_dt:
+                        continue
+
+                    # Create a synthetic ID for discover listing (stable-ish)
+                    conf_id = f"about_future_{year}_{idx}"
+                    # Build a friendly description from About Content fields
+                    platform = (conf.get('platform') or '').strip()
+                    desc_bits = []
+                    if platform:
+                        desc_bits.append(f"Platform: {platform}")
+                    if dates:
+                        human_dates = ", ".join([
+                            f"{d.get('date')}/{d.get('month')}" for d in dates if d
+                        ])
+                        if human_dates:
+                            desc_bits.append(f"Dates: {human_dates}")
+                    description = " | ".join(desc_bits)
+
+                    # Compute status from dates (SAST-aware)
+                    if start_dt and now < start_dt:
+                        status_val = 'upcoming'
+                    elif end_dt and now > end_dt:
+                        status_val = 'past'
+                    else:
+                        status_val = 'active'
+
+                    about_confs_only.append((conf_id, {
+                        'basic_info': {
+                            'name': title,
+                            'year': year,
+                            'description': description,
+                            'start_date': start_dt.isoformat() if start_dt else '',
+                            'end_date': end_dt.isoformat() if end_dt else '',
+                            'location': '',
+                            'timezone': 'Africa/Johannesburg',
+                            'website': '',
+                            'status': status_val
+                        },
+                        'settings': {
+                            # Never open registration if past
+                            'registration_enabled': False if status_val == 'past' else False,
+                            'paper_submission_enabled': False,
+                            'review_enabled': False
+                        }
+                    }))
+            # If About Content defines future conferences, prefer showing ONLY those
+            if about_confs_only:
+                normalized_conferences = {cid: data for cid, data in about_confs_only}
+                conferences = {}  # skip merging runtime conferences
+        except Exception as e:
+            print(f"Error reading about_content for future conferences: {e}")
+
+        # 2) Merge any explicit conferences from /conferences tree (admin-defined runtime conferences)
+        for conf_id, conf_data in (conferences or {}).items():
+            if not conf_data:
+                continue
+
+            # Ensure basic_info/settings exist to avoid template undefineds
+            basic = conf_data.get('basic_info', {}) or {}
+            conf_data.setdefault('basic_info', basic)
+            conf_data.setdefault('settings', conf_data.get('settings', {}) or {})
+            start_raw = basic.get('start_date')
+            end_raw = basic.get('end_date')
+
+            # Parse dates safely (supports 'YYYY-MM-DD' or ISO8601)
+            def _parse_date(value):
+                """Parse to timezone-aware datetime in SAST. If input has timezone, convert to SAST; otherwise assume SAST."""
+                try:
+                    if not value:
+                        return None
+                    text = str(value)
+                    dt = None
+                    try:
+                        # Handle ISO strings, with or without timezone
+                        dt = datetime.fromisoformat(text.replace('Z', '+00:00'))
+                    except Exception:
+                        # Fallback to common date-only format
+                        dt = datetime.strptime(text, '%Y-%m-%d')
+                    if getattr(dt, 'tzinfo', None) is None:
+                        # Assume SAST if tz is missing
+                        dt = sast_tz.localize(dt)
+                    else:
+                        # Convert any tz-aware datetime to SAST
+                        dt = dt.astimezone(sast_tz)
+                    return dt
+                except Exception:
+                    return None
+
+            start_dt = _parse_date(start_raw)
+            end_dt = _parse_date(end_raw)
+
+            # Compute/normalize status
+            computed_status = (basic.get('status') or '').strip().lower()
+            # Normalize common synonyms if admin provided a value
+            synonym_map = {
+                'future': 'upcoming',
+                'scheduled': 'upcoming',
+                'soon': 'upcoming',
+                'open': 'active',
+                'live': 'active',
+                'closed': 'past',
+                'ended': 'past',
+                'finished': 'past'
+            }
+            if computed_status in synonym_map:
+                computed_status = synonym_map[computed_status]
+
+            if not computed_status:
+                if start_dt and now < start_dt:
+                    computed_status = 'upcoming'
+                elif end_dt and now > end_dt:
+                    computed_status = 'past'
+                else:
+                    computed_status = 'active'
+
+            # Inject back so templates can rely on basic_info.status
+            conf_data['basic_info']['status'] = computed_status
+            # Ensure registration isn't open for past conferences
+            if computed_status == 'past':
+                conf_data['settings']['registration_enabled'] = False
+
+            normalized_conferences[conf_id] = conf_data
+
+        # Optional: sort by start date ascending (upcoming first)
+        def _sort_key(item):
+            start_val = item[1].get('basic_info', {}).get('start_date')
+            parsed = _parse_date(start_val)
+            return parsed or now
+
+        conferences_sorted = dict(sorted(normalized_conferences.items(), key=_sort_key))
+
+        return render_template(
+            'conferences/discover.html',
+            conferences=conferences_sorted,
+            site_design=get_site_design()
+        )
     except Exception as e:
         print(f"Error loading conferences: {e}")
         flash('Error loading conferences.', 'error')
@@ -5635,6 +5996,9 @@ def conference_details(conference_id):
     """Conference details page"""
     try:
         conference = get_conference_data(conference_id)
+        if not conference:
+            # Try resolving from Admin About Content synthetic entries
+            conference = _get_about_content_conference(conference_id)
         if not conference:
             flash('Conference not found.', 'error')
             return redirect(url_for('conference_discover'))

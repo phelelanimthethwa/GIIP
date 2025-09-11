@@ -31,6 +31,26 @@
         </div>
     </section>
 
+    <section class="zoom-presentation">
+        <h2>ZOOM PRESENTATION PROCEDURE</h2>
+        <div class="guidelines-content">
+            <p><strong>3.2 ZOOM Presentation Procedure</strong></p>
+            <p>In order to restrain our participants from travelling during pandemic covid-19 we have introduced this new feature of virtual conferencing. This is a convenient way of sharing and discussion.</p>
+            <p><strong>HOW IT WORKS:</strong></p>
+            <p>At first, send us your presentation slides (PPT).</p>
+            <ul>
+                <li>Download Zoom App (Mobile/Notepad/Tablet)</li>
+                <li>Create (Sign-Up) a Zoom Account (www.zoom.us)</li>
+                <li>We will send a meeting invite with an embedded video link. You can find the Meeting ID and Password.</li>
+                <li>Verify your camera and audio input and network connectivity set up before joining the conference call and to share your screen.</li>
+                <li>You can leave the meeting whenever you want.</li>
+            </ul>
+            <p><strong>N.B:</strong> Maximum Time Limit for Presentation: 15 Minutes</p>
+            <p>A special category has been created in the conference registration page.</p>
+            <p><em>Subsection under VIRTUAL CONFERENCE</em> [NEW]</p>
+        </div>
+    </section>
+
     <section class="paper-format">
         <h2>FULL PAPER</h2>
         <div class="guidelines-content">
@@ -82,6 +102,22 @@
                 </ul>
                 <p>Your Virtual Presentation will be scheduled along with other oral presentations within the sessions.</p>
                 <p>See the <a href="{{ url_for('video_conference') }}" class="link-primary">Video Conference</a> page for technical details.</p>
+
+                <h3>ZOOM Presentation Procedure</h3>
+                <p><strong>3.2 ZOOM Presentation Procedure</strong></p>
+                <p>In order to restrain our participants from travelling during pandemic covid-19 we have introduced this new feature of virtual conferencing. This is a convenient way of sharing and discussion.</p>
+                <p><strong>HOW IT WORKS:</strong></p>
+                <p>At first, send us your presentation slides (PPT).</p>
+                <ul>
+                    <li>Download Zoom App (Mobile/Notepad/Tablet)</li>
+                    <li>Create (Sign-Up) a Zoom Account (www.zoom.us)</li>
+                    <li>We will send a meeting invite with an embedded video link. You can find the Meeting ID and Password.</li>
+                    <li>Verify your camera and audio input and network connectivity set up before joining the conference call and to share your screen.</li>
+                    <li>You can leave the meeting whenever you want.</li>
+                </ul>
+                <p><strong>N.B:</strong> Maximum Time Limit for Presentation: 15 Minutes</p>
+                <p>A special category has been created in the conference registration page.</p>
+                <p><em>Subsection under VIRTUAL CONFERENCE</em> [NEW]</p>
             {% endif %}
         </div>
     </section>
@@ -145,12 +181,31 @@
     }
 
     .guidelines-content ul {
-        margin-left: 1.5rem;
-        margin-bottom: 1rem;
+        margin-left: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        list-style: disc !important;
+        list-style-position: outside !important;
+        padding-left: 1.25rem !important;
+    }
+
+    .guidelines-content ol {
+        margin-left: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        list-style: decimal !important;
+        list-style-position: outside !important;
+        padding-left: 1.25rem !important;
     }
 
     .guidelines-content li {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.5rem !important;
+        display: list-item !important;
+        list-style: inherit !important;
+    }
+
+    /* Ensure nested lists also render bullets/numbers */
+    .guidelines-content li ul,
+    .guidelines-content li ol {
+        margin-top: 0.5rem !important;
     }
 
     .template-download {
