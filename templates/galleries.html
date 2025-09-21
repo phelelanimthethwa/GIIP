@@ -1,0 +1,198 @@
+{% extends "user/base.html" %}
+
+{% block title %}Conference Galleries - GIIR{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="header-content text-center">
+            <h1 class="display-4">
+                <i class="fas fa-images me-3"></i>
+                Conference Galleries
+            </h1>
+            <p class="lead">Explore memorable moments from our conferences</p>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    {% if conferences %}
+    <div class="row">
+        {% for conference_id, conference in conferences.items() %}
+        <div class="col-lg-6 col-xl-4 mb-4">
+            <div class="card h-100 conference-gallery-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="text-center mb-3">
+                        <h5 class="card-title">{{ conference.basic_info.name }}</h5>
+                        <p class="card-text text-muted">
+                            {% if conference.basic_info.year %}
+                            {{ conference.basic_info.year }}
+                            {% else %}
+                            2024
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Gallery Preview -->
+                    <div class="gallery-preview mb-3" data-conference-id="{{ conference_id }}">
+                        <div class="gallery-placeholder text-center py-4">
+                            <i class="fas fa-images fa-3x text-muted mb-2"></i>
+                            <p class="text-muted small">Loading gallery...</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto text-center">
+                        <a href="{{ url_for('conference_gallery', conference_id=conference_id) }}" class="btn btn-primary">
+                            <i class="fas fa-eye me-1"></i>
+                            View Gallery
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-images fa-4x text-muted mb-3"></i>
+        <h3>No Conference Galleries Available</h3>
+        <p class="text-muted">Conference galleries will appear here once they are made public by administrators.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Loading Animation Styles -->
+<style>
+.gallery-placeholder {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 8px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.conference-gallery-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.conference-gallery-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.gallery-preview {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+    max-height: 200px;
+    overflow: hidden;
+}
+
+.gallery-grid img {
+    width: 100%;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
+}
+
+.gallery-grid img:hover {
+    transform: scale(1.05);
+}
+
+.gallery-count {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+
+    .gallery-grid img {
+        height: 50px;
+    }
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Load gallery previews for each conference
+    $('.gallery-preview').each(function() {
+        const conferenceId = $(this).data('conference-id');
+        const $preview = $(this);
+
+        // Get gallery images for this conference (public API)
+        $.get(`/api/conference-galleries/${conferenceId}/images`)
+            .done(function(images) {
+                if (images && images.length > 0) {
+                    let previewHtml = '<div class="gallery-grid">';
+
+                    // Show up to 6 images in preview
+                    const previewImages = images.slice(0, 6);
+                    previewImages.forEach(function(image) {
+                        previewHtml += `<img src="${image.url}" alt="${image.original_name}" loading="lazy">`;
+                    });
+
+                    previewHtml += '</div>';
+                    previewHtml += `<div class="gallery-count">${images.length} image${images.length !== 1 ? 's' : ''}</div>`;
+
+                    $preview.html(previewHtml);
+                } else {
+                    $preview.html(`
+                        <div class="text-center py-4">
+                            <i class="fas fa-camera fa-2x text-muted mb-2"></i>
+                            <p class="text-muted small">No images yet</p>
+                        </div>
+                    `);
+                }
+            })
+            .fail(function(xhr, status, error) {
+                console.error('Error loading gallery images for', conferenceId, ':', error);
+                $preview.html(`
+                    <div class="text-center py-4">
+                        <i class="fas fa-camera fa-2x text-muted mb-2"></i>
+                        <p class="text-muted small">No images yet</p>
+                    </div>
+                `);
+            });
+    });
+
+    // Add click handlers to conference cards
+    $('.conference-gallery-card').click(function(e) {
+        // Don't trigger if clicking on the view button
+        if (!$(e.target).hasClass('btn')) {
+            const link = $(this).find('.btn').attr('href');
+            if (link) {
+                window.location.href = link;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

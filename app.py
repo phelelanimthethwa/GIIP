@@ -5597,7 +5597,8 @@ def inject_admin_menu():
         {'text': 'Email Templates', 'url': 'admin_email_templates', 'icon': 'envelope-open-text'},
         {'text': 'Email Settings', 'url': 'admin_email_settings', 'icon': 'cog'},
         {'text': 'Downloads', 'url': 'admin_downloads', 'icon': 'download'},
-        {'text': 'Conference Proceedings', 'url': 'admin_conference_proceedings', 'icon': 'book-open'},
+                {'text': 'Conference Proceedings', 'url': 'admin_conference_proceedings', 'icon': 'book-open'},
+                {'text': 'Conference Galleries', 'url': 'admin_conference_galleries', 'icon': 'images'},
     ]
     return dict(admin_menu=admin_menu)
 
@@ -5842,6 +5843,241 @@ def _get_about_content_conference(conference_id: str):
     except Exception as e:
         print(f"Error resolving about_content conference: {e}")
         return None
+
+@app.route('/admin/conference-galleries')
+@login_required
+@admin_required
+def admin_conference_galleries():
+    """Admin interface for managing conference galleries"""
+    try:
+        # Get all conferences
+        conferences = get_all_conferences()
+
+        return render_template('admin/conference_galleries.html',
+                             conferences=conferences,
+                             site_design=get_site_design())
+
+    except Exception as e:
+        print(f"Error loading conference galleries: {e}")
+        flash(f'Error loading conference galleries: {str(e)}', 'danger')
+        return render_template('admin/conference_galleries.html',
+                             conferences={},
+                             site_design=get_site_design())
+
+@app.route('/admin/conference-galleries/<conference_id>/upload', methods=['POST'])
+@login_required
+@admin_required
+def upload_gallery_image(conference_id):
+    """Upload an image to a conference gallery"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'error': 'No image file provided'}), 400
+
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+        if file and allowed_file(file.filename):
+            # Generate unique filename
+            filename = secure_filename(f"{conference_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+            file_path = f"gallery/{conference_id}/{filename}"
+
+            # Upload to Firebase Storage
+            bucket = storage.bucket()
+            blob = bucket.blob(file_path)
+            blob.upload_from_file(file, content_type=file.content_type)
+            blob.make_public()
+
+            # Get public URL
+            image_url = blob.public_url
+
+            # Save image metadata to database
+            image_data = {
+                'filename': filename,
+                'original_name': file.filename,
+                'url': image_url,
+                'uploaded_by': current_user.email,
+                'uploaded_at': datetime.now().isoformat(),
+                'conference_id': conference_id,
+                'file_size': len(file.read()),
+                'content_type': file.content_type
+            }
+
+            # Reset file pointer
+            file.seek(0)
+
+            gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+            new_image_ref = gallery_ref.push(image_data)
+
+            return jsonify({
+                'success': True,
+                'message': 'Image uploaded successfully',
+                'image_id': new_image_ref.key,
+                'image_url': image_url
+            })
+
+        return jsonify({'success': False, 'error': 'Invalid file type'}), 400
+
+    except Exception as e:
+        print(f"Error uploading gallery image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/images')
+@login_required
+@admin_required
+def get_gallery_images(conference_id):
+    """Get all images for a conference gallery"""
+    try:
+        gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+        images = gallery_ref.get() or {}
+
+        # Convert to list and sort by upload date
+        images_list = []
+        for image_id, image_data in images.items():
+            image_data['image_id'] = image_id
+            images_list.append(image_data)
+
+        images_list.sort(key=lambda x: x.get('uploaded_at', ''), reverse=True)
+
+        return jsonify(images_list)
+
+    except Exception as e:
+        print(f"Error getting gallery images: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/images/<image_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_gallery_image(conference_id, image_id):
+    """Delete an image from a conference gallery"""
+    try:
+        # Get image data first
+        image_ref = db.reference(f'conferences/{conference_id}/gallery/{image_id}')
+        image_data = image_ref.get()
+
+        if not image_data:
+            return jsonify({'success': False, 'error': 'Image not found'}), 404
+
+        # Delete from Firebase Storage
+        try:
+            bucket = storage.bucket()
+            blob = bucket.blob(f"gallery/{conference_id}/{image_data['filename']}")
+            blob.delete()
+        except Exception as e:
+            print(f"Error deleting from storage: {e}")
+            # Continue anyway to clean up database
+
+        # Delete from database
+        image_ref.delete()
+
+        return jsonify({'success': True, 'message': 'Image deleted successfully'})
+
+    except Exception as e:
+        print(f"Error deleting gallery image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/conference-galleries/<conference_id>/images')
+def get_public_gallery_images(conference_id):
+    """Get all images for a conference gallery (public access)"""
+    try:
+        # Check if conference exists and gallery is enabled
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify([])
+
+        if not conference.get('settings', {}).get('gallery_enabled', True):
+            return jsonify([])
+
+        gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+        images = gallery_ref.get() or {}
+
+        # Convert to list and sort by upload date
+        images_list = []
+        for image_id, image_data in images.items():
+            image_data['image_id'] = image_id
+            images_list.append(image_data)
+
+        images_list.sort(key=lambda x: x.get('uploaded_at', ''), reverse=True)
+
+        return jsonify(images_list)
+
+    except Exception as e:
+        print(f"Error getting public gallery images: {e}")
+        return jsonify([])
+
+@app.route('/galleries')
+def galleries():
+    """Public gallery view showing all conference galleries"""
+    try:
+        conferences = get_all_conferences()
+
+        # Filter conferences to only show those with enabled galleries
+        visible_conferences = {}
+        for conf_id, conference in conferences.items():
+            if conference.get('settings', {}).get('gallery_enabled', True):  # Default to True for backward compatibility
+                visible_conferences[conf_id] = conference
+
+        return render_template('galleries.html',
+                             conferences=visible_conferences,
+                             site_design=get_site_design())
+    except Exception as e:
+        print(f"Error loading galleries: {e}")
+        return render_template('galleries.html',
+                             conferences={},
+                             site_design=get_site_design())
+
+@app.route('/galleries/<conference_id>')
+def conference_gallery(conference_id):
+    """View gallery for a specific conference"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found', 'danger')
+            return redirect(url_for('galleries'))
+
+        # Check if gallery is enabled for this conference
+        if not conference.get('settings', {}).get('gallery_enabled', True):
+            flash('Gallery is not available for this conference', 'warning')
+            return redirect(url_for('galleries'))
+
+        # Get gallery images
+        gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+        images = gallery_ref.get() or {}
+
+        # Convert to list and sort by upload date
+        images_list = []
+        for image_id, image_data in images.items():
+            image_data['image_id'] = image_id
+            images_list.append(image_data)
+
+        images_list.sort(key=lambda x: x.get('uploaded_at', ''), reverse=True)
+
+        return render_template('conference_gallery.html',
+                             conference=conference,
+                             images=images_list,
+                             site_design=get_site_design())
+    except Exception as e:
+        print(f"Error loading conference gallery: {e}")
+        flash(f'Error loading gallery: {str(e)}', 'danger')
+        return redirect(url_for('galleries'))
+
+@app.route('/admin/conference-galleries/<conference_id>/toggle-visibility', methods=['POST'])
+@login_required
+@admin_required
+def toggle_gallery_visibility(conference_id):
+    """Toggle gallery visibility for a conference"""
+    try:
+        enabled = request.form.get('enabled') == 'true'
+
+        # Update conference settings
+        conference_ref = db.reference(f'conferences/{conference_id}')
+        conference_ref.child('settings').child('gallery_enabled').set(enabled)
+
+        return jsonify({'success': True, 'message': 'Gallery visibility updated'})
+
+    except Exception as e:
+        print(f"Error toggling gallery visibility: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 def get_all_conferences():
     """Get all conferences from Firebase"""
