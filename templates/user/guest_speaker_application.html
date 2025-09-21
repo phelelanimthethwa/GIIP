@@ -1,0 +1,637 @@
+{% extends "user/base.html" %}
+
+
+{% block title %}Guest Speaker Application - GIIR Conference{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-content">
+        <h1><i class="fas fa-microphone"></i> Guest Speaker Application</h1>
+        <p>Apply to become a guest speaker at our conference</p>
+    </div>
+</div>
+
+<div class="content-section">
+    <div class="application-container">
+        <div class="application-intro">
+            <h2>Share Your Expertise</h2>
+            <p>We are always looking for distinguished speakers to share their knowledge and insights with our conference attendees. If you have expertise in areas related to our conference themes, we encourage you to submit an application.</p>
+
+            <div class="benefits-list">
+                <h3>Why Apply?</h3>
+                <ul>
+                    <li><i class="fas fa-users"></i> Reach a global audience of researchers and professionals</li>
+                    <li><i class="fas fa-network-wired"></i> Network with leading experts in your field</li>
+                    <li><i class="fas fa-certificate"></i> Receive recognition for your contributions</li>
+                    <li><i class="fas fa-plane"></i> Potential travel and accommodation support</li>
+                    <li><i class="fas fa-book"></i> Opportunity to publish in conference proceedings</li>
+                </ul>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" id="guestSpeakerForm" class="application-form">
+            <div class="form-section">
+                <h3><i class="fas fa-user"></i> Personal Information</h3>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="full_name">Full Name <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" required
+                                   placeholder="Enter your full name">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="email">Email Address <span class="required">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" required
+                                   placeholder="Enter your email address">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone"
+                                   placeholder="Enter your phone number">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="title">Professional Title <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required
+                                   placeholder="e.g., Professor, Dr., CEO, Researcher">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="organization">Organization/Institution <span class="required">*</span></label>
+                    <input type="text" class="form-control" id="organization" name="organization" required
+                           placeholder="Enter your organization or institution name">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-book"></i> Professional Background</h3>
+
+                <div class="form-group">
+                    <label for="bio">Biography <span class="required">*</span></label>
+                    <textarea class="form-control" id="bio" name="bio" rows="6" required
+                              placeholder="Provide a brief biography highlighting your expertise, achievements, and experience relevant to the conference themes. This will help our selection committee understand your background and speaking qualifications."></textarea>
+                    <small class="form-text text-muted">Minimum 100 characters. Include your education, professional experience, and key achievements.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="research_interests">Research Interests & Expertise</label>
+                    <textarea class="form-control" id="research_interests" name="research_interests" rows="4"
+                              placeholder="Describe your primary areas of research, expertise, and topics you are qualified to speak on."></textarea>
+                    <small class="form-text text-muted">What topics do you specialize in? What research areas are you most passionate about?</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="previous_speaking">Previous Speaking Experience</label>
+                    <textarea class="form-control" id="previous_speaking" name="previous_speaking" rows="4"
+                              placeholder="List any previous speaking engagements, conferences, or presentations you have participated in."></textarea>
+                    <small class="form-text text-muted">Include conference names, presentation titles, and dates if possible.</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-calendar"></i> Availability & Topics</h3>
+
+                <div class="form-group">
+                    <label for="preferred_conference">Preferred Conference <span class="required">*</span></label>
+                    <select class="form-control" id="preferred_conference" name="preferred_conference" required onchange="updateConferenceInfo()">
+                        <option value="">Select a conference...</option>
+                        {% for conf_id, conference in conferences.items() %}
+                        <option value="{{ conf_id }}" data-name="{{ conference.basic_info.name }}" data-date="{{ conference.basic_info.date|default('') }}" data-location="{{ conference.basic_info.location|default('TBD') }}">
+                            {{ conference.basic_info.name }} - {{ conference.basic_info.year|default('2024') }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Choose the conference where you'd like to present</small>
+
+                    <!-- Conference Information Display -->
+                    <div id="conference-info" class="conference-info mt-2" style="display: none;">
+                        <div class="alert alert-info">
+                            <h6>Conference Details:</h6>
+                            <p><strong>Date:</strong> <span id="conf-date"></span></p>
+                            <p><strong>Location:</strong> <span id="conf-location"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="available_dates">Your Availability</label>
+                    <input type="text" class="form-control" id="available_dates" name="available_dates"
+                           placeholder="e.g., Weekdays preferred, Available during conference dates">
+                    <small class="form-text text-muted">When are you available to speak? (Consider the conference dates above)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="preferred_topics">Preferred Topics</label>
+                    <input type="text" class="form-control" id="preferred_topics" name="preferred_topics"
+                           placeholder="e.g., Artificial Intelligence, Data Science, Machine Learning, Innovation">
+                    <small class="form-text text-muted">Separate multiple topics with commas. What specific topics would you like to present on?</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-link"></i> Additional Information</h3>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="linkedin_profile">LinkedIn Profile</label>
+                            <input type="url" class="form-control" id="linkedin_profile" name="linkedin_profile"
+                                   placeholder="https://linkedin.com/in/yourprofile">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="website">Personal Website</label>
+                            <input type="url" class="form-control" id="website" name="website"
+                                   placeholder="https://yourwebsite.com">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3><i class="fas fa-file-pdf"></i> Supporting Documents</h3>
+
+                <div class="form-group">
+                    <label for="cv_file">CV/Resume</label>
+                    <div class="file-upload-area">
+                        <input type="file" class="form-control-file" id="cv_file" name="cv_file"
+                               accept=".pdf,.doc,.docx" style="display: none;">
+                        <div class="file-upload-zone" onclick="document.getElementById('cv_file').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to upload your CV/Resume</p>
+                            <small>PDF, DOC, or DOCX files up to 5MB</small>
+                        </div>
+                        <div id="file-info" class="file-info" style="display: none;">
+                            <i class="fas fa-file"></i>
+                            <span id="file-name"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">Upload your CV or resume to help us understand your qualifications and experience.</small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="application-agreement">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="agreement" required>
+                        <label class="form-check-label" for="agreement">
+                            I agree to the Terms and Conditions and understand that my application will be reviewed by the conference committee.
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-paper-plane"></i> Submit Application
+                    </button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 3rem 0;
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.header-content h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.header-content p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+/* Content Section */
+.content-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Application Container */
+.application-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Application Intro */
+.application-intro {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 3rem;
+    text-align: center;
+}
+
+.application-intro h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.application-intro p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+/* Benefits List */
+.benefits-list h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.benefits-list ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.benefits-list li {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.benefits-list li i {
+    margin-right: 0.75rem;
+    font-size: 1.2rem;
+    color: var(--accent-color);
+}
+
+/* Form Section */
+.form-section {
+    padding: 2rem 3rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.form-section h3 i {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+}
+
+/* Form Group */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+    color: var(--text-color);
+}
+
+.required {
+    color: #dc3545;
+}
+
+/* File Upload */
+.file-upload-area {
+    position: relative;
+}
+
+.file-upload-zone {
+    border: 2px dashed var(--secondary-color);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(0, 123, 255, 0.05);
+}
+
+.file-upload-zone:hover {
+    border-color: var(--primary-color);
+    background: rgba(0, 123, 255, 0.1);
+}
+
+.file-upload-zone i {
+    font-size: 3rem;
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.file-upload-zone p {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #e9ecef;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.file-info i {
+    margin-right: 0.5rem;
+    color: var(--primary-color);
+}
+
+/* Application Agreement */
+.application-agreement {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+}
+
+.form-check-label a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.form-check-label a:hover {
+    text-decoration: underline;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem 0;
+}
+
+.btn-lg {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .application-intro {
+        padding: 2rem 1.5rem;
+    }
+
+    .form-section {
+        padding: 1.5rem 2rem;
+    }
+
+    .benefits-list ul {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .btn-lg {
+        width: 100%;
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .content-section {
+        padding: 0 0.5rem;
+    }
+
+    .form-section {
+        padding: 1rem 1.5rem;
+    }
+
+    .application-intro h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Terms and Conditions Modal Styling */
+.terms-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 10px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+.terms-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.terms-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.terms-content::-webkit-scrollbar-thumb {
+    background: #007bff;
+    border-radius: 4px;
+}
+
+.terms-content::-webkit-scrollbar-thumb:hover {
+    background: #0056b3;
+}
+
+.terms-content h6 {
+    color: #007bff;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.25rem;
+    font-size: 1.1rem;
+}
+
+.terms-content h6:first-child {
+    margin-top: 0;
+}
+
+.terms-content ul {
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+    list-style-type: disc;
+}
+
+.terms-content li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+    color: #333;
+}
+
+.terms-content p {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.terms-content a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.terms-content a:hover {
+    text-decoration: underline;
+    color: #0056b3;
+}
+
+/* Modal responsive adjustments */
+@media (max-width: 768px) {
+    .terms-content {
+        max-height: 50vh;
+        font-size: 0.9rem;
+    }
+
+    .terms-content h6 {
+        font-size: 1rem;
+    }
+
+    .terms-content ul {
+        padding-left: 1rem;
+    }
+}
+
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cvFileInput = document.getElementById('cv_file');
+    const fileUploadZone = document.querySelector('.file-upload-zone');
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+
+    // Handle file selection
+    cvFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Check file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                clearFile();
+                return;
+            }
+
+            // Check file type
+            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please upload a PDF, DOC, or DOCX file');
+                clearFile();
+                return;
+            }
+
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'flex';
+            fileUploadZone.style.display = 'none';
+        }
+    });
+
+    // Form validation
+    const form = document.getElementById('guestSpeakerForm');
+    form.addEventListener('submit', function(e) {
+        const bio = document.getElementById('bio').value;
+
+        if (bio.length < 100) {
+            e.preventDefault();
+            alert('Biography must be at least 100 characters long');
+            document.getElementById('bio').focus();
+            return false;
+        }
+
+        if (!document.getElementById('agreement').checked) {
+            e.preventDefault();
+            alert('Please agree to the terms and conditions');
+            document.getElementById('agreement').focus();
+            return false;
+        }
+
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        submitBtn.disabled = true;
+
+        // Re-enable on error (this will be handled by the backend)
+        setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 10000);
+    });
+});
+
+// Clear file function
+function clearFile() {
+    const cvFileInput = document.getElementById('cv_file');
+    const fileUploadZone = document.querySelector('.file-upload-zone');
+    const fileInfo = document.getElementById('file-info');
+
+    cvFileInput.value = '';
+    fileInfo.style.display = 'none';
+    fileUploadZone.style.display = 'block';
+}
+
+// Conference selection functionality
+function updateConferenceInfo() {
+    const select = document.getElementById('preferred_conference');
+    const infoDiv = document.getElementById('conference-info');
+    const dateSpan = document.getElementById('conf-date');
+    const locationSpan = document.getElementById('conf-location');
+
+    const selectedOption = select.options[select.selectedIndex];
+
+    if (selectedOption.value && selectedOption.dataset.date) {
+        infoDiv.style.display = 'block';
+        dateSpan.textContent = selectedOption.dataset.date;
+        locationSpan.textContent = selectedOption.dataset.location;
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+</script>
+
+
+{% endblock %}

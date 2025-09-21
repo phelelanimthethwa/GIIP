@@ -99,6 +99,20 @@
             </a>
         </div>
     </section>
+
+    <!-- Guest Speaker CTA -->
+    <div class="guest-speaker-cta-cfp">
+        <div class="cta-icon">
+            <i class="fas fa-microphone"></i>
+        </div>
+        <h3 class="cta-title">Interested in Being a Guest Speaker?</h3>
+        <p class="cta-description">
+            Are you an expert in your field? Consider applying to be a guest speaker and share your knowledge with our international audience.
+        </p>
+        <a href="{{ url_for('guest_speaker_application') }}" class="cta-button">
+            <i class="fas fa-microphone-alt"></i> Apply as Guest Speaker
+        </a>
+    </div>
 </div>
 
 <style>
@@ -158,18 +172,85 @@
     opacity: 0.7;
 }
 
+/* Guest Speaker CTA in Call for Papers */
+.guest-speaker-cta-cfp {
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin: 2rem 0;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.guest-speaker-cta-cfp .cta-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.guest-speaker-cta-cfp .cta-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.guest-speaker-cta-cfp .cta-description {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+    line-height: 1.6;
+}
+
+.guest-speaker-cta-cfp .cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--accent-color);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid var(--accent-color);
+}
+
+.guest-speaker-cta-cfp .cta-button:hover {
+    background: #e68900;
+    border-color: #e68900;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .plagiarism-policy {
         padding: 1.5rem;
         margin: 1.5rem 0;
     }
-    
+
     .plagiarism-policy h2 {
         font-size: 1.3rem;
     }
-    
+
     .policy-content p {
+        font-size: 0.95rem;
+    }
+
+    .guest-speaker-cta-cfp {
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .guest-speaker-cta-cfp .cta-title {
+        font-size: 1.3rem;
+    }
+
+    .guest-speaker-cta-cfp .cta-description {
         font-size: 0.95rem;
     }
 }

@@ -5591,6 +5591,7 @@ def inject_admin_menu():
         {'text': 'Registration Fees', 'url': 'admin_registration_fees', 'icon': 'dollar-sign'},
         {'text': 'User Management', 'url': 'admin_users', 'icon': 'users'},
         {'text': 'Registrations', 'url': 'admin_registrations', 'icon': 'user-plus'},
+        {'text': 'Guest Speaker Applications', 'url': 'admin_guest_speaker_applications', 'icon': 'id-badge'},
         {'text': 'Submissions', 'url': 'admin_submissions', 'icon': 'paper-plane'},
         {'text': 'Announcements', 'url': 'admin_announcements', 'icon': 'bullhorn'},
         {'text': 'Email Templates', 'url': 'admin_email_templates', 'icon': 'envelope-open-text'},
@@ -6854,6 +6855,359 @@ def get_conference_by_code_route(conference_code):
     except Exception as e:
         flash(f'Error retrieving conference: {str(e)}', 'error')
         return redirect(url_for('conference_discover'))
+
+# =============================================================================
+# GUEST SPEAKER APPLICATION ROUTES
+# =============================================================================
+
+@app.route('/guest-speaker-application', methods=['GET', 'POST'])
+@login_required
+def guest_speaker_application():
+    """User-facing guest speaker application form"""
+    if request.method == 'GET':
+        # Get all conferences for the dropdown
+        conferences = get_all_conferences()
+        return render_template('user/guest_speaker_application.html',
+                             conferences=conferences,
+                             site_design=get_site_design())
+
+    try:
+        # Get form data
+        application_data = {
+            'full_name': request.form.get('full_name', '').strip(),
+            'email': request.form.get('email', '').strip(),
+            'phone': request.form.get('phone', '').strip(),
+            'title': request.form.get('title', '').strip(),
+            'organization': request.form.get('organization', '').strip(),
+            'bio': request.form.get('bio', '').strip(),
+            'research_interests': request.form.get('research_interests', '').strip(),
+            'previous_speaking': request.form.get('previous_speaking', '').strip(),
+            'available_dates': request.form.get('available_dates', '').strip(),
+            'preferred_topics': [t.strip() for t in request.form.get('preferred_topics', '').split(',') if t.strip()],
+            'linkedin_profile': request.form.get('linkedin_profile', '').strip(),
+            'website': request.form.get('website', '').strip(),
+            'preferred_conference': request.form.get('preferred_conference', '').strip(),
+            'status': 'pending',
+            'submitted_at': datetime.now().isoformat(),
+            'submitted_by': current_user.email,
+            'user_id': current_user.id,
+            'updated_at': datetime.now().isoformat()
+        }
+
+        # Add conference details if a conference was selected
+        if application_data['preferred_conference']:
+            conferences = get_all_conferences()
+            if application_data['preferred_conference'] in conferences:
+                conference = conferences[application_data['preferred_conference']]
+                basic_info = conference.get('basic_info', {})
+                application_data.update({
+                    'conference_name': basic_info.get('name', ''),
+                    'conference_date': basic_info.get('date', ''),
+                    'conference_location': basic_info.get('location', ''),
+                    'conference_year': basic_info.get('year', '')
+                })
+
+        # Validate required fields
+        required_fields = ['full_name', 'email', 'title', 'organization', 'bio']
+        for field in required_fields:
+            if not application_data.get(field):
+                flash(f'Field "{field}" is required.', 'error')
+                return render_template('user/guest_speaker_application.html',
+                                     site_design=get_site_design())
+
+        # Handle CV/Resume upload
+        if 'cv_file' in request.files:
+            file = request.files['cv_file']
+            if file and file.filename:
+                try:
+                    # Generate unique filename
+                    original_filename = secure_filename(file.filename)
+                    ext = os.path.splitext(original_filename)[1].lower()
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    unique_id = str(uuid.uuid4())[:8]
+                    unique_filename = f"cv_{timestamp}_{unique_id}{ext}"
+
+                    # Upload to Firebase Storage
+                    storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
+                    bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+
+                    blob = bucket.blob(f'guest_speaker_cvs/{unique_filename}')
+                    blob.upload_from_file(file, content_type=file.content_type)
+                    blob.make_public()
+
+                    application_data['cv_url'] = blob.public_url
+                    application_data['cv_filename'] = original_filename
+
+                except Exception as e:
+                    print(f"Error uploading CV: {str(e)}")
+                    flash('Error uploading CV file. Please try again.', 'error')
+                    return render_template('user/guest_speaker_application.html',
+                                         site_design=get_site_design())
+
+        # Save application to Firebase
+        applications_ref = db.reference('guest_speaker_applications')
+        new_application = applications_ref.push(application_data)
+
+        # Send confirmation email
+        try:
+            send_guest_speaker_confirmation_email(
+                application_data['email'],
+                application_data['full_name'],
+                new_application.key
+            )
+        except Exception as e:
+            print(f"Error sending confirmation email: {e}")
+
+        flash('Your guest speaker application has been submitted successfully! You will receive a confirmation email shortly.', 'success')
+        return redirect(url_for('dashboard'))
+
+    except Exception as e:
+        print(f"Error processing guest speaker application: {e}")
+        flash('Error processing application. Please try again.', 'error')
+        return render_template('user/guest_speaker_application.html',
+                             site_design=get_site_design())
+
+@app.route('/admin/guest-speaker-applications')
+@login_required
+@admin_required
+def admin_guest_speaker_applications():
+    """Admin interface to view guest speaker applications"""
+    try:
+        # Get all applications from Firebase
+        applications_ref = db.reference('guest_speaker_applications')
+        applications = applications_ref.get() or {}
+
+        # Sort by submission date (newest first)
+        sorted_applications = dict(sorted(
+            applications.items(),
+            key=lambda x: x[1].get('submitted_at', ''),
+            reverse=True
+        ))
+
+        return render_template(
+            'admin/guest_speaker_applications.html',
+            applications=sorted_applications,
+            site_design=get_site_design()
+        )
+    except Exception as e:
+        print(f"Error loading guest speaker applications: {e}")
+        flash(f'Error loading applications: {str(e)}', 'error')
+        return render_template(
+            'admin/guest_speaker_applications.html',
+            applications={},
+            site_design=get_site_design()
+        )
+
+@app.route('/admin/guest-speaker-applications/<application_id>')
+@login_required
+@admin_required
+def get_guest_speaker_application(application_id):
+    """Get detailed view of a guest speaker application"""
+    try:
+        application_ref = db.reference(f'guest_speaker_applications/{application_id}')
+        application = application_ref.get()
+
+        if not application:
+            return jsonify({'error': 'Application not found'}), 404
+
+        return jsonify(application)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/guest-speaker-applications/<application_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def update_guest_speaker_status(application_id):
+    """Update guest speaker application status (approve/reject)"""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        admin_notes = data.get('admin_notes', '')
+
+        if new_status not in ['approved', 'rejected', 'under_review']:
+            return jsonify({'success': False, 'error': 'Invalid status'}), 400
+
+        # Get application data
+        application_ref = db.reference(f'guest_speaker_applications/{application_id}')
+        application = application_ref.get()
+
+        if not application:
+            return jsonify({'success': False, 'error': 'Application not found'}), 404
+
+        # Update application status
+        update_data = {
+            'status': new_status,
+            'admin_notes': admin_notes,
+            'reviewed_at': datetime.now().isoformat(),
+            'reviewed_by': current_user.email,
+            'updated_at': datetime.now().isoformat()
+        }
+
+        application_ref.update(update_data)
+
+        # If approved, optionally create a speaker entry
+        if new_status == 'approved':
+            try:
+                # Create speaker entry from application data
+                speaker_data = {
+                    'name': application.get('full_name'),
+                    'title': application.get('title'),
+                    'organization': application.get('organization'),
+                    'bio': application.get('bio'),
+                    'status': 'current',
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat(),
+                    'application_id': application_id
+                }
+
+                # Add research interests if available
+                if application.get('research_interests'):
+                    speaker_data['research_interests'] = application.get('research_interests')
+
+                # Add LinkedIn profile if available
+                if application.get('linkedin_profile'):
+                    speaker_data['linkedin_profile'] = application.get('linkedin_profile')
+
+                # Add website if available
+                if application.get('website'):
+                    speaker_data['website'] = application.get('website')
+
+                # Save speaker to Firebase
+                speakers_ref = db.reference('speakers')
+                speakers_ref.push(speaker_data)
+
+                # Add speaker_created flag to application
+                application_ref.update({'speaker_created': True})
+
+            except Exception as e:
+                print(f"Error creating speaker from approved application: {e}")
+
+        # Send notification email to applicant
+        try:
+            if new_status == 'approved':
+                send_guest_speaker_approval_email(
+                    application.get('email'),
+                    application.get('full_name'),
+                    admin_notes
+                )
+            elif new_status == 'rejected':
+                send_guest_speaker_rejection_email(
+                    application.get('email'),
+                    application.get('full_name'),
+                    admin_notes
+                )
+        except Exception as e:
+            print(f"Error sending notification email: {e}")
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Error updating guest speaker status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/guest-speaker-applications/<application_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_guest_speaker_application(application_id):
+    """Delete a guest speaker application"""
+    try:
+        application_ref = db.reference(f'guest_speaker_applications/{application_id}')
+        application = application_ref.get()
+
+        if not application:
+            return jsonify({'success': False, 'error': 'Application not found'}), 404
+
+        # Delete CV file if exists
+        if application.get('cv_url'):
+            try:
+                storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
+                bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+
+                # Extract filename from URL
+                if 'guest_speaker_cvs%2F' in application['cv_url']:
+                    filename = application['cv_url'].split('guest_speaker_cvs%2F')[1].split('?')[0]
+                    blob = bucket.blob(f'guest_speaker_cvs/{filename}')
+                    if blob.exists():
+                        blob.delete()
+                        print(f"Successfully deleted CV file: {filename}")
+            except Exception as e:
+                print(f"Error deleting CV file: {str(e)}")
+
+        # Delete application from Firebase
+        application_ref.delete()
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"Error deleting guest speaker application: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def send_guest_speaker_confirmation_email(email, full_name, application_id):
+    """Send confirmation email for guest speaker application"""
+    try:
+        subject = "Guest Speaker Application Confirmation"
+        body = f"""
+Dear {full_name},
+
+Thank you for your interest in becoming a guest speaker at our conference!
+
+Your application (ID: {application_id}) has been received and is currently under review by our organizing committee.
+
+We will contact you within 2-3 weeks regarding the status of your application. If you have any questions in the meantime, please don't hesitate to contact us.
+
+Best regards,
+Conference Organizing Committee
+"""
+
+        # Use existing send_email function
+        send_email([email], subject, body)
+
+    except Exception as e:
+        print(f"Error sending guest speaker confirmation email: {e}")
+
+def send_guest_speaker_approval_email(email, full_name, admin_notes):
+    """Send approval email for guest speaker application"""
+    try:
+        subject = "Guest Speaker Application Approved"
+        body = f"""
+Dear {full_name},
+
+Congratulations! We are pleased to inform you that your guest speaker application has been approved.
+
+{admin_notes if admin_notes else 'We look forward to having you as a guest speaker at our conference.'}
+
+You will receive further details about the conference schedule and logistics soon.
+
+Best regards,
+Conference Organizing Committee
+"""
+
+        send_email([email], subject, body)
+
+    except Exception as e:
+        print(f"Error sending guest speaker approval email: {e}")
+
+def send_guest_speaker_rejection_email(email, full_name, admin_notes):
+    """Send rejection email for guest speaker application"""
+    try:
+        subject = "Guest Speaker Application Update"
+        body = f"""
+Dear {full_name},
+
+Thank you for your interest in becoming a guest speaker at our conference.
+
+After careful review of your application, we regret to inform you that we are unable to accommodate your request at this time.
+
+{admin_notes if admin_notes else 'We encourage you to apply for future conferences and thank you for your interest.'}
+
+Best regards,
+Conference Organizing Committee
+"""
+
+        send_email([email], subject, body)
+
+    except Exception as e:
+        print(f"Error sending guest speaker rejection email: {e}")
 
 if __name__ == '__main__':
     # Create admin user on startup

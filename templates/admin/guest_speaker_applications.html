@@ -1,0 +1,976 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Guest Speaker Applications - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mt-4">
+                <i class="fas fa-microphone me-2"></i>Guest Speaker Applications
+            </h1>
+            <p class="text-muted">Manage guest speaker applications and approvals</p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="refreshApplications()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-outline-secondary" onclick="exportApplications()">
+                <i class="fas fa-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Applications</h5>
+                            <h3 class="mb-0">{{ applications|length }}</h3>
+                        </div>
+                        <i class="fas fa-file-alt fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Approved</h5>
+                            <h3 class="mb-0">{{ applications.values()|selectattr('status', 'equalto', 'approved')|list|length }}</h3>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Pending</h5>
+                            <h3 class="mb-0">{{ applications.values()|selectattr('status', 'equalto', 'pending')|list|length }}</h3>
+                        </div>
+                        <i class="fas fa-clock fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Rejected</h5>
+                            <h3 class="mb-0">{{ applications.values()|selectattr('status', 'equalto', 'rejected')|list|length }}</h3>
+                        </div>
+                        <i class="fas fa-times-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter me-1"></i>
+            Filters
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <select class="form-select" id="statusFilter" onchange="filterApplications()">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="under_review">Under Review</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search by name, email, or organization..." onkeyup="filterApplications()">
+                </div>
+
+                <div class="col-md-4">
+                    <select class="form-select" id="sortBy" onchange="sortApplications()">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="name">Name (A-Z)</option>
+                        <option value="organization">Organization (A-Z)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applications Table -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-list me-1"></i>
+            Applications
+        </div>
+        <div class="card-body">
+            {% if applications %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="applicationsTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Submitted</th>
+                            <th>Applicant</th>
+                            <th>Conference</th>
+                            <th>Title</th>
+                            <th>Organization</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for application_id, application in applications.items() %}
+                        <tr data-status="{{ application.status }}" data-search="{{ application.full_name }} {{ application.email }} {{ application.organization }}">
+                            <td>
+                                <div class="submission-date">
+                                    {{ application.submitted_at | datetime }}
+                                    <br>
+                                    <small class="text-muted">ID: {{ application_id[:8] }}</small>
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="applicant-info">
+                                    <strong>{{ application.full_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ application.email }}</small>
+                                    {% if application.phone %}
+                                    <br>
+                                    <small class="text-muted"><i class="fas fa-phone"></i> {{ application.phone }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <td>
+                                <div class="conference-info-cell">
+                                    {% if application.conference_name %}
+                                    <div class="conference-name">{{ application.conference_name }}</div>
+                                    <div class="conference-details">
+                                        {% if application.conference_date %}
+                                        <span class="badge bg-primary">{{ application.conference_date }}</span>
+                                        {% endif %}
+                                        {% if application.conference_location %}
+                                        <span class="badge bg-secondary">{{ application.conference_location }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">No conference selected</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge bg-info">{{ application.title }}</span>
+                            </td>
+
+                            <td>
+                                {{ application.organization }}
+                            </td>
+
+                            <td>
+                                <span class="status-badge status-{{ application.status }}">
+                                    {% if application.status == 'pending' %}
+                                        <i class="fas fa-clock"></i> Pending
+                                    {% elif application.status == 'approved' %}
+                                        <i class="fas fa-check-circle"></i> Approved
+                                    {% elif application.status == 'rejected' %}
+                                        <i class="fas fa-times-circle"></i> Rejected
+                                    {% elif application.status == 'under_review' %}
+                                        <i class="fas fa-search"></i> Under Review
+                                    {% endif %}
+                                </span>
+                            </td>
+
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewApplication('{{ application_id }}')" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+
+                                    <button class="btn btn-sm btn-outline-success" onclick="updateStatus('{{ application_id }}', 'approved')" title="Approve">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+
+                                    <button class="btn btn-sm btn-outline-warning" onclick="updateStatus('{{ application_id }}', 'rejected')" title="Reject">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteApplication('{{ application_id }}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No Applications Yet</h5>
+                <p class="text-muted">Guest speaker applications will appear here when users submit them.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Application Details Modal -->
+<div class="modal fade" id="applicationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-microphone me-2"></i>
+                    Guest Speaker Application Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="applicationDetails">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Application Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="statusForm">
+                    <input type="hidden" id="statusApplicationId">
+
+                    <div class="mb-3">
+                        <label for="statusSelect" class="form-label">Status</label>
+                        <select class="form-select" id="statusSelect" required>
+                            <option value="approved">Approve</option>
+                            <option value="rejected">Reject</option>
+                            <option value="under_review">Mark as Under Review</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="adminNotes" class="form-label">Admin Notes</label>
+                        <textarea class="form-control" id="adminNotes" rows="4"
+                                  placeholder="Optional notes for the applicant..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitStatusUpdate()">Update Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Status Badges */
+.status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-approved {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-under_review {
+    background: #cce7ff;
+    color: #004085;
+    border: 1px solid #b3d4fc;
+}
+
+/* Application Info */
+.applicant-info strong {
+    color: #2c3e50;
+}
+
+.submission-date small {
+    font-family: monospace;
+    background: #f8f9fa;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+/* Table Styling */
+.table th {
+    background: #343a40;
+    color: white;
+    border: none;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Button Group */
+.btn-group .btn {
+    margin: 0 2px;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Statistics Cards */
+.card {
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .btn-group .btn {
+        margin: 0;
+        border-radius: 4px !important;
+    }
+
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
+}
+
+/* Loading Animation */
+.fa-spin {
+    animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Custom Scrollbar */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+}
+
+/* Conference Information Styling */
+.conference-info-cell {
+    min-width: 200px;
+}
+
+.admin .conference-info-cell {
+    min-width: 200px;
+}
+
+.conference-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.conference-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+</style>
+
+<script>
+let currentApplications = {{ applications | tojson }};
+let filteredApplications = { ...currentApplications };
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    filterApplications();
+    sortApplications();
+});
+
+// Filter applications based on status and search
+function filterApplications() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const searchInput = document.getElementById('searchInput').value.toLowerCase();
+
+    filteredApplications = {};
+
+    for (const [id, application] of Object.entries(currentApplications)) {
+        const matchesStatus = !statusFilter || application.status === statusFilter;
+        const searchText = `${application.full_name} ${application.email} ${application.organization}`.toLowerCase();
+        const matchesSearch = !searchInput || searchText.includes(searchInput);
+
+        if (matchesStatus && matchesSearch) {
+            filteredApplications[id] = application;
+        }
+    }
+
+    renderApplicationsTable();
+}
+
+// Sort applications
+function sortApplications() {
+    const sortBy = document.getElementById('sortBy').value;
+
+    const sortedEntries = Object.entries(filteredApplications).sort((a, b) => {
+        const [idA, appA] = a;
+        const [idB, appB] = b;
+
+        switch (sortBy) {
+            case 'newest':
+                return new Date(appB.submitted_at) - new Date(appA.submitted_at);
+            case 'oldest':
+                return new Date(appA.submitted_at) - new Date(appB.submitted_at);
+            case 'name':
+                return appA.full_name.localeCompare(appB.full_name);
+            case 'organization':
+                return appA.organization.localeCompare(appB.organization);
+            default:
+                return 0;
+        }
+    });
+
+    filteredApplications = Object.fromEntries(sortedEntries);
+    renderApplicationsTable();
+}
+
+// Render applications table
+function renderApplicationsTable() {
+    const tbody = document.querySelector('#applicationsTable tbody');
+    tbody.innerHTML = '';
+
+    if (Object.keys(filteredApplications).length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No applications match your filters</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    for (const [id, application] of Object.entries(filteredApplications)) {
+        const statusBadge = getStatusBadge(application.status);
+        const row = `
+            <tr data-status="${application.status}" data-search="${application.full_name} ${application.email} ${application.organization}">
+                <td>
+                    <div class="submission-date">
+                        ${formatDate(application.submitted_at)}
+                        <br>
+                        <small class="text-muted">ID: ${id.substring(0, 8)}</small>
+                    </div>
+                </td>
+                <td>
+                    <div class="applicant-info">
+                        <strong>${application.full_name}</strong>
+                        <br>
+                        <small class="text-muted">${application.email}</small>
+                        ${application.phone ? `<br><small class="text-muted"><i class="fas fa-phone"></i> ${application.phone}</small>` : ''}
+                    </div>
+                </td>
+                <td>
+                    <div class="conference-info-cell">
+                        ${application.conference_name ? `
+                        <div class="conference-name">${application.conference_name}</div>
+                        <div class="conference-details">
+                            ${application.conference_date ? `<span class="badge bg-primary">${application.conference_date}</span>` : ''}
+                            ${application.conference_location ? `<span class="badge bg-secondary">${application.conference_location}</span>` : ''}
+                        </div>
+                        ` : '<span class="text-muted">No conference selected</span>'}
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-info">${application.title}</span>
+                </td>
+                <td>
+                    ${application.organization}
+                </td>
+                <td>
+                    <span class="status-badge status-${application.status}">
+                        ${statusBadge}
+                    </span>
+                </td>
+                <td>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewApplication('${id}')" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="updateStatus('${id}', 'approved')" title="Approve">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="updateStatus('${id}', 'rejected')" title="Reject">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteApplication('${id}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    }
+}
+
+// Get status badge HTML
+function getStatusBadge(status) {
+    switch (status) {
+        case 'pending':
+            return '<i class="fas fa-clock"></i> Pending';
+        case 'approved':
+            return '<i class="fas fa-check-circle"></i> Approved';
+        case 'rejected':
+            return '<i class="fas fa-times-circle"></i> Rejected';
+        case 'under_review':
+            return '<i class="fas fa-search"></i> Under Review';
+        default:
+            return status;
+    }
+}
+
+// Format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + '<br>' + date.toLocaleTimeString();
+}
+
+// View application details
+function viewApplication(applicationId) {
+    fetch(`/admin/guest-speaker-applications/${applicationId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error loading application: ' + data.error);
+                return;
+            }
+
+            const application = data;
+            const modalBody = document.getElementById('applicationDetails');
+
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user me-2"></i>Personal Information</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Full Name:</th>
+                                <td><strong>${application.full_name}</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td><a href="mailto:${application.email}">${application.email}</a></td>
+                            </tr>
+                            ${application.phone ? `
+                            <tr>
+                                <th>Phone:</th>
+                                <td><a href="tel:${application.phone}">${application.phone}</a></td>
+                            </tr>
+                            ` : ''}
+                            <tr>
+                                <th>Title:</th>
+                                <td>${application.title}</td>
+                            </tr>
+                            <tr>
+                                <th>Organization:</th>
+                                <td>${application.organization}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar me-2"></i>Conference Information</h6>
+                        <table class="table table-sm">
+                            ${application.conference_name ? `
+                            <tr>
+                                <th>Conference:</th>
+                                <td><strong>${application.conference_name}</strong></td>
+                            </tr>
+                            ${application.conference_date ? `
+                            <tr>
+                                <th>Date:</th>
+                                <td>${application.conference_date}</td>
+                            </tr>
+                            ` : ''}
+                            ${application.conference_location ? `
+                            <tr>
+                                <th>Location:</th>
+                                <td>${application.conference_location}</td>
+                            </tr>
+                            ` : ''}
+                            ${application.conference_year ? `
+                            <tr>
+                                <th>Year:</th>
+                                <td>${application.conference_year}</td>
+                            </tr>
+                            ` : ''}
+                            ` : `
+                            <tr>
+                                <td colspan="2" class="text-muted">No conference selected</td>
+                            </tr>
+                            `}
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar me-2"></i>Application Details</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Submitted:</th>
+                                <td>${formatDate(application.submitted_at)}</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td><span class="status-badge status-${application.status}">${getStatusBadge(application.status)}</span></td>
+                            </tr>
+                            ${application.cv_url ? `
+                            <tr>
+                                <th>CV/Resume:</th>
+                                <td><a href="${application.cv_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i> Download CV</a></td>
+                            </tr>
+                            ` : ''}
+                            ${application.linkedin_profile ? `
+                            <tr>
+                                <th>LinkedIn:</th>
+                                <td><a href="${application.linkedin_profile}" target="_blank" class="btn btn-sm btn-outline-info"><i class="fab fa-linkedin"></i> View Profile</a></td>
+                            </tr>
+                            ` : ''}
+                            ${application.website ? `
+                            <tr>
+                                <th>Website:</th>
+                                <td><a href="${application.website}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-external-link-alt"></i> Visit Website</a></td>
+                            </tr>
+                            ` : ''}
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6><i class="fas fa-book me-2"></i>Biography</h6>
+                        <div class="bg-light p-3 rounded">
+                            <p>${application.bio}</p>
+                        </div>
+                    </div>
+                </div>
+
+                ${application.research_interests ? `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-flask me-2"></i>Research Interests</h6>
+                        <div class="bg-light p-3 rounded">
+                            <p>${application.research_interests}</p>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${application.previous_speaking ? `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-microphone me-2"></i>Previous Speaking Experience</h6>
+                        <div class="bg-light p-3 rounded">
+                            <p>${application.previous_speaking}</p>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${application.preferred_topics && application.preferred_topics.length > 0 ? `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-tags me-2"></i>Preferred Topics</h6>
+                        <div class="bg-light p-3 rounded">
+                            ${application.preferred_topics.map(topic => `<span class="badge bg-secondary me-1">${topic}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${application.admin_notes ? `
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6><i class="fas fa-sticky-note me-2"></i>Admin Notes</h6>
+                        <div class="bg-warning p-3 rounded">
+                            <p><strong>Reviewed by:</strong> ${application.reviewed_by || 'N/A'}</p>
+                            <p><strong>Review Date:</strong> ${application.reviewed_at ? formatDate(application.reviewed_at) : 'N/A'}</p>
+                            <p><strong>Notes:</strong> ${application.admin_notes}</p>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+            `;
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('applicationModal'));
+            modal.show();
+        })
+        .catch(error => {
+            alert('Error loading application details: ' + error.message);
+        });
+}
+
+// Update application status
+function updateStatus(applicationId, status) {
+    document.getElementById('statusApplicationId').value = applicationId;
+    document.getElementById('statusSelect').value = status;
+
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    modal.show();
+}
+
+// Submit status update
+function submitStatusUpdate() {
+    const applicationId = document.getElementById('statusApplicationId').value;
+    const status = document.getElementById('statusSelect').value;
+    const adminNotes = document.getElementById('adminNotes').value;
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('statusModal'));
+    modal.hide();
+
+    // Show loading
+    const button = document.querySelector('#statusModal .btn-primary');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    button.disabled = true;
+
+    fetch(`/admin/guest-speaker-applications/${applicationId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            status: status,
+            admin_notes: adminNotes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update local data
+            if (currentApplications[applicationId]) {
+                currentApplications[applicationId].status = status;
+                currentApplications[applicationId].admin_notes = adminNotes;
+                currentApplications[applicationId].reviewed_at = new Date().toISOString();
+                currentApplications[applicationId].reviewed_by = 'admin@conference.com'; // You should get this from current_user
+            }
+
+            // Refresh the table
+            filterApplications();
+            sortApplications();
+
+            // Show success message
+            showToast(`Application ${status} successfully!`, 'success');
+        } else {
+            showToast(`Error updating application: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        showToast(`Error updating application: ${error.message}`, 'error');
+    })
+    .finally(() => {
+        // Reset button
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// Delete application
+function deleteApplication(applicationId) {
+    if (!confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+        return;
+    }
+
+    fetch(`/admin/guest-speaker-applications/${applicationId}/delete`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove from local data
+            delete currentApplications[applicationId];
+
+            // Refresh the table
+            filterApplications();
+            sortApplications();
+
+            showToast('Application deleted successfully!', 'success');
+        } else {
+            showToast(`Error deleting application: ${data.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        showToast(`Error deleting application: ${error.message}`, 'error');
+    });
+}
+
+// Refresh applications
+function refreshApplications() {
+    location.reload();
+}
+
+// Export applications to CSV
+function exportApplications() {
+    const csvContent = [
+        ['ID', 'Full Name', 'Email', 'Phone', 'Title', 'Organization', 'Status', 'Submitted Date', 'Bio', 'Research Interests', 'Previous Speaking', 'Available Dates', 'Preferred Topics', 'LinkedIn', 'Website', 'CV Filename']
+    ];
+
+    Object.entries(currentApplications).forEach(([id, app]) => {
+        csvContent.push([
+            id.substring(0, 8),
+            app.full_name || '',
+            app.email || '',
+            app.phone || '',
+            app.title || '',
+            app.organization || '',
+            app.status || '',
+            app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : '',
+            app.bio || '',
+            app.research_interests || '',
+            app.previous_speaking || '',
+            app.available_dates || '',
+            (app.preferred_topics || []).join('; '),
+            app.linkedin_profile || '',
+            app.website || '',
+            app.cv_filename || ''
+        ]);
+    });
+
+    const csv = csvContent.map(row =>
+        row.map(field => `"${field}"`).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `guest_speaker_applications_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Show toast notification
+function showToast(message, type) {
+    // Remove existing toasts
+    document.querySelectorAll('.toast-notification').forEach(toast => toast.remove());
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#28a745' : '#dc3545'};
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+        min-width: 300px;
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+
+    .toast-content {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .toast-notification i {
+        font-size: 1.1rem;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}
