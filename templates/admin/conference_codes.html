@@ -1,0 +1,394 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Conference Codes Management - Admin Panel{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <h1><i class="fas fa-qrcode"></i> Conference Codes Management</h1>
+    <p>Manage unique conference codes for all conferences</p>
+</div>
+
+<div class="content-section">
+    <!-- Conference Codes Table -->
+    <div class="table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Conference Name</th>
+                    <th>Year</th>
+                    <th>Status</th>
+                    <th>Current Code</th>
+                    <th>Generated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for conference_id, conference in conferences.items() %}
+                <tr>
+                    <td>
+                        <div class="conference-info">
+                            <strong>{{ conference.basic_info.name }}</strong>
+                            {% if conference.basic_info.description %}
+                            <small class="text-muted">{{ conference.basic_info.description }}</small>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>{{ conference.basic_info.year }}</td>
+                    <td>
+                        <span class="badge status-{{ conference.basic_info.status }}">
+                            {% if conference.basic_info.status == 'active' %}
+                                🟢 Active
+                            {% elif conference.basic_info.status == 'upcoming' %}
+                                🟡 Upcoming
+                            {% elif conference.basic_info.status == 'closed' %}
+                                🔴 Closed
+                            {% else %}
+                                ⚪ {{ conference.basic_info.status|title }}
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if conference.conference_code %}
+                        <code class="conference-code-display">{{ conference.conference_code }}</code>
+                        {% else %}
+                        <span class="text-muted">No code assigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if conference.code_generated_at %}
+                        <small>{{ conference.code_generated_at|datetime }}</small>
+                        {% else %}
+                        <span class="text-muted">Never</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-primary generate-code-btn"
+                                    data-conference="{{ conference_id }}"
+                                    data-name="{{ conference.basic_info.name }}"
+                                    data-year="{{ conference.basic_info.year }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#generateCodeModal">
+                                <i class="fas fa-refresh"></i> Generate
+                            </button>
+                            {% if conference.conference_code %}
+                            <button class="btn btn-sm btn-info view-code-btn"
+                                    data-code="{{ conference.conference_code }}"
+                                    data-conference="{{ conference.basic_info.name }}">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ conferences|length }}</div>
+                <div class="stat-label">Total Conferences</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ conferences|selectattr('conference_code')|list|length }}</div>
+                <div class="stat-label">With Codes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ conferences|selectattr('basic_info.status', 'equalto', 'active')|list|length }}</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number">{{ conferences|selectattr('basic_info.status', 'equalto', 'upcoming')|list|length }}</div>
+                <div class="stat-label">Upcoming</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Code Modal -->
+<div class="modal fade" id="generateCodeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate Conference Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="generateCodeForm" method="POST">
+                <div class="modal-body">
+                    <div id="conferenceInfo">
+                        <p>Generating code for: <strong id="modalConferenceName"></strong></p>
+                        <p>Year: <strong id="modalConferenceYear"></strong></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="abbreviation" class="form-label">Conference Abbreviation</label>
+                        <input type="text" class="form-control" id="abbreviation" name="abbreviation"
+                               placeholder="e.g., ETL, STM, TBME, SAT" maxlength="4">
+                        <div class="form-text">3-4 letter abbreviation for the conference type</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Generated Code Preview</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Code:</span>
+                            <input type="text" class="form-control" id="codePreview" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="refreshPreview">
+                                <i class="fas fa-refresh"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Format: CONF-[YEAR]-[ABBREVIATION]-[UNIQUE_ID]</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Generate Code</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 2rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+}
+
+.table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.admin-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.admin-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.conference-info {
+    max-width: 300px;
+}
+
+.conference-info small {
+    display: block;
+    margin-top: 0.25rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.conference-code-display {
+    background: #e8f5e8;
+    color: #2d5a2d;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.875rem;
+    border: 1px solid #4caf50;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 6px;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
+}
+
+#codePreview {
+    font-family: monospace;
+    background: #f8f9fa;
+}
+
+@media (max-width: 768px) {
+    .admin-table {
+        font-size: 0.875rem;
+    }
+
+    .admin-table th,
+    .admin-table td {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .btn-sm {
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const generateCodeModal = document.getElementById('generateCodeModal');
+    const generateCodeForm = document.getElementById('generateCodeForm');
+    const generateButtons = document.querySelectorAll('.generate-code-btn');
+
+    // Handle generate code buttons
+    generateButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const conferenceId = this.dataset.conference;
+            const conferenceName = this.dataset.name;
+            const conferenceYear = this.dataset.year;
+
+            // Set hidden conference ID
+            generateCodeForm.action = `/admin/conference-codes/generate/${conferenceId}`;
+
+            // Update modal content
+            document.getElementById('modalConferenceName').textContent = conferenceName;
+            document.getElementById('modalConferenceYear').textContent = conferenceYear;
+
+            // Generate preview
+            generatePreview();
+        });
+    });
+
+    // Handle refresh preview button
+    document.getElementById('refreshPreview').addEventListener('click', generatePreview);
+
+    // Handle abbreviation input change
+    document.getElementById('abbreviation').addEventListener('input', generatePreview);
+
+    function generatePreview() {
+        const abbreviation = document.getElementById('abbreviation').value.trim().toUpperCase();
+        const year = document.getElementById('modalConferenceYear').textContent;
+
+        if (abbreviation && year) {
+            // Generate sample code (in real implementation, this would be done server-side)
+            const uniqueId = generateSampleUniqueId();
+            const previewCode = `CONF-${year}-${abbreviation}-${uniqueId}`;
+            document.getElementById('codePreview').value = previewCode;
+        } else {
+            document.getElementById('codePreview').value = 'Fill in abbreviation and year';
+        }
+    }
+
+    function generateSampleUniqueId() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 8; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    // Handle view code buttons
+    document.querySelectorAll('.view-code-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const code = this.dataset.code;
+            const conferenceName = this.dataset.conference;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(code).then(() => {
+                // Show success message
+                showToast(`Conference code "${code}" copied to clipboard!`, 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                showToast('Unable to copy to clipboard', 'error');
+            });
+        });
+    });
+
+    function showToast(message, type) {
+        // Simple toast notification
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+});
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

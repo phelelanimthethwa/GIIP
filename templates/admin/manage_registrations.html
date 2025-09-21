@@ -5,6 +5,16 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Manage Registrations</h2>
         <div class="actions">
+            <!-- Conference Filter -->
+            <div class="me-3">
+                <select class="form-select" id="conferenceFilter" onchange="filterRegistrations()">
+                    <option value="">All Conferences</option>
+                    {% for conference_id, conference in conferences.items() %}
+                    <option value="{{ conference_id }}">{{ conference.basic_info.name }} ({{ conference.basic_info.year }})</option>
+                    {% endfor %}
+                    <option value="legacy">Legacy Conferences</option>
+                </select>
+            </div>
             <button class="btn btn-primary" onclick="exportRegistrations()">
                 <i class="fas fa-download"></i> Export Data
             </button>
@@ -20,6 +30,8 @@
                             <th>Date</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Conference</th>
+                            <th style="min-width: 120px;">Code</th>
                             <th>Institution</th>
                             <th>Type</th>
                             <th>Period</th>
@@ -36,6 +48,41 @@
                             <td>{{ registration.submission_date | datetime }}</td>
                             <td>{{ registration.full_name }}</td>
                             <td>{{ registration.email }}</td>
+                            <td>
+                                <div class="conference-info-cell">
+                                    {% if registration.conference_info %}
+                                    <div class="conference-name">{{ registration.conference_info.name }}</div>
+                                    <div class="conference-details">
+                                        {% if registration.conference_info.year %}
+                                        <span class="badge bg-info">{{ registration.conference_info.year }}</span>
+                                        {% endif %}
+                                        <span class="badge {% if registration.conference_info.status == 'active' %}bg-success{% elif registration.conference_info.status == 'upcoming' %}bg-warning{% elif registration.conference_info.status == 'past' %}bg-secondary{% else %}bg-light{% endif %}">
+                                            {{ registration.conference_info.status | title }}
+                                        </span>
+                                    </div>
+                                    {% else %}
+                                    <div class="conference-name">Legacy Registration</div>
+                                    <div class="conference-details">
+                                        <span class="badge bg-light text-dark">Legacy</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="conference-code-cell">
+                                    {% if registration.conference_info and registration.conference_info.code %}
+                                    <span class="conference-code-standalone copyable-code" data-code="{{ registration.conference_info.code }}" title="Click to copy">
+                                        <i class="fas fa-qrcode"></i> {{ registration.conference_info.code }}
+                                    </span>
+                                    {% elif registration.conference_code %}
+                                    <span class="conference-code-standalone copyable-code" data-code="{{ registration.conference_code }}" title="Click to copy">
+                                        <i class="fas fa-qrcode"></i> {{ registration.conference_code }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </div>
+                            </td>
                             <td>{{ registration.institution }}</td>
                             <td>{{ registration.registration_type | replace('_', ' ') | title }}</td>
                             <td>{{ registration.registration_period | replace('_', ' ') | title }}</td>
@@ -104,7 +151,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="11" class="text-center">No registrations found</td>
+                            <td colspan="13" class="text-center">No registrations found</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -142,6 +189,35 @@
 {% block scripts %}
 {{ super() }}
 <script>
+function filterRegistrations() {
+    const filterValue = document.getElementById('conferenceFilter').value;
+    const tableRows = document.querySelectorAll('tbody tr');
+
+    tableRows.forEach(row => {
+        if (filterValue === '') {
+            row.style.display = 'table-row';
+        } else if (filterValue === 'legacy') {
+            // Show only legacy registrations
+            const conferenceInfo = row.querySelector('.conference-info-cell .text-muted');
+            if (conferenceInfo && conferenceInfo.textContent === 'No conference association') {
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        } else {
+            // Show registrations for specific conference
+            const conferenceCodeBadge = row.querySelector('.conference-code-badge');
+            if (conferenceCodeBadge) {
+                // This is a complex filter - we'll need to implement this based on conference ID
+                // For now, we'll show all rows with conference info
+                row.style.display = 'table-row';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+
 function exportRegistrations() {
     fetch('/admin/registrations/export')
         .then(response => response.json())
@@ -151,6 +227,9 @@ function exportRegistrations() {
                 'Submission Date',
                 'Full Name',
                 'Email',
+                'Conference Name',
+                'Conference Code',
+                'Conference Year',
                 'Institution',
                 'Registration Type',
                 'Registration Period',
@@ -169,6 +248,9 @@ function exportRegistrations() {
                     reg.submission_date || '',
                     reg.full_name || '',
                     reg.email || '',
+                    reg.conference_info ? reg.conference_info.name : 'N/A',
+                    reg.conference_info ? reg.conference_info.code : 'N/A',
+                    reg.conference_info ? reg.conference_info.year : 'N/A',
                     reg.institution || '',
                     (reg.registration_type || '').replace('_', ' '),
                     (reg.registration_period || '').replace('_', ' '),
@@ -253,6 +335,22 @@ function formatRegistrationDetails(data) {
                     <span class="label">Period:</span>
                     <span class="value">${(data.registration_period || '').replace('_', ' ').toUpperCase()}</span>
                 </div>
+                ${data.conference_info ? `
+                <div class="detail-row">
+                    <span class="label">Conference:</span>
+                    <span class="value">${data.conference_info.name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Conference Code:</span>
+                    <span class="conference-code-standalone">${data.conference_info.code || 'N/A'}</span>
+                </div>
+                ` : ''}
+                ${data.conference_code && !data.conference_info ? `
+                <div class="detail-row">
+                    <span class="label">Conference Code:</span>
+                    <span class="conference-code-standalone">${data.conference_code}</span>
+                </div>
+                ` : ''}
                 <div class="detail-row">
                     <span class="label">Status:</span>
                     <span class="value status-badge ${data.payment_status}">${data.payment_status || 'PENDING'}</span>
@@ -341,6 +439,106 @@ function formatRegistrationDetails(data) {
 .table th {
     font-weight: 600;
     background: #f8f9fc;
+}
+
+.conference-info-cell {
+    min-width: 200px;
+}
+
+.conference-code-cell {
+    min-width: 120px;
+    text-align: center;
+}
+
+.conference-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+}
+
+.conference-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.conference-code-standalone {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #2e7d32;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+}
+
+.conference-code-standalone:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+    background: linear-gradient(135deg, #45a049, #4caf50);
+}
+
+.conference-code-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white !important;
+    border: 1px solid #2e7d32;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.conference-code-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+    background: linear-gradient(135deg, #45a049, #4caf50);
+}
+
+.conference-code-badge i {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+.conference-code-display {
+    font-family: 'Courier New', monospace;
+    background: #e8f5e8;
+    color: #2d5a2d;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    border: 1px solid #4caf50;
+    font-weight: 500;
+}
+
+.conference-code-standalone {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #2e7d32;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+}
+
+.conference-code-standalone:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+    background: linear-gradient(135deg, #45a049, #4caf50);
 }
 
 .badge {
@@ -445,5 +643,88 @@ function formatRegistrationDetails(data) {
         grid-template-columns: 1fr;
     }
 }
+
+.copyable-code {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copyable-code:hover {
+    cursor: pointer;
+}
 </style>
+
+<script>
+    // Handle click-to-copy for conference codes in table
+    document.querySelectorAll('.copyable-code').forEach(codeElement => {
+        codeElement.addEventListener('click', function() {
+            const code = this.dataset.code;
+
+            if (code && code !== 'N/A') {
+                // Copy to clipboard
+                navigator.clipboard.writeText(code).then(() => {
+                    // Show success message
+                    showToast(`Conference code "${code}" copied to clipboard!`, 'success');
+
+                    // Visual feedback - change color temporarily
+                    const originalBg = this.style.background;
+                    this.style.background = 'linear-gradient(135deg, #45a049, #4caf50)';
+                    setTimeout(() => {
+                        this.style.background = originalBg;
+                    }, 500);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    showToast('Unable to copy to clipboard', 'error');
+                });
+            }
+        });
+    });
+
+    // Show toast notification function
+    function showToast(message, type) {
+        // Remove existing toasts
+        const existingToasts = document.querySelectorAll('.copy-toast');
+        existingToasts.forEach(toast => toast.remove());
+
+        // Create toast
+        const toast = document.createElement('div');
+        toast.className = `copy-toast toast-${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#28a745' : '#dc3545'};
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+
+        document.body.appendChild(toast);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Add CSS animations for toasts
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
 {% endblock %} 

@@ -9,6 +9,12 @@
         <h1>{{ conference.basic_info.name }}</h1>
         <div class="conference-meta">
             <span class="conference-year">{{ conference.basic_info.year }}</span>
+            {% if conference.conference_code %}
+            <span class="conference-code">
+                <i class="fas fa-qrcode"></i>
+                {{ conference.conference_code }}
+            </span>
+            {% endif %}
             <span class="conference-dates">{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</span>
             <span class="conference-location">
                 <i class="fas fa-map-marker-alt"></i>
@@ -421,6 +427,21 @@
 
 .btn-secondary:hover {
     background: #5a6268;
+}
+
+.conference-code {
+    background: #e8f5e8;
+    color: #2d5a2d;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-family: monospace;
+    font-size: 0.875rem;
+    border: 1px solid #4caf50;
+    margin: 0 0.5rem;
+}
+
+.conference-code i {
+    margin-right: 0.25rem;
 }
 
 .alert {

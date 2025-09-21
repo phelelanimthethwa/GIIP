@@ -42,6 +42,11 @@
                             ⚪ {{ conference.basic_info.status|title }}
                         {% endif %}
                     </span>
+                    {% if conference.conference_code %}
+                    <span class="badge conference-code" title="Conference Code">
+                        <i class="fas fa-qrcode"></i> {{ conference.conference_code }}
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="conference-year">{{ conference.basic_info.year }}</div>
             </div>
@@ -245,6 +250,15 @@
 .status-active { background: #d4edda; color: #155724; }
 .status-upcoming { background: #fff3cd; color: #856404; }
 .status-closed { background: #f8d7da; color: #721c24; }
+
+.conference-code {
+    background: #e8f5e8;
+    color: #2d5a2d;
+    border: 1px solid #4caf50;
+    font-family: monospace;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
 
 .conference-year {
     font-size: 1.25rem;

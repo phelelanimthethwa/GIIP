@@ -18,7 +18,7 @@ from google.cloud import storage as gcs_storage
 
 from PIL import Image
 from io import BytesIO
-from utils import register_filters
+from utils import register_filters, get_conference_by_code
 from routes.user_routes import user_routes
 import io
 import mimetypes
@@ -1792,7 +1792,10 @@ def admin_registrations():
         # Get registrations from Firebase
         registrations_ref = db.reference('registrations')
         registrations_data = registrations_ref.get()
-        
+
+        # Get all conferences for association lookup
+        conferences = get_all_conferences()
+
         # Convert to list and add the Firebase key as _id
         registrations = []
         if registrations_data:
@@ -1810,21 +1813,115 @@ def admin_registrations():
                 reg.setdefault('workshop', False)
                 reg.setdefault('banquet', False)
                 reg.setdefault('extra_paper', False)
+
+                # Add conference association information
+                conference_id = reg.get('conference_id', '')
+                conference_code = reg.get('conference_code', '')
+                conference_name = reg.get('conference_name', '')
+
+                # Look up conference details if conference_id exists
+                if conference_id and conference_id in conferences:
+                    conference_data = conferences[conference_id]
+                    reg['conference_info'] = {
+                        'id': conference_id,
+                        'name': conference_data.get('basic_info', {}).get('name', 'Unknown'),
+                        'year': conference_data.get('basic_info', {}).get('year', ''),
+                        'code': conference_code or conference_data.get('conference_code', ''),
+                        'status': conference_data.get('basic_info', {}).get('status', 'unknown')
+                    }
+                else:
+                    # For legacy registrations or missing conference data
+                    reg['conference_info'] = {
+                        'id': conference_id,
+                        'name': conference_name or 'Legacy Conference',
+                        'year': '',
+                        'code': conference_code or '',
+                        'status': 'legacy'
+                    }
+
                 registrations.append(reg)
-            
+
             # Sort by submission date (newest first)
             registrations.sort(key=lambda x: x.get('submission_date', ''), reverse=True)
-        
-        return render_template('admin/manage_registrations.html', 
+
+        return render_template('admin/manage_registrations.html',
                             registrations=registrations,
+                            conferences=get_all_conferences(),
                             site_design=get_site_design())
-                            
+
     except Exception as e:
         print(f"Error loading registrations: {str(e)}")
         flash(f'Error loading registrations: {str(e)}', 'danger')
-        return render_template('admin/manage_registrations.html', 
+        return render_template('admin/manage_registrations.html',
                             registrations=[],
                             site_design=get_site_design())
+
+@app.route('/admin/registrations/export')
+@login_required
+@admin_required
+def export_registrations():
+    """Export all registrations with conference information"""
+    try:
+        # Get registrations from Firebase
+        registrations_ref = db.reference('registrations')
+        registrations_data = registrations_ref.get()
+
+        # Get all conferences for association lookup
+        conferences = get_all_conferences()
+
+        # Convert to list with conference info
+        registrations = []
+        if registrations_data:
+            for key, reg in registrations_data.items():
+                reg['_id'] = key  # Add Firebase key as _id
+                # Ensure all required fields exist with defaults
+                reg.setdefault('submission_date', '')
+                reg.setdefault('full_name', '')
+                reg.setdefault('email', '')
+                reg.setdefault('institution', '')
+                reg.setdefault('registration_type', '')
+                reg.setdefault('registration_period', '')
+                reg.setdefault('total_amount', 0)
+                reg.setdefault('payment_status', 'pending')
+                reg.setdefault('workshop', False)
+                reg.setdefault('banquet', False)
+                reg.setdefault('extra_paper', False)
+
+                # Add conference association information
+                conference_id = reg.get('conference_id', '')
+                conference_code = reg.get('conference_code', '')
+                conference_name = reg.get('conference_name', '')
+
+                # Look up conference details if conference_id exists
+                if conference_id and conference_id in conferences:
+                    conference_data = conferences[conference_id]
+                    reg['conference_info'] = {
+                        'id': conference_id,
+                        'name': conference_data.get('basic_info', {}).get('name', 'Unknown'),
+                        'year': conference_data.get('basic_info', {}).get('year', ''),
+                        'code': conference_code or conference_data.get('conference_code', ''),
+                        'status': conference_data.get('basic_info', {}).get('status', 'unknown')
+                    }
+                else:
+                    # For legacy registrations or missing conference data
+                    reg['conference_info'] = {
+                        'id': conference_id,
+                        'name': conference_name or 'Legacy Conference',
+                        'year': '',
+                        'code': conference_code or '',
+                        'status': 'legacy'
+                    }
+
+                registrations.append(reg)
+
+            # Sort by submission date (newest first)
+            registrations.sort(key=lambda x: x.get('submission_date', ''), reverse=True)
+
+        return jsonify(registrations)
+
+    except Exception as e:
+        print(f"Error exporting registrations: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/registrations/<registration_id>')
 @login_required
@@ -1833,14 +1930,40 @@ def get_registration_details(registration_id):
     try:
         registration_ref = db.reference(f'registrations/{registration_id}')
         registration = registration_ref.get()
-        
+
         if registration:
             # Update file paths to use the new /uploads route
             if registration.get('payment_proof'):
                 registration['payment_proof'] = registration['payment_proof'].replace('/static/uploads/', '')
             if registration.get('paper') and registration['paper'].get('file_path'):
                 registration['paper']['file_path'] = registration['paper']['file_path'].replace('/static/uploads/', '')
-            
+
+            # Add conference association information
+            conference_id = registration.get('conference_id', '')
+            conference_code = registration.get('conference_code', '')
+            conference_name = registration.get('conference_name', '')
+
+            # Look up conference details if conference_id exists
+            conferences = get_all_conferences()
+            if conference_id and conference_id in conferences:
+                conference_data = conferences[conference_id]
+                registration['conference_info'] = {
+                    'id': conference_id,
+                    'name': conference_data.get('basic_info', {}).get('name', 'Unknown'),
+                    'year': conference_data.get('basic_info', {}).get('year', ''),
+                    'code': conference_code or conference_data.get('conference_code', ''),
+                    'status': conference_data.get('basic_info', {}).get('status', 'unknown')
+                }
+            else:
+                # For legacy registrations or missing conference data
+                registration['conference_info'] = {
+                    'id': conference_id,
+                    'name': conference_name or 'Legacy Conference',
+                    'year': '',
+                    'code': conference_code or '',
+                    'status': 'legacy'
+                }
+
             return jsonify(registration)
         else:
             return jsonify({'error': 'Registration not found'}), 404
@@ -2023,39 +2146,52 @@ def save_registration_notes(registration_id):
 
 
 def send_approval_email(email, registration):
-    subject = "GIIR Conference 2024 - Registration Approved"
+    conference_name = registration.get('conference_name', 'GIIR Conference 2024')
+    conference_code = registration.get('conference_code', '')
+    registration_type = registration.get('registration_type', '').replace('_', ' ').title()
+    registration_period = registration.get('registration_period', '').replace('_', ' ').title()
+    total_amount = registration.get('total_amount', '')
+
+    subject = f"{conference_name} - Registration Approved"
+
     body = f"""Dear {registration.get('full_name')},
 
-Your registration for the GIIR Conference 2024 has been approved.
+Your registration for {conference_name} has been approved.
+{"Conference Code: " + conference_code if conference_code else ""}
 
 Registration Details:
-- Type: {registration.get('registration_type', '').replace('_', ' ').title()}
-- Period: {registration.get('registration_period', '').replace('_', ' ').title()}
-- Total Amount: R {registration.get('total_amount')}
+- Type: {registration_type}
+- Period: {registration_period}
+- Total Amount: R {total_amount}
 
-{'Your paper submission has been confirmed.' if 'author' in registration.get('registration_type', '') else ''}
-{'Virtual access details will be sent closer to the conference date.' if 'virtual' in registration.get('registration_type', '') else ''}
+{'Your paper submission has been confirmed.' if 'author' in registration_type.lower() else ''}
+{'Virtual access details will be sent closer to the conference date.' if 'virtual' in registration_type.lower() else ''}
 
-Thank you for registering for GIIR Conference 2024.
+Thank you for registering for {conference_name}.
 
 Best regards,
-GIIR Conference Team"""
-    
+Conference Organizing Committee"""
+
     send_email(email, subject, body)
 
 def send_rejection_email(email, registration):
-    subject = "GIIR Conference 2024 - Registration Update"
+    conference_name = registration.get('conference_name', 'GIIR Conference 2024')
+    conference_code = registration.get('conference_code', '')
+
+    subject = f"{conference_name} - Registration Update"
+
     body = f"""Dear {registration.get('full_name')},
 
-Your registration for the GIIR Conference 2024 requires attention.
+Your registration for {conference_name} requires attention.
+{"Conference Code: " + conference_code if conference_code else ""}
 
 Please log in to your dashboard to view the status of your registration and make any necessary updates.
 
 If you have any questions, please contact us.
 
 Best regards,
-GIIR Conference Team"""
-    
+Conference Organizing Committee"""
+
     send_email(email, subject, body)
 
 
@@ -4872,42 +5008,6 @@ def admin_contact_page_settings():
         flash(f'Error saving contact page settings: {str(e)}', 'error')
         return redirect(url_for('admin_contact_email'))
 
-@app.route('/admin/registrations/export')
-@admin_required
-def export_registrations():
-    try:
-        # Get all registrations from Firebase
-        registrations_ref = db.reference('registrations')
-        registrations_data = registrations_ref.get()
-        
-        if not registrations_data:
-            return jsonify([])
-            
-        # Convert to list and add Firebase key as _id
-        registrations = []
-        for key, data in registrations_data.items():
-            registration = data.copy()
-            registration['_id'] = key
-            
-            # Format submission date if it exists
-            if 'submission_date' in registration:
-                try:
-                    # Assuming submission_date is stored as ISO string
-                    date_obj = datetime.fromisoformat(registration['submission_date'].replace('Z', '+00:00'))
-                    registration['submission_date'] = date_obj.strftime('%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    registration['submission_date'] = registration['submission_date']
-            
-            registrations.append(registration)
-            
-        # Sort by submission date in descending order
-        registrations.sort(key=lambda x: x.get('submission_date', ''), reverse=True)
-        
-        return jsonify(registrations)
-        
-    except Exception as e:
-        app.logger.error(f"Error exporting registrations: {str(e)}")
-        return jsonify({'error': 'Failed to export registrations'}), 500
 
 @app.route('/admin/papers/<paper_id>/download')
 @login_required
@@ -6032,6 +6132,8 @@ def conference_registration(conference_id):
         # POST request - process registration
         registration_data = {
             'conference_id': conference_id,
+            'conference_code': conference.get('conference_code', ''),
+            'conference_name': conference.get('basic_info', {}).get('name', ''),
             'user_id': current_user.id,
             'full_name': request.form.get('full_name'),
             'email': request.form.get('email'),
@@ -6078,7 +6180,8 @@ def conference_registration(conference_id):
             send_registration_confirmation_email(
                 registration_data['email'],
                 conference.get('basic_info', {}).get('name', 'Conference'),
-                registration_ref.key
+                registration_ref.key,
+                conference.get('conference_code', '')
             )
         except Exception as e:
             print(f"Error sending confirmation email: {e}")
@@ -6091,28 +6194,29 @@ def conference_registration(conference_id):
         flash('Error processing registration. Please try again.', 'error')
         return redirect(url_for('conference_registration', conference_id=conference_id))
 
-def send_registration_confirmation_email(email, conference_name, registration_id):
+def send_registration_confirmation_email(email, conference_name, registration_id, conference_code=None):
     """Send registration confirmation email"""
     try:
         subject = f"Registration Confirmation - {conference_name}"
         body = f"""
         Dear Participant,
-        
+
         Thank you for registering for {conference_name}!
-        
+        {"Conference Code: " + conference_code if conference_code else ""}
+
         Your registration ID is: {registration_id}
-        
+
         Your registration is currently being reviewed. You will receive another email once your registration is approved.
-        
+
         If you have any questions, please contact our support team.
-        
+
         Best regards,
         Conference Organizing Committee
         """
-        
+
         # Use existing send_email function
         send_email([email], subject, body)
-        
+
     except Exception as e:
         print(f"Error sending confirmation email: {e}")
 
@@ -6541,10 +6645,10 @@ def upload_speaker_image_to_firebase(file, filename):
         storage_client = gcs_storage.Client.from_service_account_json('serviceAccountKey.json')
         bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
         blob = bucket.blob(f'speakers/{filename}')
-        
+
         # Compress image if needed
         img_data = compress_image(file, max_size_kb=500)
-        
+
         # Upload the compressed image data
         blob.upload_from_string(img_data, content_type=file.mimetype)
         blob.make_public()
@@ -6552,6 +6656,204 @@ def upload_speaker_image_to_firebase(file, filename):
     except Exception as e:
         print(f"Error uploading speaker image: {str(e)}")
         raise
+
+def get_conference_data(conference_id):
+    """
+    Get conference data by ID from Firebase or About Content
+
+    Args:
+        conference_id: Conference ID (can be synthetic ID from About Content)
+
+    Returns:
+        dict: Conference data or None
+    """
+    try:
+        # Try to get from explicit conferences first
+        conferences = get_all_conferences()
+        if conference_id in conferences:
+            return conferences[conference_id]
+
+        # Try resolving from Admin About Content synthetic entries
+        return _get_about_content_conference(conference_id)
+    except Exception as e:
+        print(f"Error getting conference data: {e}")
+        return None
+
+def generate_conference_code(conference_abbr, year):
+    """
+    Generate a unique conference code for a conference
+
+    Args:
+        conference_abbr: Conference abbreviation (e.g., 'ETL', 'STM', 'TBME', 'SAT')
+        year: Conference year
+
+    Returns:
+        str: Unique conference code
+    """
+    import random
+    import string
+
+    # Generate 8-character alphanumeric unique ID
+    unique_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    return f"CONF-{year}-{conference_abbr}-{unique_id}"
+
+def create_conference_with_code(conference_data):
+    """
+    Create a new conference with an auto-generated unique code
+
+    Args:
+        conference_data: Conference data dictionary
+
+    Returns:
+        dict: {'conference_id': str, 'conference_code': str, 'success': bool}
+    """
+    try:
+        # Generate conference code from abbreviation and year
+        abbr = conference_data.get('basic_info', {}).get('abbreviation', 'CONF')
+        year = conference_data.get('basic_info', {}).get('year', datetime.now().year)
+        conference_code = generate_conference_code(abbr, year)
+
+        # Add conference code to the data
+        conference_data['conference_code'] = conference_code
+        conference_data['code_generated_at'] = datetime.now().isoformat()
+
+        # Save to Firebase
+        conferences_ref = db.reference('conferences')
+        new_conference_ref = conferences_ref.push(conference_data)
+
+        return {
+            'conference_id': new_conference_ref.key,
+            'conference_code': conference_code,
+            'success': True
+        }
+    except Exception as e:
+        print(f"Error creating conference with code: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def update_conference_code(conference_id, new_abbreviation=None):
+    """
+    Update or regenerate conference code for an existing conference
+
+    Args:
+        conference_id: Conference ID
+        new_abbreviation: Optional new abbreviation
+
+    Returns:
+        dict: {'conference_code': str, 'success': bool}
+    """
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return {'success': False, 'error': 'Conference not found'}
+
+        # Get abbreviation (use new one if provided, otherwise from existing data)
+        abbr = new_abbreviation or conference.get('basic_info', {}).get('abbreviation', 'CONF')
+        year = conference.get('basic_info', {}).get('year', datetime.now().year)
+
+        # Generate new conference code
+        conference_code = generate_conference_code(abbr, year)
+
+        # Update in Firebase
+        conference_ref = db.reference(f'conferences/{conference_id}')
+        conference_ref.update({
+            'conference_code': conference_code,
+            'code_generated_at': datetime.now().isoformat()
+        })
+
+        return {
+            'conference_code': conference_code,
+            'success': True
+        }
+    except Exception as e:
+        print(f"Error updating conference code: {e}")
+        return {'success': False, 'error': str(e)}
+
+@app.route('/admin/conference-codes', methods=['GET'])
+@login_required
+@admin_required
+def admin_conference_codes():
+    """Admin interface for managing conference codes"""
+    try:
+        # Get all conferences with their codes
+        conferences = get_all_conferences()
+        conferences_with_codes = {}
+
+        for conference_id, conference_data in conferences.items():
+            conference_data_with_code = conference_data.copy()
+            conference_data_with_code['id'] = conference_id
+            conferences_with_codes[conference_id] = conference_data_with_code
+
+        return render_template('admin/conference_codes.html',
+                             conferences=conferences_with_codes,
+                             site_design=get_site_design())
+    except Exception as e:
+        flash(f'Error loading conference codes: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/conference-codes/generate/<conference_id>', methods=['POST'])
+@login_required
+@admin_required
+def generate_conference_code(conference_id):
+    """Generate a new conference code for an existing conference"""
+    try:
+        # Get conference data
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+
+        # Get new abbreviation from form if provided
+        new_abbreviation = request.form.get('abbreviation')
+
+        # Generate new code
+        result = update_conference_code(conference_id, new_abbreviation)
+
+        if result['success']:
+            flash(f'Conference code updated successfully: {result["conference_code"]}', 'success')
+        else:
+            flash(f'Error generating conference code: {result.get("error", "Unknown error")}', 'error')
+
+        return redirect(url_for('admin_conference_codes'))
+
+    except Exception as e:
+        flash(f'Error generating conference code: {str(e)}', 'error')
+        return redirect(url_for('admin_conference_codes'))
+
+@app.route('/admin/conference-codes/validate', methods=['POST'])
+@login_required
+@admin_required
+def validate_conference_code():
+    """Validate a conference code"""
+    try:
+        code = request.form.get('conference_code')
+        if not code:
+            return jsonify({'valid': False, 'error': 'No code provided'}), 400
+
+        result = validate_conference_code(code)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'valid': False, 'error': str(e)}), 500
+
+@app.route('/conference-by-code/<conference_code>')
+def get_conference_by_code_route(conference_code):
+    """Get conference details by unique conference code (public endpoint)"""
+    try:
+        result = get_conference_by_code(conference_code)
+
+        if result:
+            return redirect(url_for('conference_details', conference_id=result['conference_id']))
+        else:
+            flash('Invalid conference code.', 'error')
+            return redirect(url_for('conference_discover'))
+
+    except Exception as e:
+        flash(f'Error retrieving conference: {str(e)}', 'error')
+        return redirect(url_for('conference_discover'))
 
 if __name__ == '__main__':
     # Create admin user on startup
