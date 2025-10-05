@@ -3,14 +3,20 @@
 {% block title %}{{ conference.basic_info.name }} Gallery - GIIR{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<!-- Enhanced Hero Section -->
+<div class="gallery-hero">
+    <div class="hero-background"></div>
+    <div class="hero-overlay"></div>
     <div class="container">
-        <div class="header-content text-center">
-            <h1 class="display-4">
-                <i class="fas fa-images me-3"></i>
+        <div class="hero-content">
+            <div class="hero-icon">
+                <i class="fas fa-images"></i>
+            </div>
+            <h1 class="hero-title">
                 {{ conference.basic_info.name }}
+                <span class="hero-subtitle">Gallery</span>
             </h1>
-            <p class="lead">
+            <p class="hero-description">
                 {% if conference.basic_info.year %}
                 {{ conference.basic_info.year }} Conference Gallery
                 {% else %}
@@ -18,125 +24,548 @@
                 {% endif %}
             </p>
             {% if conference.conference_code %}
-            <div class="mt-2">
-                <span class="badge bg-light text-dark fs-6 px-3 py-2">
-                    <i class="fas fa-qrcode me-1"></i>
-                    {{ conference.conference_code }}
-                </span>
+            <div class="hero-badge">
+                <i class="fas fa-qrcode me-2"></i>
+                {{ conference.conference_code }}
+            </div>
+            {% endif %}
+
+            <!-- Gallery Stats -->
+            {% if images or attendees %}
+            <div class="hero-stats">
+                {% if images %}
+                <div class="stat-item">
+                    <span class="stat-number">{{ images|length }}</span>
+                    <span class="stat-label">Photos</span>
+                </div>
+                {% endif %}
+                {% if attendees %}
+                <div class="stat-item">
+                    <span class="stat-number">{{ attendees|length }}</span>
+                    <span class="stat-label">Attendees</span>
+                </div>
+                {% endif %}
+                <div class="stat-item">
+                    <span class="stat-number">{{ (images|length) + (attendees|length) }}</span>
+                    <span class="stat-label">Total Items</span>
+                </div>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<div class="container py-5">
-    <!-- Gallery Stats -->
-    {% if images %}
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="card bg-light">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-camera fa-2x text-primary me-3"></i>
-                        <div>
-                            <h5 class="mb-1">Gallery Overview</h5>
-                            <p class="mb-0 text-muted">
-                                {{ images|length }} image{{ images|length != 1 ? 's' : '' }} from this conference
-                            </p>
+<!-- Gallery Controls & Filters -->
+<div class="gallery-controls">
+    <div class="container">
+        <div class="controls-header">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="gallerySearch" placeholder="Search gallery..." class="form-control">
+            </div>
+
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">
+                    <i class="fas fa-th-large me-1"></i>All
+                </button>
+                <button class="filter-btn" data-filter="photos">
+                    <i class="fas fa-camera me-1"></i>Photos
+                </button>
+                <button class="filter-btn" data-filter="attendees">
+                    <i class="fas fa-users me-1"></i>Attendees
+                </button>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="grid" title="Grid View">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-btn" data-view="masonry" title="Masonry View">
+                        <i class="fas fa-th-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Gallery Content -->
+<div class="gallery-container">
+    <div class="container">
+        {% if images or attendees %}
+        <!-- Gallery Content -->
+        <div class="gallery-content" id="galleryContent">
+            <!-- Photos Section -->
+            <div class="photos-section" data-category="photos">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-camera me-2"></i>
+                        Conference Photos
+                        <span class="item-count">({{ images|length }})</span>
+                    </h2>
+                </div>
+                <div class="photos-grid" id="photosGrid">
+                    {% for image in images %}
+                    <div class="gallery-item" data-title="{{ image.original_name|lower }}" data-category="photos">
+                        <div class="image-container">
+                            <img src="{{ image.url }}" alt="{{ image.original_name }}" loading="lazy">
+                            <div class="image-overlay">
+                                <div class="overlay-actions">
+                                    <a href="{{ image.url }}" data-lightbox="conference-gallery" data-title="{{ image.original_name }}" class="action-btn view-btn">
+                                        <i class="fas fa-search-plus"></i>
+                                    </a>
+                                    <button class="action-btn share-btn" onclick="shareImage('{{ image.url }}', '{{ image.original_name }}')">
+                                        <i class="fas fa-share"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="image-info">
+                            <h4 class="image-title">{{ image.original_name }}</h4>
+                            <div class="image-meta">
+                                <span class="meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    {{ image.uploaded_at|date if image.uploaded_at else 'Recent' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-primary text-white">
-                <div class="card-body text-center">
-                    <h3 class="mb-1">{{ images|length }}</h3>
-                    <p class="mb-0">Photos</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
-    <!-- Gallery Grid -->
-    {% if images %}
-    <div class="gallery-grid">
-        {% for image in images %}
-        <div class="gallery-item">
-            <a href="{{ image.url }}" data-lightbox="conference-gallery" data-title="{{ image.original_name }}">
-                <img src="{{ image.url }}" alt="{{ image.original_name }}" loading="lazy">
-                <div class="gallery-overlay">
-                    <div class="gallery-info">
-                        <i class="fas fa-search-plus"></i>
+            <!-- Attendees Section -->
+            {% if attendees %}
+            <div class="attendees-section" data-category="attendees">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-users me-2"></i>
+                        Featured Attendees
+                        <span class="item-count">({{ attendees|length }})</span>
+                    </h2>
+                </div>
+                <div class="attendees-grid" id="attendeesGrid">
+                    {% for attendee in attendees %}
+                    <div class="attendee-card" data-title="{{ attendee.full_name|lower }} {{ attendee.institution|lower if attendee.institution else '' }}" data-category="attendees">
+                        <div class="attendee-header">
+                            <div class="attendee-avatar">
+                                {% if attendee.photo_url %}
+                                <img src="{{ attendee.photo_url }}" alt="{{ attendee.full_name }}" class="avatar-img">
+                                {% else %}
+                                <div class="avatar-placeholder">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="attendee-badges">
+                                {% if attendee.title %}
+                                <span class="badge badge-primary">{{ attendee.title }}</span>
+                                {% endif %}
+                                {% if attendee.country %}
+                                <span class="badge badge-secondary">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ attendee.country }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="attendee-body">
+                            <h3 class="attendee-name">{{ attendee.full_name }}</h3>
+                            {% if attendee.institution %}
+                            <p class="attendee-affiliation">
+                                <i class="fas fa-university me-1"></i>
+                                {{ attendee.institution }}
+                            </p>
+                            {% endif %}
+                            {% if attendee.department %}
+                            <p class="attendee-department">{{ attendee.department }}</p>
+                            {% endif %}
+                            {% if attendee.bio %}
+                            <p class="attendee-bio">{{ attendee.bio[:120] }}{% if attendee.bio|length > 120 %}...{% endif %}</p>
+                            {% endif %}
+                            {% if attendee.website %}
+                            <a href="{{ attendee.website }}" target="_blank" class="attendee-website">
+                                <i class="fas fa-external-link-alt me-1"></i>
+                                Visit Profile
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="attendee-footer">
+                            <button class="btn btn-outline-primary btn-sm" onclick="shareAttendee('{{ attendee.full_name }}', '{{ attendee.institution }}')">
+                                <i class="fas fa-share me-1"></i>Share
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-state" id="loadingState" style="display: none;">
+            <div class="skeleton-grid">
+                {% for i in range(6) %}
+                <div class="skeleton-item">
+                    <div class="skeleton-image"></div>
+                    <div class="skeleton-content">
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-text"></div>
                     </div>
                 </div>
-            </a>
-            <div class="gallery-caption">
-                <small class="text-muted">{{ image.original_name }}</small>
+                {% endfor %}
             </div>
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="text-center py-5">
-        <i class="fas fa-images fa-4x text-muted mb-3"></i>
-        <h3>No Gallery Images Yet</h3>
-        <p class="text-muted">Images will be available after this conference is completed.</p>
-        <a href="{{ url_for('galleries') }}" class="btn btn-outline-primary">
-            <i class="fas fa-arrow-left me-1"></i>
-            Back to All Galleries
-        </a>
-    </div>
-    {% endif %}
 
-    <!-- Back Navigation -->
-    {% if images %}
-    <div class="text-center mt-5">
-        <a href="{{ url_for('galleries') }}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-images"></i>
+            </div>
+            <h3 class="empty-title">Gallery Coming Soon</h3>
+            <p class="empty-description">
+                Images and attendee profiles will be available after this conference is completed.
+                Check back later for memorable moments and participant highlights.
+            </p>
+            <div class="empty-actions">
+                <a href="{{ url_for('galleries') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Browse Other Galleries
+                </a>
+                <a href="{{ url_for('conferences') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-calendar me-2"></i>
+                    View Conferences
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Back Navigation -->
+<div class="back-navigation">
+    <div class="container">
+        <a href="{{ url_for('galleries') }}" class="back-btn">
+            <i class="fas fa-arrow-left me-2"></i>
             Back to All Galleries
         </a>
     </div>
-    {% endif %}
 </div>
 
 <!-- Lightbox CSS -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css">
 
 <style>
-.gallery-grid {
+/* ===== GALLERY HERO SECTION ===== */
+.gallery-hero {
+    position: relative;
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: white;
+    padding: 4rem 0;
+}
+
+.hero-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.hero-subtitle {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 300;
+    opacity: 0.9;
+    margin-top: 0.5rem;
+}
+
+.hero-description {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===== GALLERY CONTROLS ===== */
+.gallery-controls {
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.controls-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+.search-box input {
+    padding-left: 3rem;
+    border-radius: 25px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.search-box input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.filter-buttons {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.filter-btn {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.view-toggle {
+    display: flex;
+    background: #f8f9fa;
+    border-radius: 25px;
+    padding: 0.25rem;
+}
+
+.view-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #6c757d;
+}
+
+.view-btn:hover,
+.view-btn.active {
+    background: white;
+    color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ===== GALLERY CONTENT ===== */
+.gallery-container {
+    padding: 3rem 0;
+    background: #f8f9fa;
+}
+
+.gallery-content {
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.section-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.section-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.item-count {
+    font-size: 1rem;
+    font-weight: 400;
+    color: #6c757d;
+}
+
+/* ===== PHOTOS SECTION ===== */
+.photos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 2rem;
-    margin-bottom: 2rem;
+    margin-bottom: 3rem;
+}
+
+.photos-grid.masonry {
+    column-count: 3;
+    column-gap: 2rem;
+}
+
+@media (max-width: 1200px) {
+    .photos-grid.masonry {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 768px) {
+    .photos-grid.masonry {
+        column-count: 1;
+    }
 }
 
 .gallery-item {
-    position: relative;
+    break-inside: avoid;
+    margin-bottom: 2rem;
+    background: white;
+    border-radius: 16px;
     overflow: hidden;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
 }
 
 .gallery-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
-.gallery-item img {
+.image-container {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4/3;
+}
+
+.image-container img {
     width: 100%;
-    height: 250px;
+    height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
 }
 
-.gallery-item:hover img {
+.gallery-item:hover .image-container img {
     transform: scale(1.05);
 }
 
-.gallery-overlay {
+.image-overlay {
     position: absolute;
     top: 0;
     left: 0;
@@ -150,87 +579,470 @@
     transition: opacity 0.3s ease;
 }
 
-.gallery-item:hover .gallery-overlay {
+.gallery-item:hover .image-overlay {
     opacity: 1;
 }
 
-.gallery-info {
+.overlay-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.action-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.action-btn:hover {
+    background: white;
+    transform: scale(1.1);
+    color: var(--primary-color);
+}
+
+.image-info {
+    padding: 1.5rem;
+}
+
+.image-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.75rem;
+}
+
+.image-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.meta-item i {
+    font-size: 0.8rem;
+}
+
+/* ===== ATTENDEES SECTION ===== */
+.attendees-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.attendee-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+}
+
+.attendee-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.attendee-header {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem 1.5rem 1rem;
+    gap: 1rem;
+}
+
+.attendee-avatar {
+    flex-shrink: 0;
+}
+
+.avatar-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--primary-color);
+}
+
+.avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: white;
     font-size: 2rem;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--primary-color);
 }
 
-.gallery-caption {
-    padding: 1rem;
+.attendee-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.badge-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.attendee-body {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.attendee-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.attendee-affiliation {
+    color: #495057;
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.attendee-department {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.attendee-bio {
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.attendee-website {
+    display: inline-flex;
+    align-items: center;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.attendee-website:hover {
+    color: var(--secondary-color);
+}
+
+.attendee-footer {
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+/* ===== LOADING & EMPTY STATES ===== */
+.loading-state {
+    padding: 3rem 0;
+}
+
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.skeleton-item {
     background: white;
-    text-align: center;
-}
-
-.gallery-caption small {
-    font-size: 0.875rem;
-    color: #666;
-    display: block;
-    white-space: nowrap;
+    border-radius: 16px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 1.5rem;
 }
 
-/* Lightbox customizations */
-.lightbox .lb-image {
+.skeleton-image {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
     border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.skeleton-title {
+    height: 20px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-text {
+    height: 14px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-icon {
+    font-size: 5rem;
+    color: #dee2e6;
+    margin-bottom: 2rem;
+}
+
+.empty-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.empty-description {
+    font-size: 1.1rem;
+    color: #6c757d;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+}
+
+.empty-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* ===== BACK NAVIGATION ===== */
+.back-navigation {
+    background: white;
+    padding: 2rem 0;
+    border-top: 1px solid #e9ecef;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: 2px solid var(--primary-color);
+}
+
+.back-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateX(-5px);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 992px) {
+    .controls-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .filter-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .hero-stats {
+        gap: 1rem;
+    }
+
+    .stat-item {
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .gallery-hero {
+        min-height: 50vh;
+        text-align: center;
+    }
+
+    .hero-title {
+        font-size: 2.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.2rem;
+    }
+
+    .hero-stats {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .attendees-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .gallery-controls {
+        padding: 1rem 0;
+    }
+
+    .controls-header {
+        gap: 1rem;
+    }
+
+    .search-box {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .gallery-container {
+        padding: 2rem 0;
+    }
+
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .hero-description {
+        font-size: 1rem;
+    }
+
+    .photos-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .empty-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .filter-buttons {
+        gap: 0.5rem;
+    }
+
+    .filter-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* ===== LIGHTBOX CUSTOMIZATIONS ===== */
+.lightbox .lb-image {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .lightbox .lb-nav a.lb-prev,
 .lightbox .lb-nav a.lb-next {
     opacity: 0.8;
-    transition: opacity 0.2s ease;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .lightbox .lb-nav a.lb-prev:hover,
 .lightbox .lb-nav a.lb-next:hover {
     opacity: 1;
+    transform: scale(1.1);
 }
 
 .lightbox .lb-caption {
     font-size: 1rem;
-    line-height: 1.4;
+    line-height: 1.5;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 1rem;
+    border-radius: 8px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .gallery-item img {
-        height: 200px;
-    }
+/* ===== UTILITY CLASSES ===== */
+.hidden {
+    display: none !important;
 }
 
-@media (max-width: 576px) {
-    .gallery-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
+.fade-in {
+    animation: fadeIn 0.5s ease;
 }
 
-/* Loading animation for images */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-.gallery-item {
-    animation: fadeIn 0.6s ease forwards;
+/* ===== FOCUS STATES ===== */
+.filter-btn:focus,
+.view-btn:focus,
+.action-btn:focus,
+.back-btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
-.gallery-item:nth-child(1) { animation-delay: 0.1s; }
-.gallery-item:nth-child(2) { animation-delay: 0.2s; }
-.gallery-item:nth-child(3) { animation-delay: 0.3s; }
-.gallery-item:nth-child(4) { animation-delay: 0.4s; }
-.gallery-item:nth-child(5) { animation-delay: 0.5s; }
-.gallery-item:nth-child(6) { animation-delay: 0.6s; }
+/* ===== PRINT STYLES ===== */
+@media print {
+    .gallery-controls,
+    .back-navigation,
+    .overlay-actions {
+        display: none !important;
+    }
+
+    .gallery-hero {
+        background: white !important;
+        color: black !important;
+    }
+
+    .hero-title,
+    .section-title {
+        color: black !important;
+    }
+}
 </style>
 
 <!-- Lightbox JS -->
@@ -247,26 +1059,136 @@ $(document).ready(function() {
         'imageFadeDuration': 300
     });
 
-    // Add loading states for images
-    $('.gallery-item img').each(function() {
-        $(this).on('load', function() {
-            $(this).addClass('loaded');
-        }).on('error', function() {
-            $(this).closest('.gallery-item').html(`
-                <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
-                    <div class="text-center">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                        <p class="small mb-0">Image unavailable</p>
-                    </div>
-                </div>
-            `);
+    // Gallery filtering and search functionality
+    const galleryItems = $('.gallery-item, .attendee-card');
+    const searchInput = $('#gallerySearch');
+
+    // Filter items based on category
+    $('.filter-btn').click(function() {
+        const filter = $(this).data('filter');
+
+        $('.filter-btn').removeClass('active');
+        $(this).addClass('active');
+
+        if (filter === 'all') {
+            galleryItems.show();
+        } else {
+            galleryItems.hide();
+            $(`.gallery-item[data-category="${filter}"], .attendee-card[data-category="${filter}"]`).show();
+        }
+    });
+
+    // Search functionality
+    searchInput.on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+
+        galleryItems.each(function() {
+            const title = $(this).data('title') || '';
+            const isVisible = title.includes(searchTerm);
+
+            if (searchTerm === '') {
+                // Show all items if search is empty
+                $(this).show();
+            } else {
+                // Show/hide based on search match
+                $(this).toggle(isVisible);
+            }
         });
     });
 
-    // Add click tracking for analytics (optional)
-    $('.gallery-item a').click(function() {
-        const imageName = $(this).find('img').attr('alt');
-        console.log(`Gallery image viewed: ${imageName}`);
+    // View toggle functionality
+    $('.view-btn').click(function() {
+        const view = $(this).data('view');
+
+        $('.view-btn').removeClass('active');
+        $(this).addClass('active');
+
+        const photosGrid = $('#photosGrid');
+
+        if (view === 'masonry') {
+            photosGrid.addClass('masonry');
+        } else {
+            photosGrid.removeClass('masonry');
+        }
+    });
+
+    // Image loading and error handling
+    $('.gallery-item img, .avatar-img').each(function() {
+        $(this).on('load', function() {
+            $(this).addClass('loaded');
+        }).on('error', function() {
+            $(this).closest('.gallery-item, .attendee-card').addClass('image-error');
+        });
+    });
+
+    // Share functionality
+    window.shareImage = function(imageUrl, imageName) {
+        if (navigator.share) {
+            navigator.share({
+                title: imageName,
+                text: `Check out this image from {{ conference.basic_info.name }}`,
+                url: imageUrl
+            }).catch(err => console.log('Error sharing:', err));
+        } else {
+            // Fallback: copy to clipboard
+            navigator.clipboard.writeText(imageUrl).then(() => {
+                alert('Image URL copied to clipboard!');
+            }).catch(() => {
+                alert('Share not supported on this device');
+            });
+        }
+    };
+
+    window.shareAttendee = function(attendeeName, institution) {
+        const shareText = `Meet ${attendeeName}${institution ? ` from ${institution}` : ''} at {{ conference.basic_info.name }}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: attendeeName,
+                text: shareText,
+                url: window.location.href
+            }).catch(err => console.log('Error sharing:', err));
+        } else {
+            navigator.clipboard.writeText(`${shareText}\n${window.location.href}`).then(() => {
+                alert('Attendee info copied to clipboard!');
+            }).catch(() => {
+                alert('Share not supported on this device');
+            });
+        }
+    };
+
+    // Smooth scroll for back button
+    $('.back-btn').click(function(e) {
+        e.preventDefault();
+        const target = $($(this).attr('href'));
+        if (target.length) {
+            $('html, body').animate({
+                scrollTop: target.offset().top - 100
+            }, 500);
+        }
+    });
+
+    // Add animation delays for staggered loading
+    galleryItems.each(function(index) {
+        $(this).css('animation-delay', `${index * 0.1}s`);
+    });
+
+    // Intersection Observer for lazy loading animations
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('fade-in');
+            }
+        });
+    }, observerOptions);
+
+    $('.gallery-item, .attendee-card').each(function() {
+        observer.observe(this);
     });
 });
 </script>

@@ -44,6 +44,14 @@ def format_datetime(dt_str):
     except:
         return dt_str
 
+def format_date(dt_str):
+    """Format datetime string to date only (no time)"""
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        return dt.strftime("%B %d, %Y")
+    except:
+        return dt_str
+
 def get_filename(filepath):
     """Get original filename from path"""
     return os.path.basename(filepath)
@@ -149,5 +157,6 @@ def get_conference_by_code(code):
 def register_filters(app):
     app.jinja_env.filters['filesizeformat'] = format_filesize
     app.jinja_env.filters['datetime'] = format_datetime
+    app.jinja_env.filters['date'] = format_date
     app.jinja_env.filters['filename'] = get_filename
     app.jinja_env.filters['status_badge'] = status_badge 
