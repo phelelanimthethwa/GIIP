@@ -4140,24 +4140,58 @@ def serve_upload(filename):
 def download_firebase_file():
     """Download files from Firebase Storage URLs with proper headers"""
     try:
+        from urllib.parse import urlparse, unquote
+        import requests
+        
         file_url = request.args.get('url')
         if not file_url:
             return "No file URL provided", 400
         
-        # Validate that it's a Firebase Storage URL
-        if 'firebasestorage.googleapis.com' not in file_url:
-            return "Invalid file URL", 400
+        # SECURITY: Strict validation to prevent SSRF attacks
+        try:
+            parsed_url = urlparse(file_url)
+        except Exception:
+            return "Invalid URL format", 400
+        
+        # 1. Only allow HTTPS protocol
+        if parsed_url.scheme != 'https':
+            return "Only HTTPS URLs are allowed", 400
+        
+        # 2. Strictly validate the hostname is Firebase Storage
+        allowed_domains = [
+            'firebasestorage.googleapis.com',
+            'storage.googleapis.com'
+        ]
+        if parsed_url.hostname not in allowed_domains:
+            return "Only Firebase Storage URLs are allowed", 400
+        
+        # 3. Ensure no credentials in URL
+        if parsed_url.username or parsed_url.password:
+            return "URLs with credentials are not allowed", 400
+        
+        # 4. Validate path to prevent directory traversal
+        if '..' in parsed_url.path or '//' in parsed_url.path:
+            return "Invalid path in URL", 400
         
         # Extract filename from URL for download name
         filename = "download"
         if 'guidelines%2F' in file_url:
-            filename = file_url.split('guidelines%2F')[1].split('?')[0]
+            filename = unquote(file_url.split('guidelines%2F')[1].split('?')[0])
         elif 'speakers%2F' in file_url:
-            filename = file_url.split('speakers%2F')[1].split('?')[0]
+            filename = unquote(file_url.split('speakers%2F')[1].split('?')[0])
         
-        # Download the file from Firebase Storage
-        import requests
-        response = requests.get(file_url, stream=True)
+        # Sanitize filename to prevent path traversal
+        filename = filename.replace('..', '').replace('/', '').replace('\\', '')
+        if not filename or filename == '.':
+            filename = "download"
+        
+        # Download the file from Firebase Storage with timeout and redirect disabled
+        response = requests.get(
+            file_url, 
+            stream=True, 
+            timeout=30,  # Prevent hanging
+            allow_redirects=False  # Prevent redirect-based SSRF
+        )
         
         if response.status_code != 200:
             return "File not found", 404
@@ -7018,17 +7052,17 @@ def conference_discover():
                     if admin_status == 'active':
                         computed_status = 'active'
                     else:
-                        computed_status = 'upcoming'
+                    computed_status = 'upcoming'
                 else:
                     # Conference is ONGOING (start_dt <= now <= end_dt)
                     computed_status = 'active'
-            elif end_dt and now > end_dt:
+                elif end_dt and now > end_dt:
                 # Only end date available, and it has passed
-                computed_status = 'past'
+                    computed_status = 'past'
             elif start_dt and now < start_dt:
                 # Only start date available, and it hasn't started
                 computed_status = 'upcoming'
-            else:
+                else:
                 # No dates available or dates are invalid, use admin status
                 computed_status = admin_status if admin_status else 'draft'
 
@@ -7391,7 +7425,7 @@ def admin_conferences():
         for conf_id, conf_data in conferences.items():
             if not conf_data or 'basic_info' not in conf_data:
                 continue
-            
+                
             basic_info = conf_data['basic_info']
             
             # Parse dates
