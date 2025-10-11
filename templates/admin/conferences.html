@@ -1,0 +1,540 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Conference Management - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mt-4 mb-2">
+                <i class="fas fa-calendar me-2"></i>
+                Conference Management
+            </h1>
+            <p class="text-muted">Create and manage multiple conferences</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createConferenceModal">
+                <i class="fas fa-plus me-1"></i>
+                Create New Conference
+            </button>
+        </div>
+    </div>
+
+    <!-- Conference Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ conferences|length }}</h4>
+                            <p class="card-text">Total Conferences</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ active_conferences|length }}</h4>
+                            <p class="card-text">Active Conferences</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-play-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ upcoming_conferences|length }}</h4>
+                            <p class="card-text">Upcoming Conferences</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ past_conferences|length }}</h4>
+                            <p class="card-text">Past Conferences</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-history fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conference List -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    All Conferences
+                </h5>
+                <div class="d-flex gap-2">
+                    <select class="form-select form-select-sm" id="statusFilter" onchange="filterConferences()">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="upcoming">Upcoming</option>
+                        <option value="past">Past</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                    <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search conferences..." onkeyup="searchConferences()">
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if conferences %}
+            <div class="table-responsive">
+                <table class="table table-hover" id="conferencesTable">
+                    <thead>
+                        <tr>
+                            <th>Conference</th>
+                            <th>Year</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Dates</th>
+                            <th>Location</th>
+                            <th>Registrations</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for conference_id, conference in conferences.items() %}
+                        <tr data-conference-id="{{ conference_id }}" data-status="{{ conference.basic_info.status|default('draft') }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="conference-avatar me-3">
+                                        <i class="fas fa-calendar"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ conference.basic_info.name }}</h6>
+                                        <small class="text-muted">{{ conference.conference_code|default('No code') }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ conference.basic_info.year|default('N/A') }}</span>
+                            </td>
+                            <td>
+                                {% set event_type = conference.basic_info.event_type|default('in-person') %}
+                                <span class="badge 
+                                    {% if event_type == 'virtual' %}bg-primary
+                                    {% elif event_type == 'hybrid' %}bg-info
+                                    {% else %}bg-success{% endif %}">
+                                    {% if event_type == 'virtual' %}
+                                        <i class="fas fa-video me-1"></i>Virtual
+                                    {% elif event_type == 'hybrid' %}
+                                        <i class="fas fa-users me-1"></i>Hybrid
+                                    {% else %}
+                                        <i class="fas fa-map-marker-alt me-1"></i>In-Person
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% set status = conference.basic_info.status|default('draft') %}
+                                <span class="badge 
+                                    {% if status == 'active' %}bg-success
+                                    {% elif status == 'upcoming' %}bg-info
+                                    {% elif status == 'past' %}bg-secondary
+                                    {% else %}bg-warning{% endif %}">
+                                    {{ status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if conference.basic_info.start_date and conference.basic_info.end_date %}
+                                <small>
+                                    {{ conference.basic_info.start_date|date }} - {{ conference.basic_info.end_date|date }}
+                                </small>
+                                {% else %}
+                                <small class="text-muted">Not set</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ conference.basic_info.location|default('Not set') }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ conference.registration_count|default(0) }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}" 
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-outline-secondary" 
+                                            onclick="editConference('{{ conference_id }}')" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="deleteConference('{{ conference_id }}', '{{ conference.basic_info.name }}')" 
+                                            title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar fa-4x text-muted mb-3"></i>
+                <h4>No Conferences Found</h4>
+                <p class="text-muted">Create your first conference to get started.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createConferenceModal">
+                    <i class="fas fa-plus me-1"></i>
+                    Create Conference
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create Conference Modal -->
+<div class="modal fade" id="createConferenceModal" tabindex="-1" aria-labelledby="createConferenceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createConferenceModalLabel">
+                    <i class="fas fa-plus me-2"></i>
+                    Create New Conference
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createConferenceForm" method="POST" action="{{ url_for('create_conference') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceName" class="form-label">Conference Name *</label>
+                                <input type="text" class="form-control" id="conferenceName" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceYear" class="form-label">Year *</label>
+                                <input type="number" class="form-control" id="conferenceYear" name="year" 
+                                       min="2024" max="2030" value="{{ current_year }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceAbbreviation" class="form-label">Abbreviation</label>
+                                <input type="text" class="form-control" id="conferenceAbbreviation" name="abbreviation" 
+                                       placeholder="e.g., GIIR" maxlength="10">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceStatus" class="form-label">Status</label>
+                                <select class="form-select" id="conferenceStatus" name="status">
+                                    <option value="draft">Draft</option>
+                                    <option value="upcoming">Upcoming</option>
+                                    <option value="active">Active</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="eventType" class="form-label">Event Type</label>
+                                <select class="form-select" id="eventType" name="event_type">
+                                    <option value="in-person">In-Person</option>
+                                    <option value="virtual">Virtual</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceLocation" class="form-label">Location</label>
+                                <input type="text" class="form-control" id="conferenceLocation" name="location" 
+                                       placeholder="Conference venue">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="conferenceDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="conferenceDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="startDate" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="startDate" name="start_date">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="endDate" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="endDate" name="end_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceLocation" class="form-label">Location</label>
+                                <input type="text" class="form-control" id="conferenceLocation" name="location">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="conferenceWebsite" class="form-label">Website</label>
+                                <input type="url" class="form-control" id="conferenceWebsite" name="website">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Section -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Conference Settings</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="registrationEnabled" name="registration_enabled" checked>
+                                        <label class="form-check-label" for="registrationEnabled">
+                                            Registration Enabled
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="paperSubmissionEnabled" name="paper_submission_enabled" checked>
+                                        <label class="form-check-label" for="paperSubmissionEnabled">
+                                            Paper Submission Enabled
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="galleryEnabled" name="gallery_enabled" checked>
+                                        <label class="form-check-label" for="galleryEnabled">
+                                            Gallery Enabled
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="emailNotifications" name="email_notifications" checked>
+                                        <label class="form-check-label" for="emailNotifications">
+                                            Email Notifications
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>
+                        Create Conference
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Conference Modal -->
+<div class="modal fade" id="editConferenceModal" tabindex="-1" aria-labelledby="editConferenceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editConferenceModalLabel">
+                    <i class="fas fa-edit me-2"></i>
+                    Edit Conference
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editConferenceForm" method="POST">
+                <div class="modal-body">
+                    <!-- Form content will be populated by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.conference-avatar {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.conference-avatar i {
+    font-size: 1.2rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.modal-lg {
+    max-width: 800px;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+</style>
+
+<script>
+// Filter conferences by status
+function filterConferences() {
+    const filter = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('#conferencesTable tbody tr');
+    
+    rows.forEach(row => {
+        const status = row.getAttribute('data-status');
+        if (!filter || status === filter) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Search conferences
+function searchConferences() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#conferencesTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Edit conference
+function editConference(conferenceId) {
+    // This would be implemented to populate the edit modal
+    // For now, redirect to conference details
+    window.location.href = `/admin/conferences/${conferenceId}`;
+}
+
+// Delete conference
+function deleteConference(conferenceId, conferenceName) {
+    if (confirm(`Are you sure you want to delete "${conferenceName}"? This action cannot be undone.`)) {
+        // Implement delete functionality
+        fetch(`/admin/conferences/${conferenceId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting conference: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting conference');
+        });
+    }
+}
+
+// Event type change handler
+document.getElementById('eventType').addEventListener('change', function() {
+    const locationInput = document.getElementById('conferenceLocation');
+    const eventType = this.value;
+    
+    switch(eventType) {
+        case 'virtual':
+            locationInput.placeholder = 'Online platform (e.g., Zoom, Teams, etc.)';
+            break;
+        case 'hybrid':
+            locationInput.placeholder = 'Physical venue + Online platform';
+            break;
+        case 'in-person':
+        default:
+            locationInput.placeholder = 'Conference venue';
+            break;
+    }
+});
+
+// Auto-generate abbreviation from name
+document.getElementById('conferenceName').addEventListener('input', function() {
+    const name = this.value;
+    const abbreviation = name.replace(/[^A-Za-z]/g, '').substring(0, 10).toUpperCase();
+    document.getElementById('conferenceAbbreviation').value = abbreviation;
+});
+
+// Set current year as default
+document.addEventListener('DOMContentLoaded', function() {
+    const currentYear = new Date().getFullYear();
+    document.getElementById('conferenceYear').value = currentYear;
+});
+</script>
+{% endblock %}

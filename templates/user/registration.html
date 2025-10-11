@@ -28,46 +28,141 @@ firebase.initializeApp(firebaseConfig);
 {% block content %}
 <div class="page-header">
     <h1>Conference Registration</h1>
-    <p>Complete your registration for GIIR Conference 2024</p>
+    <p>Select a conference and complete your registration</p>
 </div>
 
 <div class="content-section">
     <!-- Registration Progress -->
     <div class="registration-progress">
         <div class="progress-bar">
-            <div class="progress" style="width: 33%"></div>
+            <div class="progress" style="width: 25%"></div>
         </div>
         <div class="progress-steps">
             <div class="step active" data-step="1">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                    <h3>Package Selection</h3>
-                    <p>Choose your registration period and type</p>
+                    <h3>Select Conference</h3>
+                    <p>Choose which conference to attend</p>
                 </div>
             </div>
             <div class="step" data-step="2">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <h3>Additional Items</h3>
-                    <p>Select optional extras</p>
+                    <h3>Package Selection</h3>
+                    <p>Choose your registration type</p>
                 </div>
             </div>
             <div class="step" data-step="3">
                 <div class="step-number">3</div>
                 <div class="step-content">
+                    <h3>Additional Items</h3>
+                    <p>Select optional extras</p>
+                </div>
+            </div>
+            <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-content">
                     <h3>Review & Payment</h3>
-                    <p>Confirm and proceed to payment</p>
+                    <p>Confirm and proceed</p>
                 </div>
             </div>
         </div>
     </div>
 
     <form id="registration-form" method="POST" action="{{ url_for('registration') }}" enctype="multipart/form-data">
-        <!-- Step 1: Package Selection -->
+        <!-- Step 1: Conference Selection -->
         <div class="registration-step active" id="step1">
             <div class="step-header">
-                <h2>Step 1: Package Selection</h2>
-                <p>First, select your registration period and type</p>
+                <h2>Step 1: Select Conference</h2>
+                <p>Choose which conference you'd like to register for</p>
+            </div>
+
+            <div class="conference-selection">
+                <!-- DEBUG: conferences variable = {{ conferences|length if conferences else 'None' }} -->
+                {% if conferences %}
+                    <div class="conferences-grid">
+                        {% for conf_id, conf in conferences.items() %}
+                        <div class="conference-card">
+                            <input type="radio" name="conference_id" id="conf_{{ conf_id }}" value="{{ conf_id }}" required>
+                            <label for="conf_{{ conf_id }}">
+                                <div class="conf-header">
+                                    <div class="conf-icon">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </div>
+                                    <div class="conf-status status-{{ conf.get('basic_info', {}).get('status', 'active') }}">
+                                        {{ conf.get('basic_info', {}).get('status', 'active')|title }}
+                                    </div>
+                                </div>
+                                <h3 class="conf-name">{{ conf.get('basic_info', {}).get('name', 'Conference') }}</h3>
+                                <div class="conf-details">
+                                    {% if conf.get('basic_info', {}).get('year') %}
+                                    <div class="conf-detail">
+                                        <i class="fas fa-calendar"></i>
+                                        <span>{{ conf.get('basic_info', {}).get('year') }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if conf.get('conference_code') %}
+                                    <div class="conf-detail">
+                                        <i class="fas fa-qrcode"></i>
+                                        <span>{{ conf.get('conference_code') }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if conf.get('basic_info', {}).get('start_date') and conf.get('basic_info', {}).get('end_date') %}
+                                    <div class="conf-detail">
+                                        <i class="fas fa-clock"></i>
+                                        <span>{{ conf.get('basic_info', {}).get('start_date')[:10] }} - {{ conf.get('basic_info', {}).get('end_date')[:10] }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if conf.get('basic_info', {}).get('location') %}
+                                    <div class="conf-detail">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>{{ conf.get('basic_info', {}).get('location') }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if conf.get('basic_info', {}).get('event_type') %}
+                                    <div class="conf-detail">
+                                        <i class="fas fa-{{ 'video' if conf.get('basic_info', {}).get('event_type') == 'virtual' else 'users' if conf.get('basic_info', {}).get('event_type') == 'hybrid' else 'building' }}"></i>
+                                        <span>{{ conf.get('basic_info', {}).get('event_type')|replace('_', ' ')|title }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% if conf.get('basic_info', {}).get('description') %}
+                                <p class="conf-description">{{ conf.get('basic_info', {}).get('description')[:150] }}...</p>
+                                {% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state no-conferences">
+                        <i class="fas fa-calendar-times fa-3x"></i>
+                        <h3>No Conferences Available</h3>
+                        <p>There are currently no conferences open for registration.</p>
+                        <p class="empty-state-hint">
+                            <i class="fas fa-info-circle"></i> 
+                            Conferences are shown based on their status (Active/Upcoming) and registration availability.
+                        </p>
+                        <a href="{{ url_for('conference_discover') }}" class="btn btn-primary" style="margin-top: 1rem;">
+                            <i class="fas fa-search"></i> Discover All Conferences
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="step-actions">
+                {% if conferences %}
+                <button type="button" class="btn btn-primary btn-next" onclick="nextStep()">
+                    Continue to Package Selection <i class="fas fa-arrow-right"></i>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Step 2: Package Selection -->
+        <div class="registration-step" id="step2">
+            <div class="step-header">
+                <h2>Step 2: Package Selection</h2>
+                <p>Select your registration period and type</p>
             </div>
 
             <!-- Registration Period Selection -->
@@ -258,10 +353,10 @@ firebase.initializeApp(firebaseConfig);
             </div>
         </div>
 
-        <!-- Step 2: Additional Items -->
-        <div class="registration-step" id="step2" style="display: none;">
+        <!-- Step 3: Additional Items -->
+        <div class="registration-step" id="step3" style="display: none;">
             <div class="step-header">
-                <h2>Step 2: Additional Items</h2>
+                <h2>Step 3: Additional Items</h2>
                 <p>Select any additional items you would like to add</p>
             </div>
 
@@ -338,10 +433,10 @@ firebase.initializeApp(firebaseConfig);
             </div>
         </div>
 
-        <!-- Step 3: Review & Payment -->
-        <div class="registration-step" id="step3" style="display: none;">
+        <!-- Step 4: Review & Payment -->
+        <div class="registration-step" id="step4" style="display: none;">
             <div class="step-header">
-                <h2>Step 3: Review & Payment</h2>
+                <h2>Step 4: Review & Payment</h2>
                 <p>Review your selections and complete payment</p>
             </div>
 
@@ -415,6 +510,229 @@ firebase.initializeApp(firebaseConfig);
 </div>
 
 <style>
+/* Conference Selection Styles */
+.conference-selection {
+    margin: 2rem 0;
+}
+
+.conferences-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.conference-card {
+    position: relative;
+}
+
+.conference-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+}
+
+.conference-card label {
+    display: block;
+    background: white;
+    border: 3px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.conference-card input[type="radio"]:checked + label {
+    border-color: var(--primary-color, #667eea);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+    transform: translateY(-4px);
+}
+
+.conference-card label:hover {
+    border-color: var(--primary-color, #667eea);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.conf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.conf-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.conf-status {
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.conf-status::before {
+    content: '●';
+    font-size: 0.6rem;
+}
+
+.status-active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.status-active::before {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.status-upcoming {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.status-past {
+    background: #6b7280;
+    color: white;
+    opacity: 0.7;
+}
+
+.status-draft {
+    background: #fbbf24;
+    color: #78350f;
+}
+
+.status-archived {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.conf-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0.75rem 0;
+}
+
+.conf-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.conf-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+.conf-detail i {
+    width: 30px;
+    height: 30px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #667eea;
+    flex-shrink: 0;
+}
+
+.conf-description {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    font-size: 0.9rem;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+.empty-state,
+.no-conferences {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%);
+    border-radius: 16px;
+    border: 2px dashed #d1d5db;
+}
+
+.empty-state i,
+.no-conferences i {
+    color: #cbd5e0;
+    margin-bottom: 1.5rem;
+    animation: fadeInScale 0.5s ease-out;
+}
+
+.empty-state h3,
+.no-conferences h3 {
+    font-size: 1.5rem;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.empty-state p,
+.no-conferences p {
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-hint {
+    background: white;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    display: inline-block;
+    margin-top: 1rem;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state-hint i {
+    color: #3b82f6;
+    margin: 0;
+}
+
+.empty-state a,
+.no-conferences a {
+    color: var(--primary-color, #667eea);
+    text-decoration: none;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* Progress Bar Styles */
 .registration-progress {
     margin-bottom: 2rem;

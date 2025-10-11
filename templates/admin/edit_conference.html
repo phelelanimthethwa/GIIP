@@ -1,0 +1,467 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Edit {{ conference.basic_info.name }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_conferences') }}">Conferences</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}">{{ conference.basic_info.name }}</a></li>
+                    <li class="breadcrumb-item active">Edit</li>
+                </ol>
+            </nav>
+            <h1 class="mt-2 mb-2">
+                <i class="fas fa-edit me-2"></i>
+                Edit Conference
+            </h1>
+            <p class="text-muted">Update conference details and settings</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Back to Conference
+            </a>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="POST" id="editConferenceForm">
+                <!-- Basic Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Basic Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceName" class="form-label">Conference Name *</label>
+                                    <input type="text" class="form-control" id="conferenceName" name="name" 
+                                           value="{{ conference.basic_info.name }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceYear" class="form-label">Year *</label>
+                                    <input type="number" class="form-control" id="conferenceYear" name="year" 
+                                           value="{{ conference.basic_info.year|default(current_year) }}" 
+                                           min="2024" max="2030" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceAbbreviation" class="form-label">Abbreviation</label>
+                                    <input type="text" class="form-control" id="conferenceAbbreviation" name="abbreviation" 
+                                           value="{{ conference.basic_info.abbreviation|default('') }}" 
+                                           placeholder="e.g., GIIR" maxlength="10">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceStatus" class="form-label">Status</label>
+                                    <select class="form-select" id="conferenceStatus" name="status">
+                                        <option value="draft" {{ 'selected' if conference.basic_info.status == 'draft' else '' }}>Draft</option>
+                                        <option value="upcoming" {{ 'selected' if conference.basic_info.status == 'upcoming' else '' }}>Upcoming</option>
+                                        <option value="active" {{ 'selected' if conference.basic_info.status == 'active' else '' }}>Active</option>
+                                        <option value="past" {{ 'selected' if conference.basic_info.status == 'past' else '' }}>Past</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="eventType" class="form-label">Event Type</label>
+                                    <select class="form-select" id="eventType" name="event_type">
+                                        <option value="in-person" {{ 'selected' if conference.basic_info.event_type == 'in-person' else '' }}>In-Person</option>
+                                        <option value="virtual" {{ 'selected' if conference.basic_info.event_type == 'virtual' else '' }}>Virtual</option>
+                                        <option value="hybrid" {{ 'selected' if conference.basic_info.event_type == 'hybrid' else '' }}>Hybrid</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceLocation" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="conferenceLocation" name="location" 
+                                           value="{{ conference.basic_info.location|default('') }}"
+                                           placeholder="Conference venue or online platform">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="conferenceDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="conferenceDescription" name="description" rows="3">{{ conference.basic_info.description|default('') }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="startDate" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="startDate" name="start_date" 
+                                           value="{{ conference.basic_info.start_date if conference.basic_info.start_date else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="endDate" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="endDate" name="end_date" 
+                                           value="{{ conference.basic_info.end_date if conference.basic_info.end_date else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceLocation" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="conferenceLocation" name="location" 
+                                           value="{{ conference.basic_info.location|default('') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="conferenceWebsite" class="form-label">Website</label>
+                                    <input type="url" class="form-control" id="conferenceWebsite" name="website" 
+                                           value="{{ conference.basic_info.website|default('') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conference Settings -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cog me-2"></i>
+                                Conference Settings
+                            </h5>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="updateSettings" name="update_settings">
+                                <label class="form-check-label" for="updateSettings">
+                                    Update Settings
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Feature Settings</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="regEnabled" name="registration_enabled" 
+                                           {{ 'checked' if conference.settings.registration_enabled else '' }}>
+                                    <label class="form-check-label" for="regEnabled">
+                                        Enable Registration
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="paperEnabled" name="paper_submission_enabled" 
+                                           {{ 'checked' if conference.settings.paper_submission_enabled else '' }}>
+                                    <label class="form-check-label" for="paperEnabled">
+                                        Enable Paper Submission
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="galleryEnabled" name="gallery_enabled" 
+                                           {{ 'checked' if conference.settings.gallery_enabled else '' }}>
+                                    <label class="form-check-label" for="galleryEnabled">
+                                        Enable Gallery
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="emailEnabled" name="email_notifications" 
+                                           {{ 'checked' if conference.settings.email_notifications else '' }}>
+                                    <label class="form-check-label" for="emailEnabled">
+                                        Enable Email Notifications
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Limits</h6>
+                                <div class="mb-3">
+                                    <label for="maxRegistrations" class="form-label">Max Registrations</label>
+                                    <input type="number" class="form-control" id="maxRegistrations" name="max_registrations" 
+                                           value="{{ conference.settings.max_registrations|default(1000) }}" min="1">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="maxPapers" class="form-label">Max Paper Submissions</label>
+                                    <input type="number" class="form-control" id="maxPapers" name="max_paper_submissions" 
+                                           value="{{ conference.settings.max_paper_submissions|default(500) }}" min="1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Conference Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info me-2"></i>
+                        Conference Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Conference Code:</strong><br>
+                        <code id="conferenceCode">{{ conference.conference_code|default('Not generated') }}</code>
+                        {% if conference.conference_code %}
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="regenerateCode()" title="Regenerate Code">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Created:</strong><br>
+                        <small class="text-muted">{{ conference.metadata.created_at|date if conference.metadata.created_at else 'Unknown' }}</small>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Created By:</strong><br>
+                        <small class="text-muted">{{ conference.metadata.created_by|default('Unknown') }}</small>
+                    </div>
+                    {% if conference.metadata.updated_at %}
+                    <div class="mb-2">
+                        <strong>Last Updated:</strong><br>
+                        <small class="text-muted">{{ conference.metadata.updated_at|date }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Quick Stats
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h5 class="text-primary">{{ conference.registration_count|default(0) }}</h5>
+                            <small class="text-muted">Registrations</small>
+                        </div>
+                        <div class="col-6">
+                            <h5 class="text-success">{{ conference.settings.max_registrations|default(1000) }}</h5>
+                            <small class="text-muted">Max Capacity</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.breadcrumb {
+    background: none;
+    padding: 0;
+    margin: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+}
+
+code {
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+</style>
+
+<script>
+// Event type change handler
+document.getElementById('eventType').addEventListener('change', function() {
+    const locationInput = document.getElementById('conferenceLocation');
+    const eventType = this.value;
+    
+    switch(eventType) {
+        case 'virtual':
+            locationInput.placeholder = 'Online platform (e.g., Zoom, Teams, etc.)';
+            break;
+        case 'hybrid':
+            locationInput.placeholder = 'Physical venue + Online platform';
+            break;
+        case 'in-person':
+        default:
+            locationInput.placeholder = 'Conference venue';
+            break;
+    }
+});
+
+// Auto-generate abbreviation from name
+document.getElementById('conferenceName').addEventListener('input', function() {
+    const name = this.value;
+    const abbreviation = name.replace(/[^A-Za-z]/g, '').substring(0, 10).toUpperCase();
+    document.getElementById('conferenceAbbreviation').value = abbreviation;
+});
+
+// Form validation
+document.getElementById('editConferenceForm').addEventListener('submit', function(e) {
+    const name = document.getElementById('conferenceName').value.trim();
+    const year = document.getElementById('conferenceYear').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!name) {
+        e.preventDefault();
+        alert('Conference name is required.');
+        return false;
+    }
+    
+    if (!year || year < 2024 || year > 2030) {
+        e.preventDefault();
+        alert('Please enter a valid year between 2024 and 2030.');
+        return false;
+    }
+    
+    if (startDate && endDate && startDate > endDate) {
+        e.preventDefault();
+        alert('End date must be after start date.');
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    submitBtn.disabled = true;
+    
+    // Re-enable button after 5 seconds as fallback
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 5000);
+});
+
+// Date validation
+document.getElementById('startDate').addEventListener('change', function() {
+    const endDate = document.getElementById('endDate');
+    if (this.value && endDate.value && this.value > endDate.value) {
+        endDate.value = this.value;
+    }
+});
+
+document.getElementById('endDate').addEventListener('change', function() {
+    const startDate = document.getElementById('startDate');
+    if (this.value && startDate.value && this.value < startDate.value) {
+        startDate.value = this.value;
+    }
+});
+
+// Settings checkbox toggle
+document.getElementById('updateSettings').addEventListener('change', function() {
+    const settingsInputs = document.querySelectorAll('#regEnabled, #paperEnabled, #galleryEnabled, #emailEnabled, #maxRegistrations, #maxPapers');
+    settingsInputs.forEach(input => {
+        input.disabled = !this.checked;
+    });
+});
+
+// Initialize settings inputs state
+document.addEventListener('DOMContentLoaded', function() {
+    const updateSettingsCheckbox = document.getElementById('updateSettings');
+    const settingsInputs = document.querySelectorAll('#regEnabled, #paperEnabled, #galleryEnabled, #emailEnabled, #maxRegistrations, #maxPapers');
+    
+    settingsInputs.forEach(input => {
+        input.disabled = !updateSettingsCheckbox.checked;
+    });
+});
+
+// Regenerate conference code
+function regenerateCode() {
+    if (confirm('Are you sure you want to regenerate the conference code? This will invalidate the current code.')) {
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        fetch(`/admin/conferences/{{ conference_id }}/regenerate-code`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('conferenceCode').textContent = data.conference_code;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-outline-secondary');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-secondary');
+                    btn.disabled = false;
+                }, 2000);
+            } else {
+                alert('Error regenerating code: ' + data.error);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error regenerating conference code');
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+        });
+    }
+}
+</script>
+{% endblock %}

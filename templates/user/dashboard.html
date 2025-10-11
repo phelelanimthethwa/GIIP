@@ -1,111 +1,197 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - GIIR Conference 2024{% endblock %}
+{% block title %}My Dashboard - GIIR Conference{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Welcome, {{ current_user.full_name }}!</h1>
-    <p>Manage your conference participation</p>
+<div class="dashboard-wrapper">
+    <!-- Hero Section -->
+    <div class="dashboard-hero">
+        <div class="hero-content">
+            <div class="welcome-section">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="welcome-text">
+                    <h1>Welcome back, {{ current_user.full_name }}!</h1>
+                    <p class="subtitle">Manage your conference registrations and track your submissions</p>
+                </div>
+            </div>
+        </div>
 </div>
 
-<div class="content-section">
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
+            <div class="container-fluid px-4 mt-3">
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    <div class="alert alert-{{ category }} alert-dismissible fade show modern-alert">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
                     {{ message }}
                     <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
                 </div>
             {% endfor %}
+            </div>
         {% endif %}
     {% endwith %}
 
-    <div class="dashboard-grid">
-        <!-- Profile Card -->
-        <div class="dashboard-card">
-            <div class="card-header">
-                <i class="fas fa-user-circle"></i>
-                <h2>My Profile</h2>
+    <!-- Main Content -->
+    <div class="container-fluid px-4 py-4">
+        <!-- Stats Overview -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card stat-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-ticket-alt"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ registrations|length }}</h3>
+                    <p>Registrations</p>
+                </div>
             </div>
-            <div class="card-content">
-                <p><strong>Email:</strong> {{ current_user.email }}</p>
-                <p><strong>Institution:</strong> {{ current_user.institution }}</p>
-                <a href="{{ url_for('profile') }}" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Edit Profile
+            <div class="stat-card stat-success">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ registrations.values()|selectattr('payment_status', 'equalto', 'approved')|list|length }}</h3>
+                    <p>Approved</p>
+                </div>
+            </div>
+            <div class="stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ registrations.values()|selectattr('payment_status', 'equalto', 'pending')|list|length }}</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+            <div class="stat-card stat-info">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ submissions|length }}</h3>
+                    <p>Submissions</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Bar -->
+        <div class="quick-actions mb-4">
+            <h2 class="section-title">
+                <i class="fas fa-bolt me-2"></i>
+                Quick Actions
+            </h2>
+            <div class="action-buttons">
+                <a href="{{ url_for('conference_discover') }}" class="action-btn action-primary">
+                    <i class="fas fa-search"></i>
+                    <span>Discover Conferences</span>
+                </a>
+                <a href="{{ url_for('registration_form') }}" class="action-btn action-success">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>New Registration</span>
+                </a>
+                <a href="{{ url_for('call_for_papers') }}" class="action-btn action-info">
+                    <i class="fas fa-file-upload"></i>
+                    <span>Submit Paper</span>
+                </a>
+                <a href="{{ url_for('profile') }}" class="action-btn action-secondary">
+                    <i class="fas fa-user-edit"></i>
+                    <span>Edit Profile</span>
                 </a>
             </div>
         </div>
 
-        <!-- Registration Actions -->
-        <div class="dashboard-card">
-            <div class="card-header">
-                <i class="fas fa-plus-circle"></i>
-                <h2>Quick Actions</h2>
-            </div>
-            <div class="card-content">
-                <a href="{{ url_for('registration_form') }}" class="btn btn-success mb-2 w-100">
-                    <i class="fas fa-ticket-alt"></i> New Registration
-                </a>
-                <a href="{{ url_for('call_for_papers') }}" class="btn btn-info mb-2 w-100">
-                    <i class="fas fa-file-upload"></i> Submit Paper
-                </a>
-                <a href="{{ url_for('guest_speaker_application') }}" class="btn btn-warning w-100">
-                    <i class="fas fa-microphone"></i> Apply as Guest Speaker
-                </a>
-            </div>
-        </div>
-
-        <!-- Registrations Card -->
-        <div class="dashboard-card registrations-section">
-            <div class="card-header">
-                <i class="fas fa-ticket-alt"></i>
-                <h2>My Registrations</h2>
-            </div>
-            <div class="card-content">
+        <!-- Registrations Section -->
+        <div class="registrations-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-ticket-alt me-2"></i>
+                    My Conference Registrations
+                </h2>
+            <div class="registrations-grid">
                 {% if registrations %}
                     {% for reg_id, reg in registrations.items() %}
-                        <div class="registration-item">
-                            <div class="reg-header">
-                                <div class="reg-title">
-                                    <h3>{{ reg.registration_type|replace('_', ' ')|title }}</h3>
-                                    <span class="reg-period {{ reg.registration_period }}">
-                                        {{ reg.registration_period|replace('_', ' ')|title }}
+                        <div class="registration-card">
+                            <!-- Card Header with Status -->
+                            <div class="reg-card-header">
+                                <div class="conference-badge">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div class="status-indicator status-{{ reg.payment_status|lower if reg.payment_status else 'pending' }}">
+                                    <i class="fas fa-{{ 'check-circle' if reg.payment_status == 'approved' else 'clock' if reg.payment_status == 'pending' else 'times-circle' }}"></i>
+                                    {{ reg.payment_status|title if reg.payment_status else 'Pending' }}
+                                </div>
+                            </div>
+
+                            <!-- Conference Info -->
+                            <div class="conference-info">
+                                <h3 class="conference-name">{{ reg.conference_name or 'Conference Registration' }}</h3>
+                                <div class="conference-meta">
+                                    {% if reg.conference_details %}
+                                    <span class="meta-item">
+                                        <i class="fas fa-calendar"></i>
+                                        {{ reg.conference_details.year }}
                                     </span>
-                                </div>
-                                <span class="status-badge status-{{ reg.status|lower }}">
-                                    {{ reg.status|title }}
-                                </span>
-                            </div>
-                            <div class="reg-details">
-                                <div class="detail-row">
-                                    <span class="detail-label">Registration Fee:</span>
-                                    <span class="detail-value">R {{ reg.registration_fee }}</span>
-                                </div>
-                                {% if reg.workshop %}
-                                <div class="detail-row">
-                                    <span class="detail-label">Workshop Fee:</span>
-                                    <span class="detail-value">R {{ fees.workshop_fee }}</span>
-                                </div>
-                                {% endif %}
-                                {% if reg.banquet %}
-                                <div class="detail-row">
-                                    <span class="detail-label">Banquet Fee:</span>
-                                    <span class="detail-value">R {{ fees.banquet_fee }}</span>
-                                </div>
-                                {% endif %}
-                                <div class="detail-row total">
-                                    <span class="detail-label">Total Amount:</span>
-                                    <span class="detail-value">R {{ reg.total_amount }}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Submission Date:</span>
-                                    <span class="detail-value">{{ reg.submission_date }}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Payment Reference:</span>
-                                    <span class="detail-value">{{ reg.payment_reference }}</span>
+                                    {% endif %}
+                                    {% if reg.conference_code %}
+                                    <span class="meta-item conference-code-badge">
+                                        <i class="fas fa-qrcode"></i>
+                                        {{ reg.conference_code }}
+                                    </span>
+                                    {% endif %}
                                 </div>
                             </div>
+
+                            <!-- Registration Type Badge -->
+                            <div class="reg-type-badge">
+                                <i class="fas fa-user-tag"></i>
+                                {{ reg.registration_type|replace('_', ' ')|title }}
+                            </div>
+
+                            <!-- Key Details -->
+                            <div class="key-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-user"></i>
+                                    <div class="detail-content">
+                                        <span class="detail-label">Participant</span>
+                                        <span class="detail-value">{{ reg.full_name }}</span>
+                                    </div>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-building"></i>
+                                    <div class="detail-content">
+                                        <span class="detail-label">Institution</span>
+                                        <span class="detail-value">{{ reg.institution }}</span>
+                                    </div>
+                                </div>
+                                {% if reg.country %}
+                                <div class="detail-item">
+                                    <i class="fas fa-globe"></i>
+                                    <div class="detail-content">
+                                        <span class="detail-label">Country</span>
+                                        <span class="detail-value">{{ reg.country }}</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if reg.submission_date or reg.created_at %}
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <div class="detail-content">
+                                        <span class="detail-label">Registered</span>
+                                        <span class="detail-value">{{ (reg.submission_date or reg.created_at)[:10] }}</span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Amount Section -->
+                            {% if reg.total_amount %}
+                            <div class="amount-section">
+                                <div class="amount-label">Total Amount</div>
+                                <div class="amount-value">R {{ reg.total_amount }}</div>
+                            </div>
+                            {% endif %}
 
                             {% if 'author' in reg.registration_type %}
                             <div class="paper-details">
@@ -156,66 +242,76 @@
                             </div>
                             {% endif %}
 
-                            <div class="reg-options">
+                            <!-- Additional Options -->
+                            {% if reg.workshop or reg.banquet or reg.extra_paper %}
+                            <div class="additional-options">
+                                <div class="options-label">
+                                    <i class="fas fa-plus-circle"></i>
+                                    Additional Items
+                                </div>
+                                <div class="options-list">
                                 {% if reg.workshop %}
-                                <span class="option-badge">
+                                    <span class="option-tag">
                                     <i class="fas fa-chalkboard-teacher"></i> Workshop
                                 </span>
                                 {% endif %}
                                 {% if reg.banquet %}
-                                <span class="option-badge">
+                                    <span class="option-tag">
                                     <i class="fas fa-glass-cheers"></i> Banquet
                                 </span>
                                 {% endif %}
                                 {% if reg.extra_paper %}
-                                <span class="option-badge">
+                                    <span class="option-tag">
                                     <i class="fas fa-file-alt"></i> Extra Paper
                                 </span>
                                 {% endif %}
-                            </div>
-
-                            {% if reg.payment_proof %}
-                            <div class="payment-proof-section">
-                                <div class="proof-details">
-                                    <div class="proof-info">
-                                        <span class="proof-label">Payment Proof:</span>
-                                        <div class="proof-metadata">
-                                            <span class="proof-filename">{{ reg.payment_proof|filename }}</span>
-                                            {% if reg.payment_metadata %}
-                                            <span class="proof-size">{{ reg.payment_metadata.file_size|filesizeformat }}</span>
-                                            <span class="proof-date">Uploaded on {{ reg.payment_metadata.upload_date|datetime }}</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    <div class="proof-status status-{{ reg.payment_metadata.status if reg.payment_metadata else 'pending' }}">
-                                        {{ reg.payment_metadata.status|title if reg.payment_metadata else 'Pending' }}
-                                    </div>
-                                    <div class="proof-actions">
-                                        <a href="{{ url_for('static', filename=reg.payment_proof) }}" 
-                                           class="btn btn-sm btn-outline-primary" target="_blank">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                        <a href="{{ url_for('static', filename=reg.payment_proof) }}" 
-                                           class="btn btn-sm btn-outline-secondary" download>
-                                            <i class="fas fa-download"></i> Download
-                                        </a>
-                                    </div>
                                 </div>
-                                {% if reg.payment_notes %}
-                                <div class="payment-notes">
-                                    <span class="notes-label">Payment Notes:</span>
-                                    <p>{{ reg.payment_notes }}</p>
-                                </div>
-                                {% endif %}
                             </div>
                             {% endif %}
+
+                            <!-- Payment Proof -->
+                            {% if reg.payment_proof %}
+                            <div class="payment-proof">
+                                <div class="proof-header">
+                                    <i class="fas fa-receipt"></i>
+                                    Payment Proof Uploaded
+                                    </div>
+                                    <div class="proof-actions">
+                                    {% if reg.payment_proof is mapping %}
+                                        <a href="{{ reg.payment_proof.url }}" class="proof-btn" target="_blank">
+                                            <i class="fas fa-eye"></i>
+                                            View Document
+                                        </a>
+                                        <span class="proof-size">{{ (reg.payment_proof.size / 1024) | round(2) }} KB</span>
+                                    {% else %}
+                                        <a href="{{ url_for('static', filename=reg.payment_proof) }}" class="proof-btn" target="_blank">
+                                            <i class="fas fa-eye"></i>
+                                            View Document
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Card Footer -->
+                            <div class="card-footer">
+                                <a href="{{ url_for('conference_details', conference_id=reg.conference_id) }}" class="footer-link">
+                                    <i class="fas fa-info-circle"></i>
+                                    View Conference Details
+                                </a>
+                            </div>
                         </div>
                     {% endfor %}
                 {% else %}
-                    <div class="no-registrations">
-                        <p>You haven't registered for any events yet.</p>
-                        <a href="{{ url_for('registration_form') }}" class="btn btn-primary">
-                            <i class="fas fa-plus-circle"></i> Register Now
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <h3>No Registrations Yet</h3>
+                        <p>You haven't registered for any conferences yet. Discover upcoming events and get started!</p>
+                        <a href="{{ url_for('conference_discover') }}" class="btn-empty-action">
+                            <i class="fas fa-search"></i>
+                            Discover Conferences
                         </a>
                     </div>
                 {% endif %}
@@ -225,234 +321,527 @@
 </div>
 
 <style>
-.dashboard-grid {
+/* ========== Dashboard Wrapper ========== */
+.dashboard-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* ========== Hero Section ========== */
+.dashboard-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 3rem 0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.hero-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.welcome-section {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.user-avatar {
+    font-size: 4rem;
+    opacity: 0.9;
+}
+
+.welcome-text h1 {
+    font-size: 2.5rem;
+    margin: 0 0 0.5rem 0;
+    font-weight: 700;
+}
+
+.welcome-text .subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+}
+
+/* ========== Modern Alert ========== */
+.modern-alert {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* ========== Stats Grid ========== */
+.stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: white;
+}
+
+.stat-primary .stat-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-success .stat-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.stat-warning .stat-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-info .stat-icon { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+.stat-info h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #2d3748;
+}
+
+.stat-info p {
+    margin: 0;
+    color: #718096;
+    font-size: 0.9rem;
+}
+
+/* ========== Quick Actions ========== */
+.quick-actions {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 1.5rem 0;
+    display: flex;
+    align-items: center;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-decoration: none;
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.action-btn i {
+    font-size: 2rem;
+}
+
+.action-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+    color: white;
+}
+
+.action-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.action-success { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
+.action-info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.action-secondary { background: linear-gradient(135deg, #868f96 0%, #596164 100%); }
+
+/* ========== Registrations Section ========== */
+.registrations-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+}
+
+.registrations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 1.5rem;
     margin-top: 1.5rem;
 }
 
-.dashboard-card {
+/* ========== Registration Card ========== */
+.registration-card {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
 }
 
-.card-header {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
+.registration-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: #667eea;
+}
+
+.reg-card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.conference-badge {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.status-indicator {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.card-header i {
-    font-size: 1.25rem;
-    color: #0d6efd;
-}
-
-.card-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
-}
-
-.card-content {
-    padding: 1rem;
-}
-
-.registration-item {
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.reg-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-}
-
-.reg-title h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: #0d6efd;
-}
-
-.reg-period {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    background: #e9ecef;
-    margin-top: 0.5rem;
-}
-
-.status-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
 .status-pending {
-    background: #ffc107;
-    color: #000;
+    background: #fbbf24;
+    color: #78350f;
 }
 
 .status-approved {
-    background: #198754;
-    color: white;
+    background: #34d399;
+    color: #065f46;
 }
 
 .status-rejected {
-    background: #dc3545;
-    color: white;
+    background: #f87171;
+    color: #7f1d1d;
 }
 
-.detail-row {
+.conference-info {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.conference-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 0.75rem 0;
+}
+
+.conference-meta {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
-.detail-row.total {
-    border-top: 1px solid #dee2e6;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    font-weight: bold;
-}
-
-.option-badge {
-    display: inline-flex;
+.meta-item {
+    display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    background: #e9ecef;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.file-link {
-    color: #0d6efd;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.file-link:hover {
-    text-decoration: underline;
-}
-
-.no-registrations {
-    text-align: center;
-    padding: 2rem;
-    background: #f8f9fa;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    background: #f3f4f6;
     border-radius: 8px;
+    font-size: 0.85rem;
+    color: #4b5563;
 }
 
-.paper-upload-prompt {
-    background: #fff3cd;
-    border: 1px solid #ffeeba;
-    border-radius: 4px;
-    padding: 1rem;
-    margin-top: 1rem;
+.conference-code-badge {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white !important;
+    font-weight: 600;
 }
 
-.virtual-details {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #dee2e6;
-}
-
-.meeting-link {
-    color: #0d6efd;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.meeting-link:hover {
-    text-decoration: underline;
-}
-
-.payment-proof-section {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #dee2e6;
-}
-
-.proof-details {
+.reg-type-badge {
+    margin: 0 1.5rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 8px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #374151;
 }
 
-.proof-info {
+.key-details {
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
+    gap: 1rem;
 }
 
-.proof-label {
-    font-weight: bold;
+.detail-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
 }
 
-.proof-metadata {
-    font-size: 0.875rem;
+.detail-item i {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.proof-filename {
-    margin-top: 0.25rem;
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
-.proof-size {
-    margin-top: 0.25rem;
+.detail-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
-.proof-date {
-    margin-top: 0.25rem;
-}
-
-.proof-status {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.875rem;
+.detail-value {
+    font-size: 0.95rem;
+    color: #1f2937;
     font-weight: 500;
+}
+
+.amount-section {
+    margin: 1rem 1.5rem;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.amount-label {
+    font-size: 0.85rem;
+    color: #78350f;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.amount-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.additional-options {
+    padding: 1rem 1.5rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.options-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.options-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.option-tag {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.payment-proof {
+    padding: 1rem 1.5rem;
+    background: #ecfdf5;
+    border-top: 1px solid #d1fae5;
+}
+
+.proof-header {
+    font-size: 0.85rem;
+    color: #065f46;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .proof-actions {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.proof-btn {
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
-    margin-top: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #10b981;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
 }
 
-.payment-notes {
-    margin-top: 0.5rem;
+.proof-btn:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    color: white;
 }
 
-.notes-label {
-    font-weight: bold;
+.proof-size {
+    font-size: 0.8rem;
+    color: #047857;
 }
 
+.card-footer {
+    padding: 1rem 1.5rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+}
+
+.footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.footer-link:hover {
+    color: #764ba2;
+}
+
+/* ========== Empty State ========== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-icon {
+    font-size: 5rem;
+    color: #cbd5e0;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    color: #2d3748;
+    margin-bottom: 0.75rem;
+}
+
+.empty-state p {
+    color: #718096;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-empty-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.4);
+}
+
+.btn-empty-action:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.6);
+    color: white;
+}
+
+/* ========== Responsive Design ========== */
 @media (max-width: 768px) {
-    .dashboard-grid {
+    .welcome-section {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .welcome-text h1 {
+        font-size: 1.8rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .action-buttons {
         grid-template-columns: 1fr;
     }
     
-    .reg-header {
-        flex-direction: column;
+    .registrations-grid {
+        grid-template-columns: 1fr;
     }
-    
-    .status-badge {
-        margin-top: 0.5rem;
+
+    .proof-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
     }
 }
 </style>

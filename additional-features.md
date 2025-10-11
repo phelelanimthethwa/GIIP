@@ -1,2 +1,0 @@
--register for multiple conferences
--submit paper for multiple conferences

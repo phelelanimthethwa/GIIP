@@ -19,7 +19,8 @@ from google.cloud import storage as gcs_storage
 from PIL import Image
 from io import BytesIO
 from utils import register_filters, get_conference_by_code
-from routes.user_routes import user_routes
+# Temporarily commented out to use app.py /registration route instead of blueprint route
+# from routes.user_routes import user_routes
 import io
 import mimetypes
 import uuid
@@ -52,7 +53,8 @@ else:
     app.config['SECRET_KEY'] = 'development-key'
 
 # Register blueprints
-app.register_blueprint(user_routes)
+# Temporarily commented out to use app.py /registration route instead of blueprint route
+# app.register_blueprint(user_routes)
 
 # Register Jinja2 filters
 register_filters(app)
@@ -1201,18 +1203,102 @@ def logout():
 @app.route('/registration')
 def registration():
     try:
+        print("DEBUG: Starting registration page load")
+        
         # Get registration fees from Firebase
         fees_ref = db.reference('registration_fees')
         fees = fees_ref.get()
+        print(f"DEBUG: Loaded fees: {fees is not None}")
+        
+        # Get all available conferences
+        all_conferences = get_all_conferences()
+        print(f"DEBUG: Total conferences from get_all_conferences(): {len(all_conferences) if all_conferences else 0}")
+        
+        # Filter to show only active and upcoming conferences with registration enabled
+        available_conferences = {}
+        current_date = datetime.now().date()
+        
+        for conf_id, conf_data in all_conferences.items():
+            if not conf_data:
+                continue
+                
+            # Ensure basic_info exists
+            if 'basic_info' not in conf_data:
+                conf_data['basic_info'] = {}
+            
+            # Check status in both basic_info and settings (for backwards compatibility)
+            status = conf_data.get('basic_info', {}).get('status') or conf_data.get('settings', {}).get('status', 'draft')
+            
+            # Auto-determine status based on dates if available
+            start_date_str = conf_data.get('basic_info', {}).get('start_date')
+            end_date_str = conf_data.get('basic_info', {}).get('end_date')
+            
+            if start_date_str and end_date_str:
+                try:
+                    # Parse dates (handle both YYYY-MM-DD and ISO format)
+                    start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00')).date()
+                    end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00')).date()
+                    
+                    # Auto-determine status based on dates
+                    if end_date < current_date:
+                        # Conference has ended
+                        if status not in ['archived']:  # Don't override if manually set to archived
+                            status = 'past'
+                    elif start_date <= current_date <= end_date:
+                        # Conference is ongoing
+                        status = 'active'
+                    elif start_date > current_date:
+                        # Conference hasn't started yet
+                        if status not in ['active']:  # Allow manual override to active
+                            status = 'upcoming'
+                except Exception as e:
+                    print(f"WARNING: Could not parse dates for conference {conf_id}: {e}")
+            
+            # Normalize status in basic_info
+            conf_data['basic_info']['status'] = status
+            
+            # Check if registration is enabled
+            registration_enabled = conf_data.get('settings', {}).get('registration_enabled', False)
+            
+            print(f"DEBUG: Conference {conf_id}:")
+            print(f"  - Name: {conf_data.get('basic_info', {}).get('name', 'Unknown')}")
+            print(f"  - Status: {status}")
+            print(f"  - Registration Enabled: {registration_enabled}")
+            print(f"  - Start Date: {start_date_str}")
+            print(f"  - End Date: {end_date_str}")
+            
+            # Show conferences that are:
+            # 1. Active or Upcoming
+            # 2. Have registration enabled
+            # 3. Not past or archived
+            if status in ['active', 'upcoming'] and registration_enabled:
+                available_conferences[conf_id] = conf_data
+                print(f"  ✓ ADDED to available list")
+            else:
+                reasons = []
+                if status not in ['active', 'upcoming']:
+                    reasons.append(f"status is '{status}' (need 'active' or 'upcoming')")
+                if not registration_enabled:
+                    reasons.append("registration not enabled")
+                print(f"  ✗ SKIPPED: {', '.join(reasons)}")
+        
+        print(f"DEBUG: Found {len(available_conferences)} available conferences:")
+        for conf_id, conf in available_conferences.items():
+            print(f"  - {conf_id}: {conf.get('basic_info', {}).get('name', 'Unknown')}")
         
         return render_template('user/registration.html', 
                              site_design=get_site_design(),
-                             fees=fees)
-    except Exception:
-        flash('Error loading registration fees.', 'error')
+                             fees=fees,
+                             conferences=available_conferences)
+    except Exception as e:
+        print(f"ERROR loading registration page: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('Error loading registration page.', 'error')
         return render_template('user/registration.html', 
                              site_design=get_site_design(),
-                             fees={})
+                             fees={},
+                             conferences={})
 
 @app.route('/registration/register', methods=['POST'])
 def registration_select():
@@ -1252,9 +1338,22 @@ def admin_dashboard():
         users_ref = db.reference('users')
         users = users_ref.get() or {}
         
-        # Get all registrations
-        reg_ref = db.reference('registrations')
-        registrations = reg_ref.get() or {}
+        # Get all conferences
+        conferences = get_all_conferences()
+        
+        # Get all registrations across all conferences
+        all_registrations = {}
+        total_registrations = 0
+        pending_registrations = 0
+        
+        for conf_id, conf_data in conferences.items():
+            if conf_data:
+                reg_ref = db.reference(f'conferences/{conf_id}/registrations')
+                conf_registrations = reg_ref.get() or {}
+                all_registrations.update(conf_registrations)
+                total_registrations += len(conf_registrations)
+                pending_registrations += sum(1 for reg in conf_registrations.values() 
+                                           if reg and reg.get('payment_status') == 'pending')
         
         # Get all submissions
         submissions_ref = db.reference('submissions')
@@ -1263,20 +1362,25 @@ def admin_dashboard():
         # Calculate stats
         stats = {
             'total_users': len(users) if users else 0,
-            'total_registrations': len(registrations) if registrations else 0,
+            'total_conferences': len(conferences) if conferences else 0,
+            'active_conferences': sum(1 for conf in conferences.values() 
+                                    if conf and conf.get('basic_info', {}).get('status') == 'active'),
+            'total_registrations': total_registrations,
             'total_submissions': len(submissions) if submissions else 0,
-            'pending_registrations': sum(1 for reg in registrations.values() if reg and reg.get('payment_status') == 'pending') if registrations else 0,
-            'pending_submissions': sum(1 for sub in submissions.values() if sub and sub.get('status') == 'pending') if submissions else 0
+            'pending_registrations': pending_registrations,
+            'pending_submissions': sum(1 for sub in submissions.values() if sub and sub.get('status') == 'pending') if submissions else 0,
+            'total_admins': sum(1 for user in users.values() if user and user.get('is_admin')),
+            'total_regular_users': sum(1 for user in users.values() if user and not user.get('is_admin'))
         }
         
         # Get recent registrations and users (last 5)
         recent_registrations = {}
         recent_users = {}
         
-        if registrations:
+        if all_registrations:
             # Sort registrations by created_at date
             sorted_registrations = sorted(
-                [(k, v) for k, v in registrations.items() if v and v.get('created_at')],
+                [(k, v) for k, v in all_registrations.items() if v and v.get('created_at')],
                 key=lambda x: x[1].get('created_at', ''),
                 reverse=True
             )
@@ -1297,6 +1401,7 @@ def admin_dashboard():
                              users=recent_users, 
                              registrations=recent_registrations,
                              stats=stats,
+                             conferences=conferences,
                              site_design=get_site_design())
     except Exception as e:
         flash(f'Error loading admin dashboard: {str(e)}', 'error')
@@ -1305,11 +1410,16 @@ def admin_dashboard():
                              registrations={},
                              stats={
                                 'total_users': 0,
+                                'total_conferences': 0,
+                                'active_conferences': 0,
                                 'total_registrations': 0,
                                 'total_submissions': 0,
                                 'pending_registrations': 0,
-                                'pending_submissions': 0
+                                'pending_submissions': 0,
+                                'total_admins': 0,
+                                'total_regular_users': 0
                              },
+                             conferences={},
                              site_design=get_site_design())
 
 @app.route('/admin/users')
@@ -1934,7 +2044,12 @@ def get_registration_details(registration_id):
         if registration:
             # Update file paths to use the new /uploads route
             if registration.get('payment_proof'):
-                registration['payment_proof'] = registration['payment_proof'].replace('/static/uploads/', '')
+                # Handle both string (legacy) and dict (new format)
+                if isinstance(registration['payment_proof'], str):
+                    registration['payment_proof'] = registration['payment_proof'].replace('/static/uploads/', '')
+                elif isinstance(registration['payment_proof'], dict):
+                    # New format already has the correct structure, keep as is
+                    pass
             if registration.get('paper') and registration['paper'].get('file_path'):
                 registration['paper']['file_path'] = registration['paper']['file_path'].replace('/static/uploads/', '')
 
@@ -5579,6 +5694,7 @@ def inject_has_speakers():
 def inject_admin_menu():
     admin_menu = [
         {'text': 'Dashboard', 'url': 'admin_dashboard', 'icon': 'tachometer-alt'},
+        {'text': 'Conferences', 'url': 'admin_conferences', 'icon': 'calendar'},
         {'text': 'Home Content', 'url': 'admin_home_content', 'icon': 'home'},
         {'text': 'About Content', 'url': 'admin_about_content', 'icon': 'info-circle'},
         {'text': 'Author Guidelines', 'url': 'admin_author_guidelines', 'icon': 'book'},
@@ -6038,7 +6154,14 @@ def galleries():
         # Filter conferences to only show those with enabled galleries
         visible_conferences = {}
         for conf_id, conference in conferences.items():
-            if conference.get('settings', {}).get('gallery_enabled', True):  # Default to True for backward compatibility
+            # Check if gallery is explicitly disabled, otherwise show it (default to True for backward compatibility)
+            settings = conference.get('settings', {})
+            gallery_enabled = settings.get('gallery_enabled', True)  # Default to True
+
+            if gallery_enabled:
+                # Add gradient colors for visual variety
+                gradient_colors = conference.get('gradient_colors', generate_gradient_colors(conf_id))
+                conference['gradient_colors'] = gradient_colors
                 visible_conferences[conf_id] = conference
 
         response = make_response(render_template('galleries.html',
@@ -6609,6 +6732,30 @@ def delete_attendee_photo(conference_id, attendee_id):
         print(f"Error deleting attendee photo: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def generate_gradient_colors(conference_id):
+    """Generate unique gradient colors based on conference ID"""
+    # Use conference ID to create deterministic but varied color combinations
+    color_sets = [
+        '#007bff, #6610f2',  # Blue to Purple
+        '#28a745, #20c997',  # Green to Teal
+        '#dc3545, #fd7e14',  # Red to Orange
+        '#6f42c1, #e83e8c',  # Purple to Pink
+        '#17a2b8, #6f42c1',  # Cyan to Purple
+        '#ffc107, #fd7e14',  # Yellow to Orange
+        '#28a745, #007bff',  # Green to Blue
+        '#dc3545, #6f42c1',  # Red to Purple
+        '#e83e8c, #dc3545',  # Pink to Red
+        '#20c997, #17a2b8',  # Teal to Cyan
+    ]
+
+    # Use hash of conference ID to select color set
+    import hashlib
+    hash_obj = hashlib.md5(conference_id.encode())
+    hash_int = int(hash_obj.hexdigest(), 16)
+    color_index = hash_int % len(color_sets)
+
+    return color_sets[color_index]
+
 def get_all_conferences():
     """Get all conferences from Firebase"""
     try:
@@ -6928,15 +7075,16 @@ def conference_registration(conference_id):
                                          conference_id=conference_id,
                                          site_design=get_site_design())
         
-        # Save to Firebase under conference-specific path
-        registration_ref = db.reference(f'conferences/{conference_id}/registrations').push()
-        registration_ref.set(registration_data)
+        # Save to global registrations node (for admin panel)
+        global_registration_ref = db.reference('registrations').push()
+        registration_data['payment_status'] = 'pending'  # Add payment status field
+        global_registration_ref.set(registration_data)
         
         # Also save under user's registrations for easy access
         user_reg_ref = db.reference(f'user_registrations/{current_user.id}').push()
         user_reg_ref.set({
             'conference_id': conference_id,
-            'registration_id': registration_ref.key,
+            'registration_id': global_registration_ref.key,
             'conference_name': conference.get('basic_info', {}).get('name', 'Unknown Conference'),
             'status': 'pending',
             'created_at': datetime.now().isoformat()
@@ -6947,7 +7095,7 @@ def conference_registration(conference_id):
             send_registration_confirmation_email(
                 registration_data['email'],
                 conference.get('basic_info', {}).get('name', 'Conference'),
-                registration_ref.key,
+                global_registration_ref.key,
                 conference.get('conference_code', '')
             )
         except Exception as e:
@@ -7146,15 +7294,110 @@ def admin_conferences():
     try:
         conferences = get_all_conferences()
         
+        # Get all registrations from the global registrations node
+        all_registrations_ref = db.reference('registrations')
+        all_registrations = all_registrations_ref.get() or {}
+        
+        # Categorize conferences by status
+        active_conferences = {}
+        upcoming_conferences = {}
+        past_conferences = {}
+        
+        for conf_id, conf_data in conferences.items():
+            if not conf_data or 'basic_info' not in conf_data:
+                continue
+                
+            status = conf_data['basic_info'].get('status', 'draft')
+            year = conf_data['basic_info'].get('year', datetime.now().year)
+            current_year = datetime.now().year
+            
+            # Count registrations for this conference from global registrations
+            registration_count = 0
+            for reg_id, reg_data in all_registrations.items():
+                if reg_data and reg_data.get('conference_id') == conf_id:
+                    registration_count += 1
+            
+            conf_data['registration_count'] = registration_count
+            
+            if status == 'active':
+                active_conferences[conf_id] = conf_data
+            elif status == 'upcoming' or (status == 'draft' and year > current_year):
+                upcoming_conferences[conf_id] = conf_data
+            elif status == 'past' or year < current_year:
+                past_conferences[conf_id] = conf_data
+        
         return render_template('admin/conferences.html',
                              conferences=conferences,
+                             active_conferences=active_conferences,
+                             upcoming_conferences=upcoming_conferences,
+                             past_conferences=past_conferences,
+                             current_year=datetime.now().year,
                              site_design=get_site_design())
     except Exception as e:
         print(f"Error loading conferences: {e}")
         flash('Error loading conferences.', 'error')
         return render_template('admin/conferences.html',
                              conferences={},
+                             active_conferences={},
+                             upcoming_conferences={},
+                             past_conferences={},
+                             current_year=datetime.now().year,
                              site_design=get_site_design())
+
+@app.route('/admin/conferences/create', methods=['POST'])
+@login_required
+@admin_required
+def create_conference():
+    """Create a new conference"""
+    try:
+        # Get form data
+        conference_data = {
+            'basic_info': {
+                'name': request.form.get('name', '').strip(),
+                'description': request.form.get('description', '').strip(),
+                'year': int(request.form.get('year', datetime.now().year)),
+                'abbreviation': request.form.get('abbreviation', '').strip(),
+                'status': request.form.get('status', 'draft'),
+                'event_type': request.form.get('event_type', 'in-person'),
+                'start_date': request.form.get('start_date', ''),
+                'end_date': request.form.get('end_date', ''),
+                'location': request.form.get('location', '').strip(),
+                'website': request.form.get('website', '').strip(),
+                'timezone': 'UTC'
+            },
+            'settings': {
+                'registration_enabled': request.form.get('registration_enabled') == 'on',
+                'paper_submission_enabled': request.form.get('paper_submission_enabled') == 'on',
+                'gallery_enabled': request.form.get('gallery_enabled') == 'on',
+                'email_notifications': request.form.get('email_notifications') == 'on',
+                'max_registrations': 1000,
+                'max_paper_submissions': 500
+            },
+            'metadata': {
+                'created_at': datetime.now().isoformat(),
+                'created_by': current_user.email,
+                'version': '1.0.0'
+            }
+        }
+        
+        # Validate required fields
+        if not conference_data['basic_info']['name']:
+            flash('Conference name is required.', 'error')
+            return redirect(url_for('admin_conferences'))
+        
+        # Create conference with auto-generated code
+        result = create_conference_with_code(conference_data)
+        
+        if result['success']:
+            flash(f'Conference "{conference_data["basic_info"]["name"]}" created successfully with code: {result["conference_code"]}', 'success')
+        else:
+            flash(f'Error creating conference: {result.get("error", "Unknown error")}', 'error')
+            
+    except Exception as e:
+        print(f"Error creating conference: {e}")
+        flash('Error creating conference.', 'error')
+    
+    return redirect(url_for('admin_conferences'))
 
 @app.route('/admin/conferences/<conference_id>')
 @login_required
@@ -7167,19 +7410,396 @@ def admin_conference_details(conference_id):
             flash('Conference not found.', 'error')
             return redirect(url_for('admin_conferences'))
         
-        # Get conference registrations
-        registrations_ref = db.reference(f'conferences/{conference_id}/registrations')
-        registrations = registrations_ref.get() or {}
+        # Get all registrations from the global registrations node
+        all_registrations_ref = db.reference('registrations')
+        all_registrations = all_registrations_ref.get() or {}
+        
+        # Filter registrations for this specific conference
+        conference_registrations = {}
+        for reg_id, reg_data in all_registrations.items():
+            if reg_data and reg_data.get('conference_id') == conference_id:
+                # Ensure all required fields exist with defaults
+                reg_data.setdefault('full_name', '')
+                reg_data.setdefault('email', '')
+                reg_data.setdefault('institution', '')
+                reg_data.setdefault('registration_type', '')
+                reg_data.setdefault('payment_status', 'pending')
+                reg_data.setdefault('created_at', '')
+                conference_registrations[reg_id] = reg_data
         
         return render_template('admin/conference_details.html',
                              conference=conference,
                              conference_id=conference_id,
-                             registrations=registrations,
+                             registrations=conference_registrations,
                              site_design=get_site_design())
     except Exception as e:
         print(f"Error loading conference details: {e}")
         flash('Error loading conference details.', 'error')
         return redirect(url_for('admin_conferences'))
+
+@app.route('/admin/conferences/<conference_id>/delete', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_conference(conference_id):
+    """Delete a conference"""
+    try:
+        # Check if conference exists
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+        
+        # Check if conference has registrations from global registrations node
+        all_registrations_ref = db.reference('registrations')
+        all_registrations = all_registrations_ref.get() or {}
+        
+        # Count registrations for this conference
+        has_registrations = False
+        for reg_id, reg_data in all_registrations.items():
+            if reg_data and reg_data.get('conference_id') == conference_id:
+                has_registrations = True
+                break
+        
+        if has_registrations:
+            return jsonify({'success': False, 'error': 'Cannot delete conference with existing registrations'}), 400
+        
+        # Delete conference
+        conference_ref = db.reference(f'conferences/{conference_id}')
+        conference_ref.delete()
+        
+        return jsonify({'success': True, 'message': 'Conference deleted successfully'})
+        
+    except Exception as e:
+        print(f"Error deleting conference: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conferences/<conference_id>/settings', methods=['POST'])
+@login_required
+@admin_required
+def update_conference_settings(conference_id):
+    """Update conference settings"""
+    try:
+        # Check if conference exists
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('admin_conference_details', conference_id=conference_id))
+        
+        # Update settings
+        settings_ref = db.reference(f'conferences/{conference_id}/settings')
+        settings_data = {
+            'registration_enabled': request.form.get('registration_enabled') == 'on',
+            'paper_submission_enabled': request.form.get('paper_submission_enabled') == 'on',
+            'gallery_enabled': request.form.get('gallery_enabled') == 'on',
+            'email_notifications': request.form.get('email_notifications') == 'on',
+            'max_registrations': int(request.form.get('max_registrations', 1000)),
+            'max_paper_submissions': int(request.form.get('max_paper_submissions', 500))
+        }
+        
+        settings_ref.update(settings_data)
+        flash('Conference settings updated successfully.', 'success')
+        
+    except Exception as e:
+        print(f"Error updating conference settings: {e}")
+        flash('Error updating conference settings.', 'error')
+    
+    return redirect(url_for('admin_conference_details', conference_id=conference_id))
+
+@app.route('/admin/conferences/<conference_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_conference(conference_id):
+    """Edit conference details"""
+    try:
+        # Get conference data
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('admin_conferences'))
+        
+        if request.method == 'POST':
+            # Update conference data
+            basic_info = {
+                'name': request.form.get('name', '').strip(),
+                'description': request.form.get('description', '').strip(),
+                'year': int(request.form.get('year', conference['basic_info'].get('year', datetime.now().year))),
+                'abbreviation': request.form.get('abbreviation', '').strip(),
+                'status': request.form.get('status', conference['basic_info'].get('status', 'draft')),
+                'event_type': request.form.get('event_type', conference['basic_info'].get('event_type', 'in-person')),
+                'start_date': request.form.get('start_date', ''),
+                'end_date': request.form.get('end_date', ''),
+                'location': request.form.get('location', '').strip(),
+                'website': request.form.get('website', '').strip(),
+                'timezone': conference['basic_info'].get('timezone', 'UTC')
+            }
+            
+            # Validate required fields
+            if not basic_info['name']:
+                flash('Conference name is required.', 'error')
+                return render_template('admin/edit_conference.html',
+                                     conference=conference,
+                                     conference_id=conference_id,
+                                     site_design=get_site_design(),
+                                     current_year=datetime.now().year)
+            
+            # Update basic info
+            basic_info_ref = db.reference(f'conferences/{conference_id}/basic_info')
+            basic_info_ref.update(basic_info)
+            
+            # Update settings if provided
+            if request.form.get('update_settings') == 'on':
+                settings_data = {
+                    'registration_enabled': request.form.get('registration_enabled') == 'on',
+                    'paper_submission_enabled': request.form.get('paper_submission_enabled') == 'on',
+                    'gallery_enabled': request.form.get('gallery_enabled') == 'on',
+                    'email_notifications': request.form.get('email_notifications') == 'on',
+                    'max_registrations': int(request.form.get('max_registrations', 1000)),
+                    'max_paper_submissions': int(request.form.get('max_paper_submissions', 500))
+                }
+                
+                settings_ref = db.reference(f'conferences/{conference_id}/settings')
+                settings_ref.update(settings_data)
+            
+            # Update metadata
+            metadata_ref = db.reference(f'conferences/{conference_id}/metadata')
+            metadata_ref.update({
+                'updated_at': datetime.now().isoformat(),
+                'updated_by': current_user.email
+            })
+            
+            flash(f'Conference "{basic_info["name"]}" updated successfully.', 'success')
+            return redirect(url_for('admin_conference_details', conference_id=conference_id))
+        
+        # GET request - show edit form
+        return render_template('admin/edit_conference.html',
+                             conference=conference,
+                             conference_id=conference_id,
+                             site_design=get_site_design(),
+                             current_year=datetime.now().year)
+                             
+    except Exception as e:
+        print(f"Error editing conference: {e}")
+        flash('Error editing conference.', 'error')
+        return redirect(url_for('admin_conferences'))
+
+@app.route('/admin/conferences/<conference_id>/regenerate-code', methods=['POST'])
+@login_required
+@admin_required
+def regenerate_conference_code(conference_id):
+    """Regenerate conference code"""
+    try:
+        # Get conference data
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+        
+        # Generate new code
+        abbr = conference['basic_info'].get('abbreviation', 'CONF')
+        year = conference['basic_info'].get('year', datetime.now().year)
+        new_code = generate_conference_code(abbr, year)
+        
+        # Update conference code
+        conference_ref = db.reference(f'conferences/{conference_id}')
+        conference_ref.update({
+            'conference_code': new_code,
+            'code_generated_at': datetime.now().isoformat()
+        })
+        
+        return jsonify({'success': True, 'conference_code': new_code})
+        
+    except Exception as e:
+        print(f"Error regenerating conference code: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conferences/<conference_id>/assign-registrations', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def assign_registrations_to_conference(conference_id):
+    """Assign registrations to a specific conference"""
+    try:
+        # Get conference data
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('admin_conferences'))
+        
+        if request.method == 'POST':
+            # Get selected registration IDs
+            selected_registrations = request.form.getlist('selected_registrations')
+            
+            if not selected_registrations:
+                flash('No registrations selected.', 'warning')
+                return redirect(url_for('admin_conference_details', conference_id=conference_id))
+            
+            # Update registrations to assign them to this conference
+            updated_count = 0
+            for reg_id in selected_registrations:
+                # Get the registration from main collection
+                main_reg_ref = db.reference(f'registrations/{reg_id}')
+                registration_data = main_reg_ref.get()
+                
+                if registration_data:
+                    # Add assignment metadata
+                    registration_data['conference_id'] = conference_id
+                    registration_data['conference_name'] = conference['basic_info']['name']
+                    registration_data['assigned_at'] = datetime.now().isoformat()
+                    registration_data['assigned_by'] = current_user.email
+                    
+                    # Copy to conference-specific collection
+                    conference_reg_ref = db.reference(f'conferences/{conference_id}/registrations/{reg_id}')
+                    conference_reg_ref.set(registration_data)
+                    
+                    # Update main registration to mark as assigned
+                    main_reg_ref.update({
+                        'conference_id': conference_id,
+                        'conference_name': conference['basic_info']['name'],
+                        'assigned_at': datetime.now().isoformat(),
+                        'assigned_by': current_user.email
+                    })
+                    
+                    updated_count += 1
+            
+            flash(f'Successfully assigned {updated_count} registration(s) to {conference["basic_info"]["name"]}.', 'success')
+            return redirect(url_for('admin_conference_details', conference_id=conference_id))
+        
+        # GET request - show available registrations
+        # Get all registrations that are not assigned to any conference or assigned to this one
+        registrations_ref = db.reference('registrations')
+        all_registrations = registrations_ref.get() or {}
+        
+        # Get registrations already assigned to this conference
+        conference_registrations_ref = db.reference(f'conferences/{conference_id}/registrations')
+        conference_registrations = conference_registrations_ref.get() or {}
+        
+        # Filter registrations
+        available_registrations = []
+        assigned_registrations = []
+        
+        # Process main registrations (unassigned)
+        for reg_id, reg_data in all_registrations.items():
+            reg_data['_id'] = reg_id
+            reg_data.setdefault('conference_id', None)
+            reg_data.setdefault('full_name', '')
+            reg_data.setdefault('email', '')
+            reg_data.setdefault('institution', '')
+            reg_data.setdefault('registration_type', '')
+            reg_data.setdefault('payment_status', 'pending')
+            
+            # Only include if not assigned to any conference
+            if reg_data.get('conference_id') is None:
+                available_registrations.append(reg_data)
+        
+        # Process conference-specific registrations (assigned)
+        for reg_id, reg_data in conference_registrations.items():
+            reg_data['_id'] = reg_id
+            reg_data.setdefault('conference_id', conference_id)
+            reg_data.setdefault('full_name', '')
+            reg_data.setdefault('email', '')
+            reg_data.setdefault('institution', '')
+            reg_data.setdefault('registration_type', '')
+            reg_data.setdefault('payment_status', 'pending')
+            
+            assigned_registrations.append(reg_data)
+        
+        return render_template('admin/assign_registrations.html',
+                             conference=conference,
+                             conference_id=conference_id,
+                             available_registrations=available_registrations,
+                             assigned_registrations=assigned_registrations,
+                             conferences=get_all_conferences(),
+                             site_design=get_site_design())
+                             
+    except Exception as e:
+        print(f"Error assigning registrations: {e}")
+        flash('Error assigning registrations.', 'error')
+        return redirect(url_for('admin_conference_details', conference_id=conference_id))
+
+@app.route('/admin/conferences/<conference_id>/unassign-registration', methods=['POST'])
+@login_required
+@admin_required
+def unassign_registration_from_conference(conference_id):
+    """Unassign a registration from a conference"""
+    try:
+        registration_id = request.form.get('registration_id')
+        if not registration_id:
+            flash('Registration ID is required.', 'error')
+            return redirect(url_for('assign_registrations_to_conference', conference_id=conference_id))
+        
+        # Remove conference assignment from registration
+        registration_ref = db.reference(f'registrations/{registration_id}')
+        registration_ref.update({
+            'conference_id': None,
+            'conference_name': None,
+            'unassigned_at': datetime.now().isoformat(),
+            'unassigned_by': current_user.email
+        })
+        
+        # Remove from conference-specific collection
+        conference_reg_ref = db.reference(f'conferences/{conference_id}/registrations/{registration_id}')
+        conference_reg_ref.delete()
+        
+        flash('Registration unassigned successfully.', 'success')
+        return redirect(url_for('assign_registrations_to_conference', conference_id=conference_id))
+        
+    except Exception as e:
+        print(f"Error unassigning registration: {e}")
+        flash('Error unassigning registration.', 'error')
+        return redirect(url_for('assign_registrations_to_conference', conference_id=conference_id))
+
+@app.route('/admin/conferences/<conference_id>/registrations/export')
+@login_required
+@admin_required
+def export_conference_registrations(conference_id):
+    """Export registrations for a specific conference"""
+    try:
+        # Get conference data
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('admin_conference_details', conference_id=conference_id))
+        
+        # Get registrations for this conference
+        registrations_ref = db.reference(f'conferences/{conference_id}/registrations')
+        registrations_data = registrations_ref.get() or {}
+        
+        # Create CSV content
+        import csv
+        import io
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'Registration ID', 'Full Name', 'Email', 'Institution', 'Registration Type',
+            'Payment Status', 'Total Amount', 'Registration Date', 'Conference'
+        ])
+        
+        # Write data
+        for reg_id, reg in registrations_data.items():
+            writer.writerow([
+                reg_id,
+                reg.get('full_name', ''),
+                reg.get('email', ''),
+                reg.get('institution', ''),
+                reg.get('registration_type', ''),
+                reg.get('payment_status', ''),
+                reg.get('total_amount', ''),
+                reg.get('created_at', ''),
+                conference['basic_info']['name']
+            ])
+        
+        # Create response
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename="{conference["basic_info"]["name"]}_registrations.csv"'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error exporting registrations: {e}")
+        flash('Error exporting registrations.', 'error')
+        return redirect(url_for('admin_conference_details', conference_id=conference_id))
 
 # Update existing dashboard route to be conference-aware
 @app.route('/dashboard')
@@ -7190,30 +7810,32 @@ def dashboard():
         user_registrations = {}
         user_submissions = {}
         
-        # Get user's registrations across all conferences
-        user_reg_ref = db.reference(f'user_registrations/{current_user.id}')
-        user_registrations_data = user_reg_ref.get() or {}
+        # Get user's registrations from global registrations node
+        all_registrations_ref = db.reference('registrations')
+        all_registrations = all_registrations_ref.get() or {}
         
-        # Get detailed registration data
-        for reg_id, reg_summary in user_registrations_data.items():
-            conference_id = reg_summary.get('conference_id')
-            registration_id = reg_summary.get('registration_id')
-            
-            if conference_id and registration_id:
-                # Get full registration details
-                full_reg_ref = db.reference(f'conferences/{conference_id}/registrations/{registration_id}')
-                full_registration = full_reg_ref.get()
+        # Filter registrations for current user
+        for reg_id, registration in all_registrations.items():
+            if registration and registration.get('user_id') == current_user.id:
+                # Get conference details if available
+                conference_id = registration.get('conference_id')
+                if conference_id:
+                    conference = get_conference_data(conference_id)
+                    if conference:
+                        registration['conference_details'] = {
+                            'name': conference.get('basic_info', {}).get('name', 'Unknown'),
+                            'year': conference.get('basic_info', {}).get('year', ''),
+                            'status': conference.get('basic_info', {}).get('status', 'unknown')
+                        }
                 
-                if full_registration:
-                    full_registration.update(reg_summary)  # Add conference info
-                    user_registrations[reg_id] = full_registration
+                user_registrations[reg_id] = registration
         
-        # Get user's paper submissions (similar pattern)
+        # Get user's paper submissions
         submissions_ref = db.reference('paper_submissions')
         all_submissions = submissions_ref.get() or {}
         
         for sub_id, submission in all_submissions.items():
-            if submission.get('user_id') == current_user.id:
+            if submission and submission.get('user_id') == current_user.id:
                 user_submissions[sub_id] = submission
         
         return render_template('user/dashboard.html',
@@ -7223,6 +7845,8 @@ def dashboard():
                              
     except Exception as e:
         print(f"Error loading dashboard: {e}")
+        import traceback
+        traceback.print_exc()
         flash('Error loading dashboard.', 'error')
         return render_template('user/dashboard.html',
                              registrations={},
@@ -7564,8 +8188,8 @@ def admin_conference_codes():
 @app.route('/admin/conference-codes/generate/<conference_id>', methods=['POST'])
 @login_required
 @admin_required
-def generate_conference_code(conference_id):
-    """Generate a new conference code for an existing conference"""
+def admin_generate_new_conference_code(conference_id):
+    """Generate a new conference code for an existing conference from admin codes page"""
     try:
         # Get conference data
         conference = get_conference_data(conference_id)

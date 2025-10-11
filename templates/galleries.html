@@ -35,9 +35,26 @@
 
                     <!-- Gallery Preview -->
                     <div class="gallery-preview mb-3" data-conference-id="{{ conference_id }}">
-                        <div class="gallery-placeholder text-center py-4">
-                            <i class="fas fa-images fa-3x text-muted mb-2"></i>
-                            <p class="text-muted small">Loading gallery...</p>
+                        {% set hero_images = [
+                            '/static/uploads/hero/20250120_164636_jack-white-Yr5ZZbfJK9k-unsplash.jpg',
+                            '/static/uploads/hero/20250120_164902_alim-DkfnGxoy5NI-unsplash.jpg',
+                            '/static/uploads/hero/20250120_164902_ben-o-bro-wpU4veNGnHg-unsplash.jpg',
+                            '/static/uploads/hero/20250120_164902_meduana-PdnseHuDFZU-unsplash.jpg',
+                            '/static/uploads/hero/20250120_164902_pedro-lastra-Nyvq2juw4_o-unsplash.jpg',
+                            '/static/uploads/hero/20250120_172727_andre-benz-Mn9Fa_wQH-M-unsplash.jpg',
+                            '/static/uploads/hero/20250120_172727_sawyer-bengtson-tnv84LOjes4-unsplash.jpg',
+                            '/static/uploads/hero/20250122_182606_jaime-lopes-0RDBOAdnbWM-unsplash.jpg',
+                            '/static/uploads/hero/20250122_182606_teemu-paananen-bzdhc5b3Bxs-unsplash.jpg',
+                            '/static/uploads/hero/20250122_182606_the-climate-reality-project-Hb6uWq0i4MI-unsplash.jpg'
+                        ] %}
+                        {% set image_index = loop.index0 % hero_images|length %}
+                        <div class="gallery-image" style="background-image: url('{{ conference.hero_image|default(hero_images[image_index]) }}');">
+                            <div class="image-overlay">
+                                <div class="image-content">
+                                    <i class="fas fa-images fa-2x text-white mb-2"></i>
+                                    <p class="text-white small">View Gallery</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -63,21 +80,54 @@
 
 <!-- Loading Animation Styles -->
 <style>
-.gallery-placeholder {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
+.gallery-image {
+    position: relative;
+    height: 200px;
     border-radius: 8px;
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+.gallery-image:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gallery-image:hover .image-overlay {
+    opacity: 1;
+}
+
+.image-content {
+    text-align: center;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.image-content i {
+    margin-bottom: 0.5rem;
+}
+
+.image-content p {
+    font-weight: 500;
+    margin: 0;
 }
 
 .conference-gallery-card {
@@ -97,92 +147,16 @@
     background-color: #f8f9fa;
 }
 
-.gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-    max-height: 200px;
-    overflow: hidden;
-}
-
-.gallery-grid img {
-    width: 100%;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 4px;
-    transition: transform 0.2s ease;
-}
-
-.gallery-grid img:hover {
-    transform: scale(1.05);
-}
-
-.gallery-count {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
+/* Responsive styles */
 @media (max-width: 768px) {
-    .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    }
-
-    .gallery-grid img {
-        height: 50px;
+    .gallery-image {
+        height: 150px;
     }
 }
 </style>
 
 <script>
 $(document).ready(function() {
-    // Load gallery previews for each conference
-    $('.gallery-preview').each(function() {
-        const conferenceId = $(this).data('conference-id');
-        const $preview = $(this);
-
-        // Get gallery images for this conference (public API)
-        $.get(`/api/conference-galleries/${conferenceId}/images`)
-            .done(function(images) {
-                if (images && images.length > 0) {
-                    let previewHtml = '<div class="gallery-grid">';
-
-                    // Show up to 6 images in preview
-                    const previewImages = images.slice(0, 6);
-                    previewImages.forEach(function(image) {
-                        previewHtml += `<img src="${image.url}" alt="${image.original_name}" loading="lazy">`;
-                    });
-
-                    previewHtml += '</div>';
-                    previewHtml += `<div class="gallery-count">${images.length} image${images.length !== 1 ? 's' : ''}</div>`;
-
-                    $preview.html(previewHtml);
-                } else {
-                    $preview.html(`
-                        <div class="text-center py-4">
-                            <i class="fas fa-camera fa-2x text-muted mb-2"></i>
-                            <p class="text-muted small">No images yet</p>
-                        </div>
-                    `);
-                }
-            })
-            .fail(function(xhr, status, error) {
-                console.error('Error loading gallery images for', conferenceId, ':', error);
-                $preview.html(`
-                    <div class="text-center py-4">
-                        <i class="fas fa-camera fa-2x text-muted mb-2"></i>
-                        <p class="text-muted small">No images yet</p>
-                    </div>
-                `);
-            });
-    });
-
     // Add click handlers to conference cards
     $('.conference-gallery-card').click(function(e) {
         // Don't trigger if clicking on the view button
@@ -193,6 +167,16 @@ $(document).ready(function() {
             }
         }
     });
+
+    // Add hover effects to image previews
+    $('.gallery-image').hover(
+        function() {
+            $(this).addClass('hover');
+        },
+        function() {
+            $(this).removeClass('hover');
+        }
+    );
 });
 </script>
 {% endblock %}

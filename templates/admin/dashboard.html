@@ -29,14 +29,14 @@
 
         <div class="stat-card">
             <div class="stat-icon">
-                <i class="fas fa-clipboard-list"></i>
+                <i class="fas fa-calendar"></i>
             </div>
             <div class="stat-content">
-                <h3>Registrations</h3>
-                <p class="stat-number">{{ stats.total_registrations }}</p>
+                <h3>Conferences</h3>
+                <p class="stat-number">{{ stats.total_conferences }}</p>
                 <div class="stat-details">
-                    <span><i class="fas fa-clock"></i> {{ stats.pending_registrations }} Pending</span>
-                    <span><i class="fas fa-check-circle"></i> {{ stats.approved_registrations }} Approved</span>
+                    <span><i class="fas fa-play-circle"></i> {{ stats.active_conferences }} Active</span>
+                    <span><i class="fas fa-clock"></i> {{ stats.total_conferences - stats.active_conferences }} Others</span>
                 </div>
             </div>
         </div>
@@ -70,8 +70,43 @@
         </div>
     </div>
 
-    <!-- Recent Activity -->
+    <!-- Quick Actions -->
     <div class="dashboard-grid">
+        <!-- Conference Management -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h2><i class="fas fa-calendar"></i> Conference Management</h2>
+                <a href="{{ url_for('admin_conferences') }}" class="view-all">Manage All</a>
+            </div>
+            <div class="card-content">
+                {% if conferences %}
+                <div class="conference-list">
+                    {% for conf_id, conf in conferences.items() %}
+                    <div class="conference-item">
+                        <div class="conference-info">
+                            <h6>{{ conf.basic_info.name }}</h6>
+                            <small class="text-muted">{{ conf.basic_info.year|default('N/A') }} - {{ conf.basic_info.status|default('draft')|title }}</small>
+                        </div>
+                        <div class="conference-actions">
+                            <a href="{{ url_for('admin_conference_details', conference_id=conf_id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-calendar fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-2">No conferences yet</p>
+                    <a href="{{ url_for('admin_conferences') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>
+                        Create Conference
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
         <!-- Recent Registrations -->
         <div class="dashboard-card">
             <div class="card-header">
@@ -392,6 +427,37 @@
     text-align: center;
     color: var(--text-secondary);
     padding: 2rem;
+}
+
+.conference-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.conference-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.conference-info h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.conference-info small {
+    font-size: 0.75rem;
+}
+
+.conference-actions {
+    display: flex;
+    gap: 0.5rem;
 }
 
 @media (max-width: 768px) {

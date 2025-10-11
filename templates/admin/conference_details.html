@@ -1,0 +1,661 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ conference.basic_info.name }} - Conference Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_conferences') }}">Conferences</a></li>
+                    <li class="breadcrumb-item active">{{ conference.basic_info.name }}</li>
+                </ol>
+            </nav>
+            <h1 class="mt-2 mb-2">
+                <i class="fas fa-calendar me-2"></i>
+                {{ conference.basic_info.name }}
+            </h1>
+            <p class="text-muted">{{ conference.basic_info.description|default('No description provided') }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('edit_conference', conference_id=conference_id) }}" class="btn btn-primary me-2">
+                <i class="fas fa-edit me-1"></i>
+                Edit Conference
+            </a>
+            <a href="{{ url_for('admin_conferences') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Back to Conferences
+            </a>
+        </div>
+    </div>
+
+    <!-- Conference Overview -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Conference Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Conference Name</label>
+                                <p class="mb-0">{{ conference.basic_info.name }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Year</label>
+                                <p class="mb-0">{{ conference.basic_info.year|default('Not set') }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Status</label>
+                                <p class="mb-0">
+                                    {% set status = conference.basic_info.status|default('draft') %}
+                                    <span class="badge 
+                                        {% if status == 'active' %}bg-success
+                                        {% elif status == 'upcoming' %}bg-info
+                                        {% elif status == 'past' %}bg-secondary
+                                        {% else %}bg-warning{% endif %}">
+                                        {{ status|title }}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Event Type</label>
+                                <p class="mb-0">
+                                    {% set event_type = conference.basic_info.event_type|default('in-person') %}
+                                    <span class="badge 
+                                        {% if event_type == 'virtual' %}bg-primary
+                                        {% elif event_type == 'hybrid' %}bg-info
+                                        {% else %}bg-success{% endif %}">
+                                        {% if event_type == 'virtual' %}
+                                            <i class="fas fa-video me-1"></i>Virtual
+                                        {% elif event_type == 'hybrid' %}
+                                            <i class="fas fa-users me-1"></i>Hybrid
+                                        {% else %}
+                                            <i class="fas fa-map-marker-alt me-1"></i>In-Person
+                                        {% endif %}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Conference Code</label>
+                                <p class="mb-0">
+                                    <code>{{ conference.conference_code|default('Not generated') }}</code>
+                                    {% if conference.conference_code %}
+                                    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyCode('{{ conference.conference_code }}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Start Date</label>
+                                <p class="mb-0">{{ conference.basic_info.start_date|date if conference.basic_info.start_date else 'Not set' }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">End Date</label>
+                                <p class="mb-0">{{ conference.basic_info.end_date|date if conference.basic_info.end_date else 'Not set' }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Location</label>
+                                <p class="mb-0">{{ conference.basic_info.location|default('Not set') }}</p>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Website</label>
+                                <p class="mb-0">
+                                    {% if conference.basic_info.website %}
+                                    <a href="{{ conference.basic_info.website }}" target="_blank">{{ conference.basic_info.website }}</a>
+                                    {% else %}
+                                    Not set
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Quick Stats -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Quick Stats
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">{{ registrations|length }}</h4>
+                            <small class="text-muted">Registrations</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">{{ conference.settings.max_registrations|default(1000) }}</h4>
+                            <small class="text-muted">Max Capacity</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>
+                        Settings
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-column gap-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Registration</span>
+                            <span class="badge {{ 'bg-success' if conference.settings.registration_enabled else 'bg-secondary' }}">
+                                {{ 'Enabled' if conference.settings.registration_enabled else 'Disabled' }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Paper Submission</span>
+                            <span class="badge {{ 'bg-success' if conference.settings.paper_submission_enabled else 'bg-secondary' }}">
+                                {{ 'Enabled' if conference.settings.paper_submission_enabled else 'Disabled' }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Gallery</span>
+                            <span class="badge {{ 'bg-success' if conference.settings.gallery_enabled else 'bg-secondary' }}">
+                                {{ 'Enabled' if conference.settings.gallery_enabled else 'Disabled' }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Email Notifications</span>
+                            <span class="badge {{ 'bg-success' if conference.settings.email_notifications else 'bg-secondary' }}">
+                                {{ 'Enabled' if conference.settings.email_notifications else 'Disabled' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Tabs -->
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="conferenceTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="registrations-tab" data-bs-toggle="tab" data-bs-target="#registrations" type="button" role="tab">
+                        <i class="fas fa-users me-1"></i>
+                        Registrations ({{ registrations|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="papers-tab" data-bs-toggle="tab" data-bs-target="#papers" type="button" role="tab">
+                        <i class="fas fa-file-alt me-1"></i>
+                        Papers
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="gallery-tab" data-bs-toggle="tab" data-bs-target="#gallery" type="button" role="tab">
+                        <i class="fas fa-images me-1"></i>
+                        Gallery
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="fas fa-cog me-1"></i>
+                        Settings
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="conferenceTabsContent">
+                <!-- Registrations Tab -->
+                <div class="tab-pane fade show active" id="registrations" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Conference Registrations</h6>
+                        <div>
+                            <a href="{{ url_for('assign_registrations_to_conference', conference_id=conference_id) }}" class="btn btn-sm btn-primary me-2">
+                                <i class="fas fa-user-plus me-1"></i>
+                                Assign Registrations
+                            </a>
+                            <button class="btn btn-sm btn-outline-primary" onclick="exportRegistrations()">
+                                <i class="fas fa-download me-1"></i>
+                                Export
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {% if registrations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Institution</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg_id, reg in registrations.items() %}
+                                <tr>
+                                    <td>{{ reg.full_name|default('N/A') }}</td>
+                                    <td>{{ reg.email|default('N/A') }}</td>
+                                    <td>{{ reg.institution|default('N/A') }}</td>
+                                    <td>{{ reg.registration_type|replace('_', ' ')|title|default('N/A') }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if reg.payment_status == 'approved' %}bg-success
+                                            {% elif reg.payment_status == 'pending' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ reg.payment_status|title|default('Unknown') }}
+                                        </span>
+                                    </td>
+                                    <td>{{ reg.created_at|date if reg.created_at else 'N/A' }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewRegistration('{{ reg_id }}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>No Registrations Yet</h5>
+                        <p class="text-muted">Registrations will appear here once users start registering for this conference.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Papers Tab -->
+                <div class="tab-pane fade" id="papers" role="tabpanel">
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <h5>Paper Submissions</h5>
+                        <p class="text-muted">Paper submissions for this conference will be displayed here.</p>
+                        <a href="{{ url_for('admin_submissions') }}" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>
+                            View All Submissions
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Gallery Tab -->
+                <div class="tab-pane fade" id="gallery" role="tabpanel">
+                    <div class="text-center py-4">
+                        <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                        <h5>Conference Gallery</h5>
+                        <p class="text-muted">Manage photos and attendee galleries for this conference.</p>
+                        <a href="{{ url_for('admin_conference_galleries') }}" class="btn btn-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>
+                            Manage Gallery
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <form method="POST" action="{{ url_for('update_conference_settings', conference_id=conference_id) }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Feature Settings</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="regEnabled" name="registration_enabled" 
+                                           {{ 'checked' if conference.settings.registration_enabled else '' }}>
+                                    <label class="form-check-label" for="regEnabled">
+                                        Enable Registration
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="paperEnabled" name="paper_submission_enabled" 
+                                           {{ 'checked' if conference.settings.paper_submission_enabled else '' }}>
+                                    <label class="form-check-label" for="paperEnabled">
+                                        Enable Paper Submission
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="galleryEnabled" name="gallery_enabled" 
+                                           {{ 'checked' if conference.settings.gallery_enabled else '' }}>
+                                    <label class="form-check-label" for="galleryEnabled">
+                                        Enable Gallery
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="emailEnabled" name="email_notifications" 
+                                           {{ 'checked' if conference.settings.email_notifications else '' }}>
+                                    <label class="form-check-label" for="emailEnabled">
+                                        Enable Email Notifications
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Limits</h6>
+                                <div class="mb-3">
+                                    <label for="maxRegistrations" class="form-label">Max Registrations</label>
+                                    <input type="number" class="form-control" id="maxRegistrations" name="max_registrations" 
+                                           value="{{ conference.settings.max_registrations|default(1000) }}" min="1">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="maxPapers" class="form-label">Max Paper Submissions</label>
+                                    <input type="number" class="form-control" id="maxPapers" name="max_paper_submissions" 
+                                           value="{{ conference.settings.max_paper_submissions|default(500) }}" min="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Registration Details Modal -->
+<div class="modal fade" id="registrationModal" tabindex="-1" aria-labelledby="registrationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="registrationModalLabel">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Registration Details
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="registrationDetails" class="registration-details">
+                    <!-- Details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Registration Details Modal Styles */
+.registration-details .details-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.registration-details .detail-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.registration-details .section-title {
+    color: #4e73df;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e3e6f0;
+    padding-bottom: 0.5rem;
+}
+
+.registration-details .detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.registration-details .label {
+    font-weight: 500;
+    color: #5a5c69;
+}
+
+.registration-details .value {
+    color: #2e3338;
+    text-align: right;
+}
+
+.registration-details .additional-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+.registration-details .item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 0.5rem;
+    opacity: 0.5;
+}
+
+.registration-details .item.active {
+    opacity: 1;
+    background: #e3f2fd;
+    border: 2px solid #4e73df;
+}
+
+.registration-details .item i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: #4e73df;
+}
+
+.registration-details .status-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.registration-details .status-badge.approved {
+    background: #1cc88a;
+    color: white;
+}
+
+.registration-details .status-badge.rejected {
+    background: #e74a3b;
+    color: white;
+}
+
+.registration-details .status-badge.pending {
+    background: #f6c23e;
+    color: white;
+}
+</style>
+
+<script>
+function copyCode(code) {
+    navigator.clipboard.writeText(code).then(function() {
+        // Show success message
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+
+function viewRegistration(registrationId) {
+    // Fetch registration details and display in modal
+    fetch(`/admin/registrations/${registrationId}`)
+        .then(response => response.json())
+        .then(data => {
+            const detailsHtml = formatRegistrationDetails(data);
+            document.getElementById('registrationDetails').innerHTML = detailsHtml;
+            const modal = new bootstrap.Modal(document.getElementById('registrationModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading registration details');
+        });
+}
+
+function formatRegistrationDetails(data) {
+    return `
+        <div class="details-grid">
+            <div class="detail-section">
+                <h6 class="section-title">Personal Information</h6>
+                <div class="detail-row">
+                    <span class="label">Full Name:</span>
+                    <span class="value">${data.full_name || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Email:</span>
+                    <span class="value">${data.email || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Institution:</span>
+                    <span class="value">${data.institution || 'N/A'}</span>
+                </div>
+                ${data.country ? `
+                <div class="detail-row">
+                    <span class="label">Country:</span>
+                    <span class="value">${data.country}</span>
+                </div>
+                ` : ''}
+                ${data.phone ? `
+                <div class="detail-row">
+                    <span class="label">Phone:</span>
+                    <span class="value">${data.phone}</span>
+                </div>
+                ` : ''}
+            </div>
+
+            <div class="detail-section">
+                <h6 class="section-title">Registration Information</h6>
+                <div class="detail-row">
+                    <span class="label">Type:</span>
+                    <span class="value">${(data.registration_type || '').replace('_', ' ').toUpperCase()}</span>
+                </div>
+                ${data.registration_period ? `
+                <div class="detail-row">
+                    <span class="label">Period:</span>
+                    <span class="value">${(data.registration_period || '').replace('_', ' ').toUpperCase()}</span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="label">Conference:</span>
+                    <span class="value">${data.conference_name || data.conference_info?.name || 'N/A'}</span>
+                </div>
+                ${data.conference_code || data.conference_info?.code ? `
+                <div class="detail-row">
+                    <span class="label">Conference Code:</span>
+                    <span class="value"><code>${data.conference_code || data.conference_info.code}</code></span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="label">Status:</span>
+                    <span class="value"><span class="status-badge ${data.payment_status || 'pending'}">${(data.payment_status || 'pending').toUpperCase()}</span></span>
+                </div>
+                ${data.created_at || data.submission_date ? `
+                <div class="detail-row">
+                    <span class="label">Registered:</span>
+                    <span class="value">${new Date(data.created_at || data.submission_date).toLocaleString()}</span>
+                </div>
+                ` : ''}
+            </div>
+
+            <div class="detail-section">
+                <h6 class="section-title">Additional Items</h6>
+                <div class="additional-items-grid">
+                    <div class="item ${data.workshop ? 'active' : ''}">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>Workshop</span>
+                    </div>
+                    <div class="item ${data.banquet ? 'active' : ''}">
+                        <i class="fas fa-glass-cheers"></i>
+                        <span>Banquet</span>
+                    </div>
+                    <div class="item ${data.extra_paper ? 'active' : ''}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Extra Paper</span>
+                    </div>
+                </div>
+            </div>
+
+            ${data.paper && data.paper.title ? `
+            <div class="detail-section">
+                <h6 class="section-title">Paper Information</h6>
+                <div class="detail-row">
+                    <span class="label">Title:</span>
+                    <span class="value">${data.paper.title || 'N/A'}</span>
+                </div>
+                ${data.paper.status ? `
+                <div class="detail-row">
+                    <span class="label">Status:</span>
+                    <span class="value">${data.paper.status || 'PENDING'}</span>
+                </div>
+                ` : ''}
+                ${data.paper.filename ? `
+                <div class="detail-row">
+                    <span class="label">File:</span>
+                    <span class="value">${data.paper.filename}</span>
+                </div>
+                ` : ''}
+            </div>
+            ` : ''}
+
+            <div class="detail-section">
+                <h6 class="section-title">Payment Information</h6>
+                <div class="detail-row">
+                    <span class="label">Total Amount:</span>
+                    <span class="value"><strong>R${data.total_amount || '0'}</strong></span>
+                </div>
+                ${data.payment_proof ? `
+                <div class="detail-row">
+                    <span class="label">Payment Proof:</span>
+                    <span class="value">
+                        ${typeof data.payment_proof === 'object' ? 
+                            `<a href="${data.payment_proof.url}" class="btn btn-sm btn-primary" target="_blank">
+                                <i class="fas fa-download"></i> ${data.payment_proof.filename}
+                            </a>` :
+                            `<a href="/user/download/payment/${data.payment_proof}" class="btn btn-sm btn-primary" target="_blank">
+                                <i class="fas fa-download"></i> Download
+                            </a>`
+                        }
+                    </span>
+                </div>
+                ` : `
+                <div class="detail-row">
+                    <span class="label">Payment Proof:</span>
+                    <span class="value text-muted">Not uploaded</span>
+                </div>
+                `}
+            </div>
+        </div>
+    `;
+}
+
+function exportRegistrations() {
+    window.location.href = `/admin/conferences/{{ conference_id }}/registrations/export`;
+}
+</script>
+{% endblock %}

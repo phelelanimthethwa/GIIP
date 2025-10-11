@@ -1,0 +1,334 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Assign Registrations - {{ conference.basic_info.name }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_conferences') }}">Conferences</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}">{{ conference.basic_info.name }}</a></li>
+                    <li class="breadcrumb-item active">Assign Registrations</li>
+                </ol>
+            </nav>
+            <h1 class="mt-2 mb-2">
+                <i class="fas fa-user-plus me-2"></i>
+                Assign Registrations
+            </h1>
+            <p class="text-muted">Assign registrations from the main pool to {{ conference.basic_info.name }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>
+                Back to Conference
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" id="assignRegistrationsForm">
+        <!-- Available Registrations -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Available Registrations
+                        <span class="badge bg-secondary ms-2">{{ available_registrations|length }}</span>
+                    </h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllAvailable()">
+                            <i class="fas fa-check-square me-1"></i>
+                            Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">
+                            <i class="fas fa-square me-1"></i>
+                            Deselect All
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if available_registrations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="50">
+                                        <input type="checkbox" id="selectAllAvailable" onchange="toggleAllAvailable(this)">
+                                    </th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Institution</th>
+                                    <th>Type</th>
+                                    <th>Payment Status</th>
+                                    <th>Registration Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in available_registrations %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="selected_registrations" value="{{ reg._id }}" class="registration-checkbox">
+                                    </td>
+                                    <td>
+                                        <strong>{{ reg.full_name|default('N/A') }}</strong>
+                                    </td>
+                                    <td>{{ reg.email|default('N/A') }}</td>
+                                    <td>{{ reg.institution|default('N/A') }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ reg.registration_type|default('Standard') }}</span>
+                                    </td>
+                                    <td>
+                                        {% set payment_status = reg.payment_status|default('pending') %}
+                                        <span class="badge 
+                                            {% if payment_status == 'paid' %}bg-success
+                                            {% elif payment_status == 'pending' %}bg-warning
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ payment_status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ reg.submission_date|date if reg.submission_date else 'N/A' }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Available Registrations</h5>
+                        <p class="text-muted">All registrations are already assigned to conferences.</p>
+                        <a href="{{ url_for('admin_registrations') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>
+                            View All Registrations
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Currently Assigned Registrations -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Currently Assigned to {{ conference.basic_info.name }}
+                    <span class="badge bg-success ms-2">{{ assigned_registrations|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if assigned_registrations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Institution</th>
+                                    <th>Type</th>
+                                    <th>Payment Status</th>
+                                    <th>Assigned Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in assigned_registrations %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ reg.full_name|default('N/A') }}</strong>
+                                    </td>
+                                    <td>{{ reg.email|default('N/A') }}</td>
+                                    <td>{{ reg.institution|default('N/A') }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ reg.registration_type|default('Standard') }}</span>
+                                    </td>
+                                    <td>
+                                        {% set payment_status = reg.payment_status|default('pending') %}
+                                        <span class="badge 
+                                            {% if payment_status == 'paid' %}bg-success
+                                            {% elif payment_status == 'pending' %}bg-warning
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ payment_status|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ reg.assigned_at|date if reg.assigned_at else 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="unassignRegistration('{{ reg._id }}', '{{ reg.full_name }}')">
+                                            <i class="fas fa-times me-1"></i>
+                                            Unassign
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Assigned Registrations</h5>
+                        <p class="text-muted">This conference doesn't have any assigned registrations yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        {% if available_registrations %}
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted">Selected: </span>
+                        <span id="selectedCount" class="badge bg-primary">0</span>
+                        <span class="text-muted"> registrations</span>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('admin_conference_details', conference_id=conference_id) }}" class="btn btn-secondary me-2">
+                            <i class="fas fa-times me-1"></i>
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="assignBtn" disabled>
+                            <i class="fas fa-user-plus me-1"></i>
+                            Assign Selected Registrations
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.registration-checkbox {
+    transform: scale(1.2);
+}
+
+#selectedCount {
+    font-size: 1rem;
+}
+</style>
+
+<script>
+// Update selected count
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('input[name="selected_registrations"]:checked');
+    const count = checkboxes.length;
+    document.getElementById('selectedCount').textContent = count;
+    document.getElementById('assignBtn').disabled = count === 0;
+}
+
+// Select all available registrations
+function selectAllAvailable() {
+    const checkboxes = document.querySelectorAll('input[name="selected_registrations"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    document.getElementById('selectAllAvailable').checked = true;
+    updateSelectedCount();
+}
+
+// Deselect all registrations
+function deselectAll() {
+    const checkboxes = document.querySelectorAll('input[name="selected_registrations"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAllAvailable').checked = false;
+    updateSelectedCount();
+}
+
+// Toggle all available registrations
+function toggleAllAvailable(checkbox) {
+    const checkboxes = document.querySelectorAll('input[name="selected_registrations"]');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateSelectedCount();
+}
+
+// Unassign a registration
+function unassignRegistration(regId, regName) {
+    if (confirm(`Are you sure you want to unassign "${regName}" from this conference?`)) {
+        // Create a form to submit the unassign request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/conferences/{{ conference_id }}/unassign-registration`;
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'registration_id';
+        input.value = regId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('input[name="selected_registrations"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+    
+    updateSelectedCount();
+});
+
+// Form submission
+document.getElementById('assignRegistrationsForm').addEventListener('submit', function(e) {
+    const selectedCount = document.querySelectorAll('input[name="selected_registrations"]:checked').length;
+    
+    if (selectedCount === 0) {
+        e.preventDefault();
+        alert('Please select at least one registration to assign.');
+        return false;
+    }
+    
+    if (!confirm(`Are you sure you want to assign ${selectedCount} registration(s) to this conference?`)) {
+        e.preventDefault();
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = document.getElementById('assignBtn');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assigning...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

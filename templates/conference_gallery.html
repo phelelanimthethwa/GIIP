@@ -215,6 +215,23 @@
             </div>
         </div>
 
+        <!-- No Results State -->
+        <div class="no-results-state" id="noResultsState" style="display: none;">
+            <div class="no-results-content">
+                <div class="no-results-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3 class="no-results-title">No Items Found</h3>
+                <p class="no-results-description">
+                    Try adjusting your search terms or filter criteria to find what you're looking for.
+                </p>
+                <button class="btn btn-outline-primary" onclick="clearFilters()">
+                    <i class="fas fa-times me-2"></i>
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+
         {% else %}
         <!-- Empty State -->
         <div class="empty-state">
@@ -508,6 +525,20 @@
     color: #6c757d;
 }
 
+.photos-section,
+.attendees-section {
+    margin-bottom: 3rem;
+    animation: fadeInUp 0.6s ease;
+    transition: all 0.3s ease;
+}
+
+.photos-section.hidden,
+.attendees-section.hidden {
+    opacity: 0;
+    transform: translateY(-20px);
+    pointer-events: none;
+}
+
 /* ===== PHOTOS SECTION ===== */
 .photos-grid {
     display: grid;
@@ -546,6 +577,12 @@
 .gallery-item:hover {
     transform: translateY(-8px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-item.hidden {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
 }
 
 .image-container {
@@ -656,6 +693,12 @@
 .attendee-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.attendee-card.hidden {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
 }
 
 .attendee-header {
@@ -832,6 +875,38 @@
     font-weight: 600;
     color: #495057;
     margin-bottom: 1rem;
+}
+
+/* ===== NO RESULTS STATE ===== */
+.no-results-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6c757d;
+    animation: fadeInUp 0.6s ease;
+}
+
+.no-results-content {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.no-results-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.6;
+    color: #adb5bd;
+}
+
+.no-results-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #495057;
+}
+
+.no-results-description {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    line-height: 1.5;
 }
 
 .empty-description {
@@ -1061,6 +1136,7 @@ $(document).ready(function() {
 
     // Gallery filtering and search functionality
     const galleryItems = $('.gallery-item, .attendee-card');
+    const gallerySections = $('.photos-section, .attendees-section');
     const searchInput = $('#gallerySearch');
 
     // Filter items based on category
@@ -1070,31 +1146,99 @@ $(document).ready(function() {
         $('.filter-btn').removeClass('active');
         $(this).addClass('active');
 
-        if (filter === 'all') {
-            galleryItems.show();
-        } else {
-            galleryItems.hide();
-            $(`.gallery-item[data-category="${filter}"], .attendee-card[data-category="${filter}"]`).show();
-        }
+        applyFilters();
     });
 
     // Search functionality
     searchInput.on('input', function() {
-        const searchTerm = $(this).val().toLowerCase();
+        applyFilters();
+    });
+
+    function applyFilters() {
+        const searchTerm = searchInput.val().toLowerCase();
+        const activeFilter = $('.filter-btn.active').data('filter');
 
         galleryItems.each(function() {
             const title = $(this).data('title') || '';
-            const isVisible = title.includes(searchTerm);
+            const category = $(this).data('category') || '';
+            
+            let matchesSearch = true;
+            let matchesFilter = true;
 
-            if (searchTerm === '') {
-                // Show all items if search is empty
-                $(this).show();
+            // Check search term
+            if (searchTerm !== '') {
+                matchesSearch = title.includes(searchTerm);
+            }
+
+            // Check filter
+            if (activeFilter !== 'all') {
+                matchesFilter = category === activeFilter;
+            }
+
+            const isVisible = matchesSearch && matchesFilter;
+            if (isVisible) {
+                $(this).removeClass('hidden').show();
             } else {
-                // Show/hide based on search match
-                $(this).toggle(isVisible);
+                $(this).addClass('hidden');
             }
         });
-    });
+
+        // Show/hide sections based on whether they have visible items
+        gallerySections.each(function() {
+            const section = $(this);
+            const category = section.data('category');
+            const visibleItems = section.find('.gallery-item:not(.hidden), .attendee-card:not(.hidden)');
+            
+            if (activeFilter === 'all') {
+                // Show section if it has any visible items (considering search)
+                if (visibleItems.length > 0) {
+                    section.removeClass('hidden').show();
+                } else {
+                    section.addClass('hidden');
+                }
+            } else {
+                // Show section only if it matches the active filter and has visible items
+                if (category === activeFilter && visibleItems.length > 0) {
+                    section.removeClass('hidden').show();
+                } else {
+                    section.addClass('hidden');
+                }
+            }
+        });
+
+        // Update section headers with visible item counts
+        updateSectionCounts();
+        
+        // Show/hide no results state
+        showNoResultsState();
+    }
+
+    function updateSectionCounts() {
+        $('.photos-section .item-count').text(`(${$('.photos-section .gallery-item:not(.hidden)').length})`);
+        $('.attendees-section .item-count').text(`(${$('.attendees-section .attendee-card:not(.hidden)').length})`);
+    }
+
+    function showNoResultsState() {
+        const totalVisibleItems = $('.gallery-item:not(.hidden), .attendee-card:not(.hidden)').length;
+        const hasVisibleSections = $('.photos-section:not(.hidden), .attendees-section:not(.hidden)').length > 0;
+        
+        if (totalVisibleItems === 0 && hasVisibleSections) {
+            $('#noResultsState').show();
+        } else {
+            $('#noResultsState').hide();
+        }
+    }
+
+    // Clear all filters function
+    window.clearFilters = function() {
+        searchInput.val('');
+        $('.filter-btn').removeClass('active');
+        $('.filter-btn[data-filter="all"]').addClass('active');
+        applyFilters();
+    };
+
+    // Initialize filters
+    applyFilters();
 
     // View toggle functionality
     $('.view-btn').click(function() {
