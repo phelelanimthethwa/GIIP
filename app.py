@@ -1216,7 +1216,30 @@ def registration():
         
         # Filter to show only active and upcoming conferences with registration enabled
         available_conferences = {}
-        current_date = datetime.now().date()
+        
+        # Use South African Standard Time (UTC+02:00) for all comparisons
+        sast_tz = pytz.timezone('Africa/Johannesburg')
+        now = datetime.now(sast_tz)
+        
+        # Helper to parse to SAST aware datetimes
+        def _parse_date(value):
+            """Parse to timezone-aware datetime in SAST."""
+            try:
+                if not value:
+                    return None
+                text = str(value)
+                dt = None
+                try:
+                    dt = datetime.fromisoformat(text.replace('Z', '+00:00'))
+                except Exception:
+                    dt = datetime.strptime(text, '%Y-%m-%d')
+                if getattr(dt, 'tzinfo', None) is None:
+                    dt = sast_tz.localize(dt)
+                else:
+                    dt = dt.astimezone(sast_tz)
+                return dt
+            except Exception:
+                return None
         
         for conf_id, conf_data in all_conferences.items():
             if not conf_data:
@@ -1226,58 +1249,69 @@ def registration():
             if 'basic_info' not in conf_data:
                 conf_data['basic_info'] = {}
             
-            # Check status in both basic_info and settings (for backwards compatibility)
-            status = conf_data.get('basic_info', {}).get('status') or conf_data.get('settings', {}).get('status', 'draft')
+            # Get admin-provided status
+            admin_status = (conf_data.get('basic_info', {}).get('status') or 
+                          conf_data.get('settings', {}).get('status', 'draft')).strip().lower()
             
-            # Auto-determine status based on dates if available
-            start_date_str = conf_data.get('basic_info', {}).get('start_date')
-            end_date_str = conf_data.get('basic_info', {}).get('end_date')
+            # Parse dates
+            start_dt = _parse_date(conf_data.get('basic_info', {}).get('start_date'))
+            end_dt = _parse_date(conf_data.get('basic_info', {}).get('end_date'))
             
-            if start_date_str and end_date_str:
-                try:
-                    # Parse dates (handle both YYYY-MM-DD and ISO format)
-                    start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00')).date()
-                    end_date = datetime.fromisoformat(end_date_str.replace('Z', '+00:00')).date()
-                    
-                    # Auto-determine status based on dates
-                    if end_date < current_date:
-                        # Conference has ended
-                        if status not in ['archived']:  # Don't override if manually set to archived
-                            status = 'past'
-                    elif start_date <= current_date <= end_date:
-                        # Conference is ongoing
-                        status = 'active'
-                    elif start_date > current_date:
-                        # Conference hasn't started yet
-                        if status not in ['active']:  # Allow manual override to active
-                            status = 'upcoming'
-                except Exception as e:
-                    print(f"WARNING: Could not parse dates for conference {conf_id}: {e}")
+            # AUTO-COMPUTE status based on dates (prioritize date-based logic)
+            computed_status = None
+            if start_dt and end_dt:
+                if now > end_dt:
+                    # Conference has ENDED - ALWAYS mark as past
+                    computed_status = 'past'
+                elif now < start_dt:
+                    # Conference hasn't STARTED yet
+                    # Allow admin to set as 'active' for early registration/submissions
+                    if admin_status == 'active':
+                        computed_status = 'active'
+                    else:
+                        computed_status = 'upcoming'
+                else:
+                    # Conference is ONGOING
+                    computed_status = 'active'
+            elif end_dt and now > end_dt:
+                computed_status = 'past'
+            elif start_dt and now < start_dt:
+                computed_status = 'upcoming'
+            else:
+                # No dates available, use admin status
+                computed_status = admin_status if admin_status else 'draft'
             
             # Normalize status in basic_info
-            conf_data['basic_info']['status'] = status
+            conf_data['basic_info']['status'] = computed_status
+            
+            # Ensure past conferences have registration/submission disabled
+            if computed_status == 'past':
+                if 'settings' not in conf_data:
+                    conf_data['settings'] = {}
+                conf_data['settings']['registration_enabled'] = False
+                conf_data['settings']['paper_submission_enabled'] = False
             
             # Check if registration is enabled
             registration_enabled = conf_data.get('settings', {}).get('registration_enabled', False)
             
             print(f"DEBUG: Conference {conf_id}:")
             print(f"  - Name: {conf_data.get('basic_info', {}).get('name', 'Unknown')}")
-            print(f"  - Status: {status}")
+            print(f"  - Status: {computed_status}")
             print(f"  - Registration Enabled: {registration_enabled}")
-            print(f"  - Start Date: {start_date_str}")
-            print(f"  - End Date: {end_date_str}")
+            print(f"  - Start Date: {conf_data.get('basic_info', {}).get('start_date')}")
+            print(f"  - End Date: {conf_data.get('basic_info', {}).get('end_date')}")
             
             # Show conferences that are:
             # 1. Active or Upcoming
             # 2. Have registration enabled
             # 3. Not past or archived
-            if status in ['active', 'upcoming'] and registration_enabled:
+            if computed_status in ['active', 'upcoming'] and registration_enabled:
                 available_conferences[conf_id] = conf_data
                 print(f"  ✓ ADDED to available list")
             else:
                 reasons = []
-                if status not in ['active', 'upcoming']:
-                    reasons.append(f"status is '{status}' (need 'active' or 'upcoming')")
+                if computed_status not in ['active', 'upcoming']:
+                    reasons.append(f"status is '{computed_status}' (need 'active' or 'upcoming')")
                 if not registration_enabled:
                     reasons.append("registration not enabled")
                 print(f"  ✗ SKIPPED: {', '.join(reasons)}")
@@ -6953,8 +6987,9 @@ def conference_discover():
             start_dt = _parse_date(start_raw)
             end_dt = _parse_date(end_raw)
 
-            # Compute/normalize status
-            computed_status = (basic.get('status') or '').strip().lower()
+            # Get admin-provided status
+            admin_status = (basic.get('status') or '').strip().lower()
+            
             # Normalize common synonyms if admin provided a value
             synonym_map = {
                 'future': 'upcoming',
@@ -6966,22 +7001,48 @@ def conference_discover():
                 'ended': 'past',
                 'finished': 'past'
             }
-            if computed_status in synonym_map:
-                computed_status = synonym_map[computed_status]
+            if admin_status in synonym_map:
+                admin_status = synonym_map[admin_status]
 
-            if not computed_status:
-                if start_dt and now < start_dt:
-                    computed_status = 'upcoming'
-                elif end_dt and now > end_dt:
+            # AUTO-COMPUTE status based on dates (prioritize date-based logic)
+            # This ensures past conferences are always marked correctly even if admin forgot
+            computed_status = None
+            if start_dt and end_dt:
+                # Date-based auto-detection
+                if now > end_dt:
+                    # Conference has ENDED - ALWAYS mark as past
                     computed_status = 'past'
+                elif now < start_dt:
+                    # Conference hasn't STARTED yet
+                    # Allow admin to set as 'active' for early registration/submissions
+                    if admin_status == 'active':
+                        computed_status = 'active'
+                    else:
+                        computed_status = 'upcoming'
                 else:
+                    # Conference is ONGOING (start_dt <= now <= end_dt)
                     computed_status = 'active'
+            elif end_dt and now > end_dt:
+                # Only end date available, and it has passed
+                computed_status = 'past'
+            elif start_dt and now < start_dt:
+                # Only start date available, and it hasn't started
+                computed_status = 'upcoming'
+            else:
+                # No dates available or dates are invalid, use admin status
+                computed_status = admin_status if admin_status else 'draft'
 
             # Inject back so templates can rely on basic_info.status
             conf_data['basic_info']['status'] = computed_status
+            
             # Ensure registration isn't open for past conferences
             if computed_status == 'past':
                 conf_data['settings']['registration_enabled'] = False
+                conf_data['settings']['paper_submission_enabled'] = False
+            
+            # SKIP draft conferences on public discovery page (only show to admins)
+            if computed_status == 'draft':
+                continue
 
             normalized_conferences[conf_id] = conf_data
 
@@ -7298,7 +7359,31 @@ def admin_conferences():
         all_registrations_ref = db.reference('registrations')
         all_registrations = all_registrations_ref.get() or {}
         
-        # Categorize conferences by status
+        # Use South African Standard Time (UTC+02:00) for all comparisons
+        sast_tz = pytz.timezone('Africa/Johannesburg')
+        now = datetime.now(sast_tz)
+        
+        # Helper to parse to SAST aware datetimes
+        def _parse_date(value):
+            """Parse to timezone-aware datetime in SAST."""
+            try:
+                if not value:
+                    return None
+                text = str(value)
+                dt = None
+                try:
+                    dt = datetime.fromisoformat(text.replace('Z', '+00:00'))
+                except Exception:
+                    dt = datetime.strptime(text, '%Y-%m-%d')
+                if getattr(dt, 'tzinfo', None) is None:
+                    dt = sast_tz.localize(dt)
+                else:
+                    dt = dt.astimezone(sast_tz)
+                return dt
+            except Exception:
+                return None
+        
+        # Categorize conferences by status with auto-date-based filtering
         active_conferences = {}
         upcoming_conferences = {}
         past_conferences = {}
@@ -7306,10 +7391,48 @@ def admin_conferences():
         for conf_id, conf_data in conferences.items():
             if not conf_data or 'basic_info' not in conf_data:
                 continue
-                
-            status = conf_data['basic_info'].get('status', 'draft')
-            year = conf_data['basic_info'].get('year', datetime.now().year)
-            current_year = datetime.now().year
+            
+            basic_info = conf_data['basic_info']
+            
+            # Parse dates
+            start_dt = _parse_date(basic_info.get('start_date'))
+            end_dt = _parse_date(basic_info.get('end_date'))
+            
+            # Get admin-provided status
+            admin_status = (basic_info.get('status') or '').strip().lower()
+            
+            # AUTO-COMPUTE status based on dates (prioritize date-based logic)
+            computed_status = None
+            if start_dt and end_dt:
+                if now > end_dt:
+                    # Conference has ENDED - ALWAYS mark as past
+                    computed_status = 'past'
+                elif now < start_dt:
+                    # Conference hasn't STARTED yet
+                    if admin_status == 'active':
+                        computed_status = 'active'
+                    else:
+                        computed_status = 'upcoming'
+                else:
+                    # Conference is ONGOING
+                    computed_status = 'active'
+            elif end_dt and now > end_dt:
+                computed_status = 'past'
+            elif start_dt and now < start_dt:
+                computed_status = 'upcoming'
+            else:
+                # No dates available, use admin status
+                computed_status = admin_status if admin_status else 'draft'
+            
+            # Update the status in conf_data
+            conf_data['basic_info']['status'] = computed_status
+            
+            # Ensure past conferences have registration/submission disabled
+            if computed_status == 'past':
+                if 'settings' not in conf_data:
+                    conf_data['settings'] = {}
+                conf_data['settings']['registration_enabled'] = False
+                conf_data['settings']['paper_submission_enabled'] = False
             
             # Count registrations for this conference from global registrations
             registration_count = 0
@@ -7319,11 +7442,12 @@ def admin_conferences():
             
             conf_data['registration_count'] = registration_count
             
-            if status == 'active':
+            # Categorize based on computed status
+            if computed_status == 'active':
                 active_conferences[conf_id] = conf_data
-            elif status == 'upcoming' or (status == 'draft' and year > current_year):
+            elif computed_status == 'upcoming':
                 upcoming_conferences[conf_id] = conf_data
-            elif status == 'past' or year < current_year:
+            elif computed_status == 'past':
                 past_conferences[conf_id] = conf_data
         
         return render_template('admin/conferences.html',

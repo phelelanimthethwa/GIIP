@@ -36,6 +36,8 @@
                             🟢 Open
                         {% elif conference.basic_info.status == 'upcoming' %}
                             🟡 Upcoming
+                        {% elif conference.basic_info.status == 'past' %}
+                            🔴 Past Event
                         {% elif conference.basic_info.status == 'closed' %}
                             🔴 Closed
                         {% else %}
@@ -249,7 +251,9 @@
 
 .status-active { background: #d4edda; color: #155724; }
 .status-upcoming { background: #fff3cd; color: #856404; }
+.status-past { background: #f8d7da; color: #721c24; }
 .status-closed { background: #f8d7da; color: #721c24; }
+.status-draft { background: #e9ecef; color: #495057; }
 
 .conference-code {
     background: #e8f5e8;
