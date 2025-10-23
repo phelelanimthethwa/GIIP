@@ -736,17 +736,15 @@ def author_guidelines():
 
 @app.route('/venue')
 def venue():
-    # Get the venue data from Firebase
-    venue_content = {}
+    # Get the venue data from Firebase Realtime Database
+    venue_details = None
     try:
-        venue_ref = firestore.client().collection('content').document('venue')
-        venue_doc = venue_ref.get()
-        if venue_doc.exists:
-            venue_content = venue_doc.to_dict()
+        venue_ref = db.reference('venue_details')
+        venue_details = venue_ref.get()
     except Exception as e:
-        print(f"Error getting venue content: {str(e)}")
+        print(f"Error getting venue details: {str(e)}")
         
-    return render_template('user/venue.html', venue_content=venue_content, site_design=get_site_design())
+    return render_template('user/venue.html', venue_details=venue_details, site_design=get_site_design())
 
 @app.route('/guest-speakers')
 def guest_speakers():
@@ -1755,9 +1753,15 @@ def admin_registration_fees():
             print("Structured data to save:", registration_fees)
             
             # Update registration fees in Firebase
-            db.reference('registration_fees').set(registration_fees)
+            print("Attempting to save to Firebase...")
+            try:
+                db.reference('registration_fees').set(registration_fees)
+                print("Successfully saved to Firebase!")
+                flash('Registration fees updated successfully', 'success')
+            except Exception as firebase_error:
+                print(f"Firebase error: {firebase_error}")
+                flash(f'Firebase error: {str(firebase_error)}', 'danger')
             
-            flash('Registration fees updated successfully', 'success')
             return redirect(url_for('admin_registration_fees'))
             
         except Exception as e:
@@ -1768,6 +1772,12 @@ def admin_registration_fees():
             return redirect(url_for('admin_registration_fees'))
     
     try:
+        # Test Firebase connection first
+        print("Testing Firebase connection...")
+        test_ref = db.reference('test_connection')
+        test_ref.set({'test': 'connection_ok', 'timestamp': str(datetime.now())})
+        print("Firebase connection test successful!")
+        
         # Get current fees settings
         fees_ref = db.reference('registration_fees')
         current_fees = fees_ref.get() or {}
@@ -1998,6 +2008,7 @@ def admin_registrations():
         flash(f'Error loading registrations: {str(e)}', 'danger')
         return render_template('admin/manage_registrations.html',
                             registrations=[],
+                            conferences={},
                             site_design=get_site_design())
 
 @app.route('/admin/registrations/export')
@@ -7052,17 +7063,17 @@ def conference_discover():
                     if admin_status == 'active':
                         computed_status = 'active'
                     else:
-                    computed_status = 'upcoming'
+                        computed_status = 'upcoming'
                 else:
                     # Conference is ONGOING (start_dt <= now <= end_dt)
                     computed_status = 'active'
-                elif end_dt and now > end_dt:
+            elif end_dt and now > end_dt:
                 # Only end date available, and it has passed
-                    computed_status = 'past'
+                computed_status = 'past'
             elif start_dt and now < start_dt:
                 # Only start date available, and it hasn't started
                 computed_status = 'upcoming'
-                else:
+            else:
                 # No dates available or dates are invalid, use admin status
                 computed_status = admin_status if admin_status else 'draft'
 

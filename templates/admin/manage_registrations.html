@@ -131,7 +131,7 @@
                                         </div>
                                     {% else %}
                                         {# Legacy format: payment_proof is a string #}
-                                        <a href="{{ url_for('user.download_payment_proof', filename=registration.payment_proof) }}" 
+                                        <a href="{{ url_for('serve_upload', filename=registration.payment_proof) }}" 
                                            class="btn btn-sm btn-primary" title="Download Payment Proof">
                                             <i class="fas fa-download"></i> Download Proof
                                         </a>

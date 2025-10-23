@@ -10,9 +10,16 @@
         <h2>ABSTRACT</h2>
         <div class="guidelines-content">
             {% if guidelines and guidelines.abstract_guidelines %}
-                {{ guidelines.abstract_guidelines|safe }}
+                <div class="formatted-content">
+                    {{ guidelines.abstract_guidelines|safe }}
+                </div>
             {% else %}
-                <p>The abstract must be in English and it must be written in .doc or .docx format. The Abstract should be brief, indicating the purpose/significance of the research and must be between 150-250 words. Complete sentences, active verbs, and the third person should be used. Within one week of receiving your proposal/abstract, we will send you an email notification of acceptance or rejection.</p>
+                <ul>
+                    <li>The abstract must be in English and it must be written in .doc or .docx format</li>
+                    <li>The Abstract should be brief, indicating the purpose/significance of the research and must be between 150-250 words</li>
+                    <li>Complete sentences, active verbs, and the third person should be used</li>
+                    <li>Within one week of receiving your proposal/abstract, we will send you an email notification of acceptance or rejection</li>
+                </ul>
             {% endif %}
             
             {% if guidelines and guidelines.abstract_template %}
@@ -55,7 +62,9 @@
         <h2>FULL PAPER</h2>
         <div class="guidelines-content">
             {% if guidelines and guidelines.paper_guidelines %}
-                {{ guidelines.paper_guidelines|safe }}
+                <div class="formatted-content">
+                    {{ guidelines.paper_guidelines|safe }}
+                </div>
             {% else %}
                 <p>Authors of accepted abstracts are required to prepare and submit their full paper for review. The full paper must be sent as a Word document and must have a minimum length of 4 pages and should not exceed 10 pages, including tables, figures, and references. All accepted papers will be peer-reviewed and must be original high-quality research that has not been previously published.</p>
                 <p>The paper must be written in English in a clear and concise manner. Any author who is not fluent in English is encouraged to have their manuscript checked and edited by a native English speaker. The reviewing process does not include the correction of grammatical errors. Papers with a large number of grammatical and syntax errors may be rejected.</p>
@@ -81,7 +90,9 @@
         <h2>ORAL PRESENTATION</h2>
         <div class="guidelines-content">
             {% if guidelines and guidelines.oral_guidelines %}
-                {{ guidelines.oral_guidelines|safe }}
+                <div class="formatted-content">
+                    {{ guidelines.oral_guidelines|safe }}
+                </div>
             {% else %}
                 <p>Oral presentations will be allocated 15 minutes for presentation and 5 minutes for questions and answers. All presenters must prepare their presentations in PowerPoint format and bring them on a USB drive. Presenters should arrive at their designated session room at least 10 minutes before the session begins.</p>
             {% endif %}
@@ -92,7 +103,9 @@
         <h2>VIRTUAL PRESENTATION</h2>
         <div class="guidelines-content">
             {% if guidelines and guidelines.virtual_guidelines %}
-                {{ guidelines.virtual_guidelines|safe }}
+                <div class="formatted-content">
+                    {{ guidelines.virtual_guidelines|safe }}
+                </div>
             {% else %}
                 <p>Virtual authors whose abstracts are accepted must prepare the content for the presentation itself in one of these following ways:</p>
                 <ul>
@@ -186,6 +199,25 @@
         list-style: disc !important;
         list-style-position: outside !important;
         padding-left: 1.25rem !important;
+    }
+
+    .guidelines-content ul li {
+        margin-bottom: 0.5rem !important;
+        padding-left: 0.5rem !important;
+        line-height: 1.6 !important;
+    }
+
+    .formatted-content ul {
+        margin-left: 1.5rem !important;
+        margin-bottom: 1rem !important;
+        list-style: disc !important;
+        list-style-position: outside !important;
+        padding-left: 1.25rem !important;
+    }
+
+    .formatted-content {
+        line-height: 1.6;
+        white-space: pre-line;
     }
 
     .guidelines-content ol {
