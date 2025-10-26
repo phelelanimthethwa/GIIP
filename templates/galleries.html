@@ -33,6 +33,13 @@
                         </p>
                     </div>
 
+                    <!-- Gallery Summary -->
+                    {% if conference.gallery_summary and conference.gallery_summary.summary %}
+                    <div class="gallery-summary mb-3">
+                        <p class="text-muted small text-center">{{ conference.gallery_summary.summary }}</p>
+                    </div>
+                    {% endif %}
+
                     <!-- Gallery Preview -->
                     <div class="gallery-preview mb-3" data-conference-id="{{ conference_id }}">
                         {% set hero_images = [
@@ -145,6 +152,32 @@
     overflow: hidden;
     border-radius: 8px;
     background-color: #f8f9fa;
+}
+
+/* Gallery Summary Styling */
+.gallery-summary {
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 6px;
+    border-left: 3px solid #007bff;
+    transition: all 0.2s ease;
+}
+
+.gallery-summary p {
+    margin: 0;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #495057 !important;
+}
+
+.conference-gallery-card:hover .gallery-summary {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left-color: #0056b3;
+}
+
+.conference-gallery-card:hover .gallery-summary p {
+    color: #2c5282 !important;
 }
 
 /* Responsive styles */

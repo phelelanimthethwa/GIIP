@@ -142,19 +142,35 @@ def format_datetime(value):
 def format_datetime_with_timezone(date_str, time_str, timezone_str):
     """Format datetime with timezone for consistent display"""
     try:
+        # Validate inputs
+        if not all([date_str, time_str, timezone_str]):
+            raise ValueError(f"Missing required datetime parameters: date={date_str}, time={time_str}, tz={timezone_str}")
+        
         # Create datetime object
         dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
         
-        # Get timezone
-        tz = pytz.timezone(timezone_str)
+        # Validate timezone
+        try:
+            tz = pytz.timezone(timezone_str)
+        except Exception as tz_error:
+            print(f"Warning: Invalid timezone '{timezone_str}', using UTC instead. Error: {tz_error}")
+            tz = pytz.UTC
         
         # Localize the datetime
         local_dt = tz.localize(dt)
         
+        print(f"Successfully formatted datetime: {local_dt.isoformat()}")
         return local_dt.isoformat()
     except Exception as e:
-        print(f"Error formatting datetime: {str(e)}")
-        return None
+        print(f"Error formatting datetime - date_str: {date_str}, time_str: {time_str}, tz: {timezone_str}, Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Return a fallback ISO format with the date and time
+        try:
+            dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            return dt.isoformat()
+        except:
+            return None
 
 # Add this after app initialization but before routes
 @app.template_filter('format_date')
@@ -2438,17 +2454,33 @@ def admin_announcements():
 def send_email(recipients, subject, body, attachments=None):
     """Send email using configured email settings"""
     try:
+        print(f"[EMAIL] Starting send_email to {len(recipients) if isinstance(recipients, list) else 1} recipient(s)")
+        print(f"[EMAIL] Subject: {subject}")
+        
         # Get email settings from Firebase
         settings_ref = db.reference('email_settings')
         settings = settings_ref.get()
         
         if not settings:
-            raise Exception("Email settings not configured")
+            print("[EMAIL] WARNING: Email settings not configured in Firebase")
+            print("[EMAIL] Email sending skipped - configure email_settings in Firebase to enable")
+            return False
+        
+        print("[EMAIL] Email settings found in Firebase")
+        
+        # Validate required settings
+        required_settings = ['smtp_host', 'smtp_port', 'email', 'password']
+        missing_settings = [s for s in required_settings if not settings.get(s)]
+        
+        if missing_settings:
+            print(f"[EMAIL] ERROR: Missing email settings: {missing_settings}")
+            raise ValueError(f"Missing email settings in Firebase: {missing_settings}")
         
         # Configure Flask-Mail with settings
+        print(f"[EMAIL] Configuring Flask-Mail with SMTP: {settings.get('smtp_host')}:{settings.get('smtp_port')}")
         app.config.update(
             MAIL_SERVER=settings.get('smtp_host'),
-            MAIL_PORT=settings.get('smtp_port'),
+            MAIL_PORT=int(settings.get('smtp_port', 587)),
             MAIL_USE_TLS=settings.get('use_tls', True),
             MAIL_USE_SSL=settings.get('use_ssl', False),
             MAIL_USERNAME=settings.get('email'),
@@ -2457,17 +2489,21 @@ def send_email(recipients, subject, body, attachments=None):
         )
         
         # Create new Mail instance with current config
-        mail = Mail(app)
+        mail_instance = Mail(app)
         
         # Create message
+        recipients_list = recipients if isinstance(recipients, list) else [recipients]
         msg = Message(
             subject=subject,
-            recipients=recipients if isinstance(recipients, list) else [recipients],
+            recipients=recipients_list,
             body=body
         )
         
+        print(f"[EMAIL] Message created - Recipients: {recipients_list}")
+        
         # Add attachments if any
         if attachments:
+            print(f"[EMAIL] Adding {len(attachments)} attachments")
             for attachment in attachments:
                 msg.attach(
                     filename=os.path.basename(attachment['path']),
@@ -2476,19 +2512,28 @@ def send_email(recipients, subject, body, attachments=None):
                 )
         
         # Send email
+        print("[EMAIL] Sending via Flask-Mail...")
         with app.app_context():
-            mail.send(msg)
+            mail_instance.send(msg)
+        
+        print(f"[EMAIL] ✓ Email sent successfully to {len(recipients_list)} recipient(s)")
         return True
+        
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
-        raise
+        print(f"[EMAIL] ✗ Error sending email: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Don't re-raise, just log and return False - email failures shouldn't break announcements
+        return False
 
 @app.route('/admin/announcements', methods=['POST'])
 @login_required
 @admin_required
 def create_announcement():
     try:
+        print("=" * 60)
         print("Creating new announcement...")
+        print("=" * 60)
         
         # Create announcements upload directory if it doesn't exist
         upload_path = os.path.join(app.static_folder, 'uploads', 'announcements')
@@ -2526,7 +2571,10 @@ def create_announcement():
             }.items() if not value]
             error_msg = f"Missing required fields: {', '.join(missing_fields)}"
             print("Error:", error_msg)
-            return jsonify({'success': False, 'error': error_msg}), 400
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(url_for('admin_announcements'))
         
         # Handle image upload
         image_url = None
@@ -2534,22 +2582,33 @@ def create_announcement():
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename and allowed_image_file(file.filename):
-                filename = secure_filename(file.filename)
-                unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                file_path = os.path.join(upload_path, unique_filename)
-                file.save(file_path)
-                image_url = f"/static/uploads/announcements/{unique_filename}"
-                print("Image saved:", image_url)
-                # Store image data for email attachment
-                with open(file_path, 'rb') as f:
-                    image_data = f.read()
+                try:
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    file_path = os.path.join(upload_path, unique_filename)
+                    file.save(file_path)
+                    image_url = f"/static/uploads/announcements/{unique_filename}"
+                    print("Image saved:", image_url)
+                    # Store image data for email attachment
+                    with open(file_path, 'rb') as f:
+                        image_data = f.read()
+                except Exception as img_error:
+                    print(f"Warning: Failed to save image: {str(img_error)}")
+                    # Continue without image, don't fail the whole announcement
         
         # Format the datetime with timezone
+        print(f"Formatting datetime: date={scheduled_date}, time={scheduled_time}, tz={timezone}")
         formatted_datetime = format_datetime_with_timezone(
             scheduled_date,
             scheduled_time,
             timezone
         )
+        print(f"Formatted datetime result: {formatted_datetime}")
+        
+        if not formatted_datetime:
+            print("WARNING: formatted_datetime is None or empty, using fallback")
+            # Use fallback: just combine date and time without timezone conversion
+            formatted_datetime = f"{scheduled_date}T{scheduled_time}:00"
         
         # Create announcement data
         announcement = {
@@ -2567,13 +2626,24 @@ def create_announcement():
             'updated_at': datetime.now().isoformat()
         }
         
+        print("Announcement data prepared:", {k: v for k, v in announcement.items() if k != 'content'})
         print("Saving announcement to Firebase...")
         
         # Save to Firebase
-        announcements_ref = db.reference('announcements')
-        new_announcement = announcements_ref.push(announcement)
-        
-        print("Announcement saved successfully with ID:", new_announcement.key)
+        try:
+            announcements_ref = db.reference('announcements')
+            new_announcement = announcements_ref.push(announcement)
+            announcement_id = new_announcement.key
+            print(f"✓ Announcement saved successfully with ID: {announcement_id}")
+        except Exception as firebase_error:
+            print(f"✗ Firebase error: {str(firebase_error)}")
+            import traceback
+            traceback.print_exc()
+            error_msg = f"Firebase save error: {str(firebase_error)}"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': error_msg}), 500
+            flash(error_msg, 'error')
+            return redirect(url_for('admin_announcements'))
         
         # Send email notification if requested
         email_status = None
@@ -2585,60 +2655,69 @@ def create_announcement():
                 users = users_ref.get()
                 if users:
                     recipient_emails = [user['email'] for user in users.values() if user.get('email')]
-                    print(f"Sending email to {len(recipient_emails)} recipients")
+                    print(f"Found {len(recipient_emails)} recipients for email notification")
                     
-                    # Get email template
-                    templates_ref = db.reference('email_templates')
-                    templates = templates_ref.get() or {}
-                    announcement_template = next(
-                        (t for t in templates.values() if t.get('name') == 'announcement_notification'),
-                        None
-                    )
-                    
-                    if announcement_template:
-                        subject = announcement_template['subject'].replace('{{title}}', title)
-                        body = announcement_template['body'].replace('{{title}}', title).replace('{{content}}', content)
+                    if recipient_emails:
+                        # Get email template
+                        templates_ref = db.reference('email_templates')
+                        templates = templates_ref.get() or {}
+                        announcement_template = next(
+                            (t for t in templates.values() if t.get('name') == 'announcement_notification'),
+                            None
+                        )
+                        
+                        if announcement_template:
+                            subject = announcement_template['subject'].replace('{{title}}', title)
+                            body = announcement_template['body'].replace('{{title}}', title).replace('{{content}}', content)
+                        else:
+                            subject = f'New Announcement: {title}'
+                            body = f'''A new announcement has been posted:
+
+{title}
+
+{content}
+
+Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
+
+Best regards,
+Conference Team'''
+                        
+                        attachments = []
+                        if image_url and image_data:
+                            attachments.append({
+                                'path': image_url,
+                                'type': 'image/jpeg',
+                                'data': image_data
+                            })
+                        
+                        print(f"Sending emails with subject: {subject}")
+                        send_email(recipient_emails, subject, body, attachments)
+                        email_status = f"Email notifications sent successfully to {len(recipient_emails)} recipients."
+                        print(f"✓ {email_status}")
                     else:
-                        subject = f'New Announcement: {title}'
-                        body = f'''
-                        A new announcement has been posted:
-                        
-                        {title}
-                        
-                        {content}
-                        
-                        Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
-                        
-                        Best regards,
-                        Conference Team
-                        '''
-                    
-                    attachments = []
-                    if image_url and image_data:
-                        attachments.append({
-                            'path': image_url,
-                            'type': 'image/jpeg',
-                            'data': image_data
-                        })
-                    
-                    send_email(recipient_emails, subject, body, attachments)
-                    email_status = f"Email notifications sent successfully to {len(recipient_emails)} recipients."
-                    print(email_status)
+                        email_status = "No recipient emails found."
+                        print(f"⚠ {email_status}")
                 else:
                     email_status = "No users found to send email notifications."
-                    print(email_status)
+                    print(f"⚠ {email_status}")
             except Exception as e:
                 error_msg = f"Error sending email notification: {str(e)}"
-                print("Error:", error_msg)
-                email_status = error_msg
+                print(f"✗ {error_msg}")
+                import traceback
+                traceback.print_exc()
+                email_status = f"Warning: {error_msg}"  # Don't fail, just warn
         
         # Check if request is AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
+        print("=" * 60)
+        print(f"Announcement creation COMPLETE - AJAX: {is_ajax}")
+        print("=" * 60)
+        
         if is_ajax:
             return jsonify({
                 'success': True, 
-                'id': new_announcement.key,
+                'id': announcement_id,
                 'emailStatus': email_status,
                 'redirect': url_for('admin_announcements')
             })
@@ -2650,7 +2729,11 @@ def create_announcement():
             
     except Exception as e:
         error_msg = f"Error creating announcement: {str(e)}"
-        print("Error:", error_msg)
+        print(f"✗ {error_msg}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
+        
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': error_msg}), 500
         else:
@@ -2680,50 +2763,100 @@ def get_announcement(announcement_id):
 @admin_required
 def update_announcement(announcement_id):
     try:
-        # Get form data
-        title = request.form.get('title')
-        content = request.form.get('content')
-        announcement_type = request.form.get('type')
+        # ===== CHECKPOINT 1: Form Data Validation =====
+        print("=" * 60)
+        print(f"[EDIT] Starting announcement update for ID: {announcement_id}")
+        print("=" * 60)
+        
+        # Validate required fields
+        title = request.form.get('title', '').strip()
+        content = request.form.get('content', '').strip()
+        announcement_type = request.form.get('type', 'general')
         is_pinned = request.form.get('is_pinned') == 'on'
         send_email = request.form.get('send_email') == 'on'
-        scheduled_date = request.form.get('announcement_date')
-        scheduled_time = request.form.get('announcement_time')
-        timezone = request.form.get('timezone')
+        scheduled_date = request.form.get('announcement_date', '').strip()
+        scheduled_time = request.form.get('announcement_time', '').strip()
+        timezone = request.form.get('timezone', 'UTC').strip()
         
-        # Update announcement
+        # Validate required fields
+        if not title:
+            error_msg = "Announcement title is required"
+            print(f"✗ {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        if not content:
+            error_msg = "Announcement content is required"
+            print(f"✗ {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 400
+        
+        print(f"✓ Form data validated - Title: {title[:50]}...")
+        
+        # ===== CHECKPOINT 2: Get Existing Announcement =====
+        print("[EDIT] Fetching existing announcement from Firebase...")
         announcement_ref = db.reference(f'announcements/{announcement_id}')
         current_announcement = announcement_ref.get()
         
         if not current_announcement:
-            return jsonify({'success': False, 'error': 'Announcement not found'}), 404
+            error_msg = f"Announcement not found: {announcement_id}"
+            print(f"✗ {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 404
         
-        # Handle image upload
+        print(f"✓ Existing announcement retrieved")
+        
+        # ===== CHECKPOINT 3: Image Handling (Non-Critical) =====
+        print("[EDIT] Processing image upload...")
         image_url = current_announcement.get('image_url')
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and file.filename and allowed_image_file(file.filename):
-                # Delete old image if exists
-                if image_url:
-                    old_image_path = os.path.join(app.static_folder, image_url.lstrip('/static/'))
-                    if os.path.exists(old_image_path):
-                        os.remove(old_image_path)
-                
-                # Save new image
-                filename = secure_filename(file.filename)
-                unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                upload_path = os.path.join(app.static_folder, 'uploads', 'announcements')
-                os.makedirs(upload_path, exist_ok=True)
-                file_path = os.path.join(upload_path, unique_filename)
-                file.save(file_path)
-                image_url = f"/static/uploads/announcements/{unique_filename}"
+        try:
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and file.filename and allowed_image_file(file.filename):
+                    try:
+                        # Delete old image if exists
+                        if image_url:
+                            old_image_path = os.path.join(app.static_folder, image_url.lstrip('/static/'))
+                            if os.path.exists(old_image_path):
+                                os.remove(old_image_path)
+                                print(f"✓ Old image deleted: {image_url}")
+                        
+                        # Save new image
+                        filename = secure_filename(file.filename)
+                        unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                        upload_path = os.path.join(app.static_folder, 'uploads', 'announcements')
+                        os.makedirs(upload_path, exist_ok=True)
+                        file_path = os.path.join(upload_path, unique_filename)
+                        
+                        # Compress and save image
+                        img = Image.open(file)
+                        img.thumbnail((1200, 800), Image.Resampling.LANCZOS)
+                        img.save(file_path, quality=85, optimize=True)
+                        
+                        image_url = f"/static/uploads/announcements/{unique_filename}"
+                        print(f"✓ New image uploaded: {image_url}")
+                    except Exception as e:
+                        img_error = f"Warning: Image upload failed: {str(e)}"
+                        print(f"⚠ {img_error}")
+                        # Continue without image - non-critical failure
+                        image_url = current_announcement.get('image_url')
+        except Exception as e:
+            print(f"⚠ Image processing error (non-critical): {str(e)}")
+            image_url = current_announcement.get('image_url')
         
-        # Format the datetime with timezone
+        # ===== CHECKPOINT 4: DateTime Formatting =====
+        print("[EDIT] Formatting datetime with timezone...")
         formatted_datetime = format_datetime_with_timezone(
             scheduled_date,
             scheduled_time,
             timezone
         )
         
+        if not formatted_datetime:
+            formatted_datetime = current_announcement.get('formatted_datetime', datetime.now().isoformat())
+            print(f"⚠ Using previous datetime: {formatted_datetime}")
+        else:
+            print(f"✓ Formatted datetime: {formatted_datetime}")
+        
+        # ===== CHECKPOINT 5: Firebase Update =====
+        print("[EDIT] Updating Firebase database...")
         update_data = {
             'title': title,
             'content': content,
@@ -2738,58 +2871,73 @@ def update_announcement(announcement_id):
             'updated_by': current_user.email
         }
         
-        announcement_ref.update(update_data)
+        try:
+            announcement_ref.update(update_data)
+            print(f"✓ Announcement updated in Firebase")
+        except Exception as e:
+            error_msg = f"Database update failed: {str(e)}"
+            print(f"✗ {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': error_msg}), 500
         
-        # Send email notification if requested
+        # ===== CHECKPOINT 6: Email Notification (Non-Critical) =====
+        print("[EDIT] Processing email notification...")
         email_status = None
         if send_email:
             try:
-                # Get all user emails
-                users_ref = db.reference('users')
-                users = users_ref.get()
-                if users:
-                    recipient_emails = [user['email'] for user in users.values() if user.get('email')]
-                    
-                    msg = Message(
-                        f'Announcement Update: {title}',
-                        recipients=recipient_emails,
-                        body=f'''
-                        An announcement has been updated:
-                        
-                        {title}
-                        
-                        {content}
-                        
-                        Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
-                        
-                        Best regards,
-                        Conference Team
-                        '''
-                    )
-                    
-                    # Add image attachment if exists
-                    if image_url:
-                        with app.open_resource(os.path.join(app.static_folder, image_url.lstrip('/static/'))) as fp:
-                            msg.attach(
-                                os.path.basename(image_url),
-                                'image/jpeg',
-                                fp.read()
-                            )
-                    
-                    mail.send(msg)
-                    email_status = "Email notifications sent successfully."
+                result = send_email_with_logging(
+                    subject=f'Announcement Updated: {title}',
+                    body=f'''
+An announcement has been updated:
+
+Title: {title}
+
+Content: {content}
+
+Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
+
+Best regards,
+Conference Team
+                    ''',
+                    announcement_type='update',
+                    title=title
+                )
+                
+                if result['success']:
+                    email_status = f"✓ Email sent successfully to {result['count']} recipient(s)"
+                    print(f"[EMAIL] {email_status}")
+                else:
+                    email_status = f"Warning: {result['message']}"
+                    print(f"[EMAIL] ✗ {result['message']}")
             except Exception as e:
                 error_msg = f"Error sending email notification: {str(e)}"
-                print("Error:", error_msg)
-                email_status = error_msg
+                print(f"[EMAIL] ✗ {error_msg}")
+                import traceback
+                traceback.print_exc()
+                email_status = f"Warning: {error_msg}"  # Don't fail, just warn
+        
+        # Check if request is AJAX
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        print("=" * 60)
+        print(f"Announcement update COMPLETE - AJAX: {is_ajax}")
+        print("=" * 60)
         
         return jsonify({
             'success': True,
-            'emailStatus': email_status
+            'id': announcement_id,
+            'emailStatus': email_status,
+            'redirect': url_for('admin_announcements')
         })
+    
     except Exception as e:
         error_msg = f"Error updating announcement: {str(e)}"
-        print("Error:", error_msg)
+        print(f"✗ {error_msg}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
+        
         return jsonify({'success': False, 'error': error_msg}), 500
 
 @app.route('/admin/announcements/<announcement_id>', methods=['DELETE'])
@@ -2797,24 +2945,62 @@ def update_announcement(announcement_id):
 @admin_required
 def delete_announcement(announcement_id):
     try:
-        # Delete announcement from Firebase
+        # ===== CHECKPOINT 1: Fetch Announcement =====
+        print("=" * 60)
+        print(f"[DELETE] Starting announcement deletion for ID: {announcement_id}")
+        print("=" * 60)
+        
         announcement_ref = db.reference(f'announcements/{announcement_id}')
         announcement = announcement_ref.get()
         
         if not announcement:
-            return jsonify({'success': False, 'error': 'Announcement not found'}), 404
+            error_msg = f"Announcement not found: {announcement_id}"
+            print(f"✗ {error_msg}")
+            return jsonify({'success': False, 'error': error_msg}), 404
         
-        # Delete associated image if exists
-        if announcement.get('image_url'):
-            image_path = os.path.join(app.static_folder, announcement['image_url'].lstrip('/static/'))
-            if os.path.exists(image_path):
-                os.remove(image_path)
+        print(f"✓ Announcement retrieved - Title: {announcement.get('title', 'Unknown')}")
         
-        announcement_ref.delete()
+        # ===== CHECKPOINT 2: Delete Associated Image (Non-Critical) =====
+        print("[DELETE] Cleaning up associated image file...")
+        try:
+            if announcement.get('image_url'):
+                image_path = os.path.join(app.static_folder, announcement['image_url'].lstrip('/static/'))
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+                    print(f"✓ Image deleted: {announcement['image_url']}")
+                else:
+                    print(f"⚠ Image file not found on disk: {announcement['image_url']}")
+            else:
+                print(f"ℹ No image associated with announcement")
+        except Exception as e:
+            print(f"⚠ Image cleanup failed (non-critical): {str(e)}")
+            # Continue with deletion even if image cleanup fails
+        
+        # ===== CHECKPOINT 3: Delete from Firebase =====
+        print("[DELETE] Removing announcement from Firebase...")
+        try:
+            announcement_ref.delete()
+            print(f"✓ Announcement deleted from Firebase")
+        except Exception as e:
+            error_msg = f"Database deletion failed: {str(e)}"
+            print(f"✗ {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'error': error_msg}), 500
+        
+        print("=" * 60)
+        print(f"Announcement deletion COMPLETE")
+        print("=" * 60)
+        
         return jsonify({'success': True})
+    
     except Exception as e:
         error_msg = f"Error deleting announcement: {str(e)}"
-        print("Error:", error_msg)
+        print(f"✗ {error_msg}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
+        
         return jsonify({'success': False, 'error': error_msg}), 500
 
 # Conference schedule configuration
@@ -5782,7 +5968,8 @@ def inject_admin_menu():
         {'text': 'Design Settings', 'url': 'admin_design', 'icon': 'palette'},
         {'text': 'Venue', 'url': 'admin_venue', 'icon': 'map-marker-alt'},
         {'text': 'Speakers', 'url': 'admin_speakers', 'icon': 'microphone'},
-        {'text': 'Schedule', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
+        # DISABLED: Schedule feature not functioning properly (Issue #3)
+        # {'text': 'Schedule', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
         {'text': 'Registration Fees', 'url': 'admin_registration_fees', 'icon': 'dollar-sign'},
         {'text': 'User Management', 'url': 'admin_users', 'icon': 'users'},
         {'text': 'Registrations', 'url': 'admin_registrations', 'icon': 'user-plus'},
@@ -6241,6 +6428,12 @@ def galleries():
                 # Add gradient colors for visual variety
                 gradient_colors = conference.get('gradient_colors', generate_gradient_colors(conf_id))
                 conference['gradient_colors'] = gradient_colors
+                
+                # Include gallery summary if available
+                gallery_summary = conference.get('gallery_summary')
+                if gallery_summary:
+                    conference['gallery_summary'] = gallery_summary
+                
                 visible_conferences[conf_id] = conference
 
         response = make_response(render_template('galleries.html',
@@ -6334,6 +6527,66 @@ def toggle_gallery_visibility(conference_id):
 
     except Exception as e:
         print(f"Error toggling gallery visibility: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/summary', methods=['POST'])
+@login_required
+@admin_required
+def save_gallery_summary(conference_id):
+    """Save gallery summary and description for a conference"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            
+        summary = data.get('summary', '').strip()
+        description = data.get('description', '').strip()
+        
+        # Validate summary length
+        if len(summary) > 200:
+            return jsonify({'success': False, 'error': 'Summary must be 200 characters or less'}), 400
+        
+        # Prepare summary data
+        summary_data = {
+            'summary': summary,
+            'description': description,
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': session.get('user_id', 'unknown')
+        }
+        
+        # Save to Firebase
+        summary_ref = db.reference(f'conferences/{conference_id}/gallery_summary')
+        summary_ref.set(summary_data)
+        
+        print(f"Gallery summary saved for conference {conference_id}")
+        return jsonify({'success': True, 'message': 'Gallery summary saved successfully'})
+        
+    except Exception as e:
+        print(f"Error saving gallery summary: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/summary', methods=['GET'])
+@login_required
+@admin_required
+def get_gallery_summary(conference_id):
+    """Get gallery summary and description for a conference"""
+    try:
+        summary_ref = db.reference(f'conferences/{conference_id}/gallery_summary')
+        summary_data = summary_ref.get()
+        
+        if not summary_data:
+            return jsonify({'summary': '', 'description': ''})
+        
+        return jsonify({
+            'summary': summary_data.get('summary', ''),
+            'description': summary_data.get('description', ''),
+            'updated_at': summary_data.get('updated_at'),
+            'updated_by': summary_data.get('updated_by')
+        })
+        
+    except Exception as e:
+        print(f"Error getting gallery summary: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/conference-galleries/<conference_id>/attendees')

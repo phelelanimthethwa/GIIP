@@ -127,6 +127,106 @@
                         <span id="upload-status">Uploading images...</span>
                     </div>
 
+                    <!-- Gallery Summary Management -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-align-left me-2"></i>
+                                    Gallery Summary & Description
+                                </h6>
+                                <button class="btn btn-sm btn-outline-primary" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#summary-collapse">
+                                    <i class="fas fa-chevron-down me-1"></i>
+                                    <span class="summary-toggle-text">Expand</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="collapse" id="summary-collapse">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-lg-8">
+                                        <form id="gallery-summary-form">
+                                            <!-- Summary Field -->
+                                            <div class="mb-3">
+                                                <label for="gallery-summary" class="form-label">
+                                                    <i class="fas fa-edit me-1"></i>
+                                                    Gallery Summary
+                                                    <small class="text-muted">(Brief overview for the public gallery)</small>
+                                                </label>
+                                                <div class="position-relative">
+                                                    <textarea class="form-control" 
+                                                              id="gallery-summary" 
+                                                              name="summary"
+                                                              rows="3" 
+                                                              maxlength="200"
+                                                              placeholder="Enter a brief summary of this conference gallery..."></textarea>
+                                                    <div class="character-counter">
+                                                        <small class="text-muted">
+                                                            <span id="summary-char-count">0</span>/200 characters
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Description Field -->
+                                            <div class="mb-3">
+                                                <label for="gallery-description" class="form-label">
+                                                    <i class="fas fa-align-left me-1"></i>
+                                                    Detailed Description
+                                                    <small class="text-muted">(Optional rich text description)</small>
+                                                </label>
+                                                <textarea class="form-control" 
+                                                          id="gallery-description" 
+                                                          name="description"
+                                                          rows="5"
+                                                          placeholder="Add a detailed description of the conference, highlights, key moments, etc..."></textarea>
+                                            </div>
+
+                                            <!-- Action Buttons -->
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" class="btn btn-success" id="save-summary-btn">
+                                                    <i class="fas fa-save me-1"></i>
+                                                    Save Summary
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" id="clear-summary-btn">
+                                                    <i class="fas fa-times me-1"></i>
+                                                    Clear
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <div class="card bg-light h-100">
+                                            <div class="card-body">
+                                                <h6>
+                                                    <i class="fas fa-lightbulb me-1"></i>
+                                                    Summary Guidelines
+                                                </h6>
+                                                <ul class="small mb-3">
+                                                    <li><strong>Summary:</strong> Short, engaging overview (max 200 chars)</li>
+                                                    <li><strong>Description:</strong> Rich details about the conference</li>
+                                                    <li>Highlight key moments, speakers, or themes</li>
+                                                    <li>Use descriptive language to engage visitors</li>
+                                                </ul>
+                                                
+                                                <div class="alert alert-info small p-2 mb-0">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    <strong>Tip:</strong> A good summary helps visitors understand what to expect from your gallery before viewing images.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Save Status -->
+                                <div id="summary-save-status" class="mt-3" style="display: none;">
+                                    <!-- Status messages will appear here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Gallery Grid -->
                     <div id="gallery-grid" class="row">
                         <!-- Images will be loaded here -->
@@ -317,6 +417,68 @@
 .badge.bg-secondary {
     background-color: #6c757d !important;
 }
+
+/* Gallery Summary Management Styles */
+.character-counter {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+#gallery-summary {
+    padding-bottom: 25px; /* Make room for character counter */
+}
+
+.summary-toggle-text {
+    transition: all 0.2s ease;
+}
+
+#summary-collapse.show ~ .card-header .summary-toggle-text::after {
+    content: " - Collapse";
+}
+
+#summary-collapse:not(.show) ~ .card-header .summary-toggle-text::after {
+    content: " - Expand";
+}
+
+.gallery-summary-form {
+    transition: all 0.3s ease;
+}
+
+#summary-save-status .alert {
+    margin-bottom: 0;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* TinyMCE styling for description */
+.tox-tinymce {
+    border-radius: 6px !important;
+    border: 1px solid #ced4da !important;
+}
+
+.tox-tinymce:focus-within {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Summary card animation */
+.card:has(#summary-collapse) {
+    transition: all 0.2s ease;
+}
+
+.card:has(#summary-collapse.show) {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
+}
 </style>
 
 <!-- jQuery CDN (Full version for AJAX support) -->
@@ -413,8 +575,9 @@ $(document).ready(function() {
 
         console.log('Loading gallery for conference:', currentConferenceId, currentConferenceName);
 
-        // Load existing images
+        // Load existing images and summary
         loadGalleryImages();
+        loadGallerySummary(currentConferenceId);
 
         // Scroll to gallery management
         $('html, body').animate({
@@ -520,6 +683,137 @@ $(document).ready(function() {
         });
     }
 
+    // Gallery Summary Management
+    
+    // Character counter for summary
+    $('#gallery-summary').on('input', function() {
+        const currentLength = $(this).val().length;
+        const maxLength = 200;
+        $('#summary-char-count').text(currentLength);
+        
+        // Change color when approaching limit
+        const counter = $(this).siblings('.character-counter').find('#summary-char-count');
+        if (currentLength > maxLength * 0.9) {
+            counter.addClass('text-warning');
+        } else {
+            counter.removeClass('text-warning');
+        }
+        
+        if (currentLength >= maxLength) {
+            counter.addClass('text-danger').removeClass('text-warning');
+        } else {
+            counter.removeClass('text-danger');
+        }
+    });
+
+    // Summary form submission
+    $('#gallery-summary-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        if (!currentConferenceId) {
+            showSummaryStatus('danger', 'Please select a conference first.');
+            return;
+        }
+
+        const formData = {
+            summary: $('#gallery-summary').val().trim(),
+            description: $('#gallery-description').val().trim()
+        };
+
+        // Show saving status
+        const saveBtn = $('#save-summary-btn');
+        const originalText = saveBtn.html();
+        saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
+
+        $.ajax({
+            url: `/admin/conference-galleries/${currentConferenceId}/summary`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    showSummaryStatus('success', 'Gallery summary saved successfully!');
+                } else {
+                    showSummaryStatus('danger', response.error || 'Failed to save summary.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error saving summary:', error);
+                showSummaryStatus('danger', 'Failed to save summary. Please try again.');
+            },
+            complete: function() {
+                saveBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+
+    // Clear summary button
+    $('#clear-summary-btn').on('click', function() {
+        if (confirm('Are you sure you want to clear all summary content?')) {
+            $('#gallery-summary').val('');
+            $('#gallery-description').val('');
+            $('#summary-char-count').text('0');
+            $('#summary-char-count').removeClass('text-warning text-danger');
+            
+            if (typeof tinymce !== 'undefined') {
+                tinymce.get('gallery-description')?.setContent('');
+            }
+        }
+    });
+
+    // Summary status display function
+    function showSummaryStatus(type, message) {
+        const statusDiv = $('#summary-save-status');
+        statusDiv.html(`
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-1"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `).show();
+
+        // Auto-hide success messages after 3 seconds
+        if (type === 'success') {
+            setTimeout(function() {
+                statusDiv.find('.alert').fadeOut();
+            }, 3000);
+        }
+    }
+
+    // Load existing summary when gallery is selected
+    function loadGallerySummary(conferenceId) {
+        $.get(`/admin/conference-galleries/${conferenceId}/summary`)
+            .done(function(data) {
+                if (data.summary) {
+                    $('#gallery-summary').val(data.summary);
+                    $('#summary-char-count').text(data.summary.length);
+                }
+                if (data.description) {
+                    $('#gallery-description').val(data.description);
+                    
+                    // Update TinyMCE if it's initialized
+                    if (typeof tinymce !== 'undefined') {
+                        const editor = tinymce.get('gallery-description');
+                        if (editor) {
+                            editor.setContent(data.description);
+                        }
+                    }
+                }
+            })
+            .fail(function(xhr) {
+                if (xhr.status !== 404) { // 404 is expected for new galleries
+                    console.warn('Could not load gallery summary:', xhr.responseText);
+                }
+            });
+    }
+
+    // Toggle text for summary collapse
+    $('#summary-collapse').on('show.bs.collapse', function() {
+        $('.summary-toggle-text').text('Collapse');
+    }).on('hide.bs.collapse', function() {
+        $('.summary-toggle-text').text('Expand');
+    });
+
     // Load gallery images
     function loadGalleryImages() {
         $.get(`/admin/conference-galleries/${currentConferenceId}/images`)
@@ -614,6 +908,50 @@ $(document).ready(function() {
             });
         }
     });
+
+    // Initialize TinyMCE for gallery description
+    if (typeof tinymce !== 'undefined') {
+        tinymce.init({
+            selector: '#gallery-description',
+            height: 200,
+            menubar: false,
+            plugins: [
+                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                'insertdatetime', 'media', 'table', 'help', 'wordcount'
+            ],
+            toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link | code preview',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; }',
+            placeholder: 'Add a detailed description of the conference, highlights, key moments, etc...',
+            setup: function(editor) {
+                editor.on('change', function() {
+                    editor.save(); // Save content back to textarea
+                });
+            }
+        });
+    } else {
+        // Fallback: Load TinyMCE if not already loaded
+        const script = document.createElement('script');
+        script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
+        script.referrerPolicy = 'origin';
+        script.onload = function() {
+            // Initialize after loading
+            tinymce.init({
+                selector: '#gallery-description',
+                height: 200,
+                menubar: false,
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
+                    'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'wordcount'
+                ],
+                toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link | code preview',
+                content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; }',
+                placeholder: 'Add a detailed description of the conference, highlights, key moments, etc...'
+            });
+        };
+        document.head.appendChild(script);
+    }
 });
 </script>
 {% endblock %}
