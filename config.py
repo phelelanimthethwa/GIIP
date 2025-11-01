@@ -48,5 +48,8 @@ class Config:
     # Google Maps configuration
     GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
 
+    # TinyMCE configuration
+    TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY')
+
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=60) 

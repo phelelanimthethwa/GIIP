@@ -1909,13 +1909,14 @@ function setDefaultDateTime() {
 
 // Load TinyMCE from CDN first
 const tinymceScript = document.createElement('script');
-tinymceScript.src = 'https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js';
+tinymceScript.src = 'https://cdn.tiny.cloud/1/{{ tinymce_api_key or "no-api-key" }}/tinymce/6/tinymce.min.js';
 tinymceScript.onload = function() {
     // Initialize TinyMCE after loading with simpler plugin list
     tinymce.init({
         selector: '.rich-editor',
         height: 300,
         menubar: false,
+        api_key: '{{ tinymce_api_key or "no-api-key" }}',
         plugins: 'lists link code',
         toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link | code'
     });
@@ -1985,7 +1986,7 @@ function initializeEnhancedTinyMCE() {
     // Load TinyMCE if not already loaded
     if (typeof tinymce === 'undefined') {
         const script = document.createElement('script');
-        script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
+        script.src = 'https://cdn.tiny.cloud/1/{{ tinymce_api_key or "no-api-key" }}/tinymce/6/tinymce.min.js';
         script.onload = () => {
             setTimeout(initTinyMCE, 100);
         };
@@ -1999,6 +2000,7 @@ function initTinyMCE() {
     tinymce.init({
         selector: '#content',
         height: 300,
+        api_key: '{{ tinymce_api_key or "no-api-key" }}',
         plugins: 'lists link image code wordcount',
         toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code | wordcount',
         menubar: false,

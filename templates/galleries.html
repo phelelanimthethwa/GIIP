@@ -17,11 +17,11 @@
 
 <div class="container py-5">
     {% if conferences %}
-    <div class="row">
+    <div class="inline-cards-container">
         {% for conference_id, conference in conferences.items() %}
-        <div class="col-lg-6 col-xl-4 mb-4">
-            <div class="card h-100 conference-gallery-card">
-                <div class="card-body d-flex flex-column">
+        <div class="inline-card-wrapper">
+            <div class="card conference-gallery-card" style="width: 100%; height: auto;">
+                <div class="card-body">
                     <div class="text-center mb-3">
                         <h5 class="card-title">{{ conference.basic_info.name }}</h5>
                         <p class="card-text text-muted">
@@ -32,13 +32,6 @@
                             {% endif %}
                         </p>
                     </div>
-
-                    <!-- Gallery Summary -->
-                    {% if conference.gallery_summary and conference.gallery_summary.summary %}
-                    <div class="gallery-summary mb-3">
-                        <p class="text-muted small text-center">{{ conference.gallery_summary.summary }}</p>
-                    </div>
-                    {% endif %}
 
                     <!-- Gallery Preview -->
                     <div class="gallery-preview mb-3" data-conference-id="{{ conference_id }}">
@@ -65,7 +58,17 @@
                         </div>
                     </div>
 
-                    <div class="mt-auto text-center">
+                    <!-- Gallery Summary -->
+                    {% if conference.gallery_summary and conference.gallery_summary.summary %}
+                        {% set show_summary = conference.gallery_summary.show_summary_public if conference.gallery_summary.show_summary_public is defined else (conference.gallery_summary.show_public|default(true)) %}
+                        {% if show_summary %}
+                        <div class="gallery-summary mb-3">
+                            <p class="text-muted small text-center">{{ conference.gallery_summary.summary }}</p>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+
+                    <div class="text-center">
                         <a href="{{ url_for('conference_gallery', conference_id=conference_id) }}" class="btn btn-primary">
                             <i class="fas fa-eye me-1"></i>
                             View Gallery
@@ -180,10 +183,34 @@
     color: #2c5282 !important;
 }
 
+/* Inline Cards Layout */
+.inline-cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.inline-card-wrapper {
+    flex: 0 0 auto;
+    width: 300px;
+    max-width: 100%;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
     .gallery-image {
         height: 150px;
+    }
+
+    .inline-cards-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .inline-card-wrapper {
+        width: 100%;
+        max-width: 400px;
     }
 }
 </style>

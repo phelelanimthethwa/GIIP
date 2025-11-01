@@ -55,6 +55,41 @@
     </div>
 </div>
 
+<!-- Gallery Summary & Description Section -->
+{% if conference.gallery_summary %}
+    {% set show_summary = conference.gallery_summary.show_summary_public if conference.gallery_summary.show_summary_public is defined else (conference.gallery_summary.show_public|default(true)) %}
+    {% set show_description = conference.gallery_summary.show_description_public if conference.gallery_summary.show_description_public is defined else (conference.gallery_summary.show_public|default(true)) %}
+    
+    {% if (show_summary and conference.gallery_summary.summary) or (show_description and conference.gallery_summary.description) %}
+    <div class="gallery-info-section">
+        <div class="container">
+            <div class="gallery-info-card">
+                {% if show_summary and conference.gallery_summary.summary %}
+                <div class="gallery-summary-block">
+                    <h3 class="info-title">
+                        <i class="fas fa-info-circle me-2"></i>
+                        About This Gallery
+                    </h3>
+                    <p class="summary-text">{{ conference.gallery_summary.summary }}</p>
+                </div>
+                {% endif %}
+                
+                {% if show_description and conference.gallery_summary.description %}
+                <div class="gallery-description-block">
+                    {% if show_summary and conference.gallery_summary.summary %}
+                    <hr class="info-divider">
+                    {% endif %}
+                    <div class="description-content">
+                        {{ conference.gallery_summary.description|safe }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endif %}
+
 <!-- Gallery Controls & Filters -->
 <div class="gallery-controls">
     <div class="container">
@@ -388,6 +423,175 @@
     opacity: 0.9;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* ===== GALLERY INFO SECTION ===== */
+.gallery-info-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    padding: 3rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.gallery-info-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid var(--primary-color);
+}
+
+.gallery-summary-block {
+    margin-bottom: 1.5rem;
+}
+
+.info-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.summary-text {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #495057;
+    margin: 0;
+    font-style: italic;
+}
+
+.gallery-description-block {
+    margin-top: 1.5rem;
+}
+
+.info-divider {
+    border: none;
+    border-top: 2px solid #e9ecef;
+    margin: 1.5rem 0;
+}
+
+.description-content {
+    color: #495057;
+    line-height: 1.8;
+    font-size: 1rem;
+}
+
+.description-content p {
+    margin-bottom: 1rem;
+}
+
+.description-content p:last-child {
+    margin-bottom: 0;
+}
+
+.description-content ul,
+.description-content ol {
+    margin-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.description-content ul {
+    list-style-type: disc;
+}
+
+.description-content ol {
+    list-style-type: decimal;
+}
+
+.description-content li {
+    margin-bottom: 0.5rem;
+}
+
+.description-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.description-content a:hover {
+    color: var(--secondary-color);
+    text-decoration: underline;
+}
+
+.description-content h1,
+.description-content h2,
+.description-content h3,
+.description-content h4,
+.description-content h5,
+.description-content h6 {
+    color: #2c3e50;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.description-content h1 { font-size: 2rem; }
+.description-content h2 { font-size: 1.75rem; }
+.description-content h3 { font-size: 1.5rem; }
+.description-content h4 { font-size: 1.25rem; }
+.description-content h5 { font-size: 1.1rem; }
+.description-content h6 { font-size: 1rem; }
+
+.description-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.description-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1.5rem;
+    margin: 1.5rem 0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.description-content code {
+    background: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #e83e8c;
+}
+
+.description-content pre {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.description-content pre code {
+    background: none;
+    padding: 0;
+    color: #495057;
+}
+
+@media (max-width: 768px) {
+    .gallery-info-section {
+        padding: 2rem 0;
+    }
+
+    .gallery-info-card {
+        padding: 1.5rem;
+    }
+
+    .info-title {
+        font-size: 1.3rem;
+    }
+
+    .summary-text {
+        font-size: 1rem;
+    }
+
+    .description-content {
+        font-size: 0.95rem;
+    }
 }
 
 /* ===== GALLERY CONTROLS ===== */
