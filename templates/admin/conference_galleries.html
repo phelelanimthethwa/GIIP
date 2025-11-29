@@ -159,11 +159,11 @@
                                                               id="gallery-summary" 
                                                               name="summary"
                                                               rows="3" 
-                                                              maxlength="200"
+                                                              maxlength="500"
                                                               placeholder="Enter a brief summary of this conference gallery..."></textarea>
                                                     <div class="character-counter">
                                                         <small class="text-muted">
-                                                            <span id="summary-char-count">0</span>/200 characters
+                                                            <span id="summary-char-count">0</span>/500 characters
                                                         </small>
                                                     </div>
                                                 </div>
@@ -181,6 +181,44 @@
                                                           name="description"
                                                           rows="5"
                                                           placeholder="Add a detailed description of the conference, highlights, key moments, etc..."></textarea>
+                                            </div>
+
+                                            <!-- Visibility Toggles -->
+                                            <div class="mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-eye me-1"></i>
+                                                    Public Visibility
+                                                </label>
+                                                
+                                                <!-- Summary Toggle -->
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           id="show-summary-public" 
+                                                           name="show_summary_public"
+                                                           checked>
+                                                    <label class="form-check-label" for="show-summary-public">
+                                                        Show Gallery Summary to Public
+                                                        <small class="text-muted d-block">
+                                                            Display the summary on the public galleries page
+                                                        </small>
+                                                    </label>
+                                                </div>
+                                                
+                                                <!-- Description Toggle -->
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           id="show-description-public" 
+                                                           name="show_description_public"
+                                                           checked>
+                                                    <label class="form-check-label" for="show-description-public">
+                                                        Show Description to Public
+                                                        <small class="text-muted d-block">
+                                                            Display the detailed description on the public galleries page
+                                                        </small>
+                                                    </label>
+                                                </div>
                                             </div>
 
                                             <!-- Action Buttons -->
@@ -222,6 +260,33 @@
                                 <!-- Save Status -->
                                 <div id="summary-save-status" class="mt-3" style="display: none;">
                                     <!-- Status messages will appear here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gallery Summary & Description Display -->
+                    <div id="gallery-summary-display" class="mb-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Gallery Summary & Description
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="gallery-summary-content">
+                                    <p class="text-muted mb-2">
+                                        <strong>Summary:</strong>
+                                        <span id="display-gallery-summary">No summary available</span>
+                                    </p>
+                                    <div id="gallery-description-content" style="display: none;">
+                                        <hr>
+                                        <p class="text-muted mb-0">
+                                            <strong>Description:</strong>
+                                        </p>
+                                        <div id="display-gallery-description" class="mt-2"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -399,6 +464,50 @@
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
+/* Gallery Summary Display Styling */
+#gallery-summary-display {
+    animation: fadeIn 0.3s ease-in;
+}
+
+#gallery-summary-display .card-body {
+    padding: 1.25rem;
+}
+
+#display-gallery-summary {
+    font-style: italic;
+    color: #495057;
+    line-height: 1.6;
+}
+
+#display-gallery-description {
+    color: #495057;
+    line-height: 1.6;
+    padding: 0.5rem 0;
+}
+
+#display-gallery-description p {
+    margin-bottom: 0.5rem;
+}
+
+#display-gallery-description p:last-child {
+    margin-bottom: 0;
+}
+
+#display-gallery-description ul,
+#display-gallery-description ol {
+    margin-left: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+#display-gallery-description a {
+    color: #0d6efd;
+    text-decoration: none;
+}
+
+#display-gallery-description a:hover {
+    text-decoration: underline;
+}
+
 /* Conference card hover effects */
 .conference-card {
     transition: all 0.3s ease;
@@ -452,6 +561,11 @@
 #summary-save-status .alert {
     margin-bottom: 0;
     animation: slideDown 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideDown {
@@ -572,6 +686,9 @@ $(document).ready(function() {
         $('#gallery-title').text(`${currentConferenceName} Gallery`);
         $('#gallery-management').show();
         $('#back-to-conferences').show();
+        
+        // Hide summary display initially (will show after loading)
+        $('#gallery-summary-display').hide();
 
         console.log('Loading gallery for conference:', currentConferenceId, currentConferenceName);
 
@@ -589,6 +706,7 @@ $(document).ready(function() {
     $('#back-to-conferences').click(function() {
         $('#gallery-management').hide();
         $('#back-to-conferences').hide();
+        $('#gallery-summary-display').hide();
         $('html, body').animate({
             scrollTop: $('.card:first').offset().top - 20
         }, 500);
@@ -688,7 +806,7 @@ $(document).ready(function() {
     // Character counter for summary
     $('#gallery-summary').on('input', function() {
         const currentLength = $(this).val().length;
-        const maxLength = 200;
+        const maxLength = 500;
         $('#summary-char-count').text(currentLength);
         
         // Change color when approaching limit
@@ -717,7 +835,9 @@ $(document).ready(function() {
 
         const formData = {
             summary: $('#gallery-summary').val().trim(),
-            description: $('#gallery-description').val().trim()
+            description: $('#gallery-description').val().trim(),
+            show_summary_public: $('#show-summary-public').is(':checked'),
+            show_description_public: $('#show-description-public').is(':checked')
         };
 
         // Show saving status
@@ -733,6 +853,28 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     showSummaryStatus('success', 'Gallery summary saved successfully!');
+                    // Update the display section
+                    const summary = formData.summary;
+                    const description = formData.description;
+                    
+                    if (summary) {
+                        $('#display-gallery-summary').text(summary);
+                    } else {
+                        $('#display-gallery-summary').text('No summary available');
+                    }
+                    
+                    if (description) {
+                        $('#display-gallery-description').html(description);
+                        $('#gallery-description-content').show();
+                    } else {
+                        $('#display-gallery-description').html('');
+                        $('#gallery-description-content').hide();
+                    }
+                    
+                    // Show display section if there's any content
+                    if (summary || description) {
+                        $('#gallery-summary-display').show();
+                    }
                 } else {
                     showSummaryStatus('danger', response.error || 'Failed to save summary.');
                 }
@@ -787,7 +929,12 @@ $(document).ready(function() {
                 if (data.summary) {
                     $('#gallery-summary').val(data.summary);
                     $('#summary-char-count').text(data.summary.length);
+                    // Display summary
+                    $('#display-gallery-summary').text(data.summary);
+                } else {
+                    $('#display-gallery-summary').text('No summary available');
                 }
+                
                 if (data.description) {
                     $('#gallery-description').val(data.description);
                     
@@ -798,12 +945,32 @@ $(document).ready(function() {
                             editor.setContent(data.description);
                         }
                     }
+                    
+                    // Display description
+                    $('#display-gallery-description').html(data.description);
+                    $('#gallery-description-content').show();
+                } else {
+                    $('#display-gallery-description').html('');
+                    $('#gallery-description-content').hide();
                 }
+                
+                // Show the display section if there's any content
+                if (data.summary || data.description) {
+                    $('#gallery-summary-display').show();
+                }
+                
+                // Set visibility toggle states (default to true if not set for backward compatibility)
+                const showSummaryPublic = data.show_summary_public !== undefined ? data.show_summary_public : (data.show_public !== undefined ? data.show_public : true);
+                const showDescriptionPublic = data.show_description_public !== undefined ? data.show_description_public : (data.show_public !== undefined ? data.show_public : true);
+                $('#show-summary-public').prop('checked', showSummaryPublic);
+                $('#show-description-public').prop('checked', showDescriptionPublic);
             })
             .fail(function(xhr) {
                 if (xhr.status !== 404) { // 404 is expected for new galleries
                     console.warn('Could not load gallery summary:', xhr.responseText);
                 }
+                // Hide display section if loading fails
+                $('#gallery-summary-display').hide();
             });
     }
 
@@ -915,6 +1082,7 @@ $(document).ready(function() {
             selector: '#gallery-description',
             height: 200,
             menubar: false,
+            api_key: '{{ tinymce_api_key or "no-api-key" }}',
             plugins: [
                 'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                 'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -932,7 +1100,7 @@ $(document).ready(function() {
     } else {
         // Fallback: Load TinyMCE if not already loaded
         const script = document.createElement('script');
-        script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
+        script.src = 'https://cdn.tiny.cloud/1/{{ tinymce_api_key or "no-api-key" }}/tinymce/6/tinymce.min.js';
         script.referrerPolicy = 'origin';
         script.onload = function() {
             // Initialize after loading
@@ -940,6 +1108,7 @@ $(document).ready(function() {
                 selector: '#gallery-description',
                 height: 200,
                 menubar: false,
+                api_key: '{{ tinymce_api_key or "no-api-key" }}',
                 plugins: [
                     'advlist', 'autolink', 'lists', 'link', 'charmap', 'preview',
                     'searchreplace', 'visualblocks', 'code', 'fullscreen',

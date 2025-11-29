@@ -56,5 +56,8 @@ class Config:
     IKHOKHA_RETURN_URL = os.environ.get('IKHOKHA_RETURN_URL', 'http://localhost:5000/payment/callback')
     IKHOKHA_CANCEL_URL = os.environ.get('IKHOKHA_CANCEL_URL', 'http://localhost:5000/payment/cancelled')
 
+    # TinyMCE configuration
+    TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY')
+
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=60) 

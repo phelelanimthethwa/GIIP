@@ -40,6 +40,9 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
+# Load configuration from Config class
+app.config.from_object(Config)
+
 # Configure app based on environment
 if os.environ.get('FLASK_ENV') == 'production':
     app.config.update(
@@ -2703,16 +2706,18 @@ def admin_announcements():
         ))
         
         return render_template(
-            'admin/announcements.html', 
+            'admin/announcements.html',
             announcements=sorted_announcements,
-            site_design=get_site_design()
+            site_design=get_site_design(),
+            tinymce_api_key=app.config.get('TINYMCE_API_KEY')
         )
     except Exception as e:
         flash(f'Error loading announcements: {str(e)}', 'error')
         return render_template(
-            'admin/announcements.html', 
+            'admin/announcements.html',
             announcements={},
-            site_design=get_site_design()
+            site_design=get_site_design(),
+            tinymce_api_key=app.config.get('TINYMCE_API_KEY')
         )
 
 def send_email(recipients, subject, body, attachments=None):
@@ -6391,14 +6396,16 @@ def admin_conference_galleries():
 
         return render_template('admin/conference_galleries.html',
                              conferences=conferences,
-                             site_design=get_site_design())
+                             site_design=get_site_design(),
+                             tinymce_api_key=app.config.get('TINYMCE_API_KEY'))
 
     except Exception as e:
         print(f"Error loading conference galleries: {e}")
         flash(f'Error loading conference galleries: {str(e)}', 'danger')
         return render_template('admin/conference_galleries.html',
                              conferences={},
-                             site_design=get_site_design())
+                             site_design=get_site_design(),
+                             tinymce_api_key=app.config.get('TINYMCE_API_KEY'))
 
 @app.route('/admin/conference-galleries/<conference_id>/upload', methods=['POST'])
 @login_required
@@ -6696,15 +6703,24 @@ def save_gallery_summary(conference_id):
             
         summary = data.get('summary', '').strip()
         description = data.get('description', '').strip()
+        show_summary_public = data.get('show_summary_public', True)  # Default to True if not provided
+        show_description_public = data.get('show_description_public', True)  # Default to True if not provided
+        
+        # Backward compatibility: if old show_public exists, use it for both
+        if 'show_public' in data and 'show_summary_public' not in data and 'show_description_public' not in data:
+            show_summary_public = data.get('show_public', True)
+            show_description_public = data.get('show_public', True)
         
         # Validate summary length
-        if len(summary) > 200:
-            return jsonify({'success': False, 'error': 'Summary must be 200 characters or less'}), 400
+        if len(summary) > 500:
+            return jsonify({'success': False, 'error': 'Summary must be 500 characters or less'}), 400
         
         # Prepare summary data
         summary_data = {
             'summary': summary,
             'description': description,
+            'show_summary_public': show_summary_public,
+            'show_description_public': show_description_public,
             'updated_at': datetime.now().isoformat(),
             'updated_by': session.get('user_id', 'unknown')
         }
