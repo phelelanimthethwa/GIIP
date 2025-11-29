@@ -1592,6 +1592,48 @@ def payment_webhook():
         print(f"Webhook processing error: {str(e)}")
         return jsonify({'status': 'error', 'message': 'Webhook processing failed'}), 500
 
+@app.route('/payment/demo')
+def payment_demo():
+    """Demo payment page for testing the payment flow"""
+    transaction_ref = request.args.get('ref', 'demo_transaction')
+    
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Demo Payment Gateway</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }}
+            .payment-box {{ border: 2px solid #10b981; border-radius: 10px; padding: 30px; text-align: center; }}
+            .btn {{ background: #10b981; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin: 10px; }}
+            .btn:hover {{ background: #059669; }}
+            .btn-cancel {{ background: #ef4444; }}
+            .btn-cancel:hover {{ background: #dc2626; }}
+        </style>
+    </head>
+    <body>
+        <div class="payment-box">
+            <h2>🏦 Demo Payment Gateway</h2>
+            <p><strong>Transaction Reference:</strong> {transaction_ref}</p>
+            <p>This is a demo payment page for testing purposes.</p>
+            <p>Choose your test outcome:</p>
+            
+            <button class="btn" onclick="window.location.href='/payment/callback?status=success&payment_id=demo_success_{transaction_ref}&reference={transaction_ref}'">
+                ✅ Simulate Successful Payment
+            </button>
+            
+            <button class="btn btn-cancel" onclick="window.location.href='/payment/callback?status=failed&payment_id=demo_failed_{transaction_ref}&reference={transaction_ref}'">
+                ❌ Simulate Failed Payment
+            </button>
+            
+            <button class="btn btn-cancel" onclick="window.location.href='/payment/cancelled'">
+                🚫 Cancel Payment
+            </button>
+        </div>
+    </body>
+    </html>
+    """
+
 def send_registration_confirmation_email(registration_data, registration_id):
     """Send registration confirmation email"""
     try:

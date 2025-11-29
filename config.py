@@ -53,8 +53,8 @@ class Config:
     IKHOKHA_SECRET_KEY = os.environ.get('IKHOKHA_SECRET_KEY')
     IKHOKHA_BASE_URL = os.environ.get('IKHOKHA_BASE_URL', 'https://api.ikhokha.com/v2')
     IKHOKHA_WEBHOOK_SECRET = os.environ.get('IKHOKHA_WEBHOOK_SECRET')
-    IKHOKHA_RETURN_URL = os.environ.get('IKHOKHA_RETURN_URL', 'http://localhost:5000/payment/callback')
-    IKHOKHA_CANCEL_URL = os.environ.get('IKHOKHA_CANCEL_URL', 'http://localhost:5000/payment/cancelled')
+    IKHOKHA_RETURN_URL = os.environ.get('IKHOKHA_RETURN_URL', 'https://globalconference.co.za/payment/callback')
+    IKHOKHA_CANCEL_URL = os.environ.get('IKHOKHA_CANCEL_URL', 'https://globalconference.co.za/payment/cancelled')
 
     # TinyMCE configuration
     TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY')
