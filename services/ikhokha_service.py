@@ -35,7 +35,8 @@ class IKhokhaPaymentService:
         """
         self.app_id = app_id or Config.IKHOKHA_APP_ID
         self.secret_key = secret_key or Config.IKHOKHA_SECRET_KEY
-        self.api_endpoint = "https://api.ikhokha.com/public-api/v1/api/payment"
+        # Updated to correct iKhokha API endpoint format
+        self.api_endpoint = "https://api.ikhokha.com/v1/payment/create"
         
         # Allow service to be created without credentials for development
         self.is_configured = bool(self.app_id and self.secret_key)
@@ -81,7 +82,7 @@ class IKhokhaPaymentService:
             }
         
         # Demo mode for development/testing
-        if self.app_id.lower() == 'demo' or self.app_id.lower() == 'test':
+        if (self.app_id and self.app_id.lower() in ['demo', 'test']) or not self.secret_key:
             logger.info("Running in DEMO mode - simulating payment creation")
             transaction_ref = f"DEMO_REG_{registration_data.get('user_id', 'ANON')}_{int(datetime.now().timestamp())}"
             return {
@@ -149,9 +150,39 @@ class IKhokhaPaymentService:
             )
             
             logger.info(f"iKhokha API Response: {response.status_code}")
-            logger.debug(f"Response Text: {response.text}")
+            logger.debug(f"Response Text: {response.text[:500]}...")  # Limit log output
             
             if response.status_code == 200:
+                # Check if response is actually JSON
+                try:
+                    result = response.json()
+                except ValueError as json_error:
+                    logger.error(f"iKhokha returned invalid JSON: {response.text[:200]}...")
+                    return {
+                        'success': False,
+                        'error': 'Payment service returned invalid response format'
+                    }
+            elif response.status_code in [400, 401, 403, 404, 500]:
+                # Handle HTTP error responses
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('message', f'API Error {response.status_code}')
+                except ValueError:
+                    error_message = f'API Error {response.status_code}: {response.text[:100]}'
+                
+                logger.error(f"iKhokha API Error {response.status_code}: {error_message}")
+                return {
+                    'success': False,
+                    'error': f'Payment service error: {error_message}'
+                }
+            else:
+                logger.error(f"Unexpected response code {response.status_code}: {response.text[:200]}")
+                return {
+                    'success': False,
+                    'error': f'Payment service error: HTTP {response.status_code}'
+                }
+            
+            if response.status_code == 200 and 'result' in locals():
                 result = response.json()
                 logger.info(f"iKhokha payment created successfully: {result.get('paymentId', 'No ID')}")
                 
