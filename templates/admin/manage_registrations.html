@@ -38,7 +38,7 @@
                             <th>Additional Items</th>
                             <th>Amount</th>
                             <th>Status</th>
-                            <th>Payment Proof</th>
+                            <th>Payment Info</th>
                             <th style="min-width: 150px;">Actions</th>
                         </tr>
                     </thead>
@@ -118,9 +118,28 @@
                                 </div>
                             </td>
                             <td>
-                                {% if registration.payment_proof %}
+                                {% if registration.payment_method == 'ikhokha' %}
+                                    {# iKhokha payment details #}
+                                    <div class="payment-transaction">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fas fa-credit-card text-success me-2"></i>
+                                            <strong>Online Payment</strong>
+                                        </div>
+                                        {% if registration.transaction_reference %}
+                                            <div class="payment-metadata">
+                                                <small class="text-muted d-block">Ref: {{ registration.transaction_reference }}</small>
+                                                {% if registration.payment_id %}
+                                                    <small class="text-muted d-block">ID: {{ registration.payment_id }}</small>
+                                                {% endif %}
+                                                {% if registration.payment_date %}
+                                                    <small class="text-muted d-block">Date: {{ registration.payment_date | datetime }}</small>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% elif registration.payment_proof %}
+                                    {# Legacy payment proof file upload #}
                                     {% if registration.payment_proof is mapping %}
-                                        {# New format: payment_proof is a dictionary #}
                                         <a href="{{ registration.payment_proof.url }}" 
                                            class="btn btn-sm btn-primary" title="Download Payment Proof" target="_blank">
                                             <i class="fas fa-download"></i> Download Proof
@@ -130,7 +149,6 @@
                                             <small class="text-muted d-block">Size: {{ (registration.payment_proof.size / 1024) | round(2) }} KB</small>
                                         </div>
                                     {% else %}
-                                        {# Legacy format: payment_proof is a string #}
                                         <a href="{{ url_for('serve_upload', filename=registration.payment_proof) }}" 
                                            class="btn btn-sm btn-primary" title="Download Payment Proof">
                                             <i class="fas fa-download"></i> Download Proof
@@ -143,7 +161,10 @@
                                         {% endif %}
                                     {% endif %}
                                 {% else %}
-                                    <span class="text-muted">No file</span>
+                                    <span class="text-muted">
+                                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                        No payment info
+                                    </span>
                                 {% endif %}
                             </td>
                             <td>
@@ -258,7 +279,7 @@ function exportRegistrations() {
                 'Extra Paper',
                 'Total Amount',
                 'Payment Status',
-                'Payment Proof'
+                'Payment Info'
             ];
 
             // Convert registrations to CSV rows
@@ -279,7 +300,9 @@ function exportRegistrations() {
                     reg.extra_paper ? 'Yes' : 'No',
                     reg.total_amount ? `R${reg.total_amount}` : '',
                     (reg.payment_status || '').toUpperCase(),
-                    reg.payment_proof || ''
+                    reg.payment_method === 'ikhokha' 
+                        ? `Online Payment (${reg.transaction_reference || reg.payment_id || 'N/A'})`
+                        : reg.payment_proof ? 'File Uploaded' : 'No Payment Info'
                 ];
                 csvRows.push(row);
             });
@@ -419,7 +442,33 @@ function formatRegistrationDetails(data) {
                     <span class="label">Submission Date:</span>
                     <span class="value">${data.submission_date || 'N/A'}</span>
                 </div>
-                ${data.payment_proof ? `
+                ${data.payment_method === 'ikhokha' ? `
+                <div class="detail-row">
+                    <span class="label">Payment Method:</span>
+                    <span class="value">
+                        <i class="fas fa-credit-card text-success me-1"></i>
+                        iKhokha Online Payment
+                    </span>
+                </div>
+                ${data.transaction_reference ? `
+                <div class="detail-row">
+                    <span class="label">Transaction Ref:</span>
+                    <span class="value">${data.transaction_reference}</span>
+                </div>
+                ` : ''}
+                ${data.payment_id ? `
+                <div class="detail-row">
+                    <span class="label">Payment ID:</span>
+                    <span class="value">${data.payment_id}</span>
+                </div>
+                ` : ''}
+                ${data.payment_date ? `
+                <div class="detail-row">
+                    <span class="label">Payment Date:</span>
+                    <span class="value">${new Date(data.payment_date).toLocaleString()}</span>
+                </div>
+                ` : ''}
+                ` : data.payment_proof ? `
                 <div class="detail-row">
                     <span class="label">Payment Proof:</span>
                     <span class="value">
@@ -433,7 +482,12 @@ function formatRegistrationDetails(data) {
                         }
                     </span>
                 </div>
-                ` : ''}
+                ` : `
+                <div class="detail-row">
+                    <span class="label">Payment Info:</span>
+                    <span class="value text-muted">No payment information available</span>
+                </div>
+                `}
             </div>
         </div>
     `;

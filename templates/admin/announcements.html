@@ -2026,8 +2026,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeForm() {
     const form = document.getElementById('announcementForm');
+    console.log('[INIT] Form found:', form);
     if (form) {
         form.addEventListener('submit', handleSubmit);
+        console.log('[INIT] Submit event listener attached to form');
+    } else {
+        console.error('[INIT] Form element not found!');
+    }
+    
+    // Also add click handler to submit button as backup
+    const submitButton = document.getElementById('submitButton');
+    console.log('[INIT] Submit button found:', submitButton);
+    if (submitButton) {
+        submitButton.addEventListener('click', function(event) {
+            console.log('[CLICK] Submit button clicked');
+            if (event.target.type !== 'submit') {
+                event.preventDefault();
+                const form = document.getElementById('announcementForm');
+                if (form) {
+                    console.log('[CLICK] Manually triggering form submit');
+                    const submitEvent = new Event('submit', {
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    form.dispatchEvent(submitEvent);
+                }
+            }
+        });
+        console.log('[INIT] Click event listener attached to submit button');
+    } else {
+        console.error('[INIT] Submit button not found!');
     }
     
     // Set up character counter for title field if available
@@ -2154,15 +2182,24 @@ function initializeModals() {
 
 // Form submission handler
 async function handleSubmit(event) {
+    console.log('[SUBMIT] handleSubmit called - event:', event);
     event.preventDefault();
-    if (isSubmitting) return;
+    
+    if (isSubmitting) {
+        console.log('[SUBMIT] Already submitting, returning early');
+        return;
+    }
 
     const form = event.target;
     const submitButton = form.querySelector('#submitButton');
     
+    console.log('[SUBMIT] Form found:', form);
+    console.log('[SUBMIT] Submit button found:', submitButton);
+    
     try {
         isSubmitting = true;
         submitButton.classList.add('loading');
+        console.log('[SUBMIT] Starting submission process...');
         
         // Clear any existing validation feedback
         clearAllFieldValidation();

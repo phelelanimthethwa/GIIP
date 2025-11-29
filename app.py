@@ -24,6 +24,7 @@ from utils import register_filters, get_conference_by_code
 import io
 import mimetypes
 import uuid
+from services.ikhokha_service import create_payment_session, verify_payment, process_payment_webhook
 
 try:
     from dotenv import load_dotenv
@@ -1361,6 +1362,269 @@ def registration_select():
     return redirect(url_for('registration_form', 
                           type=request.form.get('registration_type'),
                           period=request.form.get('registration_period')))
+
+# Payment Routes for iKhokha Integration
+@app.route('/payment/create', methods=['POST'])
+@login_required
+def create_payment():
+    """Create iKhokha payment session for registration"""
+    try:
+        # Get registration data from request
+        registration_data = request.get_json()
+        
+        if not registration_data:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid registration data'
+            }), 400
+        
+        # Validate required fields
+        required_fields = ['selected_period', 'selected_type', 'total_amount']
+        for field in required_fields:
+            if field not in registration_data:
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required field: {field}'
+                }), 400
+        
+        # Get registration fees to validate
+        fees_ref = db.reference('registration_fees')
+        fees = fees_ref.get()
+        
+        if not fees:
+            return jsonify({
+                'success': False,
+                'error': 'Registration fees not configured'
+            }), 500
+        
+        # Validate amount
+        period = registration_data['selected_period']
+        reg_type = registration_data['selected_type']
+        expected_amount = fees.get(period, {}).get('fees', {}).get(reg_type, 0)
+        
+        # Add additional items if selected
+        if fees.get('additional_items'):
+            for item in ['extra_paper', 'workshop', 'banquet']:
+                if registration_data.get(item, False):
+                    item_data = fees['additional_items'].get(item, {})
+                    if item_data.get('enabled', False):
+                        expected_amount += item_data.get('fee', 0)
+        
+        if abs(float(registration_data['total_amount']) - expected_amount) > 0.01:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid amount calculation'
+            }), 400
+        
+        # Prepare payment data
+        payment_data = {
+            'user_id': current_user.id,
+            'full_name': current_user.full_name,
+            'email': current_user.email,
+            'phone': getattr(current_user, 'phone', ''),
+            'total_amount': float(registration_data['total_amount']),
+            'conference_name': 'GIIP Conference Registration',
+            'registration_type': reg_type,
+            'registration_period': period,
+            'additional_items': {
+                'extra_paper': registration_data.get('extra_paper', False),
+                'workshop': registration_data.get('workshop', False),
+                'banquet': registration_data.get('banquet', False)
+            }
+        }
+        
+        # Create payment session
+        payment_result = create_payment_session(payment_data)
+        
+        if payment_result['success']:
+            # Store registration data in session for completion after payment
+            session['pending_registration'] = {
+                'registration_data': registration_data,
+                'payment_data': payment_data,
+                'transaction_reference': payment_result['transaction_reference'],
+                'payment_id': payment_result.get('payment_id')
+            }
+            
+            return jsonify({
+                'success': True,
+                'payment_url': payment_result['payment_url'],
+                'transaction_reference': payment_result['transaction_reference']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': payment_result.get('error', 'Payment initialization failed')
+            }), 500
+            
+    except Exception as e:
+        print(f"Payment creation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+@app.route('/payment/callback')
+def payment_callback():
+    """Handle payment callback from iKhokha"""
+    try:
+        # Get payment status from query parameters
+        status = request.args.get('status')
+        payment_id = request.args.get('payment_id')
+        transaction_ref = request.args.get('reference')
+        
+        print(f"Payment callback received - Status: {status}, Payment ID: {payment_id}, Ref: {transaction_ref}")
+        
+        # Check if we have pending registration data
+        pending_registration = session.get('pending_registration')
+        if not pending_registration:
+            flash('Payment session expired. Please try again.', 'error')
+            return redirect(url_for('registration'))
+        
+        if status == 'success' and payment_id:
+            # Verify payment with iKhokha
+            verification_result = verify_payment(payment_id)
+            
+            if verification_result['success'] and verification_result.get('status') == 'paid':
+                # Payment successful - create registration
+                registration_data = pending_registration['registration_data']
+                payment_data = pending_registration['payment_data']
+                
+                # Create registration record with payment info
+                registration_record = {
+                    'user_id': current_user.id,
+                    'full_name': current_user.full_name,
+                    'email': current_user.email,
+                    'registration_type': registration_data['selected_type'],
+                    'registration_period': registration_data['selected_period'],
+                    'total_amount': float(registration_data['total_amount']),
+                    'extra_paper': registration_data.get('extra_paper', False),
+                    'workshop': registration_data.get('workshop', False),
+                    'banquet': registration_data.get('banquet', False),
+                    'payment_status': 'paid',
+                    'payment_method': 'ikhokha',
+                    'payment_id': payment_id,
+                    'transaction_reference': transaction_ref,
+                    'payment_date': datetime.now().isoformat(),
+                    'submission_date': datetime.now().isoformat(),
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Save registration to Firebase
+                registrations_ref = db.reference('registrations')
+                new_registration = registrations_ref.push(registration_record)
+                
+                # Clear session
+                session.pop('pending_registration', None)
+                
+                # Send confirmation email
+                try:
+                    send_registration_confirmation_email(registration_record, new_registration.key)
+                except Exception as email_error:
+                    print(f"Email sending failed: {email_error}")
+                
+                flash('Registration completed successfully! Payment has been processed.', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Payment verification failed. Please contact support.', 'error')
+        else:
+            flash('Payment was not successful. Please try again.', 'error')
+        
+        return redirect(url_for('registration'))
+        
+    except Exception as e:
+        print(f"Payment callback error: {str(e)}")
+        flash('An error occurred processing your payment. Please contact support.', 'error')
+        return redirect(url_for('registration'))
+
+@app.route('/payment/cancelled')
+def payment_cancelled():
+    """Handle payment cancellation"""
+    # Clear any pending registration
+    session.pop('pending_registration', None)
+    flash('Payment was cancelled. You can try again at any time.', 'info')
+    return redirect(url_for('registration'))
+
+@app.route('/payment/webhook', methods=['POST'])
+def payment_webhook():
+    """Handle iKhokha webhook notifications"""
+    try:
+        # Get signature from headers
+        signature = request.headers.get('X-iKhokha-Signature', '')
+        payload = request.get_data(as_text=True)
+        
+        # Process webhook
+        webhook_result = process_payment_webhook(payload, signature)
+        
+        if webhook_result['success']:
+            payment_data = webhook_result
+            
+            # Find and update registration if needed
+            if payment_data.get('status') == 'paid':
+                # Look for registration with this transaction reference
+                registrations_ref = db.reference('registrations')
+                registrations = registrations_ref.get() or {}
+                
+                for reg_id, reg_data in registrations.items():
+                    if (reg_data and 
+                        reg_data.get('transaction_reference') == payment_data.get('reference') and
+                        reg_data.get('payment_status') != 'paid'):
+                        
+                        # Update registration status
+                        registrations_ref.child(reg_id).update({
+                            'payment_status': 'paid',
+                            'payment_date': payment_data.get('payment_date', datetime.now().isoformat()),
+                            'updated_at': datetime.now().isoformat()
+                        })
+                        
+                        print(f"Registration {reg_id} updated via webhook")
+                        break
+            
+            return jsonify({'status': 'success'}), 200
+        else:
+            print(f"Webhook validation failed: {webhook_result.get('error')}")
+            return jsonify({'status': 'error', 'message': 'Invalid webhook'}), 400
+            
+    except Exception as e:
+        print(f"Webhook processing error: {str(e)}")
+        return jsonify({'status': 'error', 'message': 'Webhook processing failed'}), 500
+
+def send_registration_confirmation_email(registration_data, registration_id):
+    """Send registration confirmation email"""
+    try:
+        subject = f"Registration Confirmation - {registration_data.get('registration_type', 'Conference')}"
+        
+        # Simple email content
+        body = f"""
+        Dear {registration_data.get('full_name', 'Participant')},
+
+        Your conference registration has been confirmed!
+
+        Registration Details:
+        - Registration ID: {registration_id}
+        - Type: {registration_data.get('registration_type', 'N/A')}
+        - Period: {registration_data.get('registration_period', 'N/A')}
+        - Amount: R{registration_data.get('total_amount', 0):.2f}
+        - Payment Status: {registration_data.get('payment_status', 'Pending')}
+
+        Thank you for your registration!
+
+        Best regards,
+        GIIP Conference Team
+        """
+        
+        msg = Message(
+            subject=subject,
+            recipients=[registration_data.get('email')],
+            body=body
+        )
+        
+        mail.send(msg)
+        print(f"Confirmation email sent to {registration_data.get('email')}")
+        
+    except Exception as e:
+        print(f"Failed to send confirmation email: {str(e)}")
+        raise
 
 @app.route('/schedule')
 def schedule():
@@ -2988,11 +3252,12 @@ def delete_announcement(announcement_id):
             traceback.print_exc()
             return jsonify({'success': False, 'error': error_msg}), 500
         
+        # ===== SUCCESS: Return success response =====
         print("=" * 60)
-        print(f"Announcement deletion COMPLETE")
+        print(f"[DELETE] Announcement deletion COMPLETE - ID: {announcement_id}")
         print("=" * 60)
         
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Announcement deleted successfully'})
     
     except Exception as e:
         error_msg = f"Error deleting announcement: {str(e)}"
@@ -3002,21 +3267,6 @@ def delete_announcement(announcement_id):
         print("=" * 60)
         
         return jsonify({'success': False, 'error': error_msg}), 500
-
-# Conference schedule configuration
-SCHEDULE_DAYS = [
-    'Day 1 - January 15, 2024',
-    'Day 2 - January 16, 2024',
-    'Day 3 - January 17, 2024'
-]
-
-TRACKS = [
-    'Main Hall',
-    'Room A',
-    'Room B',
-    'Room C',
-    'Workshop Room'
-]
 
 @app.route('/admin/schedule')
 @login_required
@@ -4125,108 +4375,12 @@ def save_payment_proof(file):
 @app.route('/registration-form', methods=['GET', 'POST'])
 @login_required
 def registration_form():
-    try:
-        if request.method == 'GET':
-            # Get current registration period and fees
-            current_period = get_current_registration_period()
-            if current_period == 'closed':
-                flash('Registration is currently closed.', 'error')
-                return redirect(url_for('home'))
-                
-            fees = get_registration_fees()
-            if not fees:
-                flash('Registration fees are not configured.', 'error')
-                return redirect(url_for('home'))
-            
-            return render_template('registration_form.html', 
-                                fees=fees,
-                                site_design=get_site_design())
-        
-        # POST request - process registration
-        registration_data = {
-            'full_name': current_user.full_name,
-            'email': current_user.email,
-            'user_id': current_user.id,
-            'registration_period': request.form.get('selected_period'),
-            'registration_type': request.form.get('selected_type'),
-            'total_amount': float(request.form.get('total_amount', 0)),
-                'payment_reference': request.form.get('payment_reference'),
-                'submission_date': datetime.now().isoformat(),
-                'payment_status': 'pending',
-                'created_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }
-            
-        # Validate registration period
-        current_period = get_current_registration_period()
-        if current_period == 'closed':
-            raise ValueError('Registration is currently closed')
-        if registration_data['registration_period'] != current_period:
-            raise ValueError('Invalid registration period selected')
-            
-        # Add additional items if selected
-        additional_items = {}
-        for item in ['extra_paper', 'workshop', 'banquet']:
-            if request.form.get(item) == 'true':
-                if not fees['additional_items'][item]['enabled']:
-                    raise ValueError(f'{item.replace("_", " ").title()} is not available')
-                    
-                # Check if virtual delegate is eligible for this item
-                if (registration_data['registration_type'] == 'virtual_delegate' and 
-                    not fees['additional_items'][item].get('virtual_eligible', True)):
-                    raise ValueError(f'{item.replace("_", " ").title()} is not available for virtual delegates')
-                    
-                additional_items[item] = {
-                    'selected': True,
-                    'fee': fees['additional_items'][item]['fee']
-                }
-        
-        registration_data['additional_items'] = additional_items
-        
-        # Handle payment proof file
-        payment_proof = request.files.get('payment_proof')
-        if payment_proof:
-            file_data = save_payment_proof(payment_proof)
-            if file_data:
-                registration_data['payment_proof'] = file_data
-            else:
-                raise ValueError('Failed to save payment proof file')
-        else:
-            raise ValueError('Payment proof is required')
-        
-        # Update early bird seats if applicable
-        if current_period == 'early_bird':
-            fees_ref = db.reference('registration_fees/early_bird/seats')
-            remaining = fees_ref.child('remaining').get() or 0
-            if remaining <= 0:
-                raise ValueError('No early bird seats remaining')
-            fees_ref.update({
-                'remaining': remaining - 1
-            })
-        
-        # Save registration to Firebase Realtime Database
-            registrations_ref = db.reference('registrations')
-            new_registration = registrations_ref.push(registration_data)
-            
-        # Save reference to user's registrations collection
-            user_reg_ref = db.reference(f'users/{current_user.id}/registrations/{new_registration.key}')
-            user_reg_ref.set(True)
-            
-        # Send confirmation email
-        try:
-            send_confirmation_email(registration_data)
-        except Exception as e:
-            print(f"Error sending confirmation email: {str(e)}")
-        
-            flash('Registration submitted successfully!', 'success')
-            return redirect(url_for('dashboard'))
-            
-    except ValueError as e:
-        flash(str(e), 'error')
-        return redirect(url_for('registration'))
-    except Exception as e:
-        flash(f'Error submitting registration: {str(e)}', 'error')
-        return redirect(url_for('registration'))
+    """
+    Legacy registration form route - now redirects to main registration page
+    All registrations now use the iKhokha payment gateway flow
+    """
+    # Redirect to the main registration page which has the new payment flow
+    return redirect(url_for('registration'))
 
 @app.route('/admin/author-guidelines', methods=['GET', 'POST'])
 @login_required

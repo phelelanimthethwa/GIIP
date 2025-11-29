@@ -23,4 +23,5 @@ google-cloud-storage==2.19.0
 firebase-admin==6.6.0
 google-generativeai==0.3.2
 grpcio==1.69.0
-cachecontrol==0.14.2 
+cachecontrol==0.14.2
+cryptography>=41.0.0 

@@ -37,7 +37,16 @@
         body {
             color: var(--text-color);
             background-color: var(--background-color);
-            padding-top: 100px;
+            padding-top: 140px; /* Match CSS file - robust clearance */
+        }
+
+        /* Additional navbar spacing fix for zoom levels */
+        .site-header {
+            min-height: 100px; /* Ensure minimum header height */
+        }
+
+        .navbar {
+            min-height: 80px; /* Ensure minimum navbar height */
         }
 
         .header {
@@ -67,7 +76,7 @@
 
         @media (max-width: 768px) {
             body {
-                padding-top: 80px;
+                padding-top: 120px; /* Robust mobile clearance */
             }
             
             .header {
@@ -96,6 +105,27 @@
         }
 
         /* Add more custom color variables as needed */
+        
+        /* CRITICAL NAVBAR FIX - Override any conflicting styles */
+        body {
+            padding-top: 200px !important; /* Maximum aggressive spacing to prevent any cutoff */
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding-top: 160px !important; /* Maximum mobile clearance */
+            }
+        }
+        
+        /* Ensure navbar never overlaps content */
+        main {
+            margin-top: 20px; /* Additional safety margin */
+        }
+        
+        /* Dynamic navbar height adjustment */
+        .dynamic-spacing {
+            padding-top: 160px; /* Fallback */
+        }
     </style>
 </head>
 <body>
@@ -124,6 +154,33 @@
     {% include 'user/components/footer.html' %}
 
     <script>
+        // Dynamic navbar height adjustment
+        document.addEventListener('DOMContentLoaded', function() {
+            function adjustBodyPadding() {
+                const navbar = document.querySelector('.site-header');
+                if (navbar) {
+                    const navbarHeight = navbar.offsetHeight;
+                    const safetyMargin = 60; // Extra large safety margin
+                    const requiredPadding = navbarHeight + safetyMargin;
+                    
+                    // Always ensure minimum 200px padding
+                    const minimumPadding = 200;
+                    const finalPadding = Math.max(requiredPadding, minimumPadding);
+                    
+                    document.body.style.paddingTop = finalPadding + 'px';
+                    console.log(`Navbar height: ${navbarHeight}px, Applied padding: ${finalPadding}px`);
+                }
+            }
+            
+            // Adjust on load
+            setTimeout(adjustBodyPadding, 100); // Small delay to ensure everything is loaded
+            
+            // Adjust on resize (in case zoom changes)
+            window.addEventListener('resize', function() {
+                setTimeout(adjustBodyPadding, 100);
+            });
+        });
+
         // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', function() {
             const menuToggle = document.getElementById('menuToggle');

@@ -47,6 +47,14 @@ class Config:
 
     # Google Maps configuration
     GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
+    
+    # iKhokha Payment Gateway Configuration
+    IKHOKHA_APP_ID = os.environ.get('IKHOKHA_APP_ID')
+    IKHOKHA_SECRET_KEY = os.environ.get('IKHOKHA_SECRET_KEY')
+    IKHOKHA_BASE_URL = os.environ.get('IKHOKHA_BASE_URL', 'https://api.ikhokha.com/v2')
+    IKHOKHA_WEBHOOK_SECRET = os.environ.get('IKHOKHA_WEBHOOK_SECRET')
+    IKHOKHA_RETURN_URL = os.environ.get('IKHOKHA_RETURN_URL', 'http://localhost:5000/payment/callback')
+    IKHOKHA_CANCEL_URL = os.environ.get('IKHOKHA_CANCEL_URL', 'http://localhost:5000/payment/cancelled')
 
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=60) 

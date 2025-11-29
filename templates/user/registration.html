@@ -463,32 +463,38 @@ firebase.initializeApp(firebaseConfig);
             </div>
 
             <div class="payment-section">
-                <h3>Payment Details</h3>
+                <h3>Payment Information</h3>
                 <div class="payment-instructions">
-                    <div class="form-group">
-                        <label for="payment_reference">Payment Reference:</label>
-                        <input type="text" id="payment_reference" name="payment_reference" class="form-control" 
-                               required placeholder="Enter your payment reference">
-                        <small class="form-text text-muted">Use this as your payment reference when making the bank transfer</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="payment_proof">Upload Proof of Payment:</label>
-                        <div class="upload-container">
-                            <input type="file" id="payment_proof" name="payment_proof" class="form-control" 
-                                   accept=".pdf,.jpg,.jpeg,.png" required onchange="validateFileUpload(this)">
-                            <div class="upload-preview" id="upload-preview" style="display: none;">
-                                <div class="preview-content">
-                                    <i class="fas fa-file-alt"></i>
-                                    <span class="filename"></span>
-                                    <span class="filesize"></span>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-danger" onclick="clearFileUpload()">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                    <div class="payment-notice">
+                        <div class="notice-icon">
+                            <i class="fas fa-credit-card"></i>
                         </div>
-                        <small class="form-text text-muted">Accepted formats: PDF, JPG, PNG (Max size: 5MB)</small>
+                        <div class="notice-content">
+                            <h4>Secure Online Payment</h4>
+                            <p>Your payment will be processed securely through iKhokha's payment gateway. 
+                            You can pay using your credit card, debit card, or EFT.</p>
+                            <ul class="payment-features">
+                                <li><i class="fas fa-shield-alt"></i> SSL Encrypted & Secure</li>
+                                <li><i class="fas fa-credit-card"></i> All Major Cards Accepted</li>
+                                <li><i class="fas fa-university"></i> Instant EFT Available</li>
+                                <li><i class="fas fa-receipt"></i> Instant Payment Confirmation</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-summary">
+                        <div class="summary-row">
+                            <span class="summary-label">Registration Fee:</span>
+                            <span class="summary-value" id="base-fee-amount">R0.00</span>
+                        </div>
+                        <div class="summary-row" id="additional-fees" style="display: none;">
+                            <span class="summary-label">Additional Items:</span>
+                            <span class="summary-value" id="additional-fee-amount">R0.00</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span class="summary-label">Total Amount:</span>
+                            <span class="summary-value total-amount" id="final-total">R0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -503,7 +509,10 @@ firebase.initializeApp(firebaseConfig);
 
             <div class="step-actions">
                 <button type="button" class="btn btn-secondary prev-step">Back to Additional Items</button>
-                <button type="submit" class="btn btn-primary">Complete Registration</button>
+                <button type="button" class="btn btn-primary btn-payment" id="proceed-to-payment" onclick="proceedToPayment()">
+                    <i class="fas fa-credit-card"></i>
+                    Proceed to Payment
+                </button>
             </div>
         </div>
     </form>
@@ -1172,7 +1181,145 @@ firebase.initializeApp(firebaseConfig);
 
 .payment-instructions {
     display: grid;
+    gap: 2rem;
+}
+
+.payment-notice {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex;
+    align-items: flex-start;
     gap: 1.5rem;
+}
+
+.notice-icon {
+    background: var(--primary-color);
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.notice-icon i {
+    font-size: 1.5rem;
+}
+
+.notice-content h4 {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-color);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.notice-content p {
+    margin: 0 0 1rem 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.payment-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.payment-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.payment-features li i {
+    color: #10b981;
+    font-size: 1rem;
+    width: 16px;
+}
+
+.payment-summary {
+    background: white;
+    border: 2px solid #f1f5f9;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.summary-row.total-row {
+    border-top: 2px solid #e2e8f0;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.summary-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.summary-value {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.total-row .summary-value {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+.btn-payment {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+    color: white;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.btn-payment:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-payment:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-payment i {
+    font-size: 1.2rem;
 }
 
 .form-group {
@@ -1201,41 +1348,6 @@ firebase.initializeApp(firebaseConfig);
 .form-text {
     font-size: 0.9rem;
     color: var(--text-secondary);
-}
-
-.upload-container {
-    position: relative;
-}
-
-.upload-preview {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--background-color);
-    padding: 0.75rem;
-    border-radius: 4px;
-    margin-top: 0.5rem;
-}
-
-.preview-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.preview-content i {
-    color: var(--primary-color);
-    font-size: 1.2rem;
-}
-
-.filename {
-    font-weight: 500;
-    color: var(--text-color);
-}
-
-.filesize {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
 }
 
 .invalid-feedback {
@@ -1363,6 +1475,9 @@ function calculateTotal() {
     if (reviewTotal) {
         reviewTotal.textContent = `${symbol} ${totalAmount.toFixed(2)}`;
     }
+    
+    // Update payment summary
+    updatePaymentSummary();
     
     // Add a running total display in step 1 and 2
     const runningTotal = document.querySelector('.running-total');
@@ -1518,62 +1633,120 @@ document.querySelectorAll('.prev-step').forEach(button => {
     });
 });
 
-// Form Validation
-function validateForm() {
+// Payment Processing Functions
+function proceedToPayment() {
     try {
         if (!selectedPeriod || !selectedType) {
             throw new Error('Please select both registration period and type');
         }
 
-        const paymentRef = document.getElementById('payment_reference');
-        const paymentProof = document.getElementById('payment_proof');
-
-        if (!paymentRef.value.trim()) {
-            paymentRef.focus();
-            throw new Error('Please enter a payment reference');
+        if (totalAmount <= 0) {
+            throw new Error('Invalid registration amount');
         }
 
-        if (!paymentProof.files || paymentProof.files.length === 0) {
-            throw new Error('Please upload proof of payment');
-        }
+        // Disable payment button to prevent double-clicks
+        const paymentBtn = document.getElementById('proceed-to-payment');
+        paymentBtn.disabled = true;
+        paymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
-        return true;
+        // Prepare registration data
+        const registrationData = {
+            selected_period: selectedPeriod,
+            selected_type: selectedType,
+            total_amount: totalAmount,
+            extra_paper: document.getElementById('has_extra_paper').value === 'true',
+            workshop: document.getElementById('has_workshop').value === 'true',
+            banquet: document.getElementById('has_banquet').value === 'true'
+        };
+
+        // Submit to payment processing route
+        fetch('/payment/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(registrationData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Redirect to iKhokha payment page
+                window.location.href = data.payment_url;
+            } else {
+                throw new Error(data.error || 'Payment initialization failed');
+            }
+        })
+        .catch(error => {
+            console.error('Payment error:', error);
+            alert('Payment processing failed: ' + error.message);
+            
+            // Re-enable payment button
+            paymentBtn.disabled = false;
+            paymentBtn.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
+        });
+
     } catch (error) {
         alert(error.message);
-        return false;
+        
+        // Re-enable payment button
+        const paymentBtn = document.getElementById('proceed-to-payment');
+        paymentBtn.disabled = false;
+        paymentBtn.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
     }
 }
 
-// File Upload Functions
-function validateFileUpload(input) {
-    const file = input.files[0];
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
-    
-    if (file) {
-        if (file.size > maxSize) {
-            input.value = '';
-            document.getElementById('file-error').textContent = 'File size exceeds 5MB limit';
-            document.getElementById('file-error').style.display = 'block';
-            return false;
-        }
-        
-        if (!allowedTypes.includes(file.type)) {
-            input.value = '';
-            document.getElementById('file-error').textContent = 'Invalid file type. Please upload PDF, JPG, or PNG';
-            document.getElementById('file-error').style.display = 'block';
-            return false;
-        }
-        
-        // Show preview
-        const preview = document.getElementById('upload-preview');
-        preview.style.display = 'flex';
-        preview.querySelector('.filename').textContent = file.name;
-        preview.querySelector('.filesize').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
-        document.getElementById('file-error').style.display = 'none';
-        return true;
+function getCsrfToken() {
+    // Get CSRF token from meta tag or cookie
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) {
+        return meta.getAttribute('content');
     }
-    return false;
+    
+    // Fallback: extract from cookies
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrf_token') {
+            return decodeURIComponent(value);
+        }
+    }
+    
+    return '';
+}
+
+// Form Validation (simplified for payment flow)
+function validateForm() {
+    return selectedPeriod && selectedType && totalAmount > 0;
+}
+
+// Update payment summary display
+function updatePaymentSummary() {
+    if (selectedPeriod && selectedType) {
+        const baseFee = fees[selectedPeriod]?.fees?.[selectedType] || 0;
+        let additionalFees = 0;
+        
+        // Calculate additional fees
+        ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+            const checkbox = document.getElementById(item);
+            if (checkbox && checkbox.checked && fees.additional_items?.[item]?.enabled) {
+                additionalFees += fees.additional_items[item].fee || 0;
+            }
+        });
+        
+        // Update display
+        document.getElementById('base-fee-amount').textContent = `R${baseFee.toFixed(2)}`;
+        document.getElementById('additional-fee-amount').textContent = `R${additionalFees.toFixed(2)}`;
+        document.getElementById('final-total').textContent = `R${totalAmount.toFixed(2)}`;
+        
+        // Show/hide additional fees row
+        const additionalRow = document.getElementById('additional-fees');
+        if (additionalFees > 0) {
+            additionalRow.style.display = 'flex';
+        } else {
+            additionalRow.style.display = 'none';
+        }
+    }
 }
 
 function clearFileUpload() {
