@@ -24,7 +24,7 @@ from utils import register_filters, get_conference_by_code
 import io
 import mimetypes
 import uuid
-from services.ikhokha_service import create_payment_session, verify_payment, process_payment_webhook
+from services.yoco_service import create_payment_session, verify_payment, process_payment_webhook
 
 try:
     from dotenv import load_dotenv
@@ -1366,11 +1366,11 @@ def registration_select():
                           type=request.form.get('registration_type'),
                           period=request.form.get('registration_period')))
 
-# Payment Routes for iKhokha Integration
+# Payment Routes for Yoco Integration
 @app.route('/payment/create', methods=['POST'])
 @login_required
 def create_payment():
-    """Create iKhokha payment session for registration"""
+    """Create Yoco payment session for registration"""
     try:
         # Get registration data from request
         registration_data = request.get_json()
@@ -1468,7 +1468,7 @@ def create_payment():
 
 @app.route('/payment/callback')
 def payment_callback():
-    """Handle payment callback from iKhokha"""
+    """Handle payment callback from Yoco"""
     try:
         # Get payment status from query parameters
         status = request.args.get('status')
@@ -1484,7 +1484,7 @@ def payment_callback():
             return redirect(url_for('registration'))
         
         if status == 'success' and payment_id:
-            # Verify payment with iKhokha
+            # Verify payment with Yoco
             verification_result = verify_payment(payment_id)
             
             if verification_result['success'] and verification_result.get('status') == 'paid':
@@ -1504,7 +1504,7 @@ def payment_callback():
                     'workshop': registration_data.get('workshop', False),
                     'banquet': registration_data.get('banquet', False),
                     'payment_status': 'paid',
-                    'payment_method': 'ikhokha',
+                    'payment_method': 'yoco',
                     'payment_id': payment_id,
                     'transaction_reference': transaction_ref,
                     'payment_date': datetime.now().isoformat(),
@@ -1550,10 +1550,10 @@ def payment_cancelled():
 
 @app.route('/payment/webhook', methods=['POST'])
 def payment_webhook():
-    """Handle iKhokha webhook notifications"""
+    """Handle Yoco webhook notifications"""
     try:
         # Get signature from headers
-        signature = request.headers.get('X-iKhokha-Signature', '')
+        signature = request.headers.get('X-Yoco-Signature', '')
         payload = request.get_data(as_text=True)
         
         # Process webhook
@@ -9239,3 +9239,4 @@ if __name__ == '__main__':
         create_admin_user()
     
     app.run(debug=True, host='0.0.0.0', port=5000)
+

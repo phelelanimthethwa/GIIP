@@ -1,0 +1,36 @@
+# ==============================================
+# YOCO PAYMENT GATEWAY CONFIGURATION
+# ==============================================
+# For development/testing, you can use 'demo' as values
+# For production, get real keys from https://developer.yoco.com/
+
+# DEMO MODE (for testing without real API keys)
+YOCO_SECRET_KEY=demo
+YOCO_PUBLIC_KEY=demo
+YOCO_WEBHOOK_SECRET=demo_webhook_secret
+
+# PRODUCTION MODE (replace with your actual keys)
+# YOCO_SECRET_KEY=sk_live_your_actual_secret_key_here
+# YOCO_PUBLIC_KEY=pk_live_your_actual_public_key_here
+# YOCO_WEBHOOK_SECRET=your_webhook_secret_from_yoco_dashboard
+
+# TEST MODE (for testing with real Yoco test environment)
+# YOCO_SECRET_KEY=sk_test_your_test_secret_key_here
+# YOCO_PUBLIC_KEY=pk_test_your_test_public_key_here
+# YOCO_WEBHOOK_SECRET=your_test_webhook_secret
+
+# Optional - Defaults are provided
+# YOCO_BASE_URL=https://payments.yoco.com
+# YOCO_RETURN_URL=https://globalconference.co.za/payment/callback
+# YOCO_CANCEL_URL=https://globalconference.co.za/payment/cancelled
+
+# ==============================================
+# INSTRUCTIONS
+# ==============================================
+# 1. Copy these lines to your .env file
+# 2. Start with demo mode for initial testing
+# 3. Get test keys from Yoco for integration testing
+# 4. Use live keys only when deploying to production
+# 5. Never commit API keys to version control
+#
+# See QUICK_SETUP_YOCO.md for detailed setup instructions

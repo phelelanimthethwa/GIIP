@@ -48,16 +48,16 @@ class Config:
     # Google Maps configuration
     GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY')
     
-    # iKhokha Payment Gateway Configuration
-    IKHOKHA_APP_ID = os.environ.get('IKHOKHA_APP_ID')
-    IKHOKHA_SECRET_KEY = os.environ.get('IKHOKHA_SECRET_KEY')
-    IKHOKHA_BASE_URL = os.environ.get('IKHOKHA_BASE_URL', 'https://api.ikhokha.com/v2')
-    IKHOKHA_WEBHOOK_SECRET = os.environ.get('IKHOKHA_WEBHOOK_SECRET')
-    IKHOKHA_RETURN_URL = os.environ.get('IKHOKHA_RETURN_URL', 'https://globalconference.co.za/payment/callback')
-    IKHOKHA_CANCEL_URL = os.environ.get('IKHOKHA_CANCEL_URL', 'https://globalconference.co.za/payment/cancelled')
+    # Yoco Payment Gateway Configuration
+    YOCO_SECRET_KEY = os.environ.get('YOCO_SECRET_KEY')
+    YOCO_PUBLIC_KEY = os.environ.get('YOCO_PUBLIC_KEY')
+    YOCO_BASE_URL = os.environ.get('YOCO_BASE_URL', 'https://payments.yoco.com')
+    YOCO_WEBHOOK_SECRET = os.environ.get('YOCO_WEBHOOK_SECRET')
+    YOCO_RETURN_URL = os.environ.get('YOCO_RETURN_URL', 'https://globalconference.co.za/payment/callback')
+    YOCO_CANCEL_URL = os.environ.get('YOCO_CANCEL_URL', 'https://globalconference.co.za/payment/cancelled')
 
     # TinyMCE configuration
     TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY')
 
     # Session configuration
-    PERMANENT_SESSION_LIFETIME = timedelta(minutes=60) 
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=60)

@@ -1668,10 +1668,29 @@ function proceedToPayment() {
             },
             body: JSON.stringify(registrationData)
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if we got redirected to login (302/401)
+            if (response.redirected || response.status === 401 || response.status === 302) {
+                window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                return null;
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Please log in to proceed with payment');
+            }
+            if (!response.ok) {
+                throw new Error('Payment service error. Please try again.');
+            }
+            return response.json();
+        })
         .then(data => {
+            // Handle login redirect case
+            if (data === null) {
+                return;  // User being redirected to login
+            }
+
             if (data.success) {
-                // Redirect to iKhokha payment page
+                // Redirect to Yoco payment page
                 window.location.href = data.payment_url;
             } else {
                 throw new Error(data.error || 'Payment initialization failed');
@@ -1756,3 +1775,5 @@ function clearFileUpload() {
 }
 </script>
 {% endblock %}
+
+
