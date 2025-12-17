@@ -249,6 +249,145 @@ class YocoPaymentService:
                 'error': 'Unable to verify payment status'
             }
     
+    def get_payments_list(self, limit: int = 100, status_filter: list = None, 
+                          created_from: str = None, created_to: str = None) -> Dict[str, Any]:
+        """
+        Get list of payments from Yoco API for revenue tracking
+        
+        Args:
+            limit: Maximum number of payments to return (1-100)
+            status_filter: List of statuses to filter (approved, cancelled, failed, pending)
+            created_from: Min payment created date (ISO 8601 format)
+            created_to: Max payment created date (ISO 8601 format)
+            
+        Returns:
+            Dictionary containing payments list and summary
+        """
+        if not self.is_configured:
+            return {
+                'success': False,
+                'error': 'Yoco payment service is not configured',
+                'payments': [],
+                'summary': {'total_revenue': 0, 'total_count': 0}
+            }
+        
+        try:
+            # Yoco API endpoint for listing payments
+            payments_url = "https://api.yoco.com/v1/payments/"
+            
+            headers = {
+                "Authorization": f"Bearer {self.secret_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Build query parameters
+            params = {
+                'limit': min(limit, 100)
+            }
+            
+            if status_filter:
+                params['status'] = status_filter
+            if created_from:
+                params['created_at__gte'] = created_from
+            if created_to:
+                params['created_at__lte'] = created_to
+            
+            logger.info(f"Fetching payments list from Yoco API")
+            
+            all_payments = []
+            next_cursor = None
+            
+            # Paginate through all results
+            while True:
+                if next_cursor:
+                    params['cursor'] = next_cursor
+                
+                response = requests.get(payments_url, headers=headers, params=params, timeout=30)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    payments_data = result.get('data', [])
+                    all_payments.extend(payments_data)
+                    
+                    next_cursor = result.get('next_cursor')
+                    if not next_cursor or len(all_payments) >= limit:
+                        break
+                elif response.status_code in [401, 403]:
+                    logger.warning("Yoco API authentication failed for payments list")
+                    return {
+                        'success': False,
+                        'error': 'Authentication failed - check API credentials',
+                        'payments': [],
+                        'summary': {'total_revenue': 0, 'total_count': 0}
+                    }
+                else:
+                    logger.error(f"Failed to fetch payments: {response.status_code} - {response.text}")
+                    return {
+                        'success': False,
+                        'error': f'API Error: {response.status_code}',
+                        'payments': [],
+                        'summary': {'total_revenue': 0, 'total_count': 0}
+                    }
+            
+            # Process and summarize payments
+            total_revenue = 0
+            approved_count = 0
+            pending_count = 0
+            
+            processed_payments = []
+            for payment in all_payments:
+                status = payment.get('status', 'pending')
+                total_amount = payment.get('total_amount', {})
+                amount = total_amount.get('amount', 0) / 100  # Convert from cents
+                
+                if status == 'approved':
+                    total_revenue += amount
+                    approved_count += 1
+                elif status == 'pending':
+                    pending_count += 1
+                
+                processed_payments.append({
+                    'id': payment.get('id'),
+                    'amount': amount,
+                    'currency': total_amount.get('currency', 'ZAR'),
+                    'status': status,
+                    'created_at': payment.get('created_at'),
+                    'updated_at': payment.get('updated_at'),
+                    'payment_method': payment.get('payment_method'),
+                    'receipt_number': payment.get('receipt_number'),
+                    'display_name': payment.get('display_name')
+                })
+            
+            logger.info(f"Retrieved {len(processed_payments)} payments, total revenue: R{total_revenue}")
+            
+            return {
+                'success': True,
+                'payments': processed_payments,
+                'summary': {
+                    'total_revenue': total_revenue,
+                    'total_count': len(processed_payments),
+                    'approved_count': approved_count,
+                    'pending_count': pending_count
+                }
+            }
+            
+        except requests.RequestException as e:
+            logger.error(f"Yoco API request failed: {str(e)}")
+            return {
+                'success': False,
+                'error': 'Payment service temporarily unavailable',
+                'payments': [],
+                'summary': {'total_revenue': 0, 'total_count': 0}
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error fetching payments: {str(e)}")
+            return {
+                'success': False,
+                'error': 'An unexpected error occurred',
+                'payments': [],
+                'summary': {'total_revenue': 0, 'total_count': 0}
+            }
+
     def verify_webhook_signature(self, payload: str, signature: str) -> bool:
         """
         Verify webhook signature from Yoco
@@ -399,4 +538,28 @@ def process_payment_webhook(payload: str, signature: str) -> Dict[str, Any]:
             'success': False,
             'error': 'Invalid webhook payload'
         }
+
+
+def get_yoco_payments(limit: int = 100, status_filter: list = None,
+                      created_from: str = None, created_to: str = None) -> Dict[str, Any]:
+    """
+    Get list of Yoco payments for revenue dashboard
+    
+    Args:
+        limit: Maximum number of payments to return
+        status_filter: List of statuses to filter
+        created_from: Min payment created date (ISO 8601)
+        created_to: Max payment created date (ISO 8601)
+        
+    Returns:
+        Payments list and summary
+    """
+    if not payment_service:
+        return {
+            'success': False,
+            'error': 'Payment service not available',
+            'payments': [],
+            'summary': {'total_revenue': 0, 'total_count': 0}
+        }
+    return payment_service.get_payments_list(limit, status_filter, created_from, created_to)
 

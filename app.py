@@ -24,7 +24,7 @@ from utils import register_filters, get_conference_by_code
 import io
 import mimetypes
 import uuid
-from services.yoco_service import create_payment_session, verify_payment, process_payment_webhook
+from services.yoco_service import create_payment_session, verify_payment, process_payment_webhook, get_yoco_payments
 
 try:
     from dotenv import load_dotenv
@@ -1748,9 +1748,63 @@ def admin_dashboard():
                 pending_registrations += sum(1 for reg in conf_registrations.values() 
                                            if reg and reg.get('payment_status') == 'pending')
         
+        # Also get registrations from the main registrations node
+        main_registrations_ref = db.reference('registrations')
+        main_registrations = main_registrations_ref.get() or {}
+        
+        # Calculate revenue from all registrations (both conference-specific and main)
+        total_revenue = 0
+        pending_payments = 0
+        received_payments = 0
+        
+        # Process conference registrations
+        for reg_id, reg in all_registrations.items():
+            if reg:
+                amount = float(reg.get('total_amount', 0) or 0)
+                payment_status = reg.get('payment_status', 'pending').lower()
+                if payment_status == 'approved':
+                    received_payments += amount
+                elif payment_status == 'pending':
+                    pending_payments += amount
+                total_revenue += amount
+        
+        # Process main registrations
+        for reg_id, reg in main_registrations.items():
+            if reg:
+                amount = float(reg.get('total_amount', 0) or 0)
+                payment_status = reg.get('payment_status', 'pending').lower()
+                if payment_status == 'approved':
+                    received_payments += amount
+                elif payment_status == 'pending':
+                    pending_payments += amount
+                # Only add to total if not already counted in conference registrations
+                if reg_id not in all_registrations:
+                    total_revenue += amount
+                    total_registrations += 1
+                    if payment_status == 'pending':
+                        pending_registrations += 1
+        
+        # Try to get Yoco payments for additional revenue data
+        yoco_revenue = {'total_revenue': 0, 'pending': 0, 'received': 0}
+        try:
+            yoco_result = get_yoco_payments(limit=100, status_filter=['approved', 'pending'])
+            if yoco_result.get('success'):
+                yoco_summary = yoco_result.get('summary', {})
+                yoco_revenue = {
+                    'total_revenue': yoco_summary.get('total_revenue', 0),
+                    'approved_count': yoco_summary.get('approved_count', 0),
+                    'pending_count': yoco_summary.get('pending_count', 0)
+                }
+        except Exception as yoco_err:
+            print(f"Note: Could not fetch Yoco payments: {yoco_err}")
+        
         # Get all submissions
         submissions_ref = db.reference('submissions')
         submissions = submissions_ref.get() or {}
+        
+        # Calculate accepted submissions
+        accepted_submissions = sum(1 for sub in submissions.values() 
+                                  if sub and sub.get('status', '').lower() in ['accepted', 'approved']) if submissions else 0
         
         # Calculate stats
         stats = {
@@ -1762,19 +1816,31 @@ def admin_dashboard():
             'total_submissions': len(submissions) if submissions else 0,
             'pending_registrations': pending_registrations,
             'pending_submissions': sum(1 for sub in submissions.values() if sub and sub.get('status') == 'pending') if submissions else 0,
+            'accepted_submissions': accepted_submissions,
             'total_admins': sum(1 for user in users.values() if user and user.get('is_admin')),
-            'total_regular_users': sum(1 for user in users.values() if user and not user.get('is_admin'))
+            'total_regular_users': sum(1 for user in users.values() if user and not user.get('is_admin')),
+            # Revenue stats
+            'total_revenue': round(total_revenue, 2),
+            'pending_payments': round(pending_payments, 2),
+            'received_payments': round(received_payments, 2),
+            # Yoco-specific stats
+            'yoco_revenue': round(yoco_revenue.get('total_revenue', 0), 2),
+            'yoco_approved_count': yoco_revenue.get('approved_count', 0),
+            'yoco_pending_count': yoco_revenue.get('pending_count', 0)
         }
         
         # Get recent registrations and users (last 5)
         recent_registrations = {}
         recent_users = {}
         
-        if all_registrations:
+        # Combine all registrations for recent list
+        combined_registrations = {**all_registrations, **main_registrations}
+        
+        if combined_registrations:
             # Sort registrations by created_at date
             sorted_registrations = sorted(
-                [(k, v) for k, v in all_registrations.items() if v and v.get('created_at')],
-                key=lambda x: x[1].get('created_at', ''),
+                [(k, v) for k, v in combined_registrations.items() if v and (v.get('created_at') or v.get('submission_date'))],
+                key=lambda x: x[1].get('created_at', x[1].get('submission_date', '')),
                 reverse=True
             )
             # Get first 5 items
@@ -1809,8 +1875,15 @@ def admin_dashboard():
                                 'total_submissions': 0,
                                 'pending_registrations': 0,
                                 'pending_submissions': 0,
+                                'accepted_submissions': 0,
                                 'total_admins': 0,
-                                'total_regular_users': 0
+                                'total_regular_users': 0,
+                                'total_revenue': 0,
+                                'pending_payments': 0,
+                                'received_payments': 0,
+                                'yoco_revenue': 0,
+                                'yoco_approved_count': 0,
+                                'yoco_pending_count': 0
                              },
                              conferences={},
                              site_design=get_site_design())

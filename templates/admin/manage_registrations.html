@@ -1,13 +1,63 @@
 {% extends "admin/base_admin.html" %}
 
 {% block content %}
+<style>
+    .actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .actions .form-control-sm,
+    .actions .form-select-sm {
+        height: 38px;
+    }
+    .actions label {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    #filterSummary .alert {
+        font-size: 0.875rem;
+    }
+    @media (max-width: 1200px) {
+        .actions {
+            justify-content: flex-start;
+        }
+        .d-flex.justify-content-between {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+    }
+</style>
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Manage Registrations</h2>
-        <div class="actions">
+        <div class="actions d-flex align-items-center flex-wrap gap-2">
+            <!-- Date Range Filters -->
+            <div class="d-flex align-items-center gap-2">
+                <label for="startDate" class="form-label mb-0 text-nowrap">From:</label>
+                <input type="date" class="form-control form-control-sm" id="startDate" onchange="filterRegistrations()">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label for="endDate" class="form-label mb-0 text-nowrap">To:</label>
+                <input type="date" class="form-control form-control-sm" id="endDate" onchange="filterRegistrations()">
+            </div>
+            <!-- Quick Date Presets -->
+            <select class="form-select form-select-sm" id="datePreset" onchange="applyDatePreset()" style="width: auto;">
+                <option value="">Date Preset</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="thisYear">This Year</option>
+                <option value="all">All Time</option>
+            </select>
             <!-- Conference Filter -->
-            <div class="me-3">
-                <select class="form-select" id="conferenceFilter" onchange="filterRegistrations()">
+            <div>
+                <select class="form-select form-select-sm" id="conferenceFilter" onchange="filterRegistrations()">
                     <option value="">All Conferences</option>
                     {% for conference_id, conference in conferences.items() %}
                     <option value="{{ conference_id }}">{{ conference.basic_info.name }} ({{ conference.basic_info.year }})</option>
@@ -15,9 +65,27 @@
                     <option value="legacy">Legacy Conferences</option>
                 </select>
             </div>
-            <button class="btn btn-primary" onclick="exportRegistrations()">
-                <i class="fas fa-download"></i> Export Data
+            <!-- Status Filter -->
+            <select class="form-select form-select-sm" id="statusFilter" onchange="filterRegistrations()" style="width: auto;">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" onclick="clearFilters()">
+                <i class="fas fa-times"></i> Clear
             </button>
+            <button class="btn btn-sm btn-primary" onclick="exportRegistrations()">
+                <i class="fas fa-download"></i> Export
+            </button>
+        </div>
+    </div>
+    
+    <!-- Filter Summary -->
+    <div class="mb-3" id="filterSummary" style="display: none;">
+        <div class="alert alert-info py-2 mb-0 d-flex justify-content-between align-items-center">
+            <span id="filterSummaryText"></span>
+            <span id="registrationCount" class="badge bg-primary"></span>
         </div>
     </div>
     
@@ -44,7 +112,9 @@
                     </thead>
                     <tbody>
                         {% for registration in registrations %}
-                        <tr>
+                        <tr data-date="{{ registration.submission_date }}" 
+                            data-conference-id="{{ registration.conference_info.id if registration.conference_info else '' }}"
+                            data-status="{{ registration.payment_status | lower }}">
                             <td>{{ registration.submission_date | datetime }}</td>
                             <td>{{ registration.full_name }}</td>
                             <td>{{ registration.email }}</td>
@@ -230,33 +300,194 @@
 {% block scripts %}
 {{ super() }}
 <script>
-function filterRegistrations() {
-    const filterValue = document.getElementById('conferenceFilter').value;
-    const tableRows = document.querySelectorAll('tbody tr');
-
-    tableRows.forEach(row => {
-        if (filterValue === '') {
-            row.style.display = 'table-row';
-        } else if (filterValue === 'legacy') {
-            // Show only legacy registrations
-            const conferenceInfo = row.querySelector('.conference-info-cell .text-muted');
-            if (conferenceInfo && conferenceInfo.textContent === 'No conference association') {
-                row.style.display = 'table-row';
+// Parse date from various formats
+function parseDate(dateStr) {
+    if (!dateStr) return null;
+    
+    // Try ISO format first (2024-12-17T10:30:00)
+    let date = new Date(dateStr);
+    if (!isNaN(date.getTime())) return date;
+    
+    // Try other common formats
+    const formats = [
+        /(\d{4})-(\d{2})-(\d{2})/,  // YYYY-MM-DD
+        /(\d{2})\/(\d{2})\/(\d{4})/  // DD/MM/YYYY
+    ];
+    
+    for (const format of formats) {
+        const match = dateStr.match(format);
+        if (match) {
+            if (format === formats[0]) {
+                return new Date(match[1], match[2] - 1, match[3]);
             } else {
-                row.style.display = 'none';
-            }
-        } else {
-            // Show registrations for specific conference
-            const conferenceCodeBadge = row.querySelector('.conference-code-badge');
-            if (conferenceCodeBadge) {
-                // This is a complex filter - we'll need to implement this based on conference ID
-                // For now, we'll show all rows with conference info
-                row.style.display = 'table-row';
-            } else {
-                row.style.display = 'none';
+                return new Date(match[3], match[2] - 1, match[1]);
             }
         }
+    }
+    
+    return null;
+}
+
+// Apply date preset selection
+function applyDatePreset() {
+    const preset = document.getElementById('datePreset').value;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let startDate = null;
+    let endDate = new Date(today);
+    endDate.setHours(23, 59, 59, 999);
+    
+    switch (preset) {
+        case 'today':
+            startDate = new Date(today);
+            break;
+        case 'yesterday':
+            startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - 1);
+            endDate = new Date(startDate);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+        case 'last7days':
+            startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - 7);
+            break;
+        case 'last30days':
+            startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - 30);
+            break;
+        case 'thisMonth':
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+        case 'lastMonth':
+            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+        case 'thisYear':
+            startDate = new Date(today.getFullYear(), 0, 1);
+            break;
+        case 'all':
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            filterRegistrations();
+            return;
+        default:
+            return;
+    }
+    
+    // Format dates for input fields
+    if (startDate) {
+        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    }
+    if (endDate) {
+        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    }
+    
+    filterRegistrations();
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    document.getElementById('datePreset').value = '';
+    document.getElementById('conferenceFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    filterRegistrations();
+}
+
+// Main filter function
+function filterRegistrations() {
+    const conferenceFilter = document.getElementById('conferenceFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const startDateStr = document.getElementById('startDate').value;
+    const endDateStr = document.getElementById('endDate').value;
+    
+    const startDate = startDateStr ? new Date(startDateStr) : null;
+    const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null;
+    
+    const tableRows = document.querySelectorAll('tbody tr[data-date]');
+    let visibleCount = 0;
+    let totalCount = tableRows.length;
+    
+    tableRows.forEach(row => {
+        let showRow = true;
+        
+        // Date filter
+        if (startDate || endDate) {
+            const rowDateStr = row.getAttribute('data-date');
+            const rowDate = parseDate(rowDateStr);
+            
+            if (rowDate) {
+                if (startDate && rowDate < startDate) {
+                    showRow = false;
+                }
+                if (endDate && rowDate > endDate) {
+                    showRow = false;
+                }
+            } else if (startDate || endDate) {
+                // If we can't parse the date but filters are active, hide the row
+                showRow = false;
+            }
+        }
+        
+        // Conference filter
+        if (showRow && conferenceFilter) {
+            const rowConferenceId = row.getAttribute('data-conference-id');
+            if (conferenceFilter === 'legacy') {
+                if (rowConferenceId && rowConferenceId !== '') {
+                    showRow = false;
+                }
+            } else if (rowConferenceId !== conferenceFilter) {
+                showRow = false;
+            }
+        }
+        
+        // Status filter
+        if (showRow && statusFilter) {
+            const rowStatus = row.getAttribute('data-status');
+            if (rowStatus !== statusFilter) {
+                showRow = false;
+            }
+        }
+        
+        row.style.display = showRow ? 'table-row' : 'none';
+        if (showRow) visibleCount++;
     });
+    
+    // Update filter summary
+    const filterSummary = document.getElementById('filterSummary');
+    const filterSummaryText = document.getElementById('filterSummaryText');
+    const registrationCount = document.getElementById('registrationCount');
+    
+    const hasFilters = conferenceFilter || statusFilter || startDateStr || endDateStr;
+    
+    if (hasFilters) {
+        let summaryParts = [];
+        if (startDateStr && endDateStr) {
+            summaryParts.push(`Date: ${startDateStr} to ${endDateStr}`);
+        } else if (startDateStr) {
+            summaryParts.push(`From: ${startDateStr}`);
+        } else if (endDateStr) {
+            summaryParts.push(`Until: ${endDateStr}`);
+        }
+        if (conferenceFilter) {
+            const confSelect = document.getElementById('conferenceFilter');
+            summaryParts.push(`Conference: ${confSelect.options[confSelect.selectedIndex].text}`);
+        }
+        if (statusFilter) {
+            summaryParts.push(`Status: ${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}`);
+        }
+        
+        filterSummaryText.textContent = 'Filters: ' + summaryParts.join(' | ');
+        registrationCount.textContent = `${visibleCount} of ${totalCount} registrations`;
+        filterSummary.style.display = 'block';
+    } else {
+        filterSummary.style.display = 'none';
+    }
 }
 
 function exportRegistrations() {

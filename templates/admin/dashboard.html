@@ -49,8 +49,8 @@
                 <h3>Submissions</h3>
                 <p class="stat-number">{{ stats.total_submissions }}</p>
                 <div class="stat-details">
-                    <span><i class="fas fa-clock"></i> {{ stats.pending_submissions }} Pending</span>
-                    <span><i class="fas fa-check-circle"></i> {{ stats.accepted_submissions }} Accepted</span>
+                    <span><i class="fas fa-clock"></i> {{ stats.pending_submissions|default(0) }} Pending</span>
+                    <span><i class="fas fa-check-circle"></i> {{ stats.accepted_submissions|default(0) }} Accepted</span>
                 </div>
             </div>
         </div>
@@ -61,14 +61,47 @@
             </div>
             <div class="stat-content">
                 <h3>Revenue</h3>
-                <p class="stat-number">R {{ stats.total_revenue }}</p>
+                <p class="stat-number">R {{ "%.2f"|format(stats.total_revenue|default(0)) }}</p>
                 <div class="stat-details">
-                    <span><i class="fas fa-clock"></i> R {{ stats.pending_payments }} Pending</span>
-                    <span><i class="fas fa-check-circle"></i> R {{ stats.received_payments }} Received</span>
+                    <span><i class="fas fa-clock"></i> R {{ "%.2f"|format(stats.pending_payments|default(0)) }} Pending</span>
+                    <span><i class="fas fa-check-circle"></i> R {{ "%.2f"|format(stats.received_payments|default(0)) }} Received</span>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Yoco Payment Stats (if available) -->
+    {% if stats.yoco_revenue and stats.yoco_revenue > 0 %}
+    <div class="yoco-stats-section mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Yoco Online Payments</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="stat-item text-center">
+                            <h6>Yoco Revenue</h6>
+                            <p class="h4 text-success">R {{ "%.2f"|format(stats.yoco_revenue|default(0)) }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-item text-center">
+                            <h6>Approved Payments</h6>
+                            <p class="h4 text-primary">{{ stats.yoco_approved_count|default(0) }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-item text-center">
+                            <h6>Pending Payments</h6>
+                            <p class="h4 text-warning">{{ stats.yoco_pending_count|default(0) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Quick Actions -->
     <div class="dashboard-grid">
