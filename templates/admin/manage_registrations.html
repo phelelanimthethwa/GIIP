@@ -118,12 +118,12 @@
                                 </div>
                             </td>
                             <td>
-                                {% if registration.payment_method == 'ikhokha' %}
-                                    {# iKhokha payment details #}
+                                {% if registration.payment_method in ['yoco', 'ikhokha'] %}
+                                    {# Online payment (Yoco or iKhokha) details #}
                                     <div class="payment-transaction">
                                         <div class="d-flex align-items-center mb-1">
                                             <i class="fas fa-credit-card text-success me-2"></i>
-                                            <strong>Online Payment</strong>
+                                            <strong>Online Payment ({{ registration.payment_method|upper }})</strong>
                                         </div>
                                         {% if registration.transaction_reference %}
                                             <div class="payment-metadata">
