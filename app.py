@@ -54,7 +54,17 @@ if os.environ.get('FLASK_ENV') == 'production':
         SESSION_COOKIE_SAMESITE='Lax'
     )
 else:
-    app.config['SECRET_KEY'] = 'development-key'
+    # Development environment configuration
+    app.config.update(
+        SECRET_KEY='development-key-please-change-in-production',
+        SESSION_COOKIE_SECURE=False,  # Allow cookies over HTTP in development
+        REMEMBER_COOKIE_SECURE=False,
+        SESSION_COOKIE_HTTPONLY=True,
+        REMEMBER_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
+        SESSION_TYPE='filesystem',  # Use filesystem-based sessions
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=2)  # Session lasts 2 hours
+    )
 
 # Register blueprints
 # Temporarily commented out to use app.py /registration route instead of blueprint route
@@ -1129,7 +1139,11 @@ def login():
                 
                 # Create User object and login
                 user_obj = User(user.uid, email, display_name, is_admin)
-                login_user(user_obj)
+                
+                # Set session to permanent for better session persistence
+                session.permanent = True
+                
+                login_user(user_obj, remember=True)
                 
                 flash('Logged in successfully!', 'success')
                 
