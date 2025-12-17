@@ -1470,12 +1470,16 @@ def create_payment():
 def payment_callback():
     """Handle payment callback from Yoco"""
     try:
-        # Get payment status from query parameters
-        status = request.args.get('status')
-        payment_id = request.args.get('payment_id')
-        transaction_ref = request.args.get('reference')
+        # Get all query parameters for debugging
+        all_params = dict(request.args)
+        print(f"Payment callback received with parameters: {all_params}")
         
-        print(f"Payment callback received - Status: {status}, Payment ID: {payment_id}, Ref: {transaction_ref}")
+        # Get payment parameters - Yoco may send different parameter names
+        status = request.args.get('status')
+        payment_id = request.args.get('payment_id') or request.args.get('id') or request.args.get('checkoutId')
+        transaction_ref = request.args.get('reference') or request.args.get('metadata.reference')
+        
+        print(f"Parsed - Status: {status}, Payment ID: {payment_id}, Ref: {transaction_ref}")
         
         # Check if we have pending registration data
         pending_registration = session.get('pending_registration')
@@ -1483,9 +1487,22 @@ def payment_callback():
             flash('Payment session expired. Please try again.', 'error')
             return redirect(url_for('registration'))
         
-        if status == 'success' and payment_id:
+        # If we have a payment_id but no status, assume success and verify
+        # This handles the case where Yoco redirects to successUrl without status parameter
+        should_verify = False
+        if payment_id:
+            should_verify = True
+        elif status == 'success':
+            # Demo mode or explicit success
+            payment_id = payment_id or pending_registration.get('payment_data', {}).get('checkout_id')
+            should_verify = True
+        
+        if should_verify and payment_id:
+            print(f"Verifying payment with ID: {payment_id}")
             # Verify payment with Yoco
             verification_result = verify_payment(payment_id)
+            
+            print(f"Verification result: {verification_result}")
             
             if verification_result['success'] and verification_result.get('status') == 'paid':
                 # Payment successful - create registration
@@ -1506,7 +1523,7 @@ def payment_callback():
                     'payment_status': 'paid',
                     'payment_method': 'yoco',
                     'payment_id': payment_id,
-                    'transaction_reference': transaction_ref,
+                    'transaction_reference': transaction_ref or verification_result.get('reference'),
                     'payment_date': datetime.now().isoformat(),
                     'submission_date': datetime.now().isoformat(),
                     'created_at': datetime.now().isoformat(),
@@ -1529,14 +1546,19 @@ def payment_callback():
                 flash('Registration completed successfully! Payment has been processed.', 'success')
                 return redirect(url_for('dashboard'))
             else:
-                flash('Payment verification failed. Please contact support.', 'error')
+                error_msg = verification_result.get('error', 'Payment verification failed')
+                print(f"Payment verification failed: {error_msg}")
+                flash(f'Payment verification failed: {error_msg}. Please contact support.', 'error')
         else:
+            print("No payment ID found or status indicates failure")
             flash('Payment was not successful. Please try again.', 'error')
         
         return redirect(url_for('registration'))
         
     except Exception as e:
         print(f"Payment callback error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash('An error occurred processing your payment. Please contact support.', 'error')
         return redirect(url_for('registration'))
 

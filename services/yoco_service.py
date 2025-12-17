@@ -219,14 +219,21 @@ class YocoPaymentService:
                 status = result.get('status', 'pending')
                 metadata = result.get('metadata', {})
                 
+                # Yoco can return different status values: complete, successful, paid, pending
+                # Map them all to our standard 'paid' status
+                is_paid = status.lower() in ['complete', 'successful', 'paid', 'succeeded']
+                
+                logger.info(f"Payment status from Yoco: {status} -> {'paid' if is_paid else status}")
+                
                 return {
                     'success': True,
-                    'status': 'paid' if status == 'complete' else status,
+                    'status': 'paid' if is_paid else status,
                     'amount': result.get('amount', 0) / 100,  # Convert from cents
                     'reference': metadata.get('reference', checkout_id),
                     'payment_date': result.get('createdDate', datetime.now().isoformat()),
                     'transaction_id': checkout_id,
-                    'metadata': metadata
+                    'metadata': metadata,
+                    'raw_status': status  # Keep original status for debugging
                 }
             else:
                 logger.error(f"Failed to verify payment: {response.status_code} - {response.text}")
