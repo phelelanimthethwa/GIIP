@@ -104,7 +104,11 @@ class YocoPaymentService:
                 "Authorization": f"Bearer {self.secret_key}"
             }
             
-            print(f" YOCO: Making payment request for R{registration_data['total_amount']}")`r`n            logger.info(f"Making Yoco payment request for amount: R{registration_data['total_amount']} ({amount_in_cents} cents)")
+            print(f"YOCO: Making payment request for R{registration_data['total_amount']}")
+            logger.info(
+                f"Making Yoco payment request for amount: "
+                f"R{registration_data['total_amount']} ({amount_in_cents} cents)"
+            )
             logger.debug(f"Request URL: {self.api_endpoint}")
             logger.debug(f"Request Body: {json.dumps(request_data, indent=2)}")
             
@@ -116,7 +120,8 @@ class YocoPaymentService:
                 timeout=30
             )
             
-            print(f" YOCO API Response: {response.status_code}")`r`n            logger.info(f"Yoco API Response: {response.status_code}")
+            print(f"YOCO API Response: {response.status_code}")
+            logger.info(f"Yoco API Response: {response.status_code}")
             logger.debug(f"Response Text: {response.text[:500]}...")
             
             if response.status_code in [200, 201]:
@@ -139,11 +144,13 @@ class YocoPaymentService:
                 except ValueError:
                     error_message = f'API Error {response.status_code}: {response.text[:100]}'
                 
-                print(f" YOCO API Error {response.status_code}: {error_message}")`r`n                logger.error(f"Yoco API Error {response.status_code}: {error_message}")
+                print(f"YOCO API Error {response.status_code}: {error_message}")
+                logger.error(f"Yoco API Error {response.status_code}: {error_message}")
                 
                 # If we get 401/403, fall back to demo mode
                 if response.status_code in [401, 403]:
-                    print(" YOCO: Authentication failed, falling back to demo mode")`r`n                    logger.warning("Yoco API authentication failed, falling back to demo mode")
+                    print("YOCO: Authentication failed, falling back to demo mode")
+                    logger.warning("Yoco API authentication failed, falling back to demo mode")
                     transaction_ref = f"DEMO_REG_{registration_data.get('user_id', 'ANON')}_{int(datetime.now().timestamp())}"
                     return {
                         'success': True,
