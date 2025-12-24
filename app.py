@@ -7232,7 +7232,7 @@ def get_all_conferences():
 
 @app.route('/conferences')
 def conference_discover():
-    """Conference discovery page - list all available conferences"""
+    """Conference discovery page - list all available conferences from Firebase"""
     try:
         conferences = get_all_conferences()
         
@@ -7266,119 +7266,7 @@ def conference_discover():
             except Exception:
                 return None
 
-        # 1) Pull future/upcoming conferences from admin About Content
-        try:
-            about_content = db.reference('about_content').get() or {}
-            future_section = (about_content.get('future_conferences') or {})
-            about_confs_only = []
-            if future_section.get('section_enabled') and isinstance(future_section.get('conferences'), list):
-                month_map = {
-                    'jan': 1, 'january': 1,
-                    'feb': 2, 'february': 2,
-                    'mar': 3, 'march': 3,
-                    'apr': 4, 'april': 4,
-                    'may': 5,
-                    'jun': 6, 'june': 6,
-                    'jul': 7, 'july': 7,
-                    'aug': 8, 'august': 8,
-                    'sep': 9, 'sept': 9, 'september': 9,
-                    'oct': 10, 'october': 10,
-                    'nov': 11, 'november': 11,
-                    'dec': 12, 'december': 12,
-                }
-
-                for idx, conf in enumerate(future_section['conferences']):
-                    if not conf or not conf.get('enabled'):
-                        continue
-                    year = str(conf.get('year') or '').strip()
-                    title = (conf.get('title') or '').strip()
-                    dates = conf.get('dates') or []
-                    # Build start/end from first/last provided date entry
-                    def _build_date(d_entry):
-                        try:
-                            day_raw = d_entry.get('date')
-                            month_raw = d_entry.get('month')
-                            # Coerce types
-                            day = str(day_raw).strip() if day_raw is not None else ''
-                            month_txt = str(month_raw).strip().lower() if month_raw is not None else ''
-                            # Support numeric months (e.g., '9' or '09' or 9)
-                            month_num = None
-                            if month_txt.isdigit():
-                                try:
-                                    month_num = int(month_txt)
-                                except Exception:
-                                    month_num = None
-                            if month_num is None:
-                                month_num = month_map.get(month_txt)
-                            if not (year and day and month_num):
-                                return None
-                            # zero-pad month/day
-                            y = int(year)
-                            m = int(month_num)
-                            d = int(day)
-                            iso_str = f"{y:04d}-{m:02d}-{d:02d}"
-                            return _parse_date(iso_str)
-                        except Exception as e:
-                            print(f"_build_date parse error: {e} | entry={d_entry}")
-                            return None
-
-                    start_dt = _build_date(dates[0]) if dates else None
-                    end_dt = _build_date(dates[-1]) if dates else start_dt
-
-                    # Skip incomplete entries (avoid dummy placeholders)
-                    if not title or not year or not start_dt:
-                        continue
-
-                    # Create a synthetic ID for discover listing (stable-ish)
-                    conf_id = f"about_future_{year}_{idx}"
-                    # Build a friendly description from About Content fields
-                    platform = (conf.get('platform') or '').strip()
-                    desc_bits = []
-                    if platform:
-                        desc_bits.append(f"Platform: {platform}")
-                    if dates:
-                        human_dates = ", ".join([
-                            f"{d.get('date')}/{d.get('month')}" for d in dates if d
-                        ])
-                        if human_dates:
-                            desc_bits.append(f"Dates: {human_dates}")
-                    description = " | ".join(desc_bits)
-
-                    # Compute status from dates (SAST-aware)
-                    if start_dt and now < start_dt:
-                        status_val = 'upcoming'
-                    elif end_dt and now > end_dt:
-                        status_val = 'past'
-                    else:
-                        status_val = 'active'
-
-                    about_confs_only.append((conf_id, {
-                        'basic_info': {
-                            'name': title,
-                            'year': year,
-                            'description': description,
-                            'start_date': start_dt.isoformat() if start_dt else '',
-                            'end_date': end_dt.isoformat() if end_dt else '',
-                            'location': '',
-                            'timezone': 'Africa/Johannesburg',
-                            'website': '',
-                            'status': status_val
-                        },
-                        'settings': {
-                            # Never open registration if past
-                            'registration_enabled': False if status_val == 'past' else False,
-                            'paper_submission_enabled': False,
-                            'review_enabled': False
-                        }
-                    }))
-            # If About Content defines future conferences, prefer showing ONLY those
-            if about_confs_only:
-                normalized_conferences = {cid: data for cid, data in about_confs_only}
-                conferences = {}  # skip merging runtime conferences
-        except Exception as e:
-            print(f"Error reading about_content for future conferences: {e}")
-
-        # 2) Merge any explicit conferences from /conferences tree (admin-defined runtime conferences)
+        # Process conferences from Firebase /conferences tree (same source as admin panel)
         for conf_id, conf_data in (conferences or {}).items():
             if not conf_data:
                 continue
