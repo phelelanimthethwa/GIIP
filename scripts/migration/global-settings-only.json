@@ -1,8 +1,0 @@
-{
-  "system_configuration": {
-    "default_conference": "default-2025",
-    "multi_conference_enabled": true,
-    "migration_version": "1.0.0",
-    "created_at": 1735872000000
-  }
-} 
