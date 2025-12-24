@@ -4,190 +4,1202 @@
 
 {% block styles %}
 {{ super() }}
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-    .admin-section {
-        max-width: 1400px;
-        margin: 2rem auto;
-        padding: 2rem;
+    /* ===== Override Admin Base Styles ===== */
+    .admin-main {
+        background: #f8fafc !important;
+    }
+    
+    .admin-content {
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    .admin-content > .navbar {
+        display: none !important;
+    }
+    
+    /* Reset Bootstrap form styles */
+    .venue-modern input,
+    .venue-modern input.form-control,
+    .venue-modern input[type="text"],
+    .venue-modern input[type="email"],
+    .venue-modern input[type="tel"] {
+        background: var(--v-bg-tertiary) !important;
+        border: 2px solid var(--v-border) !important;
+        color: var(--v-text-primary) !important;
+        border-radius: 16px !important;
+        height: auto !important;
+        box-shadow: none !important;
+    }
+    
+    .venue-modern input:focus,
+    .venue-modern input.form-control:focus {
+        background: white !important;
+        border-color: var(--v-accent-primary) !important;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 4px 20px rgba(99, 102, 241, 0.15) !important;
+    }
+    
+    /* Reset any Bootstrap container padding */
+    .venue-modern .container,
+    .venue-modern .container-fluid {
+        padding: 0 !important;
+        max-width: none !important;
     }
 
-    .admin-form-container {
+    /* ===== Ultra Modern Light Theme ===== */
+    :root {
+        --v-bg-primary: #f8fafc;
+        --v-bg-secondary: #ffffff;
+        --v-bg-tertiary: #f1f5f9;
+        --v-bg-card: rgba(255, 255, 255, 0.95);
+        --v-bg-glass: rgba(255, 255, 255, 0.8);
+        --v-accent-primary: #6366f1;
+        --v-accent-secondary: #8b5cf6;
+        --v-accent-tertiary: #ec4899;
+        --v-accent-success: #22c55e;
+        --v-accent-warning: #f59e0b;
+        --v-text-primary: #1e293b;
+        --v-text-secondary: #475569;
+        --v-text-muted: #94a3b8;
+        --v-border: #e2e8f0;
+        --v-glow-cyan: 0 8px 30px rgba(99, 102, 241, 0.2);
+        --v-glow-purple: 0 8px 30px rgba(139, 92, 246, 0.2);
+        --v-gradient-main: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        --v-gradient-card: linear-gradient(145deg, rgba(255,255,255,1) 0%, rgba(248,250,252,1) 100%);
+    }
+
+    /* ===== Page Container ===== */
+    .venue-modern {
+        font-family: 'Outfit', sans-serif !important;
+        min-height: 100vh;
+        background: var(--v-bg-primary) !important;
+        padding: 2rem;
+        position: relative;
+        overflow-x: hidden;
+        margin: -1rem;
+    }
+
+    /* Animated Background */
+    .venue-modern::before {
+        content: '';
+        position: fixed;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: 
+            radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(236, 72, 153, 0.04) 0%, transparent 40%);
+        animation: bgFloat 20s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    @keyframes bgFloat {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        33% { transform: translate(2%, 2%) rotate(1deg); }
+        66% { transform: translate(-1%, 1%) rotate(-1deg); }
+    }
+
+    .venue-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ===== Hero Header ===== */
+    .venue-hero {
+        position: relative;
+        padding: 3rem !important;
+        margin-bottom: 2rem !important;
+        border-radius: 32px !important;
+        background: #1a1a1a !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: none !important;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .venue-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
         background: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        padding: 2rem;
     }
 
-    .form-section {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 3rem;
+    .venue-hero::after {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+        animation: heroGlow 8s ease-in-out infinite;
     }
 
-    .form-section h2 {
-        color: var(--primary-color);
-        font-size: 1.6rem;
-        margin-bottom: 2rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid var(--primary-color);
+    @keyframes heroGlow {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
     }
 
-    .form-group {
-        margin-bottom: 1.5rem;
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 2rem !important;
     }
 
-    .form-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
+    .hero-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 1.5rem !important;
     }
 
-    label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        display: block;
+    .hero-icon {
+        width: 80px !important;
+        height: 80px !important;
+        min-width: 80px !important;
+        background: white !important;
+        border-radius: 24px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+        animation: iconFloat 4s ease-in-out infinite;
     }
 
-    input, textarea {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 1rem;
+    @keyframes iconFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
     }
 
-    input:focus, textarea:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+    .hero-icon i {
+        font-size: 2rem !important;
+        color: #1a1a1a !important;
     }
 
-    .form-actions {
+    .hero-text h1 {
+        font-size: 2.25rem !important;
+        font-weight: 800 !important;
+        color: white !important;
+        margin: 0 0 0.5rem 0 !important;
+        letter-spacing: -1px;
+        background: none !important;
+        -webkit-background-clip: unset !important;
+        -webkit-text-fill-color: white !important;
+        background-clip: unset !important;
+    }
+
+    .hero-text p {
+        font-size: 1rem !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        margin: 0 !important;
+        font-weight: 400 !important;
+    }
+
+    .hero-action {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        padding: 1rem 1.75rem !important;
+        background: white !important;
+        border: none !important;
+        border-radius: 16px !important;
+        color: #1a1a1a !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-action::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: #f1f5f9;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+
+    .hero-action:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+        transform: translateY(-3px) !important;
+        color: #1a1a1a !important;
+        background: #f8fafc !important;
+    }
+
+    .hero-action:hover::before {
+        opacity: 0;
+    }
+
+    .hero-action i,
+    .hero-action span {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ===== Help Box ===== */
+    .v-help {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 0.875rem !important;
+        margin-top: 1rem !important;
+        padding: 1rem 1.25rem !important;
+        background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%) !important;
+        border-radius: 14px !important;
+        border: 1px solid #bfdbfe !important;
+    }
+
+    .v-help i {
+        color: #3b82f6 !important;
+        font-size: 1rem !important;
+        margin-top: 0.125rem !important;
+        flex-shrink: 0 !important;
+    }
+
+    .v-help span {
+        font-size: 0.875rem !important;
+        color: #1e40af !important;
+        line-height: 1.6 !important;
+    }
+
+    /* ===== Stats Bar ===== */
+    .venue-stats {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1rem !important;
+        margin-bottom: 2rem !important;
+    }
+
+    .stat-card {
+        background: white !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--v-border) !important;
+        border-radius: 20px !important;
+        padding: 1.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 1rem !important;
+        transition: all 0.4s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .stat-card:hover {
+        border-color: var(--v-accent-primary);
+        transform: translateY(-4px);
+    }
+
+    .stat-icon {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        border-radius: 14px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 1.25rem !important;
+    }
+
+    .stat-icon.cyan { background: rgba(0, 212, 255, 0.15) !important; color: var(--v-accent-primary) !important; }
+    .stat-icon.purple { background: rgba(124, 58, 237, 0.15) !important; color: var(--v-accent-secondary) !important; }
+    .stat-icon.pink { background: rgba(244, 114, 182, 0.15) !important; color: var(--v-accent-tertiary) !important; }
+
+    .stat-info h4 {
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        color: var(--v-text-muted) !important;
+        margin: 0 0 0.25rem 0 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-info p {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        color: var(--v-text-primary) !important;
+        margin: 0 !important;
+    }
+
+    /* ===== Form Card ===== */
+    .venue-form-card {
+        background: white !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--v-border) !important;
+        border-radius: 32px !important;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06) !important;
+    }
+
+    /* ===== Form Section ===== */
+    .v-section {
+        padding: 2.5rem !important;
+        border-bottom: 1px solid var(--v-border) !important;
+        position: relative;
+        transition: all 0.4s ease;
+        background: transparent !important;
+    }
+
+    .v-section:last-of-type {
+        border-bottom: none !important;
+    }
+
+    .v-section::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--v-gradient-main);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .v-section:hover::before {
+        opacity: 1;
+    }
+
+    .v-section:hover {
+        background: var(--v-bg-glass);
+    }
+
+    /* ===== Section Header ===== */
+    .v-section-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 1.25rem !important;
+        margin-bottom: 2rem !important;
+    }
+
+    .v-section-icon {
+        width: 56px !important;
+        height: 56px !important;
+        min-width: 56px !important;
+        border-radius: 18px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative;
+    }
+
+    .v-section-icon.icon-venue { 
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.05)) !important;
+        color: var(--v-accent-primary) !important;
+    }
+    .v-section-icon.icon-contact { 
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(124, 58, 237, 0.05)) !important;
+        color: var(--v-accent-secondary) !important;
+    }
+    .v-section-icon.icon-map { 
+        background: linear-gradient(135deg, rgba(244, 114, 182, 0.2), rgba(244, 114, 182, 0.05)) !important;
+        color: var(--v-accent-tertiary) !important;
+    }
+
+    .v-section-icon i {
+        font-size: 1.5rem !important;
+    }
+
+    .v-section-icon::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 20px;
+        border: 1px dashed currentColor;
+        opacity: 0.3;
+        animation: dashRotate 20s linear infinite;
+    }
+
+    @keyframes dashRotate {
+        to { transform: rotate(360deg); }
+    }
+
+    .v-section-text h2 {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        color: var(--v-text-primary) !important;
+        margin: 0 0 0.375rem 0 !important;
+    }
+
+    .v-section-text p {
+        font-size: 0.9rem !important;
+        color: var(--v-text-muted) !important;
+        margin: 0 !important;
+    }
+
+    /* ===== Form Fields ===== */
+    .v-form-grid {
+        display: grid !important;
+        gap: 1.75rem !important;
+    }
+
+    .v-form-row {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+        gap: 1.75rem !important;
+    }
+
+    .v-form-row.cols-3 {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .v-form-row.cols-2 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* ===== Form Group ===== */
+    .v-form-group {
+        position: relative;
+    }
+
+    .v-form-group.full {
+        grid-column: 1 / -1;
+    }
+
+    /* ===== Labels ===== */
+    .v-label {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.625rem !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        color: var(--v-text-secondary) !important;
+        margin-bottom: 0.75rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .v-label i {
+        font-size: 0.85rem !important;
+        color: var(--v-accent-primary) !important;
+    }
+
+    .v-label .req {
+        color: var(--v-accent-tertiary) !important;
+        font-size: 1rem !important;
+    }
+
+    /* ===== Input Wrapper ===== */
+    .v-input-wrap {
+        position: relative !important;
+    }
+
+    .v-input {
+        width: 100% !important;
+        padding: 1.125rem 1.25rem 1.125rem 3.25rem !important;
+        font-size: 1rem !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 500 !important;
+        color: var(--v-text-primary) !important;
+        background: var(--v-bg-tertiary) !important;
+        border: 2px solid var(--v-border) !important;
+        border-radius: 16px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none !important;
+        box-sizing: border-box !important;
+    }
+
+    .v-input::placeholder {
+        color: var(--v-text-muted) !important;
+        font-weight: 400 !important;
+    }
+
+    .v-input:hover {
+        border-color: #cbd5e1 !important;
+        background: #f8fafc !important;
+    }
+
+    .v-input:focus {
+        border-color: var(--v-accent-primary) !important;
+        background: white !important;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 4px 20px rgba(99, 102, 241, 0.15) !important;
+    }
+
+    .v-input.valid {
+        border-color: var(--v-accent-success) !important;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.12) !important;
+    }
+
+    .v-input-icon {
+        position: absolute !important;
+        left: 1.125rem !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        color: var(--v-text-muted) !important;
+        font-size: 1.1rem !important;
+        transition: all 0.3s ease;
+        pointer-events: none !important;
+    }
+
+    .v-input:focus ~ .v-input-icon {
+        color: var(--v-accent-primary) !important;
+        transform: translateY(-50%) scale(1.1) !important;
+    }
+
+    .v-input.valid ~ .v-input-icon {
+        color: var(--v-accent-success) !important;
+    }
+
+    /* Input validation indicator */
+    .v-input-indicator {
+        position: absolute !important;
+        right: 1rem !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 24px !important;
+        height: 24px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    .v-input.valid ~ .v-input-indicator {
+        opacity: 1 !important;
+        background: var(--v-accent-success) !important;
+        color: white !important;
+    }
+
+    /* Input validation indicator */
+    .v-input-indicator {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
         display: flex;
-        gap: 1rem;
-        justify-content: flex-end;
-        margin-top: 2rem;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.3s ease;
     }
 
-    .btn-submit {
-        background: var(--primary-color);
+    .v-input.valid ~ .v-input-indicator {
+        opacity: 1;
+        background: var(--v-accent-success);
         color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
     }
 
-    .btn-secondary {
-        background: #6c757d;
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-        text-decoration: none;
+    /* ===== Form Actions ===== */
+    .v-actions {
+        padding: 2rem 2.5rem !important;
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+        border-top: 1px solid var(--v-border) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: wrap !important;
+        gap: 1.5rem !important;
     }
 
-    small {
-        color: #6c757d;
-        font-size: 0.875rem;
-        margin-top: 0.25rem;
-        display: block;
+    .v-action-info {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.625rem !important;
+        color: var(--v-text-muted) !important;
+        font-size: 0.9rem !important;
+    }
+
+    .v-action-info i {
+        color: var(--v-accent-warning) !important;
+        font-size: 1.1rem !important;
+    }
+
+    .v-buttons {
+        display: flex !important;
+        gap: 1rem !important;
+    }
+
+    .v-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.75rem !important;
+        padding: 1rem 2rem !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        font-family: 'Outfit', sans-serif !important;
+        border-radius: 16px !important;
+        cursor: pointer !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none !important;
+        border: none !important;
+        outline: none !important;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .v-btn-primary {
+        background: var(--v-gradient-main) !important;
+        color: white !important;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.35) !important;
+    }
+
+    .v-btn-primary::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .v-btn-primary:hover {
+        transform: translateY(-3px) scale(1.02) !important;
+        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4) !important;
+    }
+
+    .v-btn-primary:hover::before {
+        opacity: 1;
+    }
+
+    .v-btn-primary:active {
+        transform: translateY(0) scale(0.98) !important;
+    }
+
+    .v-btn-secondary {
+        background: white !important;
+        color: var(--v-text-primary) !important;
+        border: 2px solid var(--v-border) !important;
+    }
+
+    .v-btn-secondary:hover {
+        border-color: var(--v-accent-primary) !important;
+        background: rgba(99, 102, 241, 0.05) !important;
+        color: var(--v-accent-primary) !important;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.15) !important;
+    }
+
+    /* Button ripple effect */
+    .v-btn-primary span,
+    .v-btn-primary i {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ===== Alerts ===== */
+    .v-alert {
+        display: flex !important;
+        align-items: center !important;
+        gap: 1rem !important;
+        padding: 1.25rem 1.5rem !important;
+        border-radius: 20px !important;
+        margin-bottom: 1.5rem !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        animation: alertSlide 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes alertSlide {
+        from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .v-alert-icon {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        border-radius: 14px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        font-size: 1.25rem !important;
+    }
+
+    .v-alert-success {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+        border: 1px solid #a7f3d0 !important;
+    }
+
+    .v-alert-success .v-alert-icon {
+        background: var(--v-accent-success) !important;
+        color: white !important;
+    }
+
+    .v-alert-success .v-alert-msg {
+        color: #065f46 !important;
+    }
+
+    .v-alert-danger {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+        border: 1px solid #fecaca !important;
+    }
+
+    .v-alert-danger .v-alert-icon {
+        background: #ef4444 !important;
+        color: white !important;
+    }
+
+    .v-alert-danger .v-alert-msg {
+        color: #991b1b !important;
+    }
+
+    .v-alert-msg {
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        line-height: 1.5 !important;
+    }
+
+    .v-alert-close {
+        margin-left: auto !important;
+        background: none !important;
+        border: none !important;
+        color: var(--v-text-muted) !important;
+        cursor: pointer !important;
+        padding: 0.5rem !important;
+        transition: color 0.3s ease;
+    }
+
+    .v-alert-close:hover {
+        color: var(--v-text-primary) !important;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 992px) {
+        .v-form-row.cols-3 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .venue-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 
     @media (max-width: 768px) {
-        .admin-section {
+        .venue-modern {
             padding: 1rem;
         }
 
-        .form-section {
+        .venue-hero {
+            padding: 2rem 1.5rem;
+            border-radius: 24px;
+        }
+
+        .hero-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .hero-left {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .hero-icon {
+            width: 64px;
+            height: 64px;
+        }
+
+        .hero-text h1 {
+            font-size: 1.75rem;
+        }
+
+        .venue-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .v-section {
+            padding: 1.75rem;
+        }
+
+        .v-form-row.cols-3,
+        .v-form-row.cols-2 {
+            grid-template-columns: 1fr;
+        }
+
+        .v-actions {
+            flex-direction: column;
+            align-items: stretch;
             padding: 1.5rem;
         }
 
-        .form-row {
-            grid-template-columns: 1fr;
+        .v-buttons {
+            flex-direction: column;
         }
+
+        .v-action-info {
+            justify-content: center;
+            text-align: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .v-section-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .v-input {
+            padding-left: 2.75rem;
+        }
+
+        .v-input-icon {
+            left: 0.875rem;
+        }
+    }
+
+    /* ===== Accessibility ===== */
+    .v-btn:focus-visible,
+    .v-input:focus-visible {
+        outline: 2px solid var(--v-accent-primary);
+        outline-offset: 3px;
+    }
+
+    /* ===== Custom Scrollbar ===== */
+    .venue-modern::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .venue-modern::-webkit-scrollbar-track {
+        background: var(--v-bg-primary);
+    }
+
+    .venue-modern::-webkit-scrollbar-thumb {
+        background: var(--v-border);
+        border-radius: 4px;
+    }
+
+    .venue-modern::-webkit-scrollbar-thumb:hover {
+        background: var(--v-accent-primary);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="admin-section">
-    <h1>Manage Venue Details</h1>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="admin-form-container">
-        <form method="POST" action="{{ url_for('admin_venue') }}" class="venue-form">
-            <div class="form-section">
-                <h2><i class="fas fa-building"></i> Basic Information</h2>
-                <div class="form-group">
-                    <label for="name">Venue Name *</label>
-                    <input type="text" id="name" name="name" value="{{ venue_details.name if venue_details else '' }}" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="address">Address *</label>
-                    <input type="text" id="address" name="address" value="{{ venue_details.address if venue_details else '' }}" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="city">City *</label>
-                        <input type="text" id="city" name="city" value="{{ venue_details.city if venue_details else '' }}" required>
+<div class="venue-modern">
+    <div class="venue-container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="v-alert v-alert-{{ category }}">
+                        <div class="v-alert-icon">
+                            <i class="fas fa-{% if category == 'success' %}check{% else %}exclamation-triangle{% endif %}"></i>
+                        </div>
+                        <div class="v-alert-msg">{{ message }}</div>
+                        <button type="button" class="v-alert-close" onclick="this.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-                    <div class="form-group">
-                        <label for="country">Country *</label>
-                        <input type="text" id="country" name="country" value="{{ venue_details.country if venue_details else '' }}" required>
+        <!-- Hero Header -->
+        <div class="venue-hero">
+            <div class="hero-content">
+                <div class="hero-left">
+                    <div class="hero-icon">
+                        <i class="fas fa-map-marker-alt"></i>
                     </div>
-
-                    <div class="form-group">
-                        <label for="postal_code">Postal Code *</label>
-                        <input type="text" id="postal_code" name="postal_code" value="{{ venue_details.postal_code if venue_details else '' }}" required>
+                    <div class="hero-text">
+                        <h1>Venue Management</h1>
+                        <p>Configure conference venue details and location settings</p>
                     </div>
                 </div>
+                <a href="{{ url_for('venue') }}" class="hero-action" target="_blank">
+                    <i class="fas fa-external-link-alt"></i>
+                    <span>Preview Live Page</span>
+                </a>
+            </div>
+        </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="phone">Phone *</label>
-                        <input type="tel" id="phone" name="phone" value="{{ venue_details.phone if venue_details else '' }}" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" value="{{ venue_details.email if venue_details else '' }}" required>
-                    </div>
+        <!-- Stats Bar -->
+        <div class="venue-stats">
+            <div class="stat-card">
+                <div class="stat-icon cyan">
+                    <i class="fas fa-building"></i>
                 </div>
-
-                <div class="form-group">
-                    <label for="map_url">Map URL</label>
-                    <input type="text" class="form-control" id="map_url" name="map_url" 
-                           value="{{ venue_details.map_url if venue_details else '' }}"
-                           placeholder="Enter map URL (e.g., https://www.openstreetmap.org/export/embed.html?...)">
-                    <small class="form-text text-muted">
-                        Enter the URL for the map iframe. You can use any map service that provides an embed URL.
-                        If left blank, a default OpenStreetMap will be used.
-                    </small>
+                <div class="stat-info">
+                    <h4>Venue Status</h4>
+                    <p>{% if venue_details and venue_details.name %}Configured{% else %}Not Set{% endif %}</p>
                 </div>
             </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn-submit">Save Venue Details</button>
-                <a href="{{ url_for('venue') }}" class="btn-secondary">View Public Page</a>
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fas fa-map"></i>
+                </div>
+                <div class="stat-info">
+                    <h4>Map Status</h4>
+                    <p>{% if venue_details and venue_details.map_url %}Custom{% else %}Default{% endif %}</p>
+                </div>
             </div>
-        </form>
+            <div class="stat-card">
+                <div class="stat-icon pink">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <h4>Fields Complete</h4>
+                    <p>{% if venue_details and venue_details.name %}Ready{% else %}Pending{% endif %}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="venue-form-card">
+            <form method="POST" action="{{ url_for('admin_venue') }}" id="venueForm">
+                
+                <!-- Venue Information Section -->
+                <div class="v-section">
+                    <div class="v-section-header">
+                        <div class="v-section-icon icon-venue">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="v-section-text">
+                            <h2>Venue Information</h2>
+                            <p>Primary venue name and physical address</p>
+                        </div>
+                    </div>
+
+                    <div class="v-form-grid">
+                        <!-- Venue Name -->
+                        <div class="v-form-group full">
+                            <label class="v-label">
+                                <i class="fas fa-hotel"></i>
+                                Venue Name <span class="req">*</span>
+                            </label>
+                            <div class="v-input-wrap">
+                                <input type="text" 
+                                       id="name" 
+                                       name="name" 
+                                       class="v-input"
+                                       value="{{ venue_details.name if venue_details else '' }}" 
+                                       placeholder="e.g., Grand Convention Center"
+                                       required>
+                                <i class="fas fa-building v-input-icon"></i>
+                                <div class="v-input-indicator">
+                                    <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Street Address -->
+                        <div class="v-form-group full">
+                            <label class="v-label">
+                                <i class="fas fa-road"></i>
+                                Street Address <span class="req">*</span>
+                            </label>
+                            <div class="v-input-wrap">
+                                <input type="text" 
+                                       id="address" 
+                                       name="address" 
+                                       class="v-input"
+                                       value="{{ venue_details.address if venue_details else '' }}" 
+                                       placeholder="Full street address"
+                                       required>
+                                <i class="fas fa-map-pin v-input-icon"></i>
+                                <div class="v-input-indicator">
+                                    <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- City, Country, Postal Code -->
+                        <div class="v-form-row cols-3">
+                            <div class="v-form-group">
+                                <label class="v-label">
+                                    <i class="fas fa-city"></i>
+                                    City <span class="req">*</span>
+                                </label>
+                                <div class="v-input-wrap">
+                                    <input type="text" 
+                                           id="city" 
+                                           name="city" 
+                                           class="v-input"
+                                           value="{{ venue_details.city if venue_details else '' }}" 
+                                           placeholder="City"
+                                           required>
+                                    <i class="fas fa-city v-input-icon"></i>
+                                    <div class="v-input-indicator">
+                                        <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="v-form-group">
+                                <label class="v-label">
+                                    <i class="fas fa-globe-africa"></i>
+                                    Country <span class="req">*</span>
+                                </label>
+                                <div class="v-input-wrap">
+                                    <input type="text" 
+                                           id="country" 
+                                           name="country" 
+                                           class="v-input"
+                                           value="{{ venue_details.country if venue_details else '' }}" 
+                                           placeholder="Country"
+                                           required>
+                                    <i class="fas fa-flag v-input-icon"></i>
+                                    <div class="v-input-indicator">
+                                        <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="v-form-group">
+                                <label class="v-label">
+                                    <i class="fas fa-mail-bulk"></i>
+                                    Postal Code <span class="req">*</span>
+                                </label>
+                                <div class="v-input-wrap">
+                                    <input type="text" 
+                                           id="postal_code" 
+                                           name="postal_code" 
+                                           class="v-input"
+                                           value="{{ venue_details.postal_code if venue_details else '' }}" 
+                                           placeholder="ZIP / Postal"
+                                           required>
+                                    <i class="fas fa-hashtag v-input-icon"></i>
+                                    <div class="v-input-indicator">
+                                        <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information Section -->
+                <div class="v-section">
+                    <div class="v-section-header">
+                        <div class="v-section-icon icon-contact">
+                            <i class="fas fa-address-card"></i>
+                        </div>
+                        <div class="v-section-text">
+                            <h2>Contact Details</h2>
+                            <p>Phone and email for venue inquiries</p>
+                        </div>
+                    </div>
+
+                    <div class="v-form-grid">
+                        <div class="v-form-row cols-2">
+                            <div class="v-form-group">
+                                <label class="v-label">
+                                    <i class="fas fa-phone-alt"></i>
+                                    Phone Number <span class="req">*</span>
+                                </label>
+                                <div class="v-input-wrap">
+                                    <input type="tel" 
+                                           id="phone" 
+                                           name="phone" 
+                                           class="v-input"
+                                           value="{{ venue_details.phone if venue_details else '' }}" 
+                                           placeholder="+27 12 345 6789"
+                                           required>
+                                    <i class="fas fa-phone v-input-icon"></i>
+                                    <div class="v-input-indicator">
+                                        <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="v-form-group">
+                                <label class="v-label">
+                                    <i class="fas fa-envelope"></i>
+                                    Email Address <span class="req">*</span>
+                                </label>
+                                <div class="v-input-wrap">
+                                    <input type="email" 
+                                           id="email" 
+                                           name="email" 
+                                           class="v-input"
+                                           value="{{ venue_details.email if venue_details else '' }}" 
+                                           placeholder="venue@conference.com"
+                                           required>
+                                    <i class="fas fa-at v-input-icon"></i>
+                                    <div class="v-input-indicator">
+                                        <i class="fas fa-check" style="font-size: 0.75rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Configuration Section -->
+                <div class="v-section">
+                    <div class="v-section-header">
+                        <div class="v-section-icon icon-map">
+                            <i class="fas fa-map"></i>
+                        </div>
+                        <div class="v-section-text">
+                            <h2>Map Settings</h2>
+                            <p>Interactive map display configuration</p>
+                        </div>
+                    </div>
+
+                    <div class="v-form-grid">
+                        <div class="v-form-group full">
+                            <label class="v-label">
+                                <i class="fas fa-link"></i>
+                                Map Embed URL
+                            </label>
+                            <div class="v-input-wrap">
+                                <input type="text" 
+                                       id="map_url" 
+                                       name="map_url" 
+                                       class="v-input"
+                                       value="{{ venue_details.map_url if venue_details else '' }}" 
+                                       placeholder="https://www.openstreetmap.org/export/embed.html?...">
+                                <i class="fas fa-map-marked-alt v-input-icon"></i>
+                            </div>
+                            <div class="v-help">
+                                <i class="fas fa-lightbulb"></i>
+                                <span>
+                                    Enter an iframe embed URL from Google Maps, OpenStreetMap, or any map provider. 
+                                    Leave blank to use the default map based on the venue address.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="v-actions">
+                    <div class="v-action-info">
+                        <i class="fas fa-bolt"></i>
+                        <span>Changes apply instantly to the public venue page</span>
+                    </div>
+                    <div class="v-buttons">
+                        <a href="{{ url_for('venue') }}" class="v-btn v-btn-secondary" target="_blank">
+                            <i class="fas fa-eye"></i>
+                            <span>Preview</span>
+                        </a>
+                        <button type="submit" class="v-btn v-btn-primary" id="submitBtn">
+                            <i class="fas fa-rocket"></i>
+                            <span>Save Changes</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -195,13 +1207,187 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-resize textareas
-    document.querySelectorAll('textarea').forEach(textarea => {
-        textarea.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
+    // ===== Input Validation & Animation =====
+    const inputs = document.querySelectorAll('.v-input');
+    
+    inputs.forEach(input => {
+        // Initial state check
+        if (input.value.length > 0 && input.validity.valid) {
+            input.classList.add('valid');
+        }
+        
+        // Focus effects
+        input.addEventListener('focus', function() {
+            this.closest('.v-form-group').classList.add('focused');
+        });
+        
+        input.addEventListener('blur', function() {
+            this.closest('.v-form-group').classList.remove('focused');
+        });
+        
+        // Real-time validation with visual feedback
+        input.addEventListener('input', function() {
+            if (this.validity.valid && this.value.length > 0) {
+                this.classList.add('valid');
+                this.classList.remove('invalid');
+            } else if (this.value.length > 0) {
+                this.classList.remove('valid');
+            } else {
+                this.classList.remove('valid', 'invalid');
+            }
         });
     });
+
+    // ===== Form Submission with Animation =====
+    const form = document.getElementById('venueForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Add loading state
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Saving...</span>';
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.7';
+            
+            // Add pulse animation to button
+            submitBtn.style.animation = 'pulse 1s infinite';
+        });
+    }
+
+    // ===== Auto-dismiss Alerts =====
+    const alerts = document.querySelectorAll('.v-alert');
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateY(-20px) scale(0.95)';
+            setTimeout(() => alert.remove(), 400);
+        }, 6000);
+    });
+
+    // ===== Smooth Scroll on Section Hover =====
+    const sections = document.querySelectorAll('.v-section');
+    sections.forEach(section => {
+        section.addEventListener('mouseenter', function() {
+            this.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        });
+    });
+
+    // ===== Parallax Effect on Hero =====
+    const hero = document.querySelector('.venue-hero');
+    if (hero) {
+        document.addEventListener('mousemove', function(e) {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+            hero.style.transform = `perspective(1000px) rotateY(${moveX}deg) rotateX(${-moveY}deg)`;
+        });
+        
+        hero.addEventListener('mouseleave', function() {
+            this.style.transform = 'perspective(1000px) rotateY(0deg) rotateX(0deg)';
+        });
+    }
+
+    // ===== Typing Animation for Placeholders =====
+    const typewriterInputs = document.querySelectorAll('.v-input[placeholder]');
+    typewriterInputs.forEach(input => {
+        const originalPlaceholder = input.placeholder;
+        
+        input.addEventListener('focus', function() {
+            this.placeholder = '';
+        });
+        
+        input.addEventListener('blur', function() {
+            if (this.value === '') {
+                this.placeholder = originalPlaceholder;
+            }
+        });
+    });
+
+    // ===== Stats Card Hover Effect =====
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px) scale(1.02)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // ===== Button Ripple Effect =====
+    const buttons = document.querySelectorAll('.v-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.cssText = `
+                position: absolute;
+                width: ${size}px;
+                height: ${size}px;
+                left: ${x}px;
+                top: ${y}px;
+                background: rgba(255,255,255,0.3);
+                border-radius: 50%;
+                transform: scale(0);
+                animation: rippleEffect 0.6s ease-out;
+                pointer-events: none;
+            `;
+            
+            this.style.position = 'relative';
+            this.style.overflow = 'hidden';
+            this.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+
+    // Add ripple keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes rippleEffect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // ===== Intersection Observer for Animations =====
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.v-section, .stat-card').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+        observer.observe(el);
+    });
+
+    // Trigger initial animation
+    setTimeout(() => {
+        document.querySelectorAll('.v-section, .stat-card').forEach((el, index) => {
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }, 200);
 });
 </script>
 {% endblock %} 
