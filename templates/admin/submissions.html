@@ -2,142 +2,8 @@
 
 {% block title %}Manage Submissions - Admin{% endblock %}
 
-{% block content %}
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Manage Paper Submissions</h1>
-        <div class="stats-container">
-            <div class="stat-item">
-                <span class="stat-label">Total</span>
-                <span class="stat-value">{{ submissions|length }}</span>
-            </div>
-            <div class="stat-item warning">
-                <span class="stat-label">Pending</span>
-                <span class="stat-value">{{ submissions.values()|selectattr('status', 'equalto', 'pending')|list|length }}</span>
-            </div>
-        </div>
-    </div>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show">
-                    {{ message }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="card shadow mb-4">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table" id="submissionsTable">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Author</th>
-                            <th>Research Area</th>
-                            <th>Submission Date</th>
-                            <th>Status</th>
-                            <th class="text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% if submissions %}
-                        {% for paper_id, paper in submissions.items() %}
-                            <tr class="submission-row" data-status="{{ paper.status|default('pending') }}">
-                                <td>
-                                    <div class="paper-title">{{ paper.paper_title }}</div>
-                                    <div class="paper-type">{{ paper.presentation_type|default('Not specified')|title }}</div>
-                                </td>
-                                <td>
-                                    <div class="author-info">
-                                        <div class="author-main">
-                                            {% if paper.authors %}
-                                                <div class="author-name">{{ paper.authors[0].name }}</div>
-                                                <div class="author-institution">{{ paper.authors[0].institution }}</div>
-                                                {% if paper.authors|length > 1 %}
-                                                    <div class="co-authors">
-                                                        <i class="fas fa-users"></i> +{{ paper.authors|length - 1 }} co-authors
-                                                    </div>
-                                                {% endif %}
-                                            {% else %}
-                                                <div class="author-email">{{ paper.user_email }}</div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="research-area">
-                                        <i class="fas fa-microscope"></i>
-                                        {{ paper.research_area|default('Not specified')|replace('_', ' ')|title }}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="submission-date">
-                                        <i class="fas fa-calendar-alt"></i>
-                                        {{ paper.submitted_at|datetime }}
-                                    </div>
-                                </td>
-                                <td>
-                                    {% set status = paper.status|default('pending') %}
-                                    {% set status_map = {
-                                        'pending': {'class': 'warning', 'icon': 'clock', 'text': 'Under Review'},
-                                        'accepted': {'class': 'success', 'icon': 'check-circle', 'text': 'Accepted'},
-                                        'rejected': {'class': 'danger', 'icon': 'times-circle', 'text': 'Rejected'}
-                                    } %}
-                                    <span class="status-badge badge-{{ status_map[status]['class'] }}">
-                                        <i class="fas fa-{{ status_map[status]['icon'] }}"></i>
-                                        {{ status_map[status]['text'] }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
-                                        {% if paper.file_data %}
-                                        <a href="{{ url_for('download_paper', paper_id=paper_id) }}" 
-                                           class="btn btn-primary btn-sm" 
-                                           data-paper-id="{{ paper_id }}"
-                                           onclick="trackDownload(event, this)">
-                                            <i class="fas fa-download"></i> Download
-                                        </a>
-                                        {% endif %}
-                                        {% if status == 'pending' %}
-                                        <button class="btn btn-success btn-sm" 
-                                                onclick="updateStatus('{{ paper_id }}', 'accepted')">
-                                            <i class="fas fa-check"></i> Accept
-                                        </button>
-                                        <button class="btn btn-danger btn-sm" 
-                                                onclick="updateStatus('{{ paper_id }}', 'rejected')">
-                                            <i class="fas fa-times"></i> Reject
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center">
-                                <div class="empty-state">
-                                    <i class="fas fa-file-alt fa-3x"></i>
-                                    <h4>No Submissions Yet</h4>
-                                    <p>When papers are submitted, they will appear here.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
 {% block styles %}
+{{ super() }}
 <style>
 :root {
     --primary: #4e73df;
@@ -349,7 +215,142 @@
     }
 }
 </style>
-{% endblock %}
+{% endblock styles %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Manage Paper Submissions</h1>
+        <div class="stats-container">
+            <div class="stat-item">
+                <span class="stat-label">Total</span>
+                <span class="stat-value">{{ submissions|length }}</span>
+            </div>
+            <div class="stat-item warning">
+                <span class="stat-label">Pending</span>
+                <span class="stat-value">{{ submissions.values()|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+            </div>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="submissionsTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Research Area</th>
+                            <th>Submission Date</th>
+                            <th>Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% if submissions %}
+                        {% for paper_id, paper in submissions.items() %}
+                            <tr class="submission-row" data-status="{{ paper.status|default('pending') }}">
+                                <td>
+                                    <div class="paper-title">{{ paper.paper_title }}</div>
+                                    <div class="paper-type">{{ paper.presentation_type|default('Not specified')|title }}</div>
+                                </td>
+                                <td>
+                                    <div class="author-info">
+                                        <div class="author-main">
+                                            {% if paper.authors %}
+                                                <div class="author-name">{{ paper.authors[0].name }}</div>
+                                                <div class="author-institution">{{ paper.authors[0].institution }}</div>
+                                                {% if paper.authors|length > 1 %}
+                                                    <div class="co-authors">
+                                                        <i class="fas fa-users"></i> +{{ paper.authors|length - 1 }} co-authors
+                                                    </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="author-email">{{ paper.user_email }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="research-area">
+                                        <i class="fas fa-microscope"></i>
+                                        {{ paper.research_area|default('Not specified')|replace('_', ' ')|title }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="submission-date">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        {{ paper.submitted_at|datetime }}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% set status = paper.status|default('pending') %}
+                                    {% set status_map = {
+                                        'pending': {'class': 'warning', 'icon': 'clock', 'text': 'Under Review'},
+                                        'accepted': {'class': 'success', 'icon': 'check-circle', 'text': 'Accepted'},
+                                        'rejected': {'class': 'danger', 'icon': 'times-circle', 'text': 'Rejected'}
+                                    } %}
+                                    <span class="status-badge badge-{{ status_map[status]['class'] }}">
+                                        <i class="fas fa-{{ status_map[status]['icon'] }}"></i>
+                                        {{ status_map[status]['text'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        {% if paper.file_data %}
+                                        <a href="{{ url_for('download_paper', paper_id=paper_id) }}" 
+                                           class="btn btn-primary btn-sm" 
+                                           data-paper-id="{{ paper_id }}"
+                                           onclick="trackDownload(event, this)">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% endif %}
+                                        {% if status == 'pending' %}
+                                        <button class="btn btn-success btn-sm" 
+                                                onclick="updateStatus('{{ paper_id }}', 'accepted')">
+                                            <i class="fas fa-check"></i> Accept
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" 
+                                                onclick="updateStatus('{{ paper_id }}', 'rejected')">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="empty-state">
+                                    <i class="fas fa-file-alt fa-3x"></i>
+                                    <h4>No Submissions Yet</h4>
+                                    <p>When papers are submitted, they will appear here.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
 
 {% block scripts %}
 <script>
@@ -449,4 +450,4 @@ $(document).ready(function() {
 <script id="submissions-data" type="application/json">
     {{ submissions|tojson|safe }}
 </script>
-{% endblock %} 
+{% endblock scripts %} 
