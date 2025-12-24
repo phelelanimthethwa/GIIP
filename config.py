@@ -5,7 +5,14 @@ from datetime import timedelta
 load_dotenv()  # Load environment variables from .env file
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-replace-in-production'
+    # SECRET_KEY: Use environment variable, raise error in production if not set
+    _secret_key = os.environ.get('SECRET_KEY')
+    if os.environ.get('FLASK_ENV') == 'production':
+        if not _secret_key:
+            raise ValueError("SECRET_KEY must be set in production environment")
+        SECRET_KEY = _secret_key
+    else:
+        SECRET_KEY = _secret_key or 'dev-secret-key-replace-in-production'
     
     # Google Gemini Configuration
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
@@ -32,6 +39,7 @@ class Config:
 
     # Admin Configuration
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@giirconference.com')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')  # Must be set via environment variable
 
     # reCAPTCHA configuration
     RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY')

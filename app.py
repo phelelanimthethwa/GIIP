@@ -11,7 +11,11 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 import os
 import base64
+import logging
 from dotenv import load_dotenv
+
+# Set up logging
+logger = logging.getLogger(__name__)
 from models.email_service import EmailService
 import pytz
 from google.cloud import storage as gcs_storage
@@ -1013,12 +1017,21 @@ def update_email_preferences():
 
 @app.route('/debug-login', methods=['GET', 'POST'])
 def debug_login():
-    """Debug version of login for troubleshooting"""
+    """
+    Debug version of login for troubleshooting
+    SECURITY: Only available in development environment
+    """
+    # Disable debug login in production
+    if os.environ.get('FLASK_ENV') == 'production':
+        flash('Debug login is not available in production', 'error')
+        return redirect(url_for('login'))
+    
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         
-        print(f"DEBUG LOGIN ATTEMPT: email={email}, password_length={len(password) if password else 0}")
+        # Log attempt without sensitive data
+        logger.info(f"Debug login attempt for email: {email}")
         
         # Strip whitespace from inputs to prevent login issues
         email = email.strip() if email else ""
@@ -1027,24 +1040,26 @@ def debug_login():
         try:
             # Check if the user exists in Firebase Auth
             user = auth.get_user_by_email(email)
-            print(f"DEBUG: User found in Firebase Auth: {user.uid}")
+            logger.debug(f"User found in Firebase Auth: {user.uid}")
             
-            # For the admin user, we'll still verify the password manually
-            admin_email = "admin@giirconference.com"
-            admin_password = "Admin@2024!"
+            # For the admin user, verify password from config
+            admin_email = Config.ADMIN_EMAIL
+            admin_password = Config.ADMIN_PASSWORD
+            
+            if not admin_password:
+                flash('Admin password not configured', 'error')
+                return render_template('debug_login.html', site_design=get_site_design())
             
             # Check if this is admin login
             if email == admin_email:
                 if password != admin_password:
-                    print("DEBUG: Admin password mismatch")
+                    logger.warning(f"Debug login: Admin password mismatch for {email}")
                     flash('Invalid email or password', 'error')
                     return render_template('debug_login.html', site_design=get_site_design())
-                print("DEBUG: Admin password correct")
             
             # Get user data from Realtime Database
             ref = db.reference(f'users/{user.uid}')
             user_data = ref.get()
-            print(f"DEBUG: User data from database: {user_data}")
             
             # If user data doesn't exist in Realtime DB, create it
             if not user_data:
@@ -1056,16 +1071,13 @@ def debug_login():
                     'is_admin': is_admin_user
                 }
                 ref.set(user_data)
-                print("DEBUG: Created new user data in database")
             
             is_admin = user_data.get('is_admin', False)
             display_name = user_data.get('full_name', email.split('@')[0])
-            print(f"DEBUG: is_admin={is_admin}, display_name={display_name}")
             
             # Create User object and login
             user_obj = User(user.uid, email, display_name, is_admin)
             login_user(user_obj)
-            print("DEBUG: User logged in successfully")
             
             flash('Logged in successfully!', 'success')
             
@@ -1075,12 +1087,12 @@ def debug_login():
             return redirect(url_for('dashboard'))
                 
         except auth.UserNotFoundError:
-            print(f"DEBUG: User not found: {email}")
+            logger.warning(f"Debug login: User not found: {email}")
             flash('Invalid email or password', 'error')
             return render_template('debug_login.html', site_design=get_site_design())
         except Exception as e:
-            print(f"DEBUG: Login error: {str(e)}")
-            flash(f'Login error: {str(e)}', 'error')
+            logger.error(f"Debug login error: {str(e)}")
+            flash('Login error occurred', 'error')
             return render_template('debug_login.html', site_design=get_site_design())
             
     return render_template('debug_login.html', site_design=get_site_design())
@@ -1104,10 +1116,14 @@ def login():
                 # Check if the user exists in Firebase Auth
                 user = auth.get_user_by_email(email)
                 
-                # For the admin user, we'll still verify the password manually
+                # For the admin user, verify password from config
                 # For other users, we'll assume they exist and can login (since Firebase created them)
-                admin_email = "admin@giirconference.com"
-                admin_password = "Admin@2024!"
+                admin_email = Config.ADMIN_EMAIL
+                admin_password = Config.ADMIN_PASSWORD
+                
+                if not admin_password:
+                    flash('Admin authentication not configured', 'error')
+                    return render_template('user/auth/login.html', site_design=get_site_design())
                 
                 # Check if this is admin login
                 if email == admin_email:
@@ -1125,7 +1141,7 @@ def login():
                 
                 # If user data doesn't exist in Realtime DB, create it
                 if not user_data:
-                    is_admin_user = (email == admin_email)
+                    is_admin_user = (email == Config.ADMIN_EMAIL)
                     user_data = {
                         'email': email,
                         'full_name': user.display_name or email.split('@')[0],
@@ -1913,9 +1929,13 @@ def toggle_admin(user_id):
 
 def create_admin_user():
     try:
-        admin_email = "admin@giirconference.com"
-        admin_password = "Admin@2024!"
+        admin_email = Config.ADMIN_EMAIL
+        admin_password = Config.ADMIN_PASSWORD
         admin_name = "Conference Admin"
+
+        if not admin_password:
+            logger.error("ADMIN_PASSWORD not set in environment variables")
+            return False
 
         # Try to get existing admin user
         try:
@@ -1925,7 +1945,7 @@ def create_admin_user():
                 user.uid,
                 password=admin_password
             )
-            print("Admin password updated successfully!")
+            logger.info("Admin password updated successfully")
         except auth.UserNotFoundError:
             # Create new admin user if doesn't exist
             user = auth.create_user(
@@ -1933,7 +1953,7 @@ def create_admin_user():
                 password=admin_password,
                 display_name=admin_name
             )
-            print("New admin user created successfully!")
+            logger.info("New admin user created successfully")
 
         # Update or create admin data in Realtime Database
         ref = db.reference('users')
@@ -1945,19 +1965,21 @@ def create_admin_user():
             'updated_at': datetime.now().isoformat()
         })
 
-        print("Admin user configuration complete!")
-        print(f"Email: {admin_email}")
-        print(f"Password: {admin_password}")
+        logger.info(f"Admin user configuration complete for {admin_email}")
         return True
     except Exception as e:
-        print(f"Error configuring admin user: {str(e)}")
+        logger.error(f"Error configuring admin user: {str(e)}")
         return False
 
 def create_second_admin_user():
     try:
-        admin_email = "admin@giirconference.com"
-        admin_password = "Admin@2024!"
+        admin_email = Config.ADMIN_EMAIL
+        admin_password = Config.ADMIN_PASSWORD
         admin_name = "Secondary Admin"
+
+        if not admin_password:
+            logger.error("ADMIN_PASSWORD not set in environment variables")
+            return False
 
         # Try to get existing user by email
         try:
@@ -1967,7 +1989,7 @@ def create_second_admin_user():
                 user.uid,
                 password=admin_password
             )
-            print("Second admin password updated successfully!")
+            logger.info("Second admin password updated successfully")
         except auth.UserNotFoundError:
             # Create new admin user if doesn't exist
             user = auth.create_user(
@@ -1975,7 +1997,7 @@ def create_second_admin_user():
                 password=admin_password,
                 display_name=admin_name
             )
-            print("New second admin user created successfully!")
+            logger.info("New second admin user created successfully")
 
         # Update or create admin data in Realtime Database
         ref = db.reference('users')
@@ -1987,12 +2009,10 @@ def create_second_admin_user():
             'updated_at': datetime.now().isoformat()
         })
 
-        print("Second admin user configuration complete!")
-        print(f"Email: {admin_email}")
-        print(f"Password: {admin_password}")
+        logger.info(f"Second admin user configuration complete for {admin_email}")
         return True
     except Exception as e:
-        print(f"Error configuring second admin user: {str(e)}")
+        logger.error(f"Error configuring second admin user: {str(e)}")
         return False
 
 @app.route('/setup-second-admin')
