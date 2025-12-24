@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_from_directory, send_file, make_response
-from flask_mail import Mail, Message
+import resend
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 import firebase_admin
@@ -134,11 +134,11 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Initialize Flask-Mail
-mail = Mail(app)
+# Initialize Resend API
+resend.api_key = app.config.get('RESEND_API_KEY')
 
-# After initializing mail
-email_service = EmailService(mail)
+# Initialize Email Service (using Resend)
+email_service = EmailService()
 
 # Add datetime filter for Jinja templates
 @app.template_filter('datetime')
@@ -1671,7 +1671,7 @@ def payment_demo():
     """
 
 def send_registration_confirmation_email(registration_data, registration_id):
-    """Send registration confirmation email"""
+    """Send registration confirmation email using Resend"""
     try:
         subject = f"Registration Confirmation - {registration_data.get('registration_type', 'Conference')}"
         
@@ -1694,13 +1694,8 @@ def send_registration_confirmation_email(registration_data, registration_id):
         GIIP Conference Team
         """
         
-        msg = Message(
-            subject=subject,
-            recipients=[registration_data.get('email')],
-            body=body
-        )
-        
-        mail.send(msg)
+        # Use send_email function which uses Resend
+        send_email(registration_data.get('email'), subject, body)
         print(f"Confirmation email sent to {registration_data.get('email')}")
         
     except Exception as e:
@@ -2611,7 +2606,7 @@ Conference Team'''
     return default_templates.get(template_name)
 
 def send_registration_email(registration, template_name, **kwargs):
-    """Send email notification for registration status update"""
+    """Send email notification for registration status update using Resend"""
     try:
         template = get_email_template(template_name)
         if not template:
@@ -2632,14 +2627,8 @@ def send_registration_email(registration, template_name, **kwargs):
         for key, value in template_vars.items():
             content = content.replace('{{' + key + '}}', str(value))
         
-        # Create and send email
-        msg = Message(
-            subject=template['subject'],
-            recipients=[registration.get('email')],
-            body=content
-        )
-        mail.send(msg)
-        return True
+        # Send email using Resend
+        return send_email(registration.get('email'), template['subject'], content)
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
@@ -2871,72 +2860,63 @@ def admin_announcements():
             tinymce_api_key=app.config.get('TINYMCE_API_KEY')
         )
 
-def send_email(recipients, subject, body, attachments=None):
-    """Send email using configured email settings"""
+def send_email(recipients, subject, body, attachments=None, html=None):
+    """Send email using Resend API"""
     try:
-        print(f"[EMAIL] Starting send_email to {len(recipients) if isinstance(recipients, list) else 1} recipient(s)")
+        recipients_list = recipients if isinstance(recipients, list) else [recipients]
+        print(f"[EMAIL] Starting send_email to {len(recipients_list)} recipient(s)")
         print(f"[EMAIL] Subject: {subject}")
         
-        # Get email settings from Firebase
-        settings_ref = db.reference('email_settings')
-        settings = settings_ref.get()
-        
-        if not settings:
-            print("[EMAIL] WARNING: Email settings not configured in Firebase")
-            print("[EMAIL] Email sending skipped - configure email_settings in Firebase to enable")
+        # Get Resend API key
+        api_key = app.config.get('RESEND_API_KEY')
+        if not api_key:
+            print("[EMAIL] WARNING: RESEND_API_KEY not configured")
+            print("[EMAIL] Email sending skipped - configure RESEND_API_KEY in .env to enable")
             return False
         
-        print("[EMAIL] Email settings found in Firebase")
+        resend.api_key = api_key
         
-        # Validate required settings
-        required_settings = ['smtp_host', 'smtp_port', 'email', 'password']
-        missing_settings = [s for s in required_settings if not settings.get(s)]
+        # Get sender email from config or Firebase
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@giirconference.com')
         
-        if missing_settings:
-            print(f"[EMAIL] ERROR: Missing email settings: {missing_settings}")
-            raise ValueError(f"Missing email settings in Firebase: {missing_settings}")
+        # Try to get custom sender from Firebase settings
+        try:
+            settings_ref = db.reference('email_settings')
+            settings = settings_ref.get()
+            if settings and settings.get('sender_email'):
+                sender = settings.get('sender_email')
+        except Exception:
+            pass  # Use default sender if Firebase read fails
         
-        # Configure Flask-Mail with settings
-        print(f"[EMAIL] Configuring Flask-Mail with SMTP: {settings.get('smtp_host')}:{settings.get('smtp_port')}")
-        app.config.update(
-            MAIL_SERVER=settings.get('smtp_host'),
-            MAIL_PORT=int(settings.get('smtp_port', 587)),
-            MAIL_USE_TLS=settings.get('use_tls', True),
-            MAIL_USE_SSL=settings.get('use_ssl', False),
-            MAIL_USERNAME=settings.get('email'),
-            MAIL_PASSWORD=settings.get('password'),
-            MAIL_DEFAULT_SENDER=f"GIIR Conference <{settings.get('email')}>"
-        )
+        print(f"[EMAIL] Sending via Resend from: {sender}")
         
-        # Create new Mail instance with current config
-        mail_instance = Mail(app)
+        # Build email params
+        params = {
+            "from": sender,
+            "to": recipients_list,
+            "subject": subject,
+            "text": body,
+        }
         
-        # Create message
-        recipients_list = recipients if isinstance(recipients, list) else [recipients]
-        msg = Message(
-            subject=subject,
-            recipients=recipients_list,
-            body=body
-        )
+        if html:
+            params["html"] = html
         
-        print(f"[EMAIL] Message created - Recipients: {recipients_list}")
-        
-        # Add attachments if any
+        # Add attachments if any (Resend supports attachments)
         if attachments:
             print(f"[EMAIL] Adding {len(attachments)} attachments")
+            resend_attachments = []
             for attachment in attachments:
-                msg.attach(
-                    filename=os.path.basename(attachment['path']),
-                    content_type=attachment['type'],
-                    data=attachment['data']
-                )
+                resend_attachments.append({
+                    "filename": os.path.basename(attachment.get('path', 'attachment')),
+                    "content": base64.b64encode(attachment['data']).decode('utf-8') if isinstance(attachment['data'], bytes) else attachment['data']
+                })
+            params["attachments"] = resend_attachments
         
-        # Send email
-        print("[EMAIL] Sending via Flask-Mail...")
-        with app.app_context():
-            mail_instance.send(msg)
+        # Send email via Resend
+        response = resend.Emails.send(params)
         
         print(f"[EMAIL] ✓ Email sent successfully to {len(recipients_list)} recipient(s)")
+        print(f"[EMAIL] Response: {response}")
         return True
         
     except Exception as e:
@@ -4845,18 +4825,14 @@ def save_paper_comments(paper_id):
 
 @app.route('/test-email')
 def test_email():
+    """Test email endpoint using Resend"""
     try:
-        # Test SMTP connection first
-        with mail.connect():
-            print("SMTP Connection successful!")
-            
-        msg = Message('Test Email from GIIR Conference',
-                     sender=app.config['MAIL_DEFAULT_SENDER'],
-                     recipients=['thobanisgabuzam@gmail.com'])
-        msg.body = '''
+        test_recipient = 'thobanisgabuzam@gmail.com'
+        subject = 'Test Email from GIIR Conference'
+        body = '''
         Dear Thobani,
         
-        This is a test email from the GIIR Conference system using Outlook SMTP.
+        This is a test email from the GIIR Conference system using Resend.
         
         If you received this email, it means the email configuration is working correctly.
         
@@ -4865,36 +4841,20 @@ def test_email():
         '''
         
         # Print debug information
-        print("\nSMTP Settings:")
-        print(f"Server: {app.config['MAIL_SERVER']}")
-        print(f"Port: {app.config['MAIL_PORT']}")
-        print(f"TLS: {app.config['MAIL_USE_TLS']}")
-        print(f"SSL: {app.config['MAIL_USE_SSL']}")
-        print(f"Username: {app.config['MAIL_USERNAME']}")
-        print(f"Sender: {app.config['MAIL_DEFAULT_SENDER']}")
+        print("\nResend Settings:")
+        print(f"API Key configured: {'Yes' if app.config.get('RESEND_API_KEY') else 'No'}")
+        print(f"Default Sender: {app.config.get('MAIL_DEFAULT_SENDER')}")
         
-        mail.send(msg)
-        return 'Email sent successfully! Check your inbox at thobansigabuzam@gmail.com'
+        result = send_email(test_recipient, subject, body)
+        
+        if result:
+            return f'Email sent successfully via Resend! Check your inbox at {test_recipient}'
+        else:
+            return 'Failed to send email. Check server logs for details.'
     except Exception as e:
         error_msg = f'Error sending email: {str(e)}\n'
         error_msg += f'Type: {type(e).__name__}\n'
-        if hasattr(e, 'strerror'):
-            error_msg += f'System error: {e.strerror}\n'
-        if hasattr(e, 'errno'):
-            error_msg += f'Error number: {e.errno}\n'
-        
-        # Add network diagnostic info
-        try:
-            import socket
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(5)
-            result = s.connect_ex((app.config['MAIL_SERVER'], app.config['MAIL_PORT']))
-            error_msg += f'\nPort check result: {result} (0 means port is open)\n'
-            s.close()
-        except Exception as net_e:
-            error_msg += f'\nNetwork test failed: {str(net_e)}\n'
-            
-        print(error_msg)  # Print to console for debugging
+        print(error_msg)
         return error_msg
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -4975,148 +4935,7 @@ def reset_password():
         flash(f'Error processing password reset: {str(e)}', 'error')
         return redirect(url_for('login'))
 
-@app.route('/admin/email-settings', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def admin_email_settings():
-    try:
-        if request.method == 'POST':
-            # Get form data
-            email_settings = {
-                'service_provider': request.form.get('service_provider'),
-                'email': request.form.get('email'),
-                'password': request.form.get('password'),
-                'updated_at': datetime.now().isoformat(),
-                'updated_by': current_user.email
-            }
-
-            # Add SMTP settings if custom provider
-            if email_settings['service_provider'] == 'custom':
-                email_settings.update({
-                    'smtp_host': request.form.get('smtp_host'),
-                    'smtp_port': request.form.get('smtp_port'),
-                    'use_tls': request.form.get('use_tls') == 'on'
-                })
-            else:
-                # Set default SMTP settings based on provider
-                provider_settings = {
-                    'outlook': {
-                        'smtp_host': 'smtp.office365.com',
-                        'smtp_port': 587,
-                        'use_tls': True
-                    },
-                    'zoho': {
-                        'smtp_host': 'smtp.zoho.com',
-                        'smtp_port': 587,
-                        'use_tls': True
-                    },
-                    'gmail': {
-                        'smtp_host': 'smtp.gmail.com',
-                        'smtp_port': 587,
-                        'use_tls': True
-                    }
-                }
-                email_settings.update(provider_settings.get(email_settings['service_provider'], {}))
-
-            # Save settings to Firebase
-            settings_ref = db.reference('email_settings')
-            settings_ref.set(email_settings)
-
-            # Update Flask-Mail config
-            app.config.update(
-                MAIL_SERVER=email_settings['smtp_host'],
-                MAIL_PORT=email_settings['smtp_port'],
-                MAIL_USE_TLS=email_settings['use_tls'],
-                MAIL_USERNAME=email_settings['email'],
-                MAIL_PASSWORD=email_settings['password'],
-                MAIL_DEFAULT_SENDER=email_settings['email']
-            )
-
-            # Reinitialize Flask-Mail with new settings
-            global mail
-            mail = Mail(app)
-            global email_service
-            email_service = EmailService(mail)
-
-            flash('Email settings updated successfully!', 'success')
-            return redirect(url_for('admin_email_settings'))
-
-        # Get current settings
-        settings_ref = db.reference('email_settings')
-        settings = settings_ref.get()
-
-        return render_template('admin/email_settings.html', 
-                             settings=settings,
-                             site_design=get_site_design())
-    except Exception as e:
-        flash(f'Error managing email settings: {str(e)}', 'error')
-        return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/test-email-settings', methods=['POST'])
-@login_required
-@admin_required
-def test_email_settings():
-    try:
-        # Get form data
-        service_provider = request.form.get('service_provider')
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        # Configure SMTP settings
-        if service_provider == 'custom':
-            smtp_host = request.form.get('smtp_host')
-            smtp_port = int(request.form.get('smtp_port'))
-            use_tls = request.form.get('use_tls') == 'on'
-        else:
-            provider_settings = {
-                'outlook': {
-                    'smtp_host': 'smtp.office365.com',
-                    'smtp_port': 587,
-                    'use_tls': True
-                },
-                'zoho': {
-                    'smtp_host': 'smtp.zoho.com',
-                    'smtp_port': 587,
-                    'use_tls': True
-                },
-                'gmail': {
-                    'smtp_host': 'smtp.gmail.com',
-                    'smtp_port': 587,
-                    'use_tls': True
-                }
-            }
-            settings = provider_settings.get(service_provider)
-            if not settings:
-                return jsonify({'success': False, 'error': 'Invalid service provider'})
-            smtp_host = settings['smtp_host']
-            smtp_port = settings['smtp_port']
-            use_tls = settings['use_tls']
-
-        # Create temporary Mail instance with new settings
-        test_config = Config()
-        test_config.MAIL_SERVER = smtp_host
-        test_config.MAIL_PORT = smtp_port
-        test_config.MAIL_USE_TLS = use_tls
-        test_config.MAIL_USERNAME = email
-        test_config.MAIL_PASSWORD = password
-        test_config.MAIL_DEFAULT_SENDER = email
-
-        test_app = Flask('test_app')
-        test_app.config.from_object(test_config)
-        test_mail = Mail(test_app)
-
-        # Try to send a test email
-        with test_app.app_context():
-            msg = Message(
-                'Test Email from GIIR Conference',
-                recipients=[email],
-                body='This is a test email to verify your email settings.'
-            )
-            test_mail.send(msg)
-
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+## Email settings removed - Resend works automatically with API key from environment
 
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
@@ -5319,19 +5138,12 @@ GIIR Conference Team
 @login_required
 @admin_required
 def get_email_settings():
+    """Return email sender info for UI display - Resend handles actual sending"""
     try:
-        settings_ref = db.reference('email_settings')
-        settings = settings_ref.get()
-        
-        if not settings:
-            return jsonify({
-                'success': False,
-                'error': 'Email settings not configured'
-            })
-            
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@giirconference.com>')
         return jsonify({
             'success': True,
-            'sender': settings.get('email', 'GIIR Conference')
+            'sender': sender
         })
     except Exception as e:
         return jsonify({
@@ -6287,7 +6099,6 @@ def inject_admin_menu():
         {'text': 'Submissions', 'url': 'admin_submissions', 'icon': 'paper-plane'},
         {'text': 'Announcements', 'url': 'admin_announcements', 'icon': 'bullhorn'},
         {'text': 'Email Templates', 'url': 'admin_email_templates', 'icon': 'envelope-open-text'},
-        {'text': 'Email Settings', 'url': 'admin_email_settings', 'icon': 'cog'},
         {'text': 'Downloads', 'url': 'admin_downloads', 'icon': 'download'},
                 {'text': 'Conference Proceedings', 'url': 'admin_conference_proceedings', 'icon': 'book-open'},
                 {'text': 'Conference Galleries', 'url': 'admin_conference_galleries', 'icon': 'images'},

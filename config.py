@@ -25,18 +25,9 @@ class Config:
         'appId': os.environ.get('FIREBASE_APP_ID')
     }
     
-    # Email Configuration
-    MAIL_SERVER = os.environ.get('MAIL_SERVER')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
-    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    # Email Configuration (Resend)
+    RESEND_API_KEY = os.environ.get('Resend_api_key')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@giirconference.com'
-    MAIL_MAX_EMAILS = None
-    MAIL_ASCII_ATTACHMENTS = False
-    MAIL_SUPPRESS_SEND = False
-    MAIL_DEBUG = True
 
     # Admin Configuration
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@giirconference.com')

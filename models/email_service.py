@@ -1,32 +1,61 @@
-from flask_mail import Message
+import resend
 from flask import current_app
 from models.email_templates import *
 
 class EmailService:
-    def __init__(self, mail):
-        self.mail = mail
+    def __init__(self):
+        """Initialize Resend email service"""
+        pass
+    
+    def _get_sender(self):
+        """Get the default sender email"""
+        return current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@giirconference.com')
+    
+    def _configure_resend(self):
+        """Configure Resend API key"""
+        api_key = current_app.config.get('RESEND_API_KEY')
+        if not api_key:
+            print("Warning: RESEND_API_KEY not configured")
+            return False
+        resend.api_key = api_key
+        return True
 
-    def send_email(self, to, subject, body):
+    def send_email(self, to, subject, body, html=None):
         """
-        Generic email sending function
+        Generic email sending function using Resend
+        
+        Args:
+            to: Email recipient (string or list)
+            subject: Email subject
+            body: Plain text body
+            html: Optional HTML body
         """
         try:
-            # Check if email is configured
-            sender = current_app.config.get('MAIL_DEFAULT_SENDER')
-            if not sender:
-                print("Warning: Email not configured (MAIL_DEFAULT_SENDER missing)")
+            if not self._configure_resend():
                 return False
-                
-            msg = Message(
-                subject=subject,
-                recipients=[to],
-                body=body,
-                sender=sender
-            )
-            self.mail.send(msg)
+            
+            sender = self._get_sender()
+            
+            # Ensure 'to' is a list
+            if isinstance(to, str):
+                to = [to]
+            
+            params = {
+                "from": sender,
+                "to": to,
+                "subject": subject,
+                "text": body,
+            }
+            
+            if html:
+                params["html"] = html
+            
+            response = resend.Emails.send(params)
+            print(f"Email sent successfully to {to}: {response}")
             return True
+            
         except Exception as e:
-            print(f"Error sending email: {str(e)}")
+            print(f"Error sending email via Resend: {str(e)}")
             return False
 
     def send_registration_confirmation(self, registration_data):
@@ -37,7 +66,7 @@ class EmailService:
         body = REGISTRATION_CONFIRMATION.format(
             full_name=registration_data['full_name'],
             registration_type=registration_data['registration_type'],
-            currency_symbol=current_app.config.get('CURRENCY_SYMBOL', '$'),
+            currency_symbol=current_app.config.get('CURRENCY_SYMBOL', 'R'),
             total_amount=registration_data['total_amount'],
             workshop='Yes' if registration_data.get('workshop') else 'No',
             banquet='Yes' if registration_data.get('banquet') else 'No'
@@ -91,4 +120,44 @@ class EmailService:
             full_name=user_data['full_name'],
             reset_link=reset_link
         )
-        return self.send_email(user_data['email'], subject, body) 
+        return self.send_email(user_data['email'], subject, body)
+
+
+# Standalone function for direct use
+def send_email_resend(recipients, subject, body, html=None):
+    """
+    Standalone email sending function using Resend
+    Can be used without EmailService instance
+    """
+    try:
+        from flask import current_app
+        
+        api_key = current_app.config.get('RESEND_API_KEY')
+        if not api_key:
+            print("Warning: RESEND_API_KEY not configured")
+            return False
+        
+        resend.api_key = api_key
+        sender = current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@giirconference.com')
+        
+        # Ensure recipients is a list
+        if isinstance(recipients, str):
+            recipients = [recipients]
+        
+        params = {
+            "from": sender,
+            "to": recipients,
+            "subject": subject,
+            "text": body,
+        }
+        
+        if html:
+            params["html"] = html
+        
+        response = resend.Emails.send(params)
+        print(f"Email sent successfully via Resend: {response}")
+        return True
+        
+    except Exception as e:
+        print(f"Error sending email via Resend: {str(e)}")
+        return False
