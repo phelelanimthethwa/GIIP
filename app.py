@@ -1046,10 +1046,6 @@ def debug_login():
             admin_email = Config.ADMIN_EMAIL
             admin_password = Config.ADMIN_PASSWORD
             
-            if not admin_password:
-                flash('Admin password not configured', 'error')
-                return render_template('debug_login.html', site_design=get_site_design())
-            
             # Check if this is admin login
             if email == admin_email:
                 if password != admin_password:
@@ -1120,10 +1116,6 @@ def login():
                 # For other users, we'll assume they exist and can login (since Firebase created them)
                 admin_email = Config.ADMIN_EMAIL
                 admin_password = Config.ADMIN_PASSWORD
-                
-                if not admin_password:
-                    flash('Admin authentication not configured', 'error')
-                    return render_template('user/auth/login.html', site_design=get_site_design())
                 
                 # Check if this is admin login
                 if email == admin_email:

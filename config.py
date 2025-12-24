@@ -39,7 +39,15 @@ class Config:
 
     # Admin Configuration
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@giirconference.com')
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')  # Must be set via environment variable
+    # ADMIN_PASSWORD: Use environment variable, fallback to dev password only in development
+    _admin_password = os.environ.get('ADMIN_PASSWORD')
+    if os.environ.get('FLASK_ENV') == 'production':
+        if not _admin_password:
+            raise ValueError("ADMIN_PASSWORD must be set in production environment")
+        ADMIN_PASSWORD = _admin_password
+    else:
+        # Development fallback - WARNING: Change this in production!
+        ADMIN_PASSWORD = _admin_password or 'Admin@2024!'
 
     # reCAPTCHA configuration
     RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY')
