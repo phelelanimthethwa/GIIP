@@ -2845,11 +2845,31 @@ def admin_announcements():
             reverse=True
         ))
         
+        # Calculate stats for the dashboard
+        pinned_count = sum(1 for a in announcements.values() if a.get('is_pinned', False))
+        important_count = sum(1 for a in announcements.values() if a.get('type') == 'important')
+        
+        # Get total users count for subscriber display
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
+        total_users = len(users)
+        
+        # Check if Resend is configured
+        resend_configured = bool(app.config.get('RESEND_API_KEY'))
+        
+        # Get sender email
+        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
+        
         return render_template(
             'admin/announcements.html',
             announcements=sorted_announcements,
             site_design=get_site_design(),
-            tinymce_api_key=app.config.get('TINYMCE_API_KEY')
+            tinymce_api_key=app.config.get('TINYMCE_API_KEY'),
+            pinned_count=pinned_count,
+            important_count=important_count,
+            total_users=total_users,
+            resend_configured=resend_configured,
+            sender_email=sender_email
         )
     except Exception as e:
         flash(f'Error loading announcements: {str(e)}', 'error')
@@ -2857,7 +2877,12 @@ def admin_announcements():
             'admin/announcements.html',
             announcements={},
             site_design=get_site_design(),
-            tinymce_api_key=app.config.get('TINYMCE_API_KEY')
+            tinymce_api_key=app.config.get('TINYMCE_API_KEY'),
+            pinned_count=0,
+            important_count=0,
+            total_users=0,
+            resend_configured=bool(app.config.get('RESEND_API_KEY')),
+            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
         )
 
 def send_email(recipients, subject, body, attachments=None, html=None):
@@ -2877,7 +2902,7 @@ def send_email(recipients, subject, body, attachments=None, html=None):
         resend.api_key = api_key
         
         # Get sender email from config or Firebase
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@giirconference.com')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
         
         # Try to get custom sender from Firebase settings
         try:
@@ -2976,24 +3001,37 @@ def create_announcement():
             flash(error_msg, 'error')
             return redirect(url_for('admin_announcements'))
         
-        # Handle image upload
+        # Handle image upload - Upload to Firebase Storage for public URLs (works in emails)
         image_url = None
-        image_data = None
         if 'image' in request.files:
             file = request.files['image']
             if file and file.filename and allowed_image_file(file.filename):
                 try:
                     filename = secure_filename(file.filename)
-                    unique_filename = f"announcement_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
-                    file_path = os.path.join(upload_path, unique_filename)
-                    file.save(file_path)
-                    image_url = f"/static/uploads/announcements/{unique_filename}"
-                    print("Image saved:", image_url)
-                    # Store image data for email attachment
-                    with open(file_path, 'rb') as f:
-                        image_data = f.read()
+                    unique_filename = f"announcements/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+                    
+                    # Upload to Firebase Storage
+                    bucket = storage.bucket('giir-66ae6.firebasestorage.app')
+                    blob = bucket.blob(unique_filename)
+                    
+                    # Set content type
+                    content_type = file.content_type or 'image/jpeg'
+                    blob.content_type = content_type
+                    
+                    # Upload the file
+                    blob.upload_from_file(file, content_type=content_type)
+                    
+                    # Make the blob publicly accessible
+                    blob.make_public()
+                    
+                    # Get the public URL
+                    image_url = blob.public_url
+                    print(f"Image uploaded to Firebase Storage: {image_url}")
+                    
                 except Exception as img_error:
-                    print(f"Warning: Failed to save image: {str(img_error)}")
+                    print(f"Warning: Failed to upload image to Firebase Storage: {str(img_error)}")
+                    import traceback
+                    traceback.print_exc()
                     # Continue without image, don't fail the whole announcement
         
         # Format the datetime with timezone
@@ -3045,61 +3083,42 @@ def create_announcement():
             flash(error_msg, 'error')
             return redirect(url_for('admin_announcements'))
         
-        # Send email notification if requested
+        # Send email notification if requested using Resend
         email_status = None
         if should_send_email:  # Using renamed variable
             try:
-                print("Sending email notifications...")
-                # Get all user emails
+                print("[EMAIL] Sending announcement email notifications via Resend...")
+                
+                # Prepare announcement data for the email service
+                announcement_email_data = {
+                    'title': title,
+                    'content': content,
+                    'type': announcement_type,
+                    'scheduled_date': scheduled_date,
+                    'scheduled_time': scheduled_time,
+                    'timezone': timezone,
+                    'image_url': image_url
+                }
+                
+                # Use the email service to send batch emails
                 users_ref = db.reference('users')
-                users = users_ref.get()
-                if users:
-                    recipient_emails = [user['email'] for user in users.values() if user.get('email')]
-                    print(f"Found {len(recipient_emails)} recipients for email notification")
+                result = email_service.send_announcement_to_users(users_ref, announcement_email_data)
+                
+                if result.get('success'):
+                    sent_count = result.get('sent_count', 0)
+                    email_status = f"Email sent successfully to {sent_count} subscribers."
+                    print(f"[EMAIL] ✓ {email_status}")
                     
-                    if recipient_emails:
-                        # Get email template
-                        templates_ref = db.reference('email_templates')
-                        templates = templates_ref.get() or {}
-                        announcement_template = next(
-                            (t for t in templates.values() if t.get('name') == 'announcement_notification'),
-                            None
-                        )
-                        
-                        if announcement_template:
-                            subject = announcement_template['subject'].replace('{{title}}', title)
-                            body = announcement_template['body'].replace('{{title}}', title).replace('{{content}}', content)
-                        else:
-                            subject = f'New Announcement: {title}'
-                            body = f'''A new announcement has been posted:
-
-{title}
-
-{content}
-
-Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
-
-Best regards,
-Conference Team'''
-                        
-                        attachments = []
-                        if image_url and image_data:
-                            attachments.append({
-                                'path': image_url,
-                                'type': 'image/jpeg',
-                                'data': image_data
-                            })
-                        
-                        print(f"Sending emails with subject: {subject}")
-                        send_email(recipient_emails, subject, body, attachments)
-                        email_status = f"Email notifications sent successfully to {len(recipient_emails)} recipients."
-                        print(f"✓ {email_status}")
-                    else:
-                        email_status = "No recipient emails found."
-                        print(f"⚠ {email_status}")
+                    # Update announcement with email status
+                    announcements_ref.child(announcement_id).update({
+                        'email_sent': True,
+                        'email_sent_at': datetime.now().isoformat(),
+                        'email_recipients_count': sent_count
+                    })
                 else:
-                    email_status = "No users found to send email notifications."
-                    print(f"⚠ {email_status}")
+                    error_msg = result.get('error', 'Unknown error')
+                    email_status = f"Email sending failed: {error_msg}"
+                    print(f"[EMAIL] ⚠ {email_status}")
             except Exception as e:
                 error_msg = f"Error sending email notification: {str(e)}"
                 print(f"✗ {error_msg}")
@@ -3282,34 +3301,39 @@ def update_announcement(announcement_id):
             return jsonify({'success': False, 'error': error_msg}), 500
         
         # ===== CHECKPOINT 6: Email Notification (Non-Critical) =====
-        print("[EDIT] Processing email notification...")
+        print("[EDIT] Processing email notification via Resend...")
         email_status = None
         if send_email:
             try:
-                result = send_email_with_logging(
-                    subject=f'Announcement Updated: {title}',
-                    body=f'''
-An announcement has been updated:
-
-Title: {title}
-
-Content: {content}
-
-Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
-
-Best regards,
-Conference Team
-                    ''',
-                    announcement_type='update',
-                    title=title
-                )
+                # Prepare announcement data for email
+                announcement_email_data = {
+                    'title': f"Updated: {title}",
+                    'content': content,
+                    'type': announcement_type,
+                    'scheduled_date': scheduled_date,
+                    'scheduled_time': scheduled_time,
+                    'timezone': timezone,
+                    'image_url': image_url
+                }
                 
-                if result['success']:
-                    email_status = f"✓ Email sent successfully to {result['count']} recipient(s)"
+                # Use the email service to send batch emails
+                users_ref = db.reference('users')
+                result = email_service.send_announcement_to_users(users_ref, announcement_email_data)
+                
+                if result.get('success'):
+                    sent_count = result.get('sent_count', 0)
+                    email_status = f"✓ Email sent successfully to {sent_count} subscribers"
                     print(f"[EMAIL] {email_status}")
+                    
+                    # Update announcement with email status
+                    announcement_ref.update({
+                        'email_sent': True,
+                        'email_sent_at': datetime.now().isoformat(),
+                        'email_recipients_count': sent_count
+                    })
                 else:
-                    email_status = f"Warning: {result['message']}"
-                    print(f"[EMAIL] ✗ {result['message']}")
+                    email_status = f"Warning: {result.get('error', 'Unknown error')}"
+                    print(f"[EMAIL] ✗ {email_status}")
             except Exception as e:
                 error_msg = f"Error sending email notification: {str(e)}"
                 print(f"[EMAIL] ✗ {error_msg}")
@@ -5140,7 +5164,7 @@ GIIR Conference Team
 def get_email_settings():
     """Return email sender info for UI display - Resend handles actual sending"""
     try:
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@giirconference.com>')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'Global Conference <noreply@globalconference.co.za>')
         return jsonify({
             'success': True,
             'sender': sender

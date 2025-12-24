@@ -118,4 +118,131 @@ If you did not request a password reset, please ignore this email or contact us 
 
 Best regards,
 GIIR Conference Team
-""" 
+"""
+
+# Announcement Email Templates
+ANNOUNCEMENT_EMAIL_TEXT = """
+{title}
+
+{content}
+
+---
+Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
+Type: {announcement_type}
+
+Best regards,
+GIIR Conference Team
+
+---
+You received this email because you are registered with GIIR Conference.
+To manage your email preferences, visit your account settings.
+"""
+
+ANNOUNCEMENT_EMAIL_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08); overflow: hidden;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 32px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td>
+                                        <span style="display: inline-block; padding: 6px 14px; background-color: rgba(255,255,255,0.2); border-radius: 20px; color: #ffffff; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">{type_badge}</span>
+                                        <h1 style="margin: 16px 0 0; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 1.3;">{title}</h1>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Date & Time Bar -->
+                    <tr>
+                        <td style="background-color: #f1f5f9; padding: 16px 40px; border-bottom: 1px solid #e2e8f0;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="color: #64748b; font-size: 14px;">
+                                        <span style="display: inline-block; margin-right: 24px;">
+                                            📅 <strong style="color: #334155;">{scheduled_date}</strong>
+                                        </span>
+                                        <span style="display: inline-block; margin-right: 24px;">
+                                            🕐 <strong style="color: #334155;">{scheduled_time}</strong>
+                                        </span>
+                                        <span style="display: inline-block;">
+                                            🌍 <strong style="color: #334155;">{timezone}</strong>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            {image_section}
+                            <div style="color: #374151; font-size: 16px; line-height: 1.7;">
+                                {content}
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- CTA Button -->
+                    <tr>
+                        <td style="padding: 0 40px 40px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                        <a href="{conference_url}" target="_blank" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600;">
+                                            View Conference Details →
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #1e293b; padding: 32px 40px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
+                                        <p style="margin: 0 0 12px;">
+                                            <strong style="color: #ffffff;">GIIR Conference</strong>
+                                        </p>
+                                        <p style="margin: 0 0 16px; color: #64748b;">
+                                            You received this email because you are registered with GIIR Conference.
+                                        </p>
+                                        <p style="margin: 0;">
+                                            <a href="{unsubscribe_url}" style="color: #667eea; text-decoration: none;">Manage Email Preferences</a>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+"""
+
+# Type badge colors/text for announcements
+ANNOUNCEMENT_TYPE_BADGES = {
+    'important': '⚠️ Important',
+    'info': '📋 Information',
+    'event': '📅 Event',
+    'update': '🔄 Update'
+} 

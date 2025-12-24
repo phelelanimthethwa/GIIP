@@ -26,8 +26,9 @@ class Config:
     }
     
     # Email Configuration (Resend)
-    RESEND_API_KEY = os.environ.get('Resend_api_key')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@giirconference.com'
+    # Supports both 'RESEND_API_KEY' and legacy 'Resend_api_key' environment variable names
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY') or os.environ.get('Resend_api_key')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@globalconference.co.za'
 
     # Admin Configuration
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@giirconference.com')
