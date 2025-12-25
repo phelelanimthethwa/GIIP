@@ -1503,10 +1503,16 @@ def payment_callback():
         
         print(f"Parsed - Status: {status}, Payment ID: {payment_id}, Ref: {transaction_ref}")
         
-        # Check if we have pending registration data
-        pending_registration = session.get('pending_registration')
+        # Check if we have pending registration data (conference or regular)
+        pending_registration = session.get('pending_conference_registration') or session.get('pending_registration')
+        is_conference_registration = 'pending_conference_registration' in session
+        
         if not pending_registration:
             flash('Payment session expired. Please try again.', 'error')
+            if is_conference_registration:
+                conference_id = session.get('pending_conference_registration', {}).get('conference_id')
+                if conference_id:
+                    return redirect(url_for('conference_registration', conference_id=conference_id))
             return redirect(url_for('registration'))
         
         # If we have a payment_id but no status, assume success and verify
@@ -1536,8 +1542,8 @@ def payment_callback():
                     'user_id': current_user.id,
                     'full_name': current_user.full_name,
                     'email': current_user.email,
-                    'registration_type': registration_data['selected_type'],
-                    'registration_period': registration_data['selected_period'],
+                    'registration_type': registration_data.get('registration_type') or registration_data.get('selected_type'),
+                    'registration_period': registration_data.get('registration_period') or registration_data.get('selected_period'),
                     'total_amount': float(registration_data['total_amount']),
                     'extra_paper': registration_data.get('extra_paper', False),
                     'workshop': registration_data.get('workshop', False),
@@ -1552,21 +1558,62 @@ def payment_callback():
                     'updated_at': datetime.now().isoformat()
                 }
                 
+                # Add conference-specific fields if this is a conference registration
+                if is_conference_registration:
+                    conference_id = pending_registration.get('conference_id')
+                    conference = get_conference_data(conference_id) if conference_id else None
+                    registration_record.update({
+                        'conference_id': conference_id,
+                        'conference_code': conference.get('conference_code', '') if conference else '',
+                        'conference_name': conference.get('basic_info', {}).get('name', '') if conference else '',
+                        'institution': registration_data.get('institution', ''),
+                        'country': registration_data.get('country', '')
+                    })
+                
                 # Save registration to Firebase
                 registrations_ref = db.reference('registrations')
                 new_registration = registrations_ref.push(registration_record)
                 
+                # Also save under user's registrations for easy access
+                if is_conference_registration:
+                    conference_id = pending_registration.get('conference_id')
+                    user_reg_ref = db.reference(f'user_registrations/{current_user.id}').push()
+                    user_reg_ref.set({
+                        'conference_id': conference_id,
+                        'registration_id': new_registration.key,
+                        'conference_name': registration_record.get('conference_name', 'Unknown Conference'),
+                        'status': 'paid',
+                        'created_at': datetime.now().isoformat()
+                    })
+                
                 # Clear session
-                session.pop('pending_registration', None)
+                if is_conference_registration:
+                    session.pop('pending_conference_registration', None)
+                else:
+                    session.pop('pending_registration', None)
                 
                 # Send confirmation email
                 try:
-                    send_registration_confirmation_email(registration_record, new_registration.key)
+                    if is_conference_registration:
+                        send_registration_confirmation_email(
+                            registration_record['email'],
+                            registration_record.get('conference_name', 'Conference'),
+                            new_registration.key,
+                            registration_record.get('conference_code', '')
+                        )
+                    else:
+                        send_registration_confirmation_email(registration_record, new_registration.key)
                 except Exception as email_error:
                     print(f"Email sending failed: {email_error}")
                 
                 flash('Registration completed successfully! Payment has been processed.', 'success')
-                return redirect(url_for('dashboard'))
+                
+                # Redirect to appropriate page
+                if is_conference_registration:
+                    conference_id = pending_registration.get('conference_id')
+                    return redirect(url_for('conference_details', conference_id=conference_id))
+                else:
+                    return redirect(url_for('dashboard'))
             else:
                 error_msg = verification_result.get('error', 'Payment verification failed')
                 print(f"Payment verification failed: {error_msg}")
@@ -1575,6 +1622,11 @@ def payment_callback():
             print("No payment ID found or status indicates failure")
             flash('Payment was not successful. Please try again.', 'error')
         
+        # Redirect based on registration type
+        if is_conference_registration:
+            conference_id = pending_registration.get('conference_id')
+            if conference_id:
+                return redirect(url_for('conference_registration', conference_id=conference_id))
         return redirect(url_for('registration'))
         
     except Exception as e:
@@ -1582,14 +1634,28 @@ def payment_callback():
         import traceback
         traceback.print_exc()
         flash('An error occurred processing your payment. Please contact support.', 'error')
+        # Try to redirect to appropriate page
+        if session.get('pending_conference_registration'):
+            conference_id = session.get('pending_conference_registration', {}).get('conference_id')
+            if conference_id:
+                return redirect(url_for('conference_registration', conference_id=conference_id))
         return redirect(url_for('registration'))
 
 @app.route('/payment/cancelled')
 def payment_cancelled():
     """Handle payment cancellation"""
-    # Clear any pending registration
+    # Clear any pending registration (conference or regular)
+    conference_id = None
+    if 'pending_conference_registration' in session:
+        conference_id = session.get('pending_conference_registration', {}).get('conference_id')
+        session.pop('pending_conference_registration', None)
     session.pop('pending_registration', None)
+    
     flash('Payment was cancelled. You can try again at any time.', 'info')
+    
+    # Redirect to appropriate page
+    if conference_id:
+        return redirect(url_for('conference_registration', conference_id=conference_id))
     return redirect(url_for('registration'))
 
 @app.route('/payment/webhook', methods=['POST'])
@@ -4460,31 +4526,70 @@ def get_current_registration_period():
             return 'closed'
 
         current_date = datetime.now().date()
+        has_valid_deadline = False
         
         # Check Early Bird period
         if fees.get('early_bird', {}).get('enabled'):
-            early_bird_deadline = datetime.strptime(fees['early_bird']['deadline'], '%Y-%m-%d').date()
-            if current_date <= early_bird_deadline:
-                # Check if seats are available
-                seats = fees['early_bird'].get('seats', {})
-                if seats.get('remaining', 0) > 0:
-                    return 'early_bird'
+            early_bird_deadline_str = fees['early_bird'].get('deadline', '').strip()
+            if early_bird_deadline_str:
+                try:
+                    early_bird_deadline = datetime.strptime(early_bird_deadline_str, '%Y-%m-%d').date()
+                    has_valid_deadline = True
+                    if current_date <= early_bird_deadline:
+                        # Check if seats are available
+                        seats = fees['early_bird'].get('seats', {})
+                        if seats.get('remaining', 0) > 0:
+                            return 'early_bird'
+                except (ValueError, TypeError):
+                    pass
                 
         # Check Regular period
-        if fees.get('regular', {}).get('deadline'):
-            regular_deadline = datetime.strptime(fees['regular']['deadline'], '%Y-%m-%d').date()
-            if current_date <= regular_deadline:
-                return 'regular'
+        regular_deadline_str = fees.get('regular', {}).get('deadline', '').strip()
+        if regular_deadline_str:
+            try:
+                regular_deadline = datetime.strptime(regular_deadline_str, '%Y-%m-%d').date()
+                has_valid_deadline = True
+                if current_date <= regular_deadline:
+                    return 'regular'
+            except (ValueError, TypeError):
+                pass
                 
         # Check Late period
-        if fees.get('late', {}).get('deadline'):
-            late_deadline = datetime.strptime(fees['late']['deadline'], '%Y-%m-%d').date()
-            if current_date <= late_deadline:
-                return 'late'
+        late_deadline_str = fees.get('late', {}).get('deadline', '').strip()
+        if late_deadline_str:
+            try:
+                late_deadline = datetime.strptime(late_deadline_str, '%Y-%m-%d').date()
+                has_valid_deadline = True
+                if current_date <= late_deadline:
+                    return 'late'
+            except (ValueError, TypeError):
+                pass
+        
+        # If no valid deadlines are set, default to 'regular' period
+        # This allows registration even when deadlines aren't configured
+        if not has_valid_deadline:
+            # Check if regular period has fees configured
+            if fees.get('regular', {}).get('fees'):
+                return 'regular'
+            # Otherwise check if any period has fees
+            for period in ['early_bird', 'early', 'regular', 'late']:
+                if fees.get(period, {}).get('fees'):
+                    return period if period != 'early_bird' or fees.get('early_bird', {}).get('enabled') else 'regular'
+        
+        # If all deadlines have passed but fees exist, still allow 'regular' registration
+        # This prevents closing registration prematurely
+        if fees.get('regular', {}).get('fees'):
+            return 'regular'
         
         return 'closed'
     except Exception as e:
         print(f"Error determining registration period: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Fallback to 'regular' if fees exist
+        fees = get_registration_fees()
+        if fees and fees.get('regular', {}).get('fees'):
+            return 'regular'
         return 'closed'
 
 def format_currency(amount, currency_info):
@@ -7451,76 +7556,119 @@ def conference_registration(conference_id):
             flash('Conference not found.', 'error')
             return redirect(url_for('conference_discover'))
         
+        # Check if registration is enabled
+        if not conference.get('settings', {}).get('registration_enabled', False):
+            flash('Registration is not enabled for this conference.', 'error')
+            return redirect(url_for('conference_details', conference_id=conference_id))
+        
         if request.method == 'GET':
+            # Get registration fees
+            fees = get_registration_fees()
+            current_period = get_current_registration_period()
+            
             # Display registration form
             return render_template('conferences/registration.html',
                                  conference=conference,
                                  conference_id=conference_id,
+                                 fees=fees,
+                                 current_period=current_period,
                                  site_design=get_site_design())
         
-        # POST request - process registration
-        registration_data = {
-            'conference_id': conference_id,
-            'conference_code': conference.get('conference_code', ''),
-            'conference_name': conference.get('basic_info', {}).get('name', ''),
-            'user_id': current_user.id,
-            'full_name': request.form.get('full_name'),
-            'email': request.form.get('email'),
-            'institution': request.form.get('institution'),
-            'country': request.form.get('country'),
-            'registration_type': request.form.get('registration_type'),
-            'submission_date': datetime.now().isoformat(),
-            'status': 'pending',
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
-        }
+        # POST request - handle payment creation
+        if request.is_json:
+            # This is a payment creation request
+            registration_data = request.get_json()
+            
+            # Validate required fields
+            required_fields = ['registration_type', 'registration_period', 'total_amount']
+            for field in required_fields:
+                if field not in registration_data:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Missing required field: {field}'
+                    }), 400
+            
+            # Get registration fees to validate amount
+            fees = get_registration_fees()
+            if not fees:
+                return jsonify({
+                    'success': False,
+                    'error': 'Registration fees not configured'
+                }), 500
+            
+            # Calculate expected amount
+            period = registration_data['registration_period']
+            reg_type = registration_data['registration_type']
+            expected_amount = fees.get(period, {}).get('fees', {}).get(reg_type, 0)
+            
+            # Add additional items if selected
+            if fees.get('additional_items'):
+                for item in ['extra_paper', 'workshop', 'banquet']:
+                    if registration_data.get(item, False):
+                        item_data = fees['additional_items'].get(item, {})
+                        if item_data.get('enabled', False):
+                            expected_amount += item_data.get('fee', 0)
+            
+            # Validate amount (allow small floating point differences)
+            if abs(float(registration_data['total_amount']) - expected_amount) > 0.01:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid amount calculation'
+                }), 400
+            
+            # Prepare payment data
+            payment_data = {
+                'user_id': current_user.id,
+                'full_name': current_user.full_name,
+                'email': current_user.email,
+                'phone': getattr(current_user, 'phone', ''),
+                'total_amount': float(registration_data['total_amount']),
+                'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
+                'conference_id': conference_id,
+                'conference_code': conference.get('conference_code', ''),
+                'registration_type': reg_type,
+                'registration_period': period,
+                'institution': registration_data.get('institution', ''),
+                'country': registration_data.get('country', ''),
+                'additional_items': {
+                    'extra_paper': registration_data.get('extra_paper', False),
+                    'workshop': registration_data.get('workshop', False),
+                    'banquet': registration_data.get('banquet', False)
+                }
+            }
+            
+            # Create payment session
+            payment_result = create_payment_session(payment_data)
+            
+            if payment_result['success']:
+                # Store registration data in session for completion after payment
+                session['pending_conference_registration'] = {
+                    'conference_id': conference_id,
+                    'registration_data': registration_data,
+                    'payment_data': payment_data,
+                    'transaction_reference': payment_result['transaction_reference'],
+                    'payment_id': payment_result.get('payment_id')
+                }
+                
+                return jsonify({
+                    'success': True,
+                    'payment_url': payment_result['payment_url'],
+                    'transaction_reference': payment_result['transaction_reference']
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': payment_result.get('error', 'Payment initialization failed')
+                }), 500
         
-        # Handle file upload for payment proof
-        if 'payment_proof' in request.files:
-            file = request.files['payment_proof']
-            if file.filename != '':
-                try:
-                    filename = save_payment_proof(file)
-                    registration_data['payment_proof'] = filename
-                except Exception as e:
-                    print(f"Error uploading payment proof: {e}")
-                    flash('Error uploading payment proof. Please try again.', 'error')
-                    return render_template('conferences/registration.html',
-                                         conference=conference,
-                                         conference_id=conference_id,
-                                         site_design=get_site_design())
-        
-        # Save to global registrations node (for admin panel)
-        global_registration_ref = db.reference('registrations').push()
-        registration_data['payment_status'] = 'pending'  # Add payment status field
-        global_registration_ref.set(registration_data)
-        
-        # Also save under user's registrations for easy access
-        user_reg_ref = db.reference(f'user_registrations/{current_user.id}').push()
-        user_reg_ref.set({
-            'conference_id': conference_id,
-            'registration_id': global_registration_ref.key,
-            'conference_name': conference.get('basic_info', {}).get('name', 'Unknown Conference'),
-            'status': 'pending',
-            'created_at': datetime.now().isoformat()
-        })
-        
-        # Send confirmation email
-        try:
-            send_registration_confirmation_email(
-                registration_data['email'],
-                conference.get('basic_info', {}).get('name', 'Conference'),
-                global_registration_ref.key,
-                conference.get('conference_code', '')
-            )
-        except Exception as e:
-            print(f"Error sending confirmation email: {e}")
-        
-        flash('Registration submitted successfully! You will receive a confirmation email shortly.', 'success')
-        return redirect(url_for('conference_details', conference_id=conference_id))
+        # Legacy POST (form submission) - redirect to payment flow
+        flash('Please use the online payment option to complete your registration.', 'info')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
         
     except Exception as e:
         print(f"Error processing registration: {e}")
+        import traceback
+        traceback.print_exc()
         flash('Error processing registration. Please try again.', 'error')
         return redirect(url_for('conference_registration', conference_id=conference_id))
 

@@ -44,21 +44,31 @@
     </div>
     {% else %}
 
-    <!-- Simple Registration Form -->
+    <!-- Registration Form with Online Payment -->
     <div class="registration-form-container">
         <div class="form-header">
-            <h2>Registration for {{ conference.basic_info.name }}</h2>
-            <p>Complete your conference registration below</p>
+            <h2>Register for {{ conference.basic_info.name }}</h2>
+            <p>Complete your registration and pay online securely</p>
         </div>
 
-        <form id="registration-form" method="POST" action="{{ url_for('conference_registration', conference_id=conference_id) }}" enctype="multipart/form-data">
+        <form id="registration-form">
             <!-- Hidden Conference ID -->
-            <input type="hidden" name="conference_id" value="{{ conference_id }}">
+            <input type="hidden" id="conference_id" value="{{ conference_id }}">
             
+            <!-- Registration Period Info -->
+            {% if fees and current_period %}
+            <div class="form-section period-info">
+                <div class="period-badge">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Current Period: <strong>{{ current_period|replace('_', ' ')|title }}</strong></span>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Registration Type Selection -->
             <div class="form-section">
-                <h3>Registration Type</h3>
-                <div class="type-options">
+                <h3>Select Registration Type</h3>
+                <div class="type-options" id="type-options">
                     <div class="type-card">
                         <input type="radio" name="registration_type" id="student_author" value="student_author" required>
                         <label for="student_author">
@@ -68,6 +78,10 @@
                             </div>
                             <div class="type-description">
                                 <p>For student researchers presenting papers</p>
+                            </div>
+                            <div class="type-price" data-type="student_author">
+                                <span class="price-label">Price:</span>
+                                <span class="price-value">-</span>
                             </div>
                         </label>
                     </div>
@@ -82,6 +96,10 @@
                             <div class="type-description">
                                 <p>For faculty and professional researchers</p>
                             </div>
+                            <div class="type-price" data-type="regular_author">
+                                <span class="price-label">Price:</span>
+                                <span class="price-value">-</span>
+                            </div>
                         </label>
                     </div>
 
@@ -95,6 +113,10 @@
                             <div class="type-description">
                                 <p>Attend conference sessions online</p>
                             </div>
+                            <div class="type-price" data-type="virtual_delegate">
+                                <span class="price-label">Price:</span>
+                                <span class="price-value">-</span>
+                            </div>
                         </label>
                     </div>
 
@@ -107,6 +129,10 @@
                             </div>
                             <div class="type-description">
                                 <p>Attend conference in person</p>
+                            </div>
+                            <div class="type-price" data-type="physical_delegate">
+                                <span class="price-label">Price:</span>
+                                <span class="price-value">-</span>
                             </div>
                         </label>
                     </div>
@@ -139,30 +165,78 @@
                 </div>
             </div>
 
-            <!-- Payment Information -->
+            <!-- Additional Items (if available) -->
+            {% if fees and fees.additional_items %}
             <div class="form-section">
-                <h3>Payment Information</h3>
-                <div class="payment-info">
-                    <div class="payment-details">
-                        <h4>Bank Transfer Details</h4>
-                        <p><strong>Bank:</strong> Standard Bank</p>
-                        <p><strong>Account Name:</strong> Conference Account</p>
-                        <p><strong>Account Number:</strong> 123456789</p>
-                        <p><strong>Branch Code:</strong> 051001</p>
-                        <p><strong>Reference:</strong> Use your email address</p>
+                <h3>Additional Options</h3>
+                <div class="additional-items">
+                    {% if fees.additional_items.extra_paper and fees.additional_items.extra_paper.enabled %}
+                    <div class="additional-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="extra_paper" name="extra_paper">
+                            <span class="checkbox-custom"></span>
+                            <div class="item-content">
+                                <span class="item-name">{{ fees.additional_items.extra_paper.description or 'Extra Paper Submission' }}</span>
+                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{ fees.additional_items.extra_paper.fee|default(0) }}</span>
+                            </div>
+                        </label>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="payment_proof">Payment Proof *</label>
-                        <input type="file" id="payment_proof" name="payment_proof" accept="image/*,.pdf" required>
-                        <small>Upload bank slip, transaction screenshot, or receipt (Max 5MB)</small>
+                    {% endif %}
+
+                    {% if fees.additional_items.workshop and fees.additional_items.workshop.enabled %}
+                    <div class="additional-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="workshop" name="workshop">
+                            <span class="checkbox-custom"></span>
+                            <div class="item-content">
+                                <span class="item-name">{{ fees.additional_items.workshop.description or 'Workshop' }}</span>
+                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{ fees.additional_items.workshop.fee|default(0) }}</span>
+                            </div>
+                        </label>
+                    </div>
+                    {% endif %}
+
+                    {% if fees.additional_items.banquet and fees.additional_items.banquet.enabled %}
+                    <div class="additional-item">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="banquet" name="banquet">
+                            <span class="checkbox-custom"></span>
+                            <div class="item-content">
+                                <span class="item-name">{{ fees.additional_items.banquet.description or 'Banquet' }}</span>
+                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{ fees.additional_items.banquet.fee|default(0) }}</span>
+                            </div>
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Payment Summary -->
+            <div class="form-section payment-summary">
+                <h3>Payment Summary</h3>
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span>Registration Fee:</span>
+                        <span id="base-fee">{{ fees.currency.symbol or 'R' }}0.00</span>
+                    </div>
+                    <div class="summary-row additional-items-summary" id="additional-items-summary" style="display: none;">
+                        <span>Additional Items:</span>
+                        <span id="additional-fee">{{ fees.currency.symbol or 'R' }}0.00</span>
+                    </div>
+                    <div class="summary-row total-row">
+                        <span><strong>Total Amount:</strong></span>
+                        <span id="total-amount"><strong>{{ fees.currency.symbol or 'R' }}0.00</strong></span>
                     </div>
                 </div>
             </div>
 
             <!-- Submit Button -->
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Complete Registration</button>
+                <button type="button" id="pay-button" class="btn btn-primary" disabled>
+                    <i class="fas fa-credit-card"></i>
+                    Proceed to Payment
+                </button>
                 <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
@@ -261,6 +335,21 @@
     font-size: 1.25rem;
 }
 
+.period-info {
+    background: #e8f5e9;
+    padding: 1rem;
+    border-radius: 8px;
+    border-bottom: none;
+}
+
+.period-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #2d5a2d;
+    font-weight: 600;
+}
+
 .type-options {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -287,11 +376,16 @@
     opacity: 0;
 }
 
-.type-card input[type="radio"]:checked + label {
+.type-card input[type="radio"]:checked + label .type-card {
     border-color: var(--primary-color);
 }
 
-.type-card input[type="radio"]:checked + label::before {
+.type-card:has(input[type="radio"]:checked) {
+    border-color: var(--primary-color);
+    background: #f0f7ff;
+}
+
+.type-card:has(input[type="radio"]:checked)::before {
     content: '✓';
     position: absolute;
     top: -1px;
@@ -327,9 +421,29 @@
 }
 
 .type-description p {
-    margin: 0;
+    margin: 0 0 0.75rem 0;
     color: #666;
     font-size: 0.9rem;
+}
+
+.type-price {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e1e8ed;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.price-label {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.price-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-color);
 }
 
 .form-grid {
@@ -364,31 +478,106 @@
     box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
 }
 
-.form-group small {
-    display: block;
-    margin-top: 0.5rem;
-    color: #666;
-    font-size: 0.875rem;
+.additional-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-.payment-info {
+.additional-item {
+    border: 2px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.additional-item:hover {
+    border-color: var(--primary-color);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    margin: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+    display: none;
+}
+
+.checkbox-custom {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #e1e8ed;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+}
+
+.item-content {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.item-price {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.payment-summary {
     background: #f8f9fa;
     padding: 1.5rem;
     border-radius: 8px;
 }
 
-.payment-details {
-    margin-bottom: 1.5rem;
+.summary-box {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 2px solid #e1e8ed;
 }
 
-.payment-details h4 {
-    margin: 0 0 1rem 0;
-    color: var(--primary-color);
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e1e8ed;
 }
 
-.payment-details p {
-    margin: 0.5rem 0;
-    font-size: 0.95rem;
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.total-row {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--primary-color);
+    font-size: 1.1rem;
 }
 
 .form-actions {
@@ -416,8 +605,13 @@
     color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
     background: var(--primary-dark);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-secondary {
@@ -500,40 +694,172 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Form validation
-    const form = document.getElementById('registration-form');
+    // Fees data from server
+    const fees = {{ fees|tojson|safe if fees else 'null' }};
+    const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
+    const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
     
-    form.addEventListener('submit', function(e) {
-        const requiredFields = form.querySelectorAll('[required]');
-        let isValid = true;
+    let selectedType = null;
+    let totalAmount = 0;
+    
+    // Update prices when page loads
+    function updatePrices() {
+        if (!fees || !currentPeriod) return;
         
-        requiredFields.forEach(field => {
-            if (!field.value.trim()) {
-                isValid = false;
-                field.style.borderColor = '#dc3545';
-            } else {
-                field.style.borderColor = '#e1e8ed';
+        const periodFees = fees[currentPeriod]?.fees || {};
+        const typeCards = document.querySelectorAll('.type-card');
+        
+        typeCards.forEach(card => {
+            const radio = card.querySelector('input[type="radio"]');
+            const priceElement = card.querySelector('.price-value');
+            
+            if (radio && priceElement) {
+                const type = radio.value;
+                const price = periodFees[type] || 0;
+                priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
             }
         });
+    }
+    
+    // Calculate total amount
+    function calculateTotal() {
+        if (!fees || !currentPeriod || !selectedType) {
+            totalAmount = 0;
+            updateSummary();
+            return;
+        }
         
-        if (!isValid) {
-            e.preventDefault();
-            alert('Please fill in all required fields.');
+        const periodFees = fees[currentPeriod]?.fees || {};
+        totalAmount = periodFees[selectedType] || 0;
+        
+        // Add additional items
+        if (fees.additional_items) {
+            ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+                const checkbox = document.getElementById(item);
+                if (checkbox && checkbox.checked) {
+                    const itemData = fees.additional_items[item];
+                    if (itemData && itemData.enabled) {
+                        totalAmount += itemData.fee || 0;
+                    }
+                }
+            });
+        }
+        
+        updateSummary();
+    }
+    
+    // Update payment summary
+    function updateSummary() {
+        const baseFee = selectedType && fees && currentPeriod 
+            ? (fees[currentPeriod]?.fees?.[selectedType] || 0) 
+            : 0;
+        
+        const additionalFee = totalAmount - baseFee;
+        
+        document.getElementById('base-fee').textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
+        
+        if (additionalFee > 0) {
+            document.getElementById('additional-fee').textContent = `${currencySymbol}${additionalFee.toFixed(2)}`;
+            document.getElementById('additional-items-summary').style.display = 'flex';
+        } else {
+            document.getElementById('additional-items-summary').style.display = 'none';
+        }
+        
+        document.getElementById('total-amount').innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
+        
+        // Enable/disable pay button
+        const payButton = document.getElementById('pay-button');
+        if (totalAmount > 0 && selectedType) {
+            payButton.disabled = false;
+        } else {
+            payButton.disabled = true;
+        }
+    }
+    
+    // Handle registration type selection
+    document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            selectedType = this.value;
+            calculateTotal();
+        });
+    });
+    
+    // Handle additional items
+    ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+        const checkbox = document.getElementById(item);
+        if (checkbox) {
+            checkbox.addEventListener('change', calculateTotal);
         }
     });
     
-    // File upload validation
-    const paymentProof = document.getElementById('payment_proof');
-    paymentProof.addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            const maxSize = 5 * 1024 * 1024; // 5MB
-            if (file.size > maxSize) {
-                alert('File size must be less than 5MB');
-                this.value = '';
+    // Handle form submission
+    document.getElementById('pay-button').addEventListener('click', async function() {
+        const form = document.getElementById('registration-form');
+        const formData = new FormData(form);
+        
+        // Validate required fields
+        const fullName = document.getElementById('full_name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const institution = document.getElementById('institution').value.trim();
+        const country = document.getElementById('country').value.trim();
+        
+        if (!fullName || !email || !institution || !country || !selectedType) {
+            alert('Please fill in all required fields and select a registration type.');
+            return;
+        }
+        
+        if (totalAmount <= 0) {
+            alert('Invalid amount. Please check your selection.');
+            return;
+        }
+        
+        // Disable button during processing
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        try {
+            // Prepare registration data
+            const registrationData = {
+                registration_type: selectedType,
+                registration_period: currentPeriod,
+                total_amount: totalAmount,
+                institution: institution,
+                country: country,
+                extra_paper: document.getElementById('extra_paper')?.checked || false,
+                workshop: document.getElementById('workshop')?.checked || false,
+                banquet: document.getElementById('banquet')?.checked || false
+            };
+            
+            // Create payment session
+            const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(registrationData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.payment_url) {
+                // Redirect to payment page
+                window.location.href = result.payment_url;
+            } else {
+                alert(result.error || 'Failed to create payment session. Please try again.');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
             }
+        } catch (error) {
+            console.error('Payment error:', error);
+            alert('An error occurred. Please try again.');
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
         }
     });
+    
+    // Initialize prices
+    updatePrices();
+    calculateTotal();
 });
 </script>
 {% endblock %}

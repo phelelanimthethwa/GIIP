@@ -17,7 +17,7 @@
                 </div>
             </div>
         </div>
-</div>
+    </div>
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -44,7 +44,7 @@
                 </div>
                 <div class="stat-info">
                     <h3>{{ registrations|length }}</h3>
-                    <p>Registrations</p>
+                    <p>Total Registrations</p>
                 </div>
             </div>
             <div class="stat-card stat-success">
@@ -67,11 +67,11 @@
             </div>
             <div class="stat-card stat-info">
                 <div class="stat-icon">
-                    <i class="fas fa-calendar"></i>
+                    <i class="fas fa-file-alt"></i>
                 </div>
                 <div class="stat-info">
                     <h3>{{ submissions|length }}</h3>
-                    <p>Submissions</p>
+                    <p>Paper Submissions</p>
                 </div>
             </div>
         </div>
@@ -102,17 +102,41 @@
             </div>
         </div>
 
+        <!-- Dashboard Tabs -->
+        <div class="dashboard-tabs mb-4">
+            <button class="tab-btn active" data-tab="registrations">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Registrations</span>
+                <span class="tab-badge">{{ registrations|length }}</span>
+            </button>
+            <button class="tab-btn" data-tab="submissions">
+                <i class="fas fa-file-alt"></i>
+                <span>Submissions</span>
+                <span class="tab-badge">{{ submissions|length }}</span>
+            </button>
+        </div>
+
         <!-- Registrations Section -->
-        <div class="registrations-section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-ticket-alt me-2"></i>
-                    My Conference Registrations
-                </h2>
-            <div class="registrations-grid">
+        <div class="tab-content active" id="registrations-tab">
+            <div class="registrations-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-ticket-alt me-2"></i>
+                        My Conference Registrations
+                    </h2>
+                    {% if registrations %}
+                    <div class="section-filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="approved">Approved</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="rejected">Rejected</button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="registrations-grid">
                 {% if registrations %}
                     {% for reg_id, reg in registrations.items() %}
-                        <div class="registration-card">
+                        <div class="registration-card" data-status="{{ reg.payment_status|lower if reg.payment_status else 'pending' }}">
                             <!-- Card Header with Status -->
                             <div class="reg-card-header">
                                 <div class="conference-badge">
@@ -315,6 +339,88 @@
                         </a>
                     </div>
                 {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Submissions Section -->
+        <div class="tab-content" id="submissions-tab">
+            <div class="submissions-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-file-alt me-2"></i>
+                        My Paper Submissions
+                    </h2>
+                </div>
+                <div class="submissions-grid">
+                    {% if submissions %}
+                        {% for sub_id, submission in submissions.items() %}
+                            <div class="submission-card" data-status="{{ submission.status|default('pending')|lower }}">
+                                <div class="submission-header">
+                                    <div class="submission-icon">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </div>
+                                    <div class="submission-status status-{{ submission.status|default('pending')|lower }}">
+                                        <i class="fas fa-{{ 'check-circle' if submission.status == 'approved' else 'clock' if submission.status == 'pending' else 'times-circle' }}"></i>
+                                        {{ submission.status|default('Pending')|title }}
+                                    </div>
+                                </div>
+                                <div class="submission-body">
+                                    <h3 class="submission-title">{{ submission.paper_title or 'Untitled Paper' }}</h3>
+                                    <div class="submission-meta">
+                                        {% if submission.research_area %}
+                                        <span class="meta-badge">
+                                            <i class="fas fa-microscope"></i>
+                                            {{ submission.research_area|replace('_', ' ')|title }}
+                                        </span>
+                                        {% endif %}
+                                        {% if submission.presentation_type %}
+                                        <span class="meta-badge">
+                                            <i class="fas fa-presentation"></i>
+                                            {{ submission.presentation_type|title }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if submission.submitted_at %}
+                                    <div class="submission-date">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        Submitted: {{ submission.submitted_at[:10] if submission.submitted_at|length > 10 else submission.submitted_at }}
+                                    </div>
+                                    {% endif %}
+                                    {% if submission.authors %}
+                                    <div class="submission-authors">
+                                        <i class="fas fa-users"></i>
+                                        {% if submission.authors|length > 0 %}
+                                            {{ submission.authors[0].name }}
+                                            {% if submission.authors|length > 1 %}
+                                                + {{ submission.authors|length - 1 }} co-author{{ 's' if submission.authors|length > 2 else '' }}
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="submission-footer">
+                                    <a href="{{ url_for('call_for_papers') }}" class="submission-link">
+                                        <i class="fas fa-eye"></i>
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h3>No Submissions Yet</h3>
+                            <p>You haven't submitted any papers yet. Start by submitting your research paper!</p>
+                            <a href="{{ url_for('call_for_papers') }}" class="btn-empty-action">
+                                <i class="fas fa-file-upload"></i>
+                                Submit Paper
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -324,12 +430,12 @@
 /* ========== Dashboard Wrapper ========== */
 .dashboard-wrapper {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: #f5f5f5;
 }
 
 /* ========== Hero Section ========== */
 .dashboard-hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     padding: 3rem 0;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -387,6 +493,24 @@
     gap: 1.5rem;
     box-shadow: 0 4px 6px rgba(0,0,0,0.07);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.stat-card:hover::before {
+    left: 100%;
 }
 
 .stat-card:hover {
@@ -405,10 +529,10 @@
     color: white;
 }
 
-.stat-primary .stat-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.stat-success .stat-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-.stat-warning .stat-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.stat-info .stat-icon { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.stat-primary .stat-icon { background: #000000; }
+.stat-success .stat-icon { background: #000000; }
+.stat-warning .stat-icon { background: #000000; }
+.stat-info .stat-icon { background: #000000; }
 
 .stat-info h3 {
     font-size: 2rem;
@@ -470,10 +594,14 @@
     color: white;
 }
 
-.action-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.action-success { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
-.action-info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.action-secondary { background: linear-gradient(135deg, #868f96 0%, #596164 100%); }
+.action-btn:active {
+    transform: translateY(-1px);
+}
+
+.action-primary { background: #000000; }
+.action-success { background: #000000; }
+.action-info { background: #000000; }
+.action-secondary { background: #333333; }
 
 /* ========== Registrations Section ========== */
 .registrations-section {
@@ -498,16 +626,33 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    position: relative;
+}
+
+.registration-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #000000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .registration-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    border-color: #667eea;
+    border-color: #000000;
+}
+
+.registration-card:hover::after {
+    opacity: 1;
 }
 
 .reg-card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     padding: 1.5rem;
     display: flex;
     justify-content: space-between;
@@ -581,7 +726,7 @@
 }
 
 .conference-code-badge {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: #000000;
     color: white !important;
     font-weight: 600;
 }
@@ -614,7 +759,7 @@
 .detail-item i {
     width: 35px;
     height: 35px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     border-radius: 8px;
     display: flex;
@@ -646,14 +791,15 @@
 .amount-section {
     margin: 1rem 1.5rem;
     padding: 1.25rem;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    background: #f5f5f5;
+    border: 2px solid #000000;
     border-radius: 12px;
     text-align: center;
 }
 
 .amount-label {
     font-size: 0.85rem;
-    color: #78350f;
+    color: #000000;
     font-weight: 600;
     text-transform: uppercase;
     margin-bottom: 0.5rem;
@@ -662,7 +808,7 @@
 .amount-value {
     font-size: 2rem;
     font-weight: 700;
-    color: #92400e;
+    color: #000000;
 }
 
 .additional-options {
@@ -727,7 +873,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: #10b981;
+    background: #000000;
     color: white;
     text-decoration: none;
     border-radius: 8px;
@@ -737,14 +883,14 @@
 }
 
 .proof-btn:hover {
-    background: #059669;
+    background: #333333;
     transform: translateY(-2px);
     color: white;
 }
 
 .proof-size {
     font-size: 0.8rem;
-    color: #047857;
+    color: #000000;
 }
 
 .card-footer {
@@ -758,7 +904,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    color: #667eea;
+    color: #000000;
     text-decoration: none;
     font-weight: 600;
     font-size: 0.9rem;
@@ -766,25 +912,39 @@
 }
 
 .footer-link:hover {
-    color: #764ba2;
+    color: #333333;
+    text-decoration: underline;
 }
 
 /* ========== Empty State ========== */
 .empty-state {
     text-align: center;
     padding: 4rem 2rem;
+    grid-column: 1 / -1;
+    animation: fadeIn 0.5s ease;
 }
 
 .empty-icon {
     font-size: 5rem;
     color: #cbd5e0;
     margin-bottom: 1.5rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 .empty-state h3 {
     font-size: 1.5rem;
     color: #2d3748;
     margin-bottom: 0.75rem;
+    font-weight: 700;
 }
 
 .empty-state p {
@@ -793,6 +953,7 @@
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
+    line-height: 1.6;
 }
 
 .btn-empty-action {
@@ -800,19 +961,270 @@
     align-items: center;
     gap: 0.75rem;
     padding: 1rem 2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #000000;
     color: white;
     text-decoration: none;
     border-radius: 12px;
     font-weight: 600;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .btn-empty-action:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
     color: white;
+    background: #333333;
+}
+
+.btn-empty-action:active {
+    transform: translateY(-1px);
+}
+
+/* ========== Dashboard Tabs ========== */
+.dashboard-tabs {
+    display: flex;
+    gap: 1rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #718096;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    position: relative;
+}
+
+.tab-btn:hover {
+    background: #f5f5f5;
+    color: #000000;
+}
+
+.tab-btn.active {
+    background: #000000;
+    color: white;
+}
+
+.tab-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.tab-btn.active .tab-badge {
+    background: rgba(255,255,255,0.3);
+}
+
+/* ========== Tab Content ========== */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ========== Section Header ========== */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.section-filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid #e5e7eb;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #6b7280;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.filter-btn:hover {
+    border-color: #000000;
+    color: #000000;
+}
+
+.filter-btn.active {
+    background: #000000;
+    border-color: transparent;
+    color: white;
+}
+
+/* ========== Submissions Section ========== */
+.submissions-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+}
+
+.submissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.submission-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.submission-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    border-color: #000000;
+}
+
+.submission-header {
+    background: #000000;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.submission-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.submission-status {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.submission-status.status-approved {
+    background: #34d399;
+    color: #065f46;
+}
+
+.submission-status.status-pending {
+    background: #fbbf24;
+    color: #78350f;
+}
+
+.submission-status.status-rejected {
+    background: #f87171;
+    color: #7f1d1d;
+}
+
+.submission-body {
+    padding: 1.5rem;
+}
+
+.submission-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+}
+
+.submission-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.meta-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    background: #f3f4f6;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #4b5563;
+}
+
+.submission-date,
+.submission-authors {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.submission-footer {
+    padding: 1rem 1.5rem;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+}
+
+.submission-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #000000;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.submission-link:hover {
+    color: #333333;
+    text-decoration: underline;
+}
+
+/* ========== Registration Card Filtering ========== */
+.registration-card[data-filter-status] {
+    display: block;
+}
+
+.registration-card.hidden {
+    display: none;
 }
 
 /* ========== Responsive Design ========== */
@@ -834,7 +1246,8 @@
         grid-template-columns: 1fr;
     }
     
-    .registrations-grid {
+    .registrations-grid,
+    .submissions-grid {
         grid-template-columns: 1fr;
     }
 
@@ -843,6 +1256,90 @@
         gap: 0.5rem;
         align-items: stretch;
     }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .section-filters {
+        width: 100%;
+    }
+
+    .filter-btn {
+        flex: 1;
+        min-width: 80px;
+    }
+
+    .dashboard-tabs {
+        padding: 0.75rem;
+    }
+
+    .tab-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 </style>
+
+<script>
+// Tab switching functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            document.getElementById(targetTab + '-tab').classList.add('active');
+        });
+    });
+
+    // Filter functionality for registrations
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const registrationCards = document.querySelectorAll('.registration-card');
+
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            
+            // Update active filter button
+            filterButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter cards
+            registrationCards.forEach(card => {
+                if (filter === 'all') {
+                    card.classList.remove('hidden');
+                } else {
+                    const status = card.getAttribute('data-status');
+                    if (status === filter) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %} 
