@@ -368,24 +368,52 @@ def home():
     try:
         # Get home content from Firebase
         content_ref = db.reference('home_content')
-        home_content = content_ref.get() or {
-            'welcome': {
-                'title': 'Welcome to GIIR Conference 2024',
-                'subtitle': 'Global Institute on Innovative Research',
-                'conference_date': 'International Conference 2024',
-                'message': 'Join us for the premier conference in innovative research'
-            },
-            'hero': {
-                'images': [],
-                'conference': {
-                    'name': 'GIIR Conference 2024',
-                    'date': 'TBA',
-                    'time': 'TBA',
-                    'city': 'TBA',
-                    'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
-                }
-            }
-        }
+        home_content = content_ref.get() or {}
+        
+        # Ensure all required fields exist with defaults
+        if not home_content or 'welcome' not in home_content:
+            home_content.setdefault('welcome', {})
+        home_content['welcome'].setdefault('title', default_content['welcome']['title'])
+        home_content['welcome'].setdefault('subtitle', default_content['welcome']['subtitle'])
+        home_content['welcome'].setdefault('conference_date', default_content['welcome']['conference_date'])
+        home_content['welcome'].setdefault('message', default_content['welcome']['message'])
+        home_content['welcome'].setdefault('subtitle_marquee', False)
+        
+        if 'hero' not in home_content:
+            home_content['hero'] = {}
+        if 'images' not in home_content['hero']:
+            home_content['hero']['images'] = []
+        if 'conference' not in home_content['hero']:
+            home_content['hero']['conference'] = {}
+        home_content['hero']['conference'].setdefault('name', default_content['hero']['conference']['name'])
+        home_content['hero']['conference'].setdefault('date', default_content['hero']['conference']['date'])
+        home_content['hero']['conference'].setdefault('time', default_content['hero']['conference']['time'])
+        home_content['hero']['conference'].setdefault('city', default_content['hero']['conference']['city'])
+        home_content['hero']['conference'].setdefault('highlights', default_content['hero']['conference']['highlights'])
+        home_content['hero']['conference'].setdefault('show_countdown', False)
+        
+        if 'vmo' not in home_content:
+            home_content['vmo'] = {}
+        home_content['vmo'].setdefault('vision', default_content['vmo']['vision'])
+        home_content['vmo'].setdefault('mission', default_content['vmo']['mission'])
+        home_content['vmo'].setdefault('objectives', default_content['vmo']['objectives'])
+        
+        if 'associates' not in home_content:
+            home_content['associates'] = []
+        if 'downloads' not in home_content:
+            home_content['downloads'] = []
+        
+        if 'footer' not in home_content:
+            home_content['footer'] = {}
+        home_content['footer'].setdefault('contact_email', '')
+        home_content['footer'].setdefault('contact_phone', '')
+        home_content['footer'].setdefault('address', '')
+        home_content['footer'].setdefault('copyright', default_content['footer']['copyright'])
+        if 'social_media' not in home_content['footer']:
+            home_content['footer']['social_media'] = {}
+        home_content['footer']['social_media'].setdefault('facebook', '')
+        home_content['footer']['social_media'].setdefault('twitter', '')
+        home_content['footer']['social_media'].setdefault('linkedin', '')
         
         # Get speakers for home page display
         speakers_ref = db.reference('speakers')
@@ -413,14 +441,7 @@ def home():
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
         return render_template('user/home.html', 
-                            home_content={
-                                'welcome': {
-                                    'title': 'Welcome to GIIR Conference 2024',
-                                    'subtitle': 'Global Institute on Innovative Research',
-                                    'conference_date': 'International Conference 2024',
-                                    'message': 'Join us for the premier conference in innovative research'
-                                }
-                            },
+                            home_content=default_content,
                             featured_speakers=[],
                             site_design=DEFAULT_THEME,
                             page_name='home')
@@ -4061,14 +4082,201 @@ def admin_home_content():
 
         # GET request - render template
         home_content = content_ref.get() or {}
-        return render_template('admin/home_content.html', home_content=home_content)
+        
+        # Ensure all required fields exist with defaults
+        if not home_content or 'welcome' not in home_content:
+            home_content.setdefault('welcome', {})
+        home_content['welcome'].setdefault('title', '')
+        home_content['welcome'].setdefault('subtitle', '')
+        home_content['welcome'].setdefault('conference_date', '')
+        home_content['welcome'].setdefault('message', '')
+        home_content['welcome'].setdefault('subtitle_marquee', False)
+        
+        if 'hero' not in home_content:
+            home_content['hero'] = {}
+        if 'images' not in home_content['hero']:
+            home_content['hero']['images'] = []
+        if 'conference' not in home_content['hero']:
+            home_content['hero']['conference'] = {}
+        home_content['hero']['conference'].setdefault('name', '')
+        home_content['hero']['conference'].setdefault('date', '')
+        home_content['hero']['conference'].setdefault('time', '')
+        home_content['hero']['conference'].setdefault('city', '')
+        home_content['hero']['conference'].setdefault('highlights', '')
+        home_content['hero']['conference'].setdefault('show_countdown', False)
+        
+        # Auto-populate with 2026 conference if conference fields are empty
+        if not home_content['hero']['conference'].get('name'):
+            try:
+                conferences = get_all_conferences()
+                if conferences:
+                    # Find the 2026 ICETL conference
+                    for conf_id, conf_data in conferences.items():
+                        if conf_data and conf_data.get('basic_info'):
+                            basic_info = conf_data['basic_info']
+                            year = basic_info.get('year')
+                            abbreviation = basic_info.get('abbreviation', '').upper()
+                            # Look for ICETL-2026 or any 2026 conference
+                            if year == 2026 and ('ICETL' in abbreviation or 'ETL' in abbreviation):
+                                conf_name = basic_info.get('name', '')
+                                description = basic_info.get('description', '')
+                                
+                                # Populate Welcome Message fields if empty
+                                if not home_content['welcome'].get('title'):
+                                    # Extract conference name for title (e.g., "International Conference on Social Science, Education and Learning (ICETL-2026)")
+                                    home_content['welcome']['title'] = conf_name.split('(')[0].strip() if '(' in conf_name else conf_name
+                                
+                                if not home_content['welcome'].get('subtitle'):
+                                    # Use abbreviation and year for subtitle
+                                    home_content['welcome']['subtitle'] = f"{abbreviation}-{year}" if abbreviation else f"Conference {year}"
+                                
+                                if not home_content['welcome'].get('message'):
+                                    # Extract first paragraph from description for welcome message
+                                    if description:
+                                        # Get first paragraph or first few sentences
+                                        paragraphs = description.split('\n\n')
+                                        if paragraphs:
+                                            first_para = paragraphs[0].strip()
+                                            # If too long, take first few sentences
+                                            sentences = first_para.split('.')
+                                            if len(sentences) > 3:
+                                                message = '. '.join(sentences[:2]).strip() + '.'
+                                            else:
+                                                message = first_para
+                                            home_content['welcome']['message'] = message
+                                        else:
+                                            # Fallback: use first few sentences
+                                            sentences = description.split('.')[:2]
+                                            message = '. '.join([s.strip() for s in sentences if s.strip()]).strip()
+                                            if message:
+                                                home_content['welcome']['message'] = message + '.'
+                                
+                                # Populate conference data
+                                home_content['hero']['conference']['name'] = conf_name
+                                start_date = basic_info.get('start_date', '')
+                                end_date = basic_info.get('end_date', '')
+                                if start_date and end_date:
+                                    # Format date range for welcome section
+                                    try:
+                                        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                                        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                                        if start_dt.month == end_dt.month:
+                                            date_str = start_dt.strftime('%B %d') + ' - ' + end_dt.strftime('%d, %Y')
+                                        else:
+                                            date_str = start_dt.strftime('%B %d') + ' - ' + end_dt.strftime('%B %d, %Y')
+                                        home_content['hero']['conference']['date'] = start_date  # Store ISO format for form
+                                        # Only update welcome date if it's empty
+                                        if not home_content['welcome'].get('conference_date'):
+                                            home_content['welcome']['conference_date'] = date_str  # Store formatted for display
+                                    except Exception as e:
+                                        print(f"Error formatting date: {e}")
+                                        home_content['hero']['conference']['date'] = start_date
+                                        if not home_content['welcome'].get('conference_date'):
+                                            home_content['welcome']['conference_date'] = f"{start_date} to {end_date}"
+                                location = basic_info.get('location', '')
+                                if location:
+                                    # Extract city from location (e.g., "Toronto, Ontario, Canada" -> "Toronto")
+                                    city = location.split(',')[0].strip()
+                                    home_content['hero']['conference']['city'] = city
+                                # Set default time for virtual conferences
+                                home_content['hero']['conference']['time'] = '09:00'
+                                # Set highlights from description
+                                if description:
+                                    # Extract first few sentences as highlights
+                                    sentences = description.split('.')[:3]
+                                    highlights = '\n'.join([s.strip() + '.' for s in sentences if s.strip()])
+                                    home_content['hero']['conference']['highlights'] = highlights
+                                break
+            except Exception as e:
+                print(f"Error loading conferences for auto-population: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Ensure VMO section exists before checking/restoring
+        if 'vmo' not in home_content:
+            home_content['vmo'] = {}
+        home_content['vmo'].setdefault('vision', '')
+        home_content['vmo'].setdefault('mission', '')
+        home_content['vmo'].setdefault('objectives', '')
+        
+        # Restore Vision, Mission & Objectives if they were deleted/empty
+        if not home_content['vmo'].get('vision') or not home_content['vmo'].get('mission') or not home_content['vmo'].get('objectives'):
+            # Restore from default_content
+            if not home_content['vmo'].get('vision'):
+                home_content['vmo']['vision'] = default_content['vmo']['vision']
+            if not home_content['vmo'].get('mission'):
+                home_content['vmo']['mission'] = default_content['vmo']['mission']
+            if not home_content['vmo'].get('objectives'):
+                home_content['vmo']['objectives'] = default_content['vmo']['objectives']
+        
+        if 'associates' not in home_content:
+            home_content['associates'] = []
+        if 'downloads' not in home_content:
+            home_content['downloads'] = []
+        
+        if 'footer' not in home_content:
+            home_content['footer'] = {}
+        home_content['footer'].setdefault('contact_email', '')
+        home_content['footer'].setdefault('contact_phone', '')
+        home_content['footer'].setdefault('address', '')
+        home_content['footer'].setdefault('copyright', '')
+        if 'social_media' not in home_content['footer']:
+            home_content['footer']['social_media'] = {}
+        home_content['footer']['social_media'].setdefault('facebook', '')
+        home_content['footer']['social_media'].setdefault('twitter', '')
+        home_content['footer']['social_media'].setdefault('linkedin', '')
+        
+        # Get available conferences for selection
+        available_conferences = {}
+        try:
+            conferences = get_all_conferences()
+            if conferences:
+                # Filter to get upcoming/active conferences, prioritizing 2026
+                for conf_id, conf_data in conferences.items():
+                    if conf_data and conf_data.get('basic_info'):
+                        basic_info = conf_data['basic_info']
+                        year = basic_info.get('year')
+                        status = basic_info.get('status', '').lower()
+                        # Include upcoming/active conferences, prioritizing 2026
+                        if year and (status in ['upcoming', 'active'] or year >= 2026):
+                            available_conferences[conf_id] = {
+                                'id': conf_id,
+                                'name': basic_info.get('name', ''),
+                                'year': year,
+                                'start_date': basic_info.get('start_date', ''),
+                                'end_date': basic_info.get('end_date', ''),
+                                'location': basic_info.get('location', ''),
+                                'description': basic_info.get('description', '')
+                            }
+            
+            # Sort by year (2026 first, then others)
+            sorted_conferences = dict(sorted(available_conferences.items(), 
+                                            key=lambda x: (x[1]['year'] != 2026, x[1]['year'])))
+        except Exception as e:
+            print(f"Error loading conferences for dropdown: {e}")
+            import traceback
+            traceback.print_exc()
+            sorted_conferences = {}
+        
+        return render_template('admin/home_content.html', 
+                             home_content=home_content,
+                             available_conferences=sorted_conferences)
 
     except Exception as e:
         print(f"Error in admin_home_content: {str(e)}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'error': str(e)})
         flash('Error loading home content', 'error')
-        return render_template('admin/home_content.html', home_content={})
+        # Provide default structure even on error
+        fallback_content = {
+            'welcome': {'title': '', 'subtitle': '', 'conference_date': '', 'message': '', 'subtitle_marquee': False},
+            'hero': {'images': [], 'conference': {'name': '', 'date': '', 'time': '', 'city': '', 'highlights': '', 'show_countdown': False}},
+            'vmo': {'vision': '', 'mission': '', 'objectives': ''},
+            'associates': [],
+            'downloads': [],
+            'footer': {'contact_email': '', 'contact_phone': '', 'address': '', 'copyright': '', 'social_media': {'facebook': '', 'twitter': '', 'linkedin': ''}}
+        }
+        return render_template('admin/home_content.html', home_content=fallback_content)
 
 # Add to admin_required routes list in base_admin.html
 # Add this to ensure session persistence
@@ -5783,7 +5991,53 @@ def inject_home_content():
     try:
         # Get home content from Firebase
         content_ref = db.reference('home_content')
-        home_content = content_ref.get() or default_content
+        home_content = content_ref.get() or {}
+        
+        # Ensure all required fields exist with defaults
+        if not home_content or 'welcome' not in home_content:
+            home_content.setdefault('welcome', {})
+        home_content['welcome'].setdefault('title', default_content['welcome']['title'])
+        home_content['welcome'].setdefault('subtitle', default_content['welcome']['subtitle'])
+        home_content['welcome'].setdefault('conference_date', default_content['welcome']['conference_date'])
+        home_content['welcome'].setdefault('message', default_content['welcome']['message'])
+        home_content['welcome'].setdefault('subtitle_marquee', False)
+        
+        if 'hero' not in home_content:
+            home_content['hero'] = {}
+        if 'images' not in home_content['hero']:
+            home_content['hero']['images'] = []
+        if 'conference' not in home_content['hero']:
+            home_content['hero']['conference'] = {}
+        home_content['hero']['conference'].setdefault('name', default_content['hero']['conference']['name'])
+        home_content['hero']['conference'].setdefault('date', default_content['hero']['conference']['date'])
+        home_content['hero']['conference'].setdefault('time', default_content['hero']['conference']['time'])
+        home_content['hero']['conference'].setdefault('city', default_content['hero']['conference']['city'])
+        home_content['hero']['conference'].setdefault('highlights', default_content['hero']['conference']['highlights'])
+        home_content['hero']['conference'].setdefault('show_countdown', False)
+        
+        if 'vmo' not in home_content:
+            home_content['vmo'] = {}
+        home_content['vmo'].setdefault('vision', default_content['vmo']['vision'])
+        home_content['vmo'].setdefault('mission', default_content['vmo']['mission'])
+        home_content['vmo'].setdefault('objectives', default_content['vmo']['objectives'])
+        
+        if 'associates' not in home_content:
+            home_content['associates'] = []
+        if 'downloads' not in home_content:
+            home_content['downloads'] = []
+        
+        if 'footer' not in home_content:
+            home_content['footer'] = {}
+        home_content['footer'].setdefault('contact_email', '')
+        home_content['footer'].setdefault('contact_phone', '')
+        home_content['footer'].setdefault('address', '')
+        home_content['footer'].setdefault('copyright', default_content['footer']['copyright'])
+        if 'social_media' not in home_content['footer']:
+            home_content['footer']['social_media'] = {}
+        home_content['footer']['social_media'].setdefault('facebook', '')
+        home_content['footer']['social_media'].setdefault('twitter', '')
+        home_content['footer']['social_media'].setdefault('linkedin', '')
+        
         return {'home_content': home_content}
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
@@ -7337,6 +7591,92 @@ def delete_attendee_photo(conference_id, attendee_id):
         print(f"Error deleting attendee photo: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/admin/clean-galleries', methods=['POST'])
+@login_required
+@admin_required
+def clean_all_galleries():
+    """Clean all gallery data from all conferences"""
+    try:
+        conferences = get_all_conferences()
+        deleted_count = {
+            'images': 0,
+            'attendees': 0,
+            'summaries': 0,
+            'conferences': 0
+        }
+        
+        for conf_id, conf_data in conferences.items():
+            if not conf_data:
+                continue
+                
+            # Delete gallery images
+            gallery_ref = db.reference(f'conferences/{conf_id}/gallery')
+            gallery_images = gallery_ref.get() or {}
+            if gallery_images:
+                # Delete images from Firebase Storage first
+                try:
+                    bucket = storage.bucket()
+                    for image_id, image_data in gallery_images.items():
+                        filename = image_data.get('filename')
+                        if filename:
+                            try:
+                                blob = bucket.blob(f"gallery/{conf_id}/{filename}")
+                                blob.delete()
+                            except Exception as e:
+                                print(f"Warning: Could not delete image {filename} from storage: {e}")
+                except Exception as e:
+                    print(f"Warning: Error accessing storage: {e}")
+                
+                # Delete from database
+                gallery_ref.delete()
+                deleted_count['images'] += len(gallery_images)
+            
+            # Delete gallery attendees
+            attendees_ref = db.reference(f'conferences/{conf_id}/gallery_attendees')
+            attendees = attendees_ref.get() or {}
+            if attendees:
+                # Delete attendee photos from storage
+                try:
+                    bucket = storage.bucket()
+                    for attendee_id, attendee_data in attendees.items():
+                        photo_url = attendee_data.get('photo_url')
+                        if photo_url:
+                            try:
+                                # Extract file path from URL
+                                url_parts = photo_url.split('/')
+                                if len(url_parts) > 4:
+                                    file_path = '/'.join(url_parts[4:])
+                                    blob = bucket.blob(file_path)
+                                    blob.delete()
+                            except Exception as e:
+                                print(f"Warning: Could not delete attendee photo: {e}")
+                except Exception as e:
+                    print(f"Warning: Error accessing storage for attendees: {e}")
+                
+                # Delete from database
+                attendees_ref.delete()
+                deleted_count['attendees'] += len(attendees)
+            
+            # Delete gallery summary
+            summary_ref = db.reference(f'conferences/{conf_id}/gallery_summary')
+            summary_data = summary_ref.get()
+            if summary_data:
+                summary_ref.delete()
+                deleted_count['summaries'] += 1
+            
+            if gallery_images or attendees or summary_data:
+                deleted_count['conferences'] += 1
+        
+        flash(f'Gallery cleanup complete! Deleted {deleted_count["images"]} images, {deleted_count["attendees"]} attendees, {deleted_count["summaries"]} summaries from {deleted_count["conferences"]} conferences.', 'success')
+        return redirect(url_for('admin_conference_galleries'))
+        
+    except Exception as e:
+        print(f"Error cleaning galleries: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error cleaning galleries: {str(e)}', 'error')
+        return redirect(url_for('admin_conference_galleries'))
+
 def generate_gradient_colors(conference_id):
     """Generate unique gradient colors based on conference ID"""
     # Use conference ID to create deterministic but varied color combinations
@@ -8022,6 +8362,104 @@ def create_conference():
     except Exception as e:
         print(f"Error creating conference: {e}")
         flash('Error creating conference.', 'error')
+    
+    return redirect(url_for('admin_conferences'))
+
+@app.route('/admin/conferences/add-2026-2027', methods=['POST'])
+@login_required
+@admin_required
+def add_conferences_2026_2027():
+    """Add the two conferences for 2026 and 2027"""
+    try:
+        results = []
+        
+        # Conference 1: ICETL-2026
+        conference_2026 = {
+            'basic_info': {
+                'name': 'International Conference on Social Science, Education and Learning (ICETL-2026)',
+                'description': '''Join the premier Social Science and education conference 2026. Taking place virtually on the 21st – 24th July 2026, the international social sciences and education conference 2026 will host the international community from social and behavioural scientists, educators, representatives of non-profit and government organizations, and other stakeholders to discuss such topics as adult education, pedagogy, ICT, inclusive education, and more.
+
+We invite the international community to take an active role in shaping the future of education. Share your research findings, exchange ideas with fellow academic members, expand your network, and get inspired. The conference will be held every year to make it an ideal platform for people to share views and experiences in education and the related areas.
+
+Toronto, the capital of the province of Ontario, is a major Canadian city along Lake Ontario's northwestern shore. It's a dynamic metropolis with a core of soaring skyscrapers, all dwarfed by the iconic, free-standing CN Tower. Toronto also has many green spaces, from the orderly oval of Queen's Park to 400-acre High Park and its trails, sports facilities and zoo. This is the excellent location for providing academic platforms to share related innovations & practices in pedagogy and explore educational technologies and, at the same time, network for future collaborations in education.''',
+                'year': 2026,
+                'abbreviation': 'ICETL',
+                'status': 'upcoming',
+                'event_type': 'virtual',
+                'start_date': '2026-07-21',
+                'end_date': '2026-07-24',
+                'location': 'Toronto, Ontario, Canada',
+                'website': '',
+                'timezone': 'UTC'
+            },
+            'settings': {
+                'registration_enabled': True,
+                'paper_submission_enabled': True,
+                'gallery_enabled': True,
+                'email_notifications': True,
+                'max_registrations': 1000,
+                'max_paper_submissions': 500
+            },
+            'metadata': {
+                'created_at': datetime.now().isoformat(),
+                'created_by': current_user.email,
+                'version': '1.0.0'
+            }
+        }
+        
+        result_2026 = create_conference_with_code(conference_2026)
+        if result_2026['success']:
+            results.append(f"✓ ICETL-2026 created successfully (Code: {result_2026['conference_code']})")
+        else:
+            results.append(f"✗ ICETL-2026 failed: {result_2026.get('error', 'Unknown error')}")
+        
+        # Conference 2: ICIRT-2027
+        conference_2027 = {
+            'basic_info': {
+                'name': 'International Conference on Innovation, Robotics and Applied Technology (ICIRT-2027)',
+                'description': '''International Conference on Innovation, Robotics and Applied Technology (ICIRT - 2027) will be held virtually during the 26th - 29th Jan 2027. ICIRT is to bring together innovative academics and industrial experts in the field of Science Technology and Management to a common forum. This Conference is Organized by the Global Institute on Innovative Research (GIIR).
+
+The primary goal of the conference is to promote research and developmental activities in Control, Automation, Robotics and Vision Engineering. In addition, it aims to promote scientific information interchange between researchers, developers, engineers, students, and practitioners working in and around the world. The conference will be held every year to make it an ideal platform for people to share views and experiences in Control, Automation, Robotics and Vision Engineering related areas.
+
+Rio de Janeiro is a huge seaside city in Brazil, famed for its Copacabana and Ipanema beaches, 38m Christ the Redeemer statue atop Mount Corcovado and for Sugarloaf Mountain, a granite peak with cable cars to its summit. The city is also known for its sprawling favelas (shanty towns). Its raucous Carnaval festival, featuring parade floats, flamboyant costumes and samba dancers, is considered the world's largest. This is the excellent location for providing academic platforms thus offering an ideal opportunity for networking for future collaboration at an international level.''',
+                'year': 2027,
+                'abbreviation': 'ICIRT',
+                'status': 'upcoming',
+                'event_type': 'virtual',
+                'start_date': '2027-01-26',
+                'end_date': '2027-01-29',
+                'location': 'Rio de Janeiro, Brazil',
+                'website': '',
+                'timezone': 'UTC'
+            },
+            'settings': {
+                'registration_enabled': True,
+                'paper_submission_enabled': True,
+                'gallery_enabled': True,
+                'email_notifications': True,
+                'max_registrations': 1000,
+                'max_paper_submissions': 500
+            },
+            'metadata': {
+                'created_at': datetime.now().isoformat(),
+                'created_by': current_user.email,
+                'version': '1.0.0'
+            }
+        }
+        
+        result_2027 = create_conference_with_code(conference_2027)
+        if result_2027['success']:
+            results.append(f"✓ ICIRT-2027 created successfully (Code: {result_2027['conference_code']})")
+        else:
+            results.append(f"✗ ICIRT-2027 failed: {result_2027.get('error', 'Unknown error')}")
+        
+        flash(' | '.join(results), 'success' if all('✓' in r for r in results) else 'warning')
+        
+    except Exception as e:
+        print(f"Error adding conferences: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error adding conferences: {str(e)}', 'error')
     
     return redirect(url_for('admin_conferences'))
 

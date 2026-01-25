@@ -523,8 +523,8 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="conferenceDate" class="form-label">Conference Date</label>
-                        <input type="text" class="form-control" id="conferenceDate" name="welcome[conference_date]" 
+                        <label for="welcomeConferenceDate" class="form-label">Conference Date</label>
+                        <input type="text" class="form-control" id="welcomeConferenceDate" name="welcome[conference_date]" 
                                value="{{ home_content.welcome.conference_date }}" required>
                     </div>
                     <div class="mb-3">
@@ -566,7 +566,28 @@
                     </div>
 
                     <div class="conference-details">
-                        <h3>Conference Details</h3>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="mb-0">Conference Details</h3>
+                            {% if available_conferences %}
+                            <div class="d-flex gap-2">
+                                <select id="conferenceSelector" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="">Select a conference to load...</option>
+                                    {% for conf_id, conf in available_conferences.items() %}
+                                    <option value="{{ conf_id }}" data-name="{{ conf.name }}" 
+                                            data-start-date="{{ conf.start_date }}" 
+                                            data-end-date="{{ conf.end_date }}"
+                                            data-location="{{ conf.location }}"
+                                            data-description="{{ conf.description }}">
+                                        {{ conf.name }} ({{ conf.year }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="loadConferenceBtn" style="display: none;">
+                                    <i class="fas fa-download"></i> Load Conference Data
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -577,8 +598,8 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="conferenceDate" class="form-label">Date</label>
-                                    <input type="date" class="form-control" id="conferenceDate" name="conference[date]"
+                                    <label for="heroConferenceDate" class="form-label">Date</label>
+                                    <input type="date" class="form-control" id="heroConferenceDate" name="conference[date]"
                                            value="{{ home_content.hero.conference.date }}" required>
                                 </div>
                             </div>
@@ -1324,6 +1345,139 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update upload zone visibility
     updateUploadZoneVisibility();
+
+    // Conference selector functionality
+    const conferenceSelector = document.getElementById('conferenceSelector');
+    const loadConferenceBtn = document.getElementById('loadConferenceBtn');
+    
+    if (conferenceSelector) {
+        conferenceSelector.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value && loadConferenceBtn) {
+                loadConferenceBtn.style.display = 'inline-block';
+            } else if (loadConferenceBtn) {
+                loadConferenceBtn.style.display = 'none';
+            }
+        });
+        
+        if (loadConferenceBtn) {
+            loadConferenceBtn.addEventListener('click', function() {
+                const selectedOption = conferenceSelector.options[conferenceSelector.selectedIndex];
+                if (!selectedOption.value) return;
+                
+                const name = selectedOption.dataset.name || '';
+                const startDate = selectedOption.dataset.startDate || '';
+                const endDate = selectedOption.dataset.endDate || '';
+                const location = selectedOption.dataset.location || '';
+                const description = selectedOption.dataset.description || '';
+                
+                // Populate Welcome Message fields
+                const welcomeTitleField = document.getElementById('welcomeTitle');
+                const welcomeSubtitleField = document.getElementById('welcomeSubtitle');
+                const welcomeMessageField = document.getElementById('welcomeMessage');
+                
+                if (welcomeTitleField && name) {
+                    // Extract conference name for title (remove abbreviation in parentheses)
+                    const title = name.split('(')[0].trim() || name;
+                    welcomeTitleField.value = title;
+                }
+                
+                if (welcomeSubtitleField && name) {
+                    // Extract abbreviation and year from name (e.g., "ICETL-2026")
+                    const match = name.match(/\(([A-Z]+)-(\d{4})\)/);
+                    if (match) {
+                        welcomeSubtitleField.value = `${match[1]}-${match[2]}`;
+                    } else {
+                        // Try to extract year from name
+                        const yearMatch = name.match(/(\d{4})/);
+                        if (yearMatch) {
+                            welcomeSubtitleField.value = `Conference ${yearMatch[1]}`;
+                        }
+                    }
+                }
+                
+                if (welcomeMessageField && description) {
+                    // Extract first paragraph or first few sentences
+                    const paragraphs = description.split('\n\n');
+                    let message = '';
+                    if (paragraphs.length > 0) {
+                        const firstPara = paragraphs[0].trim();
+                        const sentences = firstPara.split('.');
+                        if (sentences.length > 3) {
+                            message = sentences.slice(0, 2).map(s => s.trim()).filter(s => s).join('. ') + '.';
+                        } else {
+                            message = firstPara;
+                        }
+                    } else {
+                        // Fallback: use first few sentences
+                        const sentences = description.split('.').slice(0, 2);
+                        message = sentences.map(s => s.trim()).filter(s => s).join('. ') + '.';
+                    }
+                    if (message) {
+                        welcomeMessageField.value = message;
+                    }
+                }
+                
+                // Populate form fields
+                const nameField = document.getElementById('conferenceName');
+                const dateField = document.getElementById('heroConferenceDate');
+                const cityField = document.getElementById('conferenceCity');
+                const highlightsField = document.getElementById('conferenceHighlights');
+                const welcomeDateField = document.getElementById('welcomeConferenceDate'); // Welcome section date
+                
+                if (nameField) nameField.value = name;
+                if (dateField && startDate) {
+                    // Use start date for the date input (single date field)
+                    dateField.value = startDate;
+                }
+                
+                // Update welcome section conference date with formatted range
+                if (welcomeDateField && startDate && endDate) {
+                    try {
+                        const start = new Date(startDate);
+                        const end = new Date(endDate);
+                        let dateRangeStr = '';
+                        if (start.getMonth() === end.getMonth()) {
+                            dateRangeStr = start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + 
+                                          ' - ' + 
+                                          end.toLocaleDateString('en-US', { day: 'numeric', year: 'numeric' });
+                        } else {
+                            dateRangeStr = start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) + 
+                                          ' - ' + 
+                                          end.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                        }
+                        // Update welcome conference_date field if it exists
+                        if (welcomeDateField) {
+                            welcomeDateField.value = dateRangeStr;
+                        }
+                    } catch (e) {
+                        console.error('Error formatting date range:', e);
+                    }
+                }
+                
+                // Extract city from location (e.g., "Toronto, Ontario, Canada" -> "Toronto")
+                if (cityField && location) {
+                    const city = location.split(',')[0].trim();
+                    cityField.value = city;
+                }
+                
+                // Set highlights from description (first few sentences)
+                if (highlightsField && description) {
+                    const sentences = description.split('.').slice(0, 3);
+                    const highlights = sentences.map(s => s.trim()).filter(s => s).join('.\n') + '.';
+                    highlightsField.value = highlights;
+                }
+                
+                // Set default time if not set
+                const timeField = document.getElementById('conferenceTime');
+                if (timeField && !timeField.value) {
+                    timeField.value = '09:00';
+                }
+                
+                showToast('Conference data loaded successfully!', 'success');
+            });
+        }
+    }
 
     // Helper function to get image dimensions
     function getImageDimensions(file) {

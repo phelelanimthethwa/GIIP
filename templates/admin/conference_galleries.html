@@ -14,6 +14,14 @@
                     </h1>
                     <p class="text-muted">Manage photo galleries for each conference</p>
                 </div>
+                <div>
+                    <form method="POST" action="{{ url_for('clean_all_galleries') }}" style="display: inline;" onsubmit="return confirm('⚠️ WARNING: This will delete ALL gallery images, attendees, and summaries from ALL conferences. This action cannot be undone. Are you sure you want to proceed?');">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-1"></i>
+                            Clean All Galleries
+                        </button>
+                    </form>
+                </div>
             </div>
 
             <!-- Conference Selection -->

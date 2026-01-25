@@ -3,38 +3,7 @@
 {% block title %}{{ home_content.welcome.title|default('Welcome to GIIR') }} - Global Institute on Innovative Research{% endblock %}
 
 {% block content %}
-<!-- Title Section -->
-<div class="title-section">
-    <div class="title-content">
-        <h1>{{ home_content.welcome.title|default('Welcome to GIIR') }}</h1>
-        <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
-            <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
-        </p>
-        <p class="conference-date">{{ home_content.welcome.conference_date|default('International Conference 2024') }}</p>
-        {% if home_content.hero.conference.show_countdown %}
-        <div class="countdown-container">
-            <div class="countdown-item">
-                <span id="countdown-days">00</span>
-                <span class="countdown-label">Days</span>
-            </div>
-            <div class="countdown-item">
-                <span id="countdown-hours">00</span>
-                <span class="countdown-label">Hours</span>
-            </div>
-            <div class="countdown-item">
-                <span id="countdown-minutes">00</span>
-                <span class="countdown-label">Minutes</span>
-            </div>
-            <div class="countdown-item">
-                <span id="countdown-seconds">00</span>
-                <span class="countdown-label">Seconds</span>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Hero Slider Section with Conference Info -->
+<!-- Hero Section with Full Background Image -->
 <div class="hero-section">
     <div class="hero-slider">
         <div class="slider-container">
@@ -61,6 +30,37 @@
         </div>
         <div class="slider-dots"></div>
         {% endif %}
+
+        <!-- Title Overlay (on top of image) -->
+        <div class="title-overlay">
+            <div class="title-content">
+                <h1>{{ home_content.welcome.title|default('Welcome to GIIR') }}</h1>
+                <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
+                    <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
+                </p>
+                <p class="conference-date">{{ home_content.welcome.conference_date|default('International Conference 2024') }}</p>
+                {% if home_content.hero.conference.show_countdown %}
+                <div class="countdown-container">
+                    <div class="countdown-item">
+                        <span id="countdown-days">00</span>
+                        <span class="countdown-label">Days</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span id="countdown-hours">00</span>
+                        <span class="countdown-label">Hours</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span id="countdown-minutes">00</span>
+                        <span class="countdown-label">Minutes</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span id="countdown-seconds">00</span>
+                        <span class="countdown-label">Seconds</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
 
         <!-- Conference Info Overlay -->
         <div class="conference-info-overlay">
@@ -288,78 +288,107 @@
 {% endif %}
 
 <style>
-/* Title Section */
-.title-section {
-    text-align: center;
-    padding: 3rem 2rem;
-    margin-top: -60px; /* Adjusted negative margin for increased body padding */
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    min-height: 25vh;
+/* Title Overlay (on top of hero image) */
+.title-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 2rem;
+    padding-top: 100px; /* Account for navbar */
+    background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+    min-height: 50%;
 }
 
 .title-content {
     max-width: 900px;
     width: 90%;
     margin: 0 auto;
-    padding: 2rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    backdrop-filter: blur(5px);
+    padding: 2.5rem 3rem;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    border-radius: 24px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    text-align: center;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 1px rgba(255, 255, 255, 0.2),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
     position: relative;
-    margin-top: 1.5rem;
+    overflow: hidden;
 }
 
-.title-content::before,
-.title-content::after {
+/* Liquid glass shine effect */
+.title-content::before {
     content: '';
     position: absolute;
-    left: 0;
-    right: 0;
-    height: 80px;
-    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.3), rgba(var(--secondary-color-rgb), 0.3));
-    border-radius: 15px;
-}
-
-.title-content::before {
     top: 0;
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 45%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.1) 55%,
+        transparent 100%
+    );
+    transform: skewX(-20deg);
+    pointer-events: none;
+    animation: glassShine 8s ease-in-out infinite;
 }
 
-.title-content::after {
-    bottom: 0;
+@keyframes glassShine {
+    0%, 100% {
+        transform: skewX(-20deg) translateX(-100%);
+    }
+    50% {
+        transform: skewX(-20deg) translateX(100%);
+    }
 }
 
-.title-section h1 {
+.title-content h1 {
     font-size: 2.4rem;
     font-weight: 700;
     margin: 0;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    line-height: 1.2;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    line-height: 1.3;
+    color: white;
     position: relative;
     z-index: 1;
 }
 
-.title-section .subtitle {
+.title-content .subtitle {
     font-size: 1.6rem;
-    margin: 0.5rem 0;
+    margin: 0.8rem 0;
     font-weight: 500;
-    opacity: 0.95;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+    color: rgba(255, 255, 255, 0.95);
     position: relative;
     z-index: 1;
 }
 
-.title-section .conference-date {
-    font-size: 1.2rem;
-    margin-top: 0.3rem;
-    font-weight: 500;
-    color: var(--accent-color);
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+.title-content .conference-date {
+    font-size: 1.4rem;
+    margin-top: 0.8rem;
+    font-weight: 700;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 1px 1px 3px rgba(0,0,0,0.3);
     position: relative;
     z-index: 1;
+    letter-spacing: 0.5px;
 }
 
 /* Marquee Animation */
@@ -402,14 +431,14 @@
 .hero-section {
     position: relative;
     width: 100%;
-    margin-top: 0;
+    margin-top: -200px; /* Pull up under the navbar padding */
     margin-bottom: 0;
 }
 
 .hero-slider {
     position: relative;
-    height: 60vh;
-    min-height: 400px;
+    height: 100vh;
+    min-height: 500px;
     overflow: hidden;
 }
 
@@ -429,6 +458,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
 }
 
 .slider-nav button {
@@ -584,33 +614,39 @@
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
-    /* Title Section */
-    .title-section {
-        padding: 2rem 1rem;
-        margin-top: 1.5rem;
+    /* Title Overlay */
+    .title-overlay {
+        padding: 1rem;
+        padding-top: 80px;
+        min-height: 45%;
     }
 
     .title-content {
-        margin-top: 1rem;
+        padding: 1.5rem 1.2rem;
+        border-radius: 20px;
     }
 
-    .title-section h1 {
-        font-size: 2.2rem;
+    .title-content::before {
+        animation: glassShine 10s ease-in-out infinite;
     }
 
-    .title-section .subtitle {
-        font-size: 1.4rem;
-        margin: 1rem 0;
+    .title-content h1 {
+        font-size: 1.6rem;
     }
 
-    .title-section .conference-date {
-        font-size: 1.2rem;
+    .title-content .subtitle {
+        font-size: 1.1rem;
+        margin: 0.5rem 0;
+    }
+
+    .title-content .conference-date {
+        font-size: 1.05rem;
     }
 
     /* Hero Section */
     .hero-slider {
-        height: 50vh;
-        min-height: 300px;
+        height: 100vh;
+        min-height: 600px;
     }
 
     .conference-info-overlay {
@@ -713,20 +749,31 @@
 
 @media (max-width: 480px) {
     /* Even smaller screens */
-    .title-section {
-        padding: 3rem 1rem;
+    .title-overlay {
+        padding: 0.8rem;
+        padding-top: 70px;
     }
 
-    .title-section h1 {
-        font-size: 1.8rem;
+    .title-content {
+        padding: 1.2rem 1rem;
+        border-radius: 16px;
     }
 
-    .title-section .subtitle {
-        font-size: 1.2rem;
+    .title-content h1 {
+        font-size: 1.3rem;
     }
 
-    .title-section .conference-date {
-        font-size: 1rem;
+    .title-content .subtitle {
+        font-size: 0.95rem;
+    }
+
+    .title-content .conference-date {
+        font-size: 0.9rem;
+    }
+
+    .countdown-item {
+        min-width: 55px;
+        padding: 0.5rem;
     }
 
     .conference-info-content h2 {
@@ -925,10 +972,14 @@ html {
     justify-content: center;
     gap: 1.5rem;
     margin-top: 1.5rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     padding: 1.5rem;
-    border-radius: 12px;
-    backdrop-filter: blur(5px);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    position: relative;
+    z-index: 1;
 }
 
 .countdown-item {
@@ -936,21 +987,26 @@ html {
     flex-direction: column;
     align-items: center;
     min-width: 80px;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .countdown-item span:first-child {
     font-size: 2.5rem;
     font-weight: 700;
-    color: var(--accent-color);
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    color: #ffd700;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.4), 2px 2px 4px rgba(0,0,0,0.4);
 }
 
 .countdown-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.9);
     margin-top: 0.3rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
+    font-weight: 500;
 }
 
 @media (max-width: 768px) {
