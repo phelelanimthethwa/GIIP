@@ -487,13 +487,7 @@ def about():
                     'expertise': ['Artificial Intelligence', 'Machine Learning']
                 }
             ],
-            'past_conferences': [
-                {
-                    'year': '2023',
-                    'location': 'Tokyo, Japan',
-                    'highlight': '450+ Attendees'
-                }
-            ],
+            'past_conferences': [],
             'future_conference': {
                 'enabled': False,
                 'year': '',
@@ -4374,11 +4368,18 @@ def admin_about_content():
             os.makedirs(os.path.join(app.static_folder, 'uploads', 'committee'), exist_ok=True)
             
             for i in range(len(committee_roles)):
+                # Safely handle expertise field
+                expertise_str = committee_expertise[i] if i < len(committee_expertise) else ''
+                if isinstance(expertise_str, list):
+                    expertise_list = expertise_str
+                else:
+                    expertise_list = [exp.strip() for exp in str(expertise_str).split(',') if exp.strip()]
+                
                 member = {
-                    'role': committee_roles[i],
-                    'name': committee_names[i],
-                    'affiliation': committee_affiliations[i],
-                    'expertise': [exp.strip() for exp in committee_expertise[i].split(',') if exp.strip()],
+                    'role': committee_roles[i] if i < len(committee_roles) else '',
+                    'name': committee_names[i] if i < len(committee_names) else '',
+                    'affiliation': committee_affiliations[i] if i < len(committee_affiliations) else '',
+                    'expertise': expertise_list,
                     'image': committee_existing_images[i] if i < len(committee_existing_images) else ''
                 }
                 
@@ -4400,41 +4401,54 @@ def admin_about_content():
                 
                 committee.append(member)
 
+            # Validate required fields
+            overview_title = request.form.get('overview_title', '').strip()
+            overview_description = request.form.get('overview_description', '').strip()
+            
+            if not overview_title:
+                flash('Overview title is required', 'error')
+                return redirect(url_for('admin_about_content'))
+            if not overview_description:
+                flash('Overview description is required', 'error')
+                return redirect(url_for('admin_about_content'))
+            
             about_content = {
                 'overview': {
-                    'title': request.form.get('overview_title', ''),
-                    'description': request.form.get('overview_description', ''),
+                    'title': overview_title,
+                    'description': overview_description,
                     'stats': {
-                        'attendees': request.form.get('stats_attendees', '500+'),
-                        'countries': request.form.get('stats_countries', '50+'),
-                        'papers': request.form.get('stats_papers', '200+'),
-                        'speakers': request.form.get('stats_speakers', '30+')
+                        'attendees': request.form.get('stats_attendees', '500+').strip() or '500+',
+                        'countries': request.form.get('stats_countries', '50+').strip() or '50+',
+                        'papers': request.form.get('stats_papers', '200+').strip() or '200+',
+                        'speakers': request.form.get('stats_speakers', '30+').strip() or '30+'
                     }
                 },
                 'objectives': [
                     {
-                        'icon': icon,
-                        'title': title,
-                        'description': desc
+                        'icon': icon.strip(),
+                        'title': title.strip(),
+                        'description': desc.strip()
                     }
                     for icon, title, desc in zip(
                         request.form.getlist('objective_icons[]'),
                         request.form.getlist('objective_titles[]'),
                         request.form.getlist('objective_descriptions[]')
                     )
+                    if icon.strip() or title.strip() or desc.strip()  # Only include non-empty objectives
                 ],
                 'committee': committee,
                 'past_conferences': [
                     {
-                        'year': year,
-                        'location': loc,
-                        'highlight': high
+                        'year': year.strip(),
+                        'location': loc.strip(),
+                        'highlight': high.strip()
                     }
                     for year, loc, high in zip(
                         request.form.getlist('conference_years[]'),
                         request.form.getlist('conference_locations[]'),
                         request.form.getlist('conference_highlights[]')
                     )
+                    if year.strip() or loc.strip() or high.strip()  # Only include non-empty entries
                 ],
                 'future_conference': {
                     'enabled': False,
@@ -4498,12 +4512,22 @@ def admin_about_content():
                 }
             
             # Save to Firebase
-            db.reference('about_content').set(about_content)
-            flash('About page content updated successfully!', 'success')
+            try:
+                db.reference('about_content').set(about_content)
+                flash('About page content updated successfully!', 'success')
+                logger.info(f"About content updated successfully. Committee members: {len(committee)}, Past conferences: {len(about_content.get('past_conferences', []))}")
+            except Exception as e:
+                logger.error(f"Error saving about content to Firebase: {str(e)}", exc_info=True)
+                flash(f'Error saving content: {str(e)}', 'error')
+                return redirect(url_for('admin_about_content'))
+            
             return redirect(url_for('admin_about_content'))
             
         # Get existing content
-        about_content = db.reference('about_content').get() or {
+        about_content_raw = db.reference('about_content').get()
+        
+        # Define default structure
+        default_content = {
             'overview': {
                 'title': 'About GIIR Conference',
                 'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
@@ -4540,26 +4564,90 @@ def admin_about_content():
                     'image': ''
                 }
             ],
-            'past_conferences': [
-                {
-                    'year': '2023',
-                    'location': 'Tokyo, Japan',
-                    'highlight': '450+ Attendees'
-                }
-            ],
+            'past_conferences': [],
             'future_conferences': {
                 'section_enabled': False,
                 'conferences': []
             }
         }
         
+        # Merge with defaults to ensure all required keys exist
+        if about_content_raw and isinstance(about_content_raw, dict):
+            about_content = {}
+            # Deep merge overview
+            if 'overview' in about_content_raw and isinstance(about_content_raw['overview'], dict):
+                about_content['overview'] = {**default_content['overview'], **about_content_raw['overview']}
+                # Merge stats within overview
+                if 'stats' in about_content_raw['overview']:
+                    about_content['overview']['stats'] = {**default_content['overview']['stats'], **about_content_raw['overview']['stats']}
+                else:
+                    about_content['overview']['stats'] = default_content['overview']['stats']
+            else:
+                about_content['overview'] = default_content['overview']
+            
+            # Use existing or default for other fields
+            about_content['objectives'] = about_content_raw.get('objectives', default_content['objectives'])
+            # Use database value if it exists (even if empty), otherwise use default (empty array)
+            past_confs = about_content_raw.get('past_conferences')
+            about_content['past_conferences'] = past_confs if past_confs is not None else default_content['past_conferences']
+            about_content['future_conferences'] = about_content_raw.get('future_conferences', default_content['future_conferences'])
+            
+            # Normalize committee data to ensure expertise is always a list
+            committee_raw = about_content_raw.get('committee', default_content['committee'])
+            about_content['committee'] = []
+            for member in committee_raw:
+                if isinstance(member, dict):
+                    normalized_member = {
+                        'role': member.get('role', ''),
+                        'name': member.get('name', ''),
+                        'affiliation': member.get('affiliation', ''),
+                        'image': member.get('image', '')
+                    }
+                    # Normalize expertise
+                    expertise = member.get('expertise', [])
+                    if isinstance(expertise, str):
+                        normalized_member['expertise'] = [exp.strip() for exp in expertise.split(',') if exp.strip()]
+                    elif isinstance(expertise, list):
+                        normalized_member['expertise'] = expertise
+                    else:
+                        normalized_member['expertise'] = []
+                    about_content['committee'].append(normalized_member)
+        else:
+            about_content = default_content.copy()
+        
         return render_template('admin/about_content.html', 
                              about_content=about_content,
                              site_design=get_site_design())
         
-    except Exception:
-        flash('Error managing about content', 'error')
-        return redirect(url_for('admin_dashboard'))
+    except Exception as e:
+        logger.error(f"Error managing about content: {str(e)}", exc_info=True)
+        flash(f'Error managing about content: {str(e)}', 'error')
+        # Try to return the page with default content on error
+        try:
+            fallback_content = {
+                'overview': {
+                    'title': 'About GIIR Conference',
+                    'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                    'stats': {
+                        'attendees': '500+',
+                        'countries': '50+',
+                        'papers': '200+',
+                        'speakers': '30+'
+                    }
+                },
+                'objectives': [],
+                'committee': [],
+                'past_conferences': [],
+                'future_conferences': {
+                    'section_enabled': False,
+                    'conferences': []
+                }
+            }
+            return render_template('admin/about_content.html', 
+                                 about_content=fallback_content,
+                                 site_design=get_site_design())
+        except:
+            return redirect(url_for('admin_dashboard'))
 
 def get_registration_fees():
     """

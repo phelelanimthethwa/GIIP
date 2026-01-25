@@ -113,7 +113,17 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Expertise</label>
-                                <input type="text" class="form-control" name="committee_expertise[]" value="{{ member.expertise|join(', ') }}">
+                                {% set expertise_value = '' %}
+                                {% if member.expertise %}
+                                    {% if member.expertise is string %}
+                                        {% set expertise_value = member.expertise %}
+                                    {% elif member.expertise is iterable %}
+                                        {% set expertise_value = member.expertise|join(', ') %}
+                                    {% else %}
+                                        {% set expertise_value = member.expertise|string %}
+                                    {% endif %}
+                                {% endif %}
+                                <input type="text" class="form-control" name="committee_expertise[]" value="{{ expertise_value }}">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Profile Image</label>
@@ -165,7 +175,7 @@
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label">&nbsp;</label>
-                                <button type="button" class="btn btn-danger d-block" onclick="removeConference(this)">
+                                <button type="button" class="btn btn-danger d-block" onclick="removeConference(this)" title="Delete this conference">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -397,7 +407,58 @@ function removeCommitteeMember(button) {
 }
 
 function removeConference(button) {
-    button.closest('.conference-item').remove();
+    try {
+        // Find the parent conference-item element
+        let conferenceItem = button.closest('.conference-item');
+        
+        // If closest doesn't work, try traversing up the DOM
+        if (!conferenceItem) {
+            let parent = button.parentElement;
+            while (parent && !parent.classList.contains('conference-item')) {
+                parent = parent.parentElement;
+            }
+            conferenceItem = parent;
+        }
+        
+        if (conferenceItem) {
+            // Get conference details for confirmation
+            const yearInput = conferenceItem.querySelector('input[name="conference_years[]"]');
+            const locationInput = conferenceItem.querySelector('input[name="conference_locations[]"]');
+            const highlightInput = conferenceItem.querySelector('input[name="conference_highlights[]"]');
+            
+            const year = yearInput ? yearInput.value.trim() : '';
+            const location = locationInput ? locationInput.value.trim() : '';
+            const highlight = highlightInput ? highlightInput.value.trim() : '';
+            
+            // Build confirmation message
+            let confirmMessage = 'Are you sure you want to remove this conference?';
+            if (year || location || highlight) {
+                const parts = [];
+                if (year) parts.push(year);
+                if (location) parts.push(location);
+                if (highlight) parts.push(highlight);
+                confirmMessage = `Are you sure you want to remove the conference: ${parts.join(' - ')}?`;
+            }
+            
+            // Show confirmation and remove if confirmed
+            if (confirm(confirmMessage)) {
+                // Add fade out animation
+                conferenceItem.style.transition = 'opacity 0.3s';
+                conferenceItem.style.opacity = '0';
+                
+                // Remove after animation
+                setTimeout(function() {
+                    conferenceItem.remove();
+                }, 300);
+            }
+        } else {
+            console.error('Could not find conference-item element');
+            alert('Error: Could not find the conference item to delete. Please refresh the page and try again.');
+        }
+    } catch (error) {
+        console.error('Error in removeConference:', error);
+        alert('An error occurred while trying to delete the conference. Please try again.');
+    }
 }
 
 function previewImage(input) {
@@ -507,6 +568,47 @@ document.addEventListener('DOMContentLoaded', function() {
     if (checkbox && details) {
         checkbox.addEventListener('change', function() {
             details.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+    
+    // Add event delegation for delete buttons (fallback in case onclick doesn't work)
+    const conferencesContainer = document.getElementById('conferences-container');
+    if (conferencesContainer) {
+        conferencesContainer.addEventListener('click', function(e) {
+            // Check if the clicked element is a delete button or inside one
+            const deleteButton = e.target.closest('button[onclick*="removeConference"], .btn-danger');
+            if (deleteButton && deleteButton.onclick && deleteButton.onclick.toString().includes('removeConference')) {
+                // Let the onclick handler handle it
+                return;
+            } else if (deleteButton && deleteButton.closest('.conference-item')) {
+                // Fallback: manually trigger removal
+                e.preventDefault();
+                e.stopPropagation();
+                removeConference(deleteButton);
+            }
+        });
+    }
+    
+    // Add form submission handler to ensure form submits correctly
+    const form = document.querySelector('form[method="POST"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Remove any empty conference entries before submission
+            const conferenceItems = document.querySelectorAll('.conference-item');
+            conferenceItems.forEach(function(item) {
+                const yearInput = item.querySelector('input[name="conference_years[]"]');
+                const locationInput = item.querySelector('input[name="conference_locations[]"]');
+                const highlightInput = item.querySelector('input[name="conference_highlights[]"]');
+                
+                // If all fields are empty, remove the item
+                if (yearInput && locationInput && highlightInput) {
+                    if (!yearInput.value.trim() && !locationInput.value.trim() && !highlightInput.value.trim()) {
+                        item.remove();
+                    }
+                }
+            });
+            
+            // Form will submit normally after cleanup
         });
     }
 });

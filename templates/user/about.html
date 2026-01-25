@@ -112,7 +112,7 @@
     <section class="past-conferences">
         <h2>Past Conferences</h2>
         <div class="conference-timeline">
-            {% if about_content.past_conferences %}
+            {% if about_content.past_conferences and about_content.past_conferences|length > 0 %}
                 {% for conference in about_content.past_conferences %}
                 <div class="timeline-item">
                     <div class="year">{{ conference.year }}</div>
@@ -121,21 +121,7 @@
                 </div>
                 {% endfor %}
             {% else %}
-                <div class="timeline-item">
-                    <div class="year">2023</div>
-                    <div class="location">Tokyo, Japan</div>
-                    <div class="highlight">450+ Attendees</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="year">2022</div>
-                    <div class="location">Berlin, Germany</div>
-                    <div class="highlight">400+ Attendees</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="year">2021</div>
-                    <div class="location">Virtual Conference</div>
-                    <div class="highlight">1000+ Online Participants</div>
-                </div>
+                <p class="text-muted">No past conferences to display.</p>
             {% endif %}
         </div>
     </section>
