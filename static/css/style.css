@@ -10,37 +10,64 @@ body {
     line-height: 1.6;
     background-color: var(--background-color);
     color: var(--text-color);
-    /* Maximum aggressive padding to ensure no navbar cutoff at any zoom level */
-    padding-top: 200px;
+    padding-top: 0;
+    /* Remove padding as nav is no longer fixed */
+    overflow-x: hidden;
+    /* Prevent horizontal scrolling */
+    width: 100%;
+    max-width: 100%;
 }
 
 /* Navigation Styles */
 .site-header {
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 0;
-    right: 0;
+    /* Sticky positioning */
+    width: 100%;
     z-index: 1000;
-    background-color: var(--header-background);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    /* High z-index to appear above all content */
+    background-color: var(--header-background, #ffffff);
+    /* Ensure solid background */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
-    min-height: 100px; /* Ensure minimum header height */
+    min-height: 100px;
+    min-height: 100px;
+    /* Ensure minimum header height */
+    overflow-x: visible;
+    /* Allow dropdowns to show */
 }
 
 .navbar {
-    padding: 0.5rem 2rem;
+    padding: 0.5rem 1rem;
     position: relative;
-    min-height: 80px; /* Ensure minimum navbar height */
-    display: flex;
-    align-items: center;
+    /* Ensure navbar is on top */
+    display: flex !important;
+    width: 100% !important;
+    min-height: 60px !important;
+    overflow: visible;
+    /* Allow navigation items to display */
 }
 
 .nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
+    max-width: none;
+    /* Remove width limit to use full screen width */
+    margin: 0;
+    /* Remove auto margins to stop centering */
+    padding: 0;
+    /* Let navbar padding control the spacing */
+    display: flex !important;
+    width: 100% !important;
+    min-height: 60px !important;
+    height: auto !important;
+    justify-content: flex-start;
+    /* Ensure items align to left */
     align-items: center;
+    gap: 1rem;
+    /* Reduced gap to fit more items */
+    overflow: visible;
+    /* Allow nav items to be visible */
+    position: relative;
+    /* Ensure nav items are on top */
 }
 
 .logo {
@@ -48,7 +75,10 @@ body {
     font-weight: 700;
     color: var(--primary-color);
     text-decoration: none;
-    z-index: 1001;
+    text-decoration: none;
+    /* z-index: 10002; REMOVED */
+    position: relative;
+    /* Ensure logo is on top */
 }
 
 .logo-img {
@@ -56,7 +86,10 @@ body {
     width: auto;
     object-fit: contain;
     transition: transform 0.2s ease;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    position: relative;
+    /* z-index: 10003; REMOVED */
+    /* pointer-events: auto; REMOVED */
 }
 
 .logo-img:hover {
@@ -65,32 +98,61 @@ body {
 
 .nav-links {
     list-style: none;
-    display: flex;
-    gap: 0.5rem;
+    display: flex !important;
+    min-height: 60px !important;
+    height: auto !important;
+    width: auto !important;
+    flex: 1 !important;
+    /* allow it to grow */
+    gap: 0.3rem;
+    /* Reduced gap for better fit */
     align-items: center;
+    flex-wrap: nowrap;
+    /* Keep items in one line on desktop */
+    overflow: visible;
+    /* Allow items to be visible */
+    position: relative;
+    /* Ensure nav links are on top */
+}
+
+/* Push the Login/User menu item to the far right */
+.nav-links > li:last-child {
+    margin-left: auto;
 }
 
 .nav-item {
     position: relative;
+    /* z-index: 10004; REMOVED */
+    /* Ensure items are above container */
 }
 
 .nav-link {
     color: var(--text-color);
     text-decoration: none;
     font-weight: 500;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.7rem;
+    /* Reduced padding for more compact fit */
     border-radius: 8px;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.3rem;
+    /* Reduced icon gap */
     white-space: nowrap;
+    font-size: 0.9rem;
+    /* Slightly smaller font for better fit */
+    position: relative;
+    /* z-index: 10005; REMOVED */
+    /* Ensure links are clickable */
+    /* pointer-events: auto; REMOVED */
+    cursor: pointer;
 }
 
 .nav-link:hover {
     color: var(--primary-color);
     background-color: rgba(var(--primary-color-rgb), 0.1);
     transform: translateY(-2px);
+    /* z-index: 10006; REMOVED */
 }
 
 .nav-link i {
@@ -113,29 +175,57 @@ body {
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     margin-left: 0.5rem;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: transform 0.3s ease;
+    opacity: 0.6;
 }
 
 .dropdown:hover .dropdown-toggle::after {
     transform: rotate(180deg);
+    opacity: 1;
 }
 
 .dropdown-menu {
     position: absolute;
     top: 100%;
     left: 0;
-    background: white;
-    min-width: 220px;
+    background: #ffffff;
+    min-width: 240px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
+    transform: translateY(8px);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1000;
-    overflow: hidden;
+    overflow: visible;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0;
+    list-style: none;
+}
+
+/* Reset li styles inside dropdown menus */
+.dropdown-menu li {
+    list-style: none;
+    display: block;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: none;
+    position: static;
+}
+
+.dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    border-radius: 12px 12px 0 0;
 }
 
 .dropdown-menu-end {
@@ -153,11 +243,16 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1.25rem;
-    color: var(--text-color);
+    padding: 0.7rem 1.2rem;
+    color: #444;
     text-decoration: none;
     transition: all 0.2s ease;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    position: relative;
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin: 0.15rem 0.5rem;
+    border-radius: 8px;
+    letter-spacing: 0.01em;
 }
 
 .dropdown-item:last-child {
@@ -165,26 +260,36 @@ body {
 }
 
 .dropdown-item:hover {
-    background-color: var(--primary-color);
-    color: white;
-    padding-left: 1.5rem;
+    background: rgba(var(--primary-color-rgb), 0.12);
+    color: var(--primary-color);
 }
 
 .dropdown-item i {
-    width: 16px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    opacity: 0.7;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    background: rgba(var(--primary-color-rgb), 0.08);
+    color: var(--primary-color);
+    border-radius: 8px;
+    flex-shrink: 0;
 }
 
 .dropdown-item:hover i {
-    opacity: 1;
+    background: var(--primary-color);
+    color: #ffffff;
+    transform: scale(1.05);
 }
 
 .dropdown-divider {
     height: 1px;
-    background-color: rgba(0,0,0,0.1);
+    background-color: rgba(0, 0, 0, 0.07);
     border: none;
-    margin: 0.5rem 0;
+    margin: 0.4rem 1rem;
 }
 
 /* Special styling for login button */
@@ -241,7 +346,7 @@ body {
 
 /* Hero Section */
 .hero {
-    background-image: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/uploads/design/default-hero.jpg');
+    background-image: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/static/uploads/design/default-hero.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -249,10 +354,13 @@ body {
     padding: 8rem 2rem 4rem;
     text-align: center;
     margin-bottom: 4rem;
+    position: relative;
+    z-index: 1;
+    /* Ensure hero is below navbar */
 }
 
 .hero.has-custom-bg {
-    background-image: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.7)), var(--hero-image);
+    background-image: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), var(--hero-image);
 }
 
 .hero h1 {
@@ -276,14 +384,16 @@ body {
     padding: 2rem;
 }
 
-.date-location, .highlights {
+.date-location,
+.highlights {
     background: rgba(255, 255, 255, 0.1);
     padding: 2rem;
     border-radius: 8px;
     backdrop-filter: blur(10px);
 }
 
-.date-location h2, .highlights h2 {
+.date-location h2,
+.highlights h2 {
     font-size: 1.8rem;
     margin-bottom: 1.5rem;
     color: white;
@@ -291,18 +401,21 @@ body {
     padding-bottom: 0.5rem;
 }
 
-.date-location ul, .highlights ul {
+.date-location ul,
+.highlights ul {
     list-style: none;
 }
 
-.date-location li, .highlights li {
+.date-location li,
+.highlights li {
     margin-bottom: 1rem;
     font-size: 1.1rem;
     display: flex;
     align-items: center;
 }
 
-.date-location li:before, .highlights li:before {
+.date-location li:before,
+.highlights li:before {
     content: "•";
     color: #fff;
     font-size: 1.5rem;
@@ -319,7 +432,9 @@ body {
     gap: 2rem;
 }
 
-.vision, .mission, .objective {
+.vision,
+.mission,
+.objective {
     background: white;
     padding: 2rem;
     border-radius: 12px;
@@ -327,12 +442,16 @@ body {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.vision:hover, .mission:hover, .objective:hover {
+.vision:hover,
+.mission:hover,
+.objective:hover {
     transform: translateY(-5px);
     box-shadow: 0 6px 12px rgba(var(--primary-color), 0.15);
 }
 
-.vision h2, .mission h2, .objective h2 {
+.vision h2,
+.mission h2,
+.objective h2 {
     color: var(--primary-color);
     margin-bottom: 1.5rem;
     font-size: 1.8rem;
@@ -340,7 +459,9 @@ body {
     padding-bottom: 0.5rem;
 }
 
-.vision h2:after, .mission h2:after, .objective h2:after {
+.vision h2:after,
+.mission h2:after,
+.objective h2:after {
     content: '';
     position: absolute;
     bottom: 0;
@@ -350,7 +471,8 @@ body {
     background: var(--primary-color);
 }
 
-.vision p, .mission p {
+.vision p,
+.mission p {
     color: #555;
     line-height: 1.8;
     font-size: 1.1rem;
@@ -461,7 +583,8 @@ body {
     color: #777;
 }
 
-.file-type, .file-size {
+.file-type,
+.file-size {
     background: #f8f9fa;
     padding: 0.3rem 0.8rem;
     border-radius: 4px;
@@ -528,20 +651,27 @@ footer {
     text-align: center;
     margin-top: 2rem;
     padding-top: 2rem;
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     color: #ccc;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Responsive Design - Breakpoint increased to fit all menu items */
+@media (max-width: 1024px) {
     body {
-        padding-top: 160px; /* Maximum mobile navbar clearance */
+        padding-top: 160px;
+        /* Maximum mobile navbar clearance */
     }
 
     .navbar {
         padding: 0.5rem 1rem;
+        width: 100%;
     }
-    
+
+    .nav-container {
+        width: 100%;
+        padding: 0 0.5rem;
+    }
+
     .logo-img {
         height: 60px;
     }
@@ -555,17 +685,24 @@ footer {
         top: 80px;
         left: 0;
         right: 0;
+        width: 100%;
         background-color: var(--header-background);
         flex-direction: column;
         padding: 1rem;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         transform: translateY(-100%);
         opacity: 0;
         visibility: hidden;
         transition: all 0.3s ease;
         gap: 0;
-        max-height: calc(100vh - 80px);
-        overflow-y: auto;
+        /* Remove max-height and overflow to prevent scrollbar */
+    }
+
+    /* Reset margin for mobile vertical layout */
+    .nav-links > li:last-child {
+        margin-left: 0;
+        margin-top: 1rem;
+        /* Add some spacing above login on mobile */
     }
 
     .nav-links.show {
@@ -576,7 +713,7 @@ footer {
 
     .nav-item {
         width: 100%;
-        border-bottom: 1px solid rgba(0,0,0,0.1);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
 
     .nav-item:last-child {
@@ -599,25 +736,30 @@ footer {
         box-shadow: none;
         border: none;
         border-radius: 0;
-        background-color: rgba(0,0,0,0.05);
-        margin-left: 1rem;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
+        background-color: rgba(0, 0, 0, 0.03);
+        margin-left: 0.5rem;
+        padding: 0.25rem 0;
+        /* Remove max-height animation for normal display */
+        display: none;
+    }
+
+    .dropdown-menu::before {
+        display: none;
     }
 
     .dropdown.active .dropdown-menu {
-        max-height: 300px;
+        display: block;
     }
 
     .dropdown-item {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid rgba(0,0,0,0.1);
+        padding: 0.7rem 1rem;
+        margin: 0.1rem 0.25rem;
+        border-radius: 6px;
     }
 
     .dropdown-item:hover {
-        padding-left: 1rem;
-        background-color: var(--primary-color);
+        background: rgba(var(--primary-color-rgb), 0.08);
+        color: var(--primary-color);
     }
 
     .login-btn {
@@ -653,19 +795,65 @@ footer {
     }
 }
 
+/* Tablet Breakpoint */
+/* Desktop with many menu items - make more compact */
+@media (min-width: 1025px) and (max-width: 1400px) {
+    .navbar {
+        padding: 0.5rem 0.5rem;
+    }
+
+    .nav-container {
+        gap: 0.5rem;
+    }
+
+    .nav-links {
+        gap: 0.2rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 0.5rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Tablet Breakpoint */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .navbar {
+        padding: 0.5rem 1.5rem;
+    }
+
+    .nav-container {
+        width: 100%;
+        padding: 0 1rem;
+    }
+
+    .nav-links {
+        gap: 0.3rem;
+    }
+
+    .nav-link {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.95rem;
+    }
+}
+
 /* Animations */
 @keyframes fadeIn {
     from {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-.vision, .mission, .objective, .download-card {
+.vision,
+.mission,
+.objective,
+.download-card {
     animation: fadeIn 0.6s ease-out forwards;
 }
 
@@ -1309,7 +1497,7 @@ textarea.form-control {
     .dates-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .submission-cta .btn {
         display: block;
         width: 100%;
@@ -1487,15 +1675,15 @@ textarea.form-control {
     .overview-content {
         grid-template-columns: 1fr;
     }
-    
+
     .overview-stats {
         margin-top: 2rem;
     }
-    
+
     .committee-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .conference-timeline {
         grid-template-columns: 1fr;
     }
@@ -1785,19 +1973,19 @@ textarea.form-control {
     .venue-info {
         grid-template-columns: 1fr;
     }
-    
+
     .venue-map {
         height: 300px;
     }
-    
+
     .transport-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .attractions-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .hotel-grid {
         grid-template-columns: 1fr;
     }
@@ -1906,12 +2094,12 @@ textarea.form-control {
     transition: all 0.3s ease;
 }
 
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+.checkbox-label input[type="checkbox"]:checked+.checkbox-custom {
     background: var(--primary-color);
     border-color: var(--primary-color);
 }
 
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom:after {
+.checkbox-label input[type="checkbox"]:checked+.checkbox-custom:after {
     content: '';
     position: absolute;
     left: 6px;
@@ -1968,11 +2156,11 @@ textarea.form-control {
     .auth-container {
         padding: 1rem;
     }
-    
+
     .register-form {
         padding: 1.5rem;
     }
-    
+
     .form-group input:not([type="checkbox"]) {
         padding: 0.7rem;
     }
@@ -2243,19 +2431,19 @@ textarea.form-control {
     .pricing-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .info-row {
         grid-template-columns: 1fr;
     }
-    
+
     .info-row .label {
         margin-bottom: 0.3rem;
     }
-    
+
     .registration-buttons {
         flex-direction: column;
     }
-    
+
     .registration-buttons .btn {
         width: 100%;
     }
@@ -2328,7 +2516,7 @@ textarea.form-control {
     .speakers-preview {
         gap: 1.5rem;
     }
-    
+
     .speaker-preview-card {
         width: 280px;
     }
@@ -2339,4 +2527,4 @@ textarea.form-control {
         width: 100%;
         max-width: 320px;
     }
-} 
+}

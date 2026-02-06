@@ -1,0 +1,207 @@
+/* =================================================================
+   NAVIGATION LAYOUT FIX - CSS CHANGES SUMMARY
+   =================================================================
+   
+   This file shows the key CSS changes made to fix the navigation
+   right-shift issue. All changes are in: static/css/style.css
+   ================================================================= */
+
+/* ─────────────────────────────────────────────────────────────────
+   1. GLOBAL BODY STYLES - Prevent Page-Level Overflow
+   ───────────────────────────────────────────────────────────────── */
+
+body {
+    font-family: 'Poppins', Arial, sans-serif;
+    line-height: 1.6;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding-top: 200px;
+
+    /* ✅ ADDED - Prevent horizontal scrolling */
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   2. HEADER CONTAINER - Fixed-Position Wrapper
+   ───────────────────────────────────────────────────────────────── */
+
+.site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background-color: var(--header-background);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    min-height: 100px;
+
+    /* ✅ ADDED - Ensure full width and prevent overflow */
+    width: 100%;
+    overflow-x: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   3. NAVBAR - Inner Container (No Flex Here!)
+   ───────────────────────────────────────────────────────────────── */
+
+.navbar {
+    padding: 0.5rem 2rem;
+    position: relative;
+    min-height: 80px;
+
+    /* ✅ ADDED - Full width */
+    width: 100%;
+
+    /* ❌ REMOVED - Redundant flex layout
+       display: flex;
+       align-items: center;
+    */
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   4. NAV-CONTAINER - The Flex Controller (Main Fix!)
+   ───────────────────────────────────────────────────────────────── */
+
+.nav-container {
+    max-width: 1200px;
+    /* Maximum centered width */
+
+    /* ✅ ADDED - Key fixes for proper centering */
+    width: 100%;
+    /* Take full width up to max-width */
+    margin: 0 auto;
+    /* Center the container */
+    padding: 0 1rem;
+    /* Internal spacing (prevents edge-touching) */
+
+    /* Flexbox layout - this is where flex should be! */
+    display: flex;
+    justify-content: space-between;
+    /* Logo left, menu right */
+    align-items: center;
+    /* Vertical centering */
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   VISUAL STRUCTURE DIAGRAM
+   ───────────────────────────────────────────────────────────────── 
+   
+   ┌─────────────────────────────────────────────────────────┐
+   │ body (width: 100%, overflow-x: hidden)                  │
+   │                                                          │
+   │  ┌────────────────────────────────────────────────────┐ │
+   │  │ .site-header (fixed, width: 100%)                  │ │
+   │  │                                                     │ │
+   │  │  ┌───────────────────────────────────────────────┐ │ │
+   │  │  │ .navbar (width: 100%, NO flex)                │ │ │
+   │  │  │                                               │ │ │
+   │  │  │  ┌─────────────────────────────────────────┐ │ │ │
+   │  │  │  │ .nav-container                          │ │ │ │
+   │  │  │  │ (max-width: 1200px, width: 100%)        │ │ │ │
+   │  │  │  │ (margin: 0 auto = CENTERED)             │ │ │ │
+   │  │  │  │ (display: flex, space-between)          │ │ │ │
+   │  │  │  │                                         │ │ │ │
+   │  │  │  │  ┌──────┐          ┌─────────────────┐ │ │ │ │
+   │  │  │  │  │ LOGO │   MENU   │ LOGIN/USER MENU │ │ │ │ │
+   │  │  │  │  └──────┘          └─────────────────┘ │ │ │ │
+   │  │  │  │  ↑                                  ↑  │ │ │ │
+   │  │  │  │  Left                            Right │ │ │ │
+   │  │  │  └─────────────────────────────────────────┘ │ │ │
+   │  │  │                                               │ │ │
+   │  │  └───────────────────────────────────────────────┘ │ │
+   │  │                                                     │ │
+   │  └────────────────────────────────────────────────────┘ │
+   │                                                          │
+   └─────────────────────────────────────────────────────────┘
+   
+   ─────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────
+   5. MOBILE RESPONSIVE (≤768px)
+   ───────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    body {
+        padding-top: 160px;
+    }
+
+    .navbar {
+        padding: 0.5rem 1rem;
+        width: 100%;
+        /* ✅ ADDED */
+    }
+
+    .nav-container {
+        width: 100%;
+        /* ✅ ADDED */
+        padding: 0 0.5rem;
+        /* ✅ ADDED - Tighter spacing on mobile */
+    }
+
+    .nav-links {
+        position: fixed;
+        top: 80px;
+        left: 0;
+        right: 0;
+        background-color: var(--header-background);
+        flex-direction: column;
+        padding: 1rem;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        transform: translateY(-100%);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        gap: 0;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+
+        /* ✅ ADDED - Prevent mobile horizontal scroll */
+        width: 100%;
+        overflow-x: hidden;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   6. TABLET RESPONSIVE (769px-1024px) - NEW BREAKPOINT!
+   ───────────────────────────────────────────────────────────────── */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .navbar {
+        padding: 0.5rem 1.5rem;
+    }
+
+    .nav-container {
+        width: 100%;
+        /* ✅ ADDED */
+        padding: 0 1rem;
+        /* ✅ ADDED */
+    }
+
+    .nav-links {
+        gap: 0.3rem;
+        /* Tighter gap on tablets */
+    }
+
+    .nav-link {
+        padding: 0.6rem 0.8rem;
+        /* Smaller padding */
+        font-size: 0.95rem;
+        /* Slightly smaller font */
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KEY PRINCIPLES APPLIED
+   ═══════════════════════════════════════════════════════════════
+   
+   1. ✅ Single Source of Flex: Only .nav-container has display: flex
+   2. ✅ Full Width Chain: width: 100% on body → header → navbar → container
+   3. ✅ Centered Content: max-width + margin: 0 auto on .nav-container
+   4. ✅ No Overflow: overflow-x: hidden on body, header, and mobile menu
+   5. ✅ Internal Padding: padding on .nav-container (not external margins)
+   6. ✅ Responsive Widths: Proper width constraints at all breakpoints
+   
+   ═══════════════════════════════════════════════════════════════ */

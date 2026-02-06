@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const navbar = document.querySelector('.navbar');
     const navLinks = document.querySelector('.nav-links');
     
-    if (window.innerWidth <= 768) {
+    if (window.innerWidth <= 1024) {
         const menuButton = document.createElement('button');
         menuButton.classList.add('menu-toggle');
         menuButton.innerHTML = '☰';

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,41 +13,246 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
     {% set primary_rgb = site_design.primary_color|replace('#', '')|string %}
     {% if primary_rgb|length == 6 %}
-        {% set r = (primary_rgb[0:2]|int(base=16)) %}
-        {% set g = (primary_rgb[2:4]|int(base=16)) %}
-        {% set b = (primary_rgb[4:6]|int(base=16)) %}
+    {% set r = (primary_rgb[0:2]|int(base=16)) %}
+    {% set g = (primary_rgb[2:4]|int(base=16)) %}
+    {% set b = (primary_rgb[4:6]|int(base=16)) %}
     {% else %}
-        {% set r, g, b = 0, 123, 255 %}
+    {% set r, g, b = 0, 123, 255 %}
     {% endif %}
-    
+
     <style>
+        /* CRITICAL LOGIN BUTTON POSTIONING */
+        @media (min-width: 1025px) {
+            .nav-container {
+                position: relative !important;
+            }
+
+            /* Force Login/User button to absolute right on desktop */
+            .nav-links > li:last-child {
+                position: absolute !important;
+                right: 0 !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                margin: 0 !important;
+                /* z-index: 1002; REMOVED */
+            }
+
+            /* FORCE BLUE LOGIN BUTTON */
+            .login-btn,
+            a.login-btn {
+                background-color: #007bff !important;
+                /* Blue */
+                color: #ffffff !important;
+                /* White text */
+                padding: 0.6rem 1.2rem !important;
+                border-radius: 4px !important;
+                transition: background-color 0.3s ease !important;
+            }
+
+            .login-btn:hover {
+                background-color: #0056b3 !important;
+                /* Darker Blue on Hover */
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+            }
+        }
+
+        /* Mobile Reset */
+        @media (max-width: 1024px) {
+            .nav-links > li:last-child {
+                position: static !important;
+                transform: none !important;
+                margin-top: 1rem !important;
+                margin-left: 0 !important;
+            }
+        }
+
         :root {
-            --primary-color: {{ site_design.primary_color }};
-            --primary-color-rgb: {{ r }}, {{ g }}, {{ b }};
-            --secondary-color: {{ site_design.secondary_color }};
-            --accent-color: {{ site_design.accent_color }};
-            --text-color: {{ site_design.text_color }};
-            --background-color: {{ site_design.background_color }};
-            --header-background: {{ site_design.header_background }};
-            --footer-background: {{ site_design.footer_background }};
-            --hero-text-color: {{ site_design.hero_text_color }};
+            --primary-color: {
+                    {
+                    site_design.primary_color
+                }
+            }
+
+            ;
+
+            --primary-color-rgb: {
+                    {
+                    r
+                }
+            }
+
+            ,
+            {
+                {
+                g
+            }
+        }
+
+        ,
+        {
+            {
+            b
+        }
+        }
+
+        ;
+
+        --secondary-color: {
+                {
+                site_design.secondary_color
+            }
+        }
+
+        ;
+
+        --accent-color: {
+                {
+                site_design.accent_color
+            }
+        }
+
+        ;
+
+        --text-color: {
+                {
+                site_design.text_color
+            }
+        }
+
+        ;
+
+        --background-color: {
+                {
+                site_design.background_color
+            }
+        }
+
+        ;
+
+        --header-background: {
+                {
+                site_design.header_background
+            }
+        }
+
+        ;
+
+        --footer-background: {
+                {
+                site_design.footer_background
+            }
+        }
+
+        ;
+
+        --hero-text-color: {
+                {
+                site_design.hero_text_color
+            }
+        }
+
+        ;
         }
 
         body {
             color: var(--text-color);
             background-color: var(--background-color);
-            padding-top: 140px; /* Match CSS file - robust clearance */
+            padding-top: 140px;
+            /* Match CSS file - robust clearance */
+            overflow-x: hidden !important;
+            width: 100% !important;
+            max-width: 100% !important;
         }
 
         /* Additional navbar spacing fix for zoom levels */
         .site-header {
-            min-height: 100px; /* Ensure minimum header height */
+            min-height: 100px;
+            /* Ensure minimum header height */
+            width: 100% !important;
+            max-width: 100% !important;
+            /* overflow-x: hidden !important; REMOVED to prevent clipping */
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+            /* Ensure header is above all content */
         }
 
         .navbar {
-            min-height: 80px; /* Ensure minimum navbar height */
+            min-height: 80px;
+            /* Ensure minimum navbar height */
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+            /* Allow navigation items to display */
+            padding: 0.5rem 1rem !important;
+            position: relative !important;
+            /* Ensure navbar is on top */
+            display: flex !important;
+            width: 100% !important;
+            min-height: 60px !important;
+        }
+
+        .nav-container {
+            max-width: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 0.5rem !important;
+            display: flex !important;
+            justify-content: flex-start !important;
+            /* Align all items to the left */
+            align-items: center !important;
+            gap: 0.5rem !important;
+            /* Reduced spacing to fit all items */
+            overflow: visible !important;
+            /* Allow items to be visible */
+            position: relative !important;
+            /* Ensure nav container is on top */
+            /* Allow clicks to pass through container if it overlaps */
+            display: flex !important;
+            width: 100% !important;
+            min-height: 60px !important;
+            height: auto !important;
+        }
+
+        .nav-links {
+            flex: 1 !important;
+            /* Take remaining space */
+            display: flex !important;
+            gap: 0.3rem !important;
+            overflow: visible !important;
+            /* Allow items to be visible */
+            position: relative !important;
+            /* Ensure nav links are on top */
+            /* Allow clicks to pass through container */
+            display: flex !important;
+            min-height: 60px !important;
+            height: auto !important;
+            width: auto !important;
+            flex: 1 !important;
+            /* allow it to grow */
+        }
+
+        .nav-item {
+            /* pointer-events: auto !important; REMOVED */
+            /* Re-enable clicks on items */
+            position: relative !important;
+            /* z-index: 10005 !important; REMOVED */
+        }
+
+        .nav-link {
+            /* pointer-events: auto !important; REMOVED */
+            /* Re-enable clicks on links */
+            position: relative !important;
+            /* z-index: 10006 !important; REMOVED */
+        }
+
+        .nav-links > li:last-child {
+            margin-left: auto !important;
+            /* Push login to right */
         }
 
         .header {
@@ -66,25 +272,70 @@
             object-fit: contain;
             padding: 5px;
             transition: transform 0.2s ease;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
         }
 
         .logo-img:hover {
             transform: scale(1.05);
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
         }
 
         @media (max-width: 768px) {
             body {
-                padding-top: 120px; /* Robust mobile clearance */
+                padding-top: 120px;
+                /* Robust mobile clearance */
             }
-            
+
+            .navbar {
+                width: 100% !important;
+                padding: 0.5rem 1rem;
+            }
+
+            .nav-container {
+                width: 100% !important;
+                padding: 0 0.5rem !important;
+            }
+
             .header {
                 padding: 0.3rem 1rem;
             }
-            
+
             .logo-img {
                 height: 70px;
+            }
+
+            .nav-links > li:last-child {
+                margin-left: 0 !important;
+                margin-top: 1rem !important;
+            }
+        }
+
+        /* Compact nav for medium-large screens */
+        @media (min-width: 1025px) and (max-width: 1400px) {
+            .nav-container {
+                gap: 0.3rem !important;
+                padding: 0 0.3rem !important;
+            }
+
+            .nav-links {
+                gap: 0.2rem !important;
+            }
+
+            .nav-link {
+                padding: 0.5rem 0.5rem !important;
+                font-size: 0.85rem !important;
+            }
+        }
+
+        /* Extra spacing for very wide screens */
+        @media (min-width: 1600px) {
+            .nav-container {
+                gap: 1rem !important;
+                padding: 0 2rem !important;
+            }
+
+            .nav-links {
+                gap: 0.5rem !important;
             }
         }
 
@@ -102,50 +353,72 @@
             background-size: cover;
             background-position: center;
             color: var(--hero-text-color);
+            position: relative;
+            z-index: 1;
+            /* Ensure hero is below navbar */
         }
 
         /* Add more custom color variables as needed */
-        
-        /* CRITICAL NAVBAR FIX - Override any conflicting styles */
+
+        /* CRITICAL NAVBAR FIX - Relative Positioning Update */
+        /* CRITICAL NAVBAR FIX - Sticky Positioning Update */
         body {
-            padding-top: 200px !important; /* Maximum aggressive spacing to prevent any cutoff */
+            padding-top: 0 !important;
+            overflow-x: hidden !important;
+            width: 100% !important;
+            max-width: 100% !important;
         }
-        
-        @media (max-width: 768px) {
+
+        .site-header {
+            position: sticky !important;
+            top: 0 !important;
+        }
+
+        @media (max-width: 1024px) {
             body {
-                padding-top: 160px !important; /* Maximum mobile clearance */
+                padding-top: 0 !important;
             }
         }
-        
+
         /* Ensure navbar never overlaps content */
         main {
-            margin-top: 20px; /* Additional safety margin */
+            margin-top: 20px;
+            /* Additional safety margin */
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            position: relative;
+            z-index: 1;
+            /* Ensure main content is below navbar */
         }
-        
+
         /* Dynamic navbar height adjustment */
         .dynamic-spacing {
-            padding-top: 160px; /* Fallback */
+            padding-top: 160px;
+            /* Fallback */
         }
     </style>
 </head>
+
 <body>
     {% include 'user/components/header.html' %}
 
     <main>
         {% if request.endpoint == 'home' %}
-        <div class="hero-section" {% if site_design.hero_image %}style="background-image: url('{{ site_design.hero_image }}')"{% endif %}>
+        <div class="hero-section" {% if site_design.hero_image
+            %}style="background-image: url('{{ site_design.hero_image }}')" {% endif %}>
             <!-- Hero section content -->
         </div>
         {% endif %}
 
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
 
         {% block content %}{% endblock %}
@@ -154,49 +427,30 @@
     {% include 'user/components/footer.html' %}
 
     <script>
-        // Dynamic navbar height adjustment
-        document.addEventListener('DOMContentLoaded', function() {
-            function adjustBodyPadding() {
-                const navbar = document.querySelector('.site-header');
-                if (navbar) {
-                    const navbarHeight = navbar.offsetHeight;
-                    const safetyMargin = 60; // Extra large safety margin
-                    const requiredPadding = navbarHeight + safetyMargin;
-                    
-                    // Always ensure minimum 200px padding
-                    const minimumPadding = 200;
-                    const finalPadding = Math.max(requiredPadding, minimumPadding);
-                    
-                    document.body.style.paddingTop = finalPadding + 'px';
-                    console.log(`Navbar height: ${navbarHeight}px, Applied padding: ${finalPadding}px`);
-                }
-            }
-            
-            // Adjust on load
-            setTimeout(adjustBodyPadding, 100); // Small delay to ensure everything is loaded
-            
-            // Adjust on resize (in case zoom changes)
-            window.addEventListener('resize', function() {
-                setTimeout(adjustBodyPadding, 100);
-            });
+        // Dynamic navbar height adjustment - DISABLED for Static Nav
+        document.addEventListener('DOMContentLoaded', function () {
+            // Reset any dynamic padding
+            document.body.style.paddingTop = '0px';
         });
 
+        // Legacy adjustment code removed
+
         // Mobile menu toggle
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const menuToggle = document.getElementById('menuToggle');
             const navLinks = document.getElementById('navLinks');
             const dropdowns = document.querySelectorAll('.dropdown');
 
             // Mobile menu toggle functionality
             if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', function(e) {
+                menuToggle.addEventListener('click', function (e) {
                     e.stopPropagation();
                     navLinks.classList.toggle('show');
                     menuToggle.classList.toggle('active');
                 });
 
                 // Close menu when clicking outside
-                document.addEventListener('click', function(event) {
+                document.addEventListener('click', function (event) {
                     if (!navLinks.contains(event.target) && !menuToggle.contains(event.target)) {
                         navLinks.classList.remove('show');
                         menuToggle.classList.remove('active');
@@ -213,17 +467,17 @@
                 dropdowns.forEach(dropdown => {
                     const toggle = dropdown.querySelector('.dropdown-toggle');
                     if (toggle) {
-                        toggle.addEventListener('click', function(e) {
+                        toggle.addEventListener('click', function (e) {
                             e.preventDefault();
                             e.stopPropagation();
-                            
+
                             // Close other dropdowns
                             dropdowns.forEach(otherDropdown => {
                                 if (otherDropdown !== dropdown) {
                                     otherDropdown.classList.remove('active');
                                 }
                             });
-                            
+
                             // Toggle current dropdown
                             dropdown.classList.toggle('active');
                         });
@@ -232,7 +486,7 @@
             }
 
             // Handle window resize
-            window.addEventListener('resize', function() {
+            window.addEventListener('resize', function () {
                 if (window.innerWidth > 768) {
                     navLinks.classList.remove('show');
                     menuToggle.classList.remove('active');
@@ -244,10 +498,10 @@
 
             // Auto-hide flash messages
             const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                setTimeout(function() {
+            alerts.forEach(function (alert) {
+                setTimeout(function () {
                     alert.style.opacity = '0';
-                    setTimeout(function() {
+                    setTimeout(function () {
                         alert.remove();
                     }, 300);
                 }, 5000);
@@ -257,4 +511,5 @@
 
     {% include 'user/components/chatbot.html' %}
 </body>
-</html> 
+
+</html>
