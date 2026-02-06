@@ -612,45 +612,75 @@
     margin-bottom: 2rem;
 }
 
-/* Responsive Adjustments */
+/* ===== RESPONSIVE: TABLET (max-width: 768px) ===== */
 @media (max-width: 768px) {
-    /* Title Overlay */
+
+    /* --- Hero Section --- */
+    .hero-section {
+        margin-top: -120px;
+    }
+
+    .hero-slider {
+        height: 100vh;
+        height: 100svh; /* Use small viewport height to account for mobile browser chrome */
+        min-height: 550px;
+    }
+
+    /* --- Title Overlay --- */
     .title-overlay {
         padding: 1rem;
-        padding-top: 80px;
-        min-height: 45%;
+        padding-top: 130px;
+        min-height: auto;
+        align-items: flex-start;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 80%, transparent 100%);
     }
 
     .title-content {
-        padding: 1.5rem 1.2rem;
-        border-radius: 20px;
+        padding: 1.3rem 1.1rem;
+        border-radius: 18px;
+        width: 95%;
+        max-width: none;
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.18) 0%,
+            rgba(255, 255, 255, 0.06) 50%,
+            rgba(255, 255, 255, 0.12) 100%
+        );
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.3),
+            inset 0 1px 1px rgba(255, 255, 255, 0.2),
+            inset 0 -1px 1px rgba(0, 0, 0, 0.1);
     }
 
     .title-content::before {
+        display: block;
         animation: glassShine 10s ease-in-out infinite;
     }
 
     .title-content h1 {
-        font-size: 1.6rem;
+        font-size: 1.25rem;
+        line-height: 1.35;
+        text-shadow: 1px 1px 6px rgba(0,0,0,0.5);
     }
 
     .title-content .subtitle {
-        font-size: 1.1rem;
-        margin: 0.5rem 0;
+        font-size: 0.95rem;
+        margin: 0.4rem 0;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.4);
     }
 
     .title-content .conference-date {
-        font-size: 1.05rem;
+        font-size: 0.95rem;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.4), 1px 1px 3px rgba(0,0,0,0.4);
     }
 
-    /* Hero Section */
-    .hero-slider {
-        height: 100vh;
-        min-height: 600px;
-    }
-
+    /* --- Conference Info Overlay --- */
     .conference-info-overlay {
-        padding: 1.5rem;
+        padding: 1.2rem;
+        background: linear-gradient(to top, rgba(0,0,0,0.92), rgba(0,0,0,0.6), transparent);
     }
 
     .conference-info-content {
@@ -658,30 +688,93 @@
     }
 
     .conference-info-content h2 {
-        font-size: 1.6rem;
+        font-size: 1.3rem;
+        margin-bottom: 0.75rem;
     }
 
+    /* Stack info items vertically on mobile */
     .info-grid {
-        gap: 1rem;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
     }
 
+    .info-item {
+        font-size: 0.95rem;
+        gap: 0.6rem;
+    }
+
+    .info-item i {
+        font-size: 1.1rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    /* Conference Highlights */
+    .conference-highlights h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .conference-highlights ul {
+        columns: 1;
+        padding-left: 1.2rem;
+    }
+
+    .conference-highlights li {
+        font-size: 0.9rem;
+        margin-bottom: 0.3rem;
+        line-height: 1.4;
+    }
+
+    /* --- Slider Navigation (bigger touch targets) --- */
+    .slider-nav button {
+        padding: 0.75rem 0.6rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .prev-slide {
+        left: 0.5rem;
+    }
+
+    .next-slide {
+        right: 0.5rem;
+    }
+
+    .slider-dots {
+        bottom: auto;
+        padding: 0.5rem 0;
+    }
+
+    .slider-dots .dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    /* --- Welcome Section --- */
     .welcome-section {
-        padding: 1.5rem;
+        padding: 1.5rem 1rem;
     }
 
     .welcome-message {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         padding: 1rem;
+        border-left-width: 3px;
+        border-right-width: 3px;
+        line-height: 1.6;
     }
 
-    /* VMO Section */
+    /* --- VMO Section --- */
     .vmo-section {
         padding: 2rem 1rem;
     }
 
     .vmo-grid {
         grid-template-columns: 1fr;
-        gap: 1.5rem;
+        gap: 1.25rem;
     }
 
     .vmo-card {
@@ -689,16 +782,125 @@
     }
 
     .vmo-card h2 {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
     }
 
-    /* Downloads Section */
+    .vmo-card p,
+    .vmo-card li {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    /* --- Countdown --- */
+    .countdown-container {
+        gap: 0.75rem;
+        padding: 0.8rem;
+        margin-top: 1rem;
+        border-radius: 12px;
+    }
+
+    .countdown-item {
+        min-width: 60px;
+        padding: 0.5rem;
+        border-radius: 10px;
+    }
+
+    .countdown-item span:first-child {
+        font-size: 1.8rem;
+    }
+
+    .countdown-label {
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+    }
+
+    /* --- Speaker Cards --- */
+    .speakers-preview {
+        gap: 1.25rem;
+        padding: 0 0.5rem;
+    }
+
+    .speaker-preview-card {
+        width: 100%;
+        max-width: 340px;
+        padding: 1.25rem;
+    }
+
+    .speaker-preview-image {
+        width: 120px;
+        height: 120px;
+    }
+
+    .speaker-preview-name {
+        font-size: 1.2rem;
+    }
+
+    .speaker-preview-title {
+        font-size: 0.9rem;
+    }
+
+    .speaker-preview-bio {
+        font-size: 0.85rem;
+    }
+
+    /* --- Guest Speaker CTA --- */
+    .guest-speaker-cta-section {
+        padding: 2.5rem 1rem;
+        margin: 2rem 0;
+    }
+
+    .cta-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .cta-title {
+        font-size: 1.7rem;
+        line-height: 1.3;
+    }
+
+    .cta-description {
+        font-size: 1rem;
+        padding: 0 0.5rem;
+    }
+
+    .cta-benefits {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 2rem auto;
+    }
+
+    .benefit-item {
+        padding: 0.75rem 0.5rem;
+        flex-direction: column;
+        gap: 0.4rem;
+        text-align: center;
+    }
+
+    .benefit-item span {
+        font-size: 0.85rem;
+    }
+
+    .cta-actions {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .cta-actions .btn {
+        width: 100%;
+        max-width: 300px;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    /* --- Downloads Section --- */
     .downloads-section {
         padding: 2rem 1rem;
     }
 
     .downloads-section h2 {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
         margin-bottom: 1.5rem;
     }
 
@@ -711,84 +913,185 @@
         padding: 1rem;
     }
 
-    /* Associates Section */
+    /* --- Associates Section --- */
     .associates-section {
-        padding: 2rem 1rem;
+        padding: 2.5rem 1rem;
     }
 
     .section-title {
-        font-size: 1.6rem;
-        margin-bottom: 1.5rem;
+        font-size: 1.8rem;
+        margin-bottom: 2rem;
     }
 
     .associates-grid {
-        gap: 1.5rem;
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
         margin: 1rem auto;
+    }
+
+    .associate-card {
+        flex-direction: row;
+        text-align: left;
+        padding: 1.25rem;
+        gap: 1rem;
     }
 
     .associate-logo {
         width: 80px;
-        height: 60px;
-        padding: 6px;
-    }
-
-    /* Navigation */
-    .slider-nav button {
+        height: 80px;
+        margin: 0;
         padding: 0.5rem;
-        font-size: 0.8rem;
+        flex-shrink: 0;
     }
 
-    .prev-slide {
-        left: 0.5rem;
+    .associate-info h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.3rem;
     }
 
-    .next-slide {
-        right: 0.5rem;
+    .associate-info p {
+        font-size: 0.85rem;
     }
 }
 
+/* ===== RESPONSIVE: SMALL PHONE (max-width: 480px) ===== */
 @media (max-width: 480px) {
-    /* Even smaller screens */
+
+    /* --- Hero --- */
+    .hero-section {
+        margin-top: -100px;
+    }
+
+    .hero-slider {
+        min-height: 500px;
+    }
+
+    /* --- Title Overlay --- */
     .title-overlay {
-        padding: 0.8rem;
-        padding-top: 70px;
+        padding: 0.5rem;
+        padding-top: 120px;
     }
 
     .title-content {
-        padding: 1.2rem 1rem;
-        border-radius: 16px;
+        padding: 1rem 0.8rem;
+        border-radius: 12px;
+        width: 98%;
     }
 
     .title-content h1 {
-        font-size: 1.3rem;
+        font-size: 1.1rem;
+        line-height: 1.3;
     }
 
     .title-content .subtitle {
-        font-size: 0.95rem;
+        font-size: 0.8rem;
     }
 
     .title-content .conference-date {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    /* --- Countdown --- */
+    .countdown-container {
+        gap: 0.4rem;
+        padding: 0.6rem;
+        border-radius: 12px;
+        margin-top: 1rem;
     }
 
     .countdown-item {
-        min-width: 55px;
-        padding: 0.5rem;
+        min-width: 50px;
+        padding: 0.4rem;
+        border-radius: 8px;
     }
 
-    .conference-info-content h2 {
+    .countdown-item span:first-child {
         font-size: 1.4rem;
     }
 
+    .countdown-label {
+        font-size: 0.6rem;
+        letter-spacing: 1px;
+    }
+
+    /* --- Conference Info --- */
+    .conference-info-content h2 {
+        font-size: 1.15rem;
+    }
+
+    .info-item {
+        font-size: 0.85rem;
+    }
+
+    .conference-highlights {
+        display: none; /* Hide highlights on very small screens to prevent clutter */
+    }
+
+    /* --- Welcome --- */
     .welcome-message {
-        font-size: 1rem;
+        font-size: 0.95rem;
         padding: 0.8rem;
     }
 
+    /* --- VMO --- */
+    .vmo-card {
+        padding: 1.25rem;
+    }
+
+    .vmo-card h2 {
+        font-size: 1.2rem;
+    }
+
+    /* --- Speaker cards --- */
+    .speaker-preview-card {
+        max-width: 100%;
+    }
+
+    .speaker-preview-image {
+        width: 100px;
+        height: 100px;
+    }
+
+    /* --- CTA --- */
+    .cta-title {
+        font-size: 1.5rem;
+    }
+
+    .cta-icon {
+        font-size: 2.5rem;
+    }
+
+    .cta-benefits {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+
+    .benefit-item {
+        flex-direction: row;
+        padding: 0.6rem 0.75rem;
+    }
+
+    .cta-actions .btn {
+        max-width: 100%;
+        font-size: 0.95rem;
+    }
+
+    /* --- Associates --- */
+    .associate-card {
+        padding: 1rem;
+    }
+
     .associate-logo {
-        width: 70px;
-        height: 50px;
-        padding: 4px;
+        width: 65px;
+        height: 65px;
+    }
+
+    .associate-info h3 {
+        font-size: 1rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
     }
 
     .section-title:after {
@@ -803,15 +1106,31 @@ html {
     scroll-behavior: smooth;
 }
 
-/* Improve touch interactions */
+/* Improve touch interactions on mobile devices */
 @media (hover: none) {
-    .vmo-card:hover {
+    .vmo-card:hover,
+    .associate-card:hover,
+    .speaker-preview-card:hover {
         transform: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
     .associate-logo img {
         filter: grayscale(0);
         opacity: 1;
+    }
+
+    /* Make tap targets feel responsive */
+    .vmo-card:active,
+    .associate-card:active,
+    .speaker-preview-card:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
+    }
+
+    .slider-nav button:active {
+        background: rgba(0,0,0,0.7);
+        transform: translateY(-50%) scale(0.95);
     }
 }
 
@@ -919,53 +1238,7 @@ html {
     opacity: 0.9;
 }
 
-@media (max-width: 768px) {
-    .associates-section {
-        padding: 3rem 1rem;
-    }
-
-    .section-title {
-        font-size: 2rem;
-        margin-bottom: 2rem;
-    }
-
-    .associates-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .associate-logo {
-        width: 120px;
-        height: 120px;
-    }
-
-    .associate-info h3 {
-        font-size: 1.2rem;
-    }
-
-    .associate-info p {
-        font-size: 0.9rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .associates-section {
-        padding: 2rem 1rem;
-    }
-
-    .section-title {
-        font-size: 1.8rem;
-    }
-
-    .associate-card {
-        padding: 1.5rem;
-    }
-
-    .associate-logo {
-        width: 100px;
-        height: 100px;
-    }
-}
+/* Associates mobile overrides are in the main responsive blocks above */
 
 .countdown-container {
     display: flex;
@@ -1009,42 +1282,7 @@ html {
     font-weight: 500;
 }
 
-@media (max-width: 768px) {
-    .countdown-container {
-        gap: 1rem;
-        padding: 1rem;
-    }
-
-    .countdown-item {
-        min-width: 60px;
-    }
-
-    .countdown-item span:first-child {
-        font-size: 1.8rem;
-    }
-
-    .countdown-label {
-        font-size: 0.8rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .countdown-container {
-        gap: 0.5rem;
-    }
-
-    .countdown-item {
-        min-width: 50px;
-    }
-
-    .countdown-item span:first-child {
-        font-size: 1.5rem;
-    }
-
-    .countdown-label {
-        font-size: 0.7rem;
-    }
-}
+/* Countdown mobile overrides are in the main responsive blocks above */
 
 /* Add styles for the speaker-preview section */
 .speakers-preview {
@@ -1236,50 +1474,7 @@ html {
     color: white;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .guest-speaker-cta-section {
-        padding: 3rem 0;
-        margin: 2rem 0;
-    }
-
-    .cta-title {
-        font-size: 2rem;
-    }
-
-    .cta-description {
-        font-size: 1.1rem;
-    }
-
-    .cta-benefits {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .cta-actions {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .cta-actions .btn {
-        width: 100%;
-        max-width: 300px;
-    }
-}
-
-@media (max-width: 480px) {
-    .cta-title {
-        font-size: 1.8rem;
-    }
-
-    .cta-icon {
-        font-size: 3rem;
-    }
-
-    .benefit-item {
-        padding: 0.75rem;
-    }
-}
+/* CTA mobile overrides are in the main responsive blocks above */
 
 /* Animation */
 @keyframes pulse {

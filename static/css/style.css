@@ -40,34 +40,25 @@ body {
 .navbar {
     padding: 0.5rem 1rem;
     position: relative;
-    /* Ensure navbar is on top */
-    display: flex !important;
-    width: 100% !important;
-    min-height: 60px !important;
+    display: flex;
+    width: 100%;
+    min-height: 60px;
     overflow: visible;
-    /* Allow navigation items to display */
 }
 
 .nav-container {
     max-width: none;
-    /* Remove width limit to use full screen width */
     margin: 0;
-    /* Remove auto margins to stop centering */
     padding: 0;
-    /* Let navbar padding control the spacing */
-    display: flex !important;
-    width: 100% !important;
-    min-height: 60px !important;
-    height: auto !important;
+    display: flex;
+    width: 100%;
+    min-height: 60px;
+    height: auto;
     justify-content: flex-start;
-    /* Ensure items align to left */
     align-items: center;
     gap: 1rem;
-    /* Reduced gap to fit more items */
     overflow: visible;
-    /* Allow nav items to be visible */
     position: relative;
-    /* Ensure nav items are on top */
 }
 
 .logo {
@@ -98,21 +89,13 @@ body {
 
 .nav-links {
     list-style: none;
-    display: flex !important;
-    min-height: 60px !important;
-    height: auto !important;
-    width: auto !important;
-    flex: 1 !important;
-    /* allow it to grow */
+    display: flex;
+    flex: 1;
     gap: 0.3rem;
-    /* Reduced gap for better fit */
     align-items: center;
     flex-wrap: nowrap;
-    /* Keep items in one line on desktop */
     overflow: visible;
-    /* Allow items to be visible */
     position: relative;
-    /* Ensure nav links are on top */
 }
 
 /* Push the Login/User menu item to the far right */
@@ -242,17 +225,15 @@ body {
 .dropdown-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.7rem 1.2rem;
+    gap: 0.6rem;
+    padding: 0.65rem 1.2rem;
     color: #444;
     text-decoration: none;
     transition: all 0.2s ease;
     position: relative;
     font-weight: 500;
     font-size: 0.9rem;
-    margin: 0.15rem 0.5rem;
-    border-radius: 8px;
-    letter-spacing: 0.01em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .dropdown-item:last-child {
@@ -260,29 +241,21 @@ body {
 }
 
 .dropdown-item:hover {
-    background: rgba(var(--primary-color-rgb), 0.12);
+    background: rgba(var(--primary-color-rgb), 0.07);
     color: var(--primary-color);
 }
 
 .dropdown-item i {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    width: 18px;
     font-size: 0.85rem;
-    transition: all 0.2s ease;
-    background: rgba(var(--primary-color-rgb), 0.08);
     color: var(--primary-color);
-    border-radius: 8px;
-    flex-shrink: 0;
+    opacity: 0.7;
+    text-align: center;
+    transition: opacity 0.2s ease;
 }
 
 .dropdown-item:hover i {
-    background: var(--primary-color);
-    color: #ffffff;
-    transform: scale(1.05);
+    opacity: 1;
 }
 
 .dropdown-divider {
@@ -316,24 +289,43 @@ body {
 .menu-toggle {
     display: none;
     flex-direction: column;
-    gap: 4px;
-    background: none;
-    border: none;
+    gap: 5px;
+    background: #007bff;
+    border: 2px solid #ffffff;
     cursor: pointer;
-    padding: 0.5rem;
-    z-index: 1001;
+    padding: 8px;
+    z-index: 1002;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+    margin-left: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    min-width: 42px;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-toggle:hover,
+.menu-toggle:active {
+    background: #0056b3;
 }
 
 .menu-toggle span {
-    width: 25px;
+    display: block;
+    width: 24px;
     height: 3px;
-    background-color: var(--text-color);
+    background-color: #ffffff;
     transition: all 0.3s ease;
     border-radius: 2px;
 }
 
+.menu-toggle.active {
+    background: #dc3545;
+    border-color: #ffffff;
+}
+
 .menu-toggle.active span:nth-child(1) {
-    transform: rotate(45deg) translate(6px, 6px);
+    transform: rotate(45deg) translate(5px, 6px);
 }
 
 .menu-toggle.active span:nth-child(2) {
@@ -341,7 +333,7 @@ body {
 }
 
 .menu-toggle.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(6px, -6px);
+    transform: rotate(-45deg) translate(5px, -6px);
 }
 
 /* Hero Section */
@@ -655,65 +647,96 @@ footer {
     color: #ccc;
 }
 
-/* Responsive Design - Breakpoint increased to fit all menu items */
+/* Responsive Design - Collapsible hamburger menu */
 @media (max-width: 1024px) {
     body {
-        padding-top: 160px;
-        /* Maximum mobile navbar clearance */
+        padding-top: 0;
+    }
+
+    .site-header {
+        overflow: visible !important;
     }
 
     .navbar {
         padding: 0.5rem 1rem;
         width: 100%;
+        overflow: visible !important;
     }
 
     .nav-container {
         width: 100%;
         padding: 0 0.5rem;
+        overflow: visible !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: nowrap !important;
     }
 
     .logo-img {
-        height: 60px;
+        height: 55px;
     }
 
+    /* Show hamburger */
     .menu-toggle {
-        display: flex;
+        display: flex !important;
     }
 
+    /* Collapsible nav panel */
     .nav-links {
         position: fixed;
-        top: 80px;
-        left: 0;
-        right: 0;
-        width: 100%;
-        background-color: var(--header-background);
+        top: 0;
+        left: -100%;
+        width: 85%;
+        max-width: 320px;
+        height: 100vh;
+        height: 100dvh;
+        background-color: var(--header-background, #ffffff);
         flex-direction: column;
-        padding: 1rem;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        transform: translateY(-100%);
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.3s ease;
-        gap: 0;
-        /* Remove max-height and overflow to prevent scrollbar */
-    }
-
-    /* Reset margin for mobile vertical layout */
-    .nav-links > li:last-child {
-        margin-left: 0;
-        margin-top: 1rem;
-        /* Add some spacing above login on mobile */
-    }
-
-    .nav-links.show {
-        transform: translateY(0);
+        padding: 5rem 0 2rem;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
         opacity: 1;
         visibility: visible;
+        transform: none;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        gap: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 1001;
+        min-height: auto !important;
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
+    /* Slide in when open */
+    .nav-links.show {
+        left: 0;
+    }
+
+    /* Backdrop overlay when menu is open */
+    .nav-links.show::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 100%;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: -1;
+    }
+
+    .nav-links > li:last-child {
+        margin-left: 0;
+        margin-top: auto;
+        padding-bottom: 1rem;
+    }
+
+    /* Nav items as full-width rows */
     .nav-item {
         width: 100%;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     }
 
     .nav-item:last-child {
@@ -721,10 +744,25 @@ footer {
     }
 
     .nav-link {
-        padding: 1rem;
+        padding: 0.9rem 1.25rem;
         width: 100%;
         justify-content: flex-start;
         border-radius: 0;
+        font-size: 0.95rem;
+        gap: 0.6rem;
+        transition: background 0.2s ease;
+    }
+
+    .nav-link:hover,
+    .nav-link:active {
+        background: rgba(var(--primary-color-rgb), 0.08);
+    }
+
+    .nav-link i {
+        width: 20px;
+        text-align: center;
+        font-size: 0.9rem;
+        opacity: 0.7;
     }
 
     /* Mobile dropdown styles */
@@ -737,10 +775,11 @@ footer {
         border: none;
         border-radius: 0;
         background-color: rgba(0, 0, 0, 0.03);
-        margin-left: 0.5rem;
+        margin: 0;
         padding: 0.25rem 0;
-        /* Remove max-height animation for normal display */
+        min-width: auto;
         display: none;
+        overflow: visible;
     }
 
     .dropdown-menu::before {
@@ -752,13 +791,25 @@ footer {
     }
 
     .dropdown-item {
-        padding: 0.7rem 1rem;
-        margin: 0.1rem 0.25rem;
-        border-radius: 6px;
+        padding: 0.7rem 1rem 0.7rem 2.5rem;
+        margin: 0;
+        border-radius: 0;
+        font-size: 0.9rem;
+        gap: 0.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .dropdown-item:last-child {
+        border-bottom: none;
+    }
+
+    .dropdown-item i {
+        width: 18px;
+        font-size: 0.8rem;
     }
 
     .dropdown-item:hover {
-        background: rgba(var(--primary-color-rgb), 0.08);
+        background: rgba(var(--primary-color-rgb), 0.07);
         color: var(--primary-color);
     }
 
@@ -766,6 +817,8 @@ footer {
         margin-left: 0;
         margin-top: 1rem;
         text-align: center;
+        margin: 0.5rem 1.25rem;
+        border-radius: 8px;
     }
 
     .hero {
@@ -813,27 +866,6 @@ footer {
     .nav-link {
         padding: 0.5rem 0.5rem;
         font-size: 0.85rem;
-    }
-}
-
-/* Tablet Breakpoint */
-@media (min-width: 769px) and (max-width: 1024px) {
-    .navbar {
-        padding: 0.5rem 1.5rem;
-    }
-
-    .nav-container {
-        width: 100%;
-        padding: 0 1rem;
-    }
-
-    .nav-links {
-        gap: 0.3rem;
-    }
-
-    .nav-link {
-        padding: 0.6rem 0.8rem;
-        font-size: 0.95rem;
     }
 }
 
@@ -894,16 +926,7 @@ footer {
     color: #fff;
 }
 
-/* Menu Toggle Button */
-.menu-toggle {
-    display: none;
-    background: none;
-    border: none;
-    color: #333;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0.5rem;
-}
+/* Menu Toggle Button - duplicate removed, styles above */
 
 /* Alert Messages */
 .alert {
@@ -943,14 +966,6 @@ footer {
 /* Additional Mobile Styles */
 @media (max-width: 768px) {
     .menu-toggle {
-        display: block;
-    }
-
-    .nav-links {
-        display: none;
-    }
-
-    .nav-links.show {
         display: flex;
     }
 
