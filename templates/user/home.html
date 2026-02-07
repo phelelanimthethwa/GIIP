@@ -31,8 +31,8 @@
         <div class="slider-dots"></div>
         {% endif %}
 
-        <!-- Title Overlay (on top of image) -->
-        <div class="title-overlay">
+        <!-- Hero Content Overlay -->
+        <div class="hero-overlay">
             <div class="title-content">
                 <h1>{{ home_content.welcome.title|default('Welcome to GIIR') }}</h1>
                 <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
@@ -60,10 +60,7 @@
                 </div>
                 {% endif %}
             </div>
-        </div>
 
-        <!-- Conference Info Overlay -->
-        <div class="conference-info-overlay">
             <div class="conference-info-content">
                 <h2>{{ home_content.hero.conference.name|default('Global Institute on Innovative Research') }}</h2>
                 <div class="info-grid">
@@ -288,20 +285,30 @@
 {% endif %}
 
 <style>
-/* Title Overlay (on top of hero image) */
-.title-overlay {
+/* Hero Overlay - single flex container for title card + conference info */
+.hero-overlay {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
+    bottom: 0;
     z-index: 10;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2rem;
     padding: 2rem;
-    padding-top: 200px; /* Account for navbar + hero pull-up */
-    background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
-    min-height: 50%;
+    padding-top: 140px; /* Account for navbar + hero pull-up */
+    padding-bottom: 2rem;
+    background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.6) 0%,
+        rgba(0,0,0,0.3) 40%,
+        rgba(0,0,0,0.2) 60%,
+        rgba(0,0,0,0.5) 80%,
+        rgba(0,0,0,0.8) 100%
+    );
 }
 
 .title-content {
@@ -431,14 +438,14 @@
 .hero-section {
     position: relative;
     width: 100%;
-    margin-top: -200px; /* Pull up under the navbar padding */
+    margin-top: -120px; /* Pull up to sit behind the navbar */
     margin-bottom: 0;
 }
 
 .hero-slider {
     position: relative;
     height: 100vh;
-    min-height: 500px;
+    min-height: 600px;
     overflow: hidden;
 }
 
@@ -486,26 +493,23 @@
     right: 1rem;
 }
 
-/* Conference Info Overlay */
-.conference-info-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.5), transparent);
-    color: white;
-    padding: 2rem;
-    z-index: 5;
-}
-
+/* Conference Info Content (below title card in hero overlay) */
 .conference-info-content {
-    max-width: 800px;
-    margin: 0;
+    max-width: 900px;
+    width: 75%;
+    align-self: flex-start;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     text-align: left;
-    padding-left: 2rem;
+    color: white;
+    padding: 1.5rem 2rem;
+    margin-left: 2rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .conference-info-content h2 {
@@ -626,13 +630,12 @@
         min-height: 550px;
     }
 
-    /* --- Title Overlay --- */
-    .title-overlay {
+    /* --- Hero Overlay --- */
+    .hero-overlay {
         padding: 1rem;
         padding-top: 130px;
-        min-height: auto;
-        align-items: flex-start;
-        background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 80%, transparent 100%);
+        gap: 1rem;
+        justify-content: flex-start;
     }
 
     .title-content {
@@ -677,14 +680,13 @@
         text-shadow: 0 0 8px rgba(255, 215, 0, 0.4), 1px 1px 3px rgba(0,0,0,0.4);
     }
 
-    /* --- Conference Info Overlay --- */
-    .conference-info-overlay {
-        padding: 1.2rem;
-        background: linear-gradient(to top, rgba(0,0,0,0.92), rgba(0,0,0,0.6), transparent);
-    }
-
+    /* --- Conference Info Content (mobile) --- */
     .conference-info-content {
-        padding-left: 0;
+        width: 95%;
+        align-self: center;
+        margin-left: 0;
+        padding: 1rem;
+        border-radius: 12px;
     }
 
     .conference-info-content h2 {
@@ -966,16 +968,23 @@
         min-height: 500px;
     }
 
-    /* --- Title Overlay --- */
-    .title-overlay {
+    /* --- Hero Overlay --- */
+    .hero-overlay {
         padding: 0.5rem;
         padding-top: 120px;
+        gap: 0.75rem;
     }
 
     .title-content {
         padding: 1rem 0.8rem;
         border-radius: 12px;
         width: 98%;
+    }
+
+    .conference-info-content {
+        width: 98%;
+        padding: 0.8rem;
+        border-radius: 10px;
     }
 
     .title-content h1 {
@@ -1014,7 +1023,7 @@
         letter-spacing: 1px;
     }
 
-    /* --- Conference Info --- */
+    /* --- Conference Info (small phone) --- */
     .conference-info-content h2 {
         font-size: 1.15rem;
     }
