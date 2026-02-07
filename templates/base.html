@@ -70,91 +70,15 @@
         }
 
         :root {
-            --primary-color: {
-                    {
-                    site_design.primary_color
-                }
-            }
-
-            ;
-
-            --primary-color-rgb: {
-                    {
-                    r
-                }
-            }
-
-            ,
-            {
-                {
-                g
-            }
-        }
-
-        ,
-        {
-            {
-            b
-        }
-        }
-
-        ;
-
-        --secondary-color: {
-                {
-                site_design.secondary_color
-            }
-        }
-
-        ;
-
-        --accent-color: {
-                {
-                site_design.accent_color
-            }
-        }
-
-        ;
-
-        --text-color: {
-                {
-                site_design.text_color
-            }
-        }
-
-        ;
-
-        --background-color: {
-                {
-                site_design.background_color
-            }
-        }
-
-        ;
-
-        --header-background: {
-                {
-                site_design.header_background
-            }
-        }
-
-        ;
-
-        --footer-background: {
-                {
-                site_design.footer_background
-            }
-        }
-
-        ;
-
-        --hero-text-color: {
-                {
-                site_design.hero_text_color
-            }
-        }
-
-        ;
+            --primary-color: {{ site_design.primary_color }};
+            --primary-color-rgb: {{ r }}, {{ g }}, {{ b }};
+            --secondary-color: {{ site_design.secondary_color }};
+            --accent-color: {{ site_design.accent_color }};
+            --text-color: {{ site_design.text_color }};
+            --background-color: {{ site_design.background_color }};
+            --header-background: {{ site_design.header_background }};
+            --footer-background: {{ site_design.footer_background }};
+            --hero-text-color: {{ site_design.hero_text_color }};
         }
 
         body {
@@ -329,9 +253,6 @@
         }
 
         .hero-section {
-            background-size: cover;
-            background-position: center;
-            color: var(--hero-text-color);
             position: relative;
             z-index: 1;
             /* Ensure hero is below navbar */
@@ -383,13 +304,6 @@
     {% include 'user/components/header.html' %}
 
     <main>
-        {% if request.endpoint == 'home' %}
-        <div class="hero-section" {% if site_design.hero_image
-            %}style="background-image: url('{{ site_design.hero_image }}')" {% endif %}>
-            <!-- Hero section content -->
-        </div>
-        {% endif %}
-
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
