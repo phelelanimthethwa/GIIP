@@ -301,6 +301,7 @@
     padding: 2rem;
     padding-top: 140px; /* Account for navbar + hero pull-up */
     padding-bottom: 2rem;
+    overflow: hidden; /* Prevent cards from spilling outside hero bounds */
     background: linear-gradient(
         to bottom,
         rgba(0,0,0,0.6) 0%,
@@ -334,6 +335,8 @@
         inset 0 -1px 1px rgba(0, 0, 0, 0.1);
     position: relative;
     overflow: hidden;
+    /* Don't shrink the title card - it's the primary element */
+    flex-shrink: 0;
 }
 
 /* Liquid glass shine effect */
@@ -510,6 +513,27 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    /* Flex: allow this card to shrink when viewport is short */
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* Firefox scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Webkit scrollbar for conference info when content overflows */
+.conference-info-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.conference-info-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.conference-info-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
 }
 
 .conference-info-content h2 {
@@ -616,6 +640,70 @@
     margin-bottom: 2rem;
 }
 
+/* ===== RESPONSIVE: SHORT VIEWPORTS (max-height: 800px) ===== */
+@media (max-height: 800px) {
+    .hero-overlay {
+        padding-top: 120px;
+        gap: 1rem;
+    }
+
+    .title-content {
+        padding: 1.5rem 2rem;
+    }
+
+    .title-content h1 {
+        font-size: 2rem;
+    }
+
+    .title-content .subtitle {
+        font-size: 1.3rem;
+        margin: 0.4rem 0;
+    }
+
+    .title-content .conference-date {
+        font-size: 1.1rem;
+    }
+
+    .conference-info-content {
+        padding: 1rem 1.5rem;
+    }
+
+    .conference-info-content h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .conference-highlights h3 {
+        font-size: 1rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .conference-highlights li {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-bottom: 0.2rem;
+    }
+
+    .countdown-container {
+        gap: 0.75rem;
+        padding: 0.8rem;
+        margin-top: 0.8rem;
+    }
+
+    .countdown-item {
+        min-width: 60px;
+        padding: 0.4rem;
+    }
+
+    .countdown-item span:first-child {
+        font-size: 1.8rem;
+    }
+
+    .countdown-label {
+        font-size: 0.7rem;
+    }
+}
+
 /* ===== RESPONSIVE: TABLET (max-width: 768px) ===== */
 @media (max-width: 768px) {
 
@@ -687,6 +775,9 @@
         margin-left: 0;
         padding: 1rem;
         border-radius: 12px;
+        flex: 0 1 auto;
+        min-height: 0;
+        overflow-y: auto;
     }
 
     .conference-info-content h2 {
