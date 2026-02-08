@@ -228,6 +228,33 @@ DEFAULT_THEME = {
     'heading_font': "'Poppins', sans-serif"
 }
 
+# Default content for home page when Firebase data is unavailable
+default_content = {
+    'welcome': {
+        'title': 'Welcome to GIIR',
+        'subtitle': 'Global Institute on Innovative Research',
+        'conference_date': 'International Conference 2026',
+        'message': 'Join us for the premier conference in innovative research'
+    },
+    'hero': {
+        'conference': {
+            'name': 'Global Institute on Innovative Research',
+            'date': 'TBA',
+            'time': 'TBA',
+            'city': 'TBA',
+            'highlights': 'Keynote Speakers\nTechnical Sessions\nWorkshops\nNetworking Events'
+        }
+    },
+    'vmo': {
+        'vision': 'The Global Institute on Innovative Research (GIIR) is geared towards bringing researchers to share their innovative research findings in the global platform',
+        'mission': 'GIIR\'s intention is to initiate, develop and promote research in the fields of Social, Economic, Information Technology, Education and Management Sciences',
+        'objectives': 'To provide a world class platform for researchers to share their research findings.\nTo encourage researchers to identify significant research issues.\nTo help in the dissemination of researcher\'s work.'
+    },
+    'footer': {
+        'copyright': '© 2026 Global Institute on Innovative Research. All rights reserved.'
+    }
+}
+
 # Add this near the top with other upload folder configurations
 app.config['COMMITTEE_UPLOAD_FOLDER'] = 'static/uploads/committee'
 
