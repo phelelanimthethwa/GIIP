@@ -47,6 +47,12 @@ app = Flask(__name__)
 # Load configuration from Config class
 app.config.from_object(Config)
 
+# Configure WhiteNoise for static file serving in production
+if os.environ.get('FLASK_ENV') == 'production':
+    from whitenoise import WhiteNoise
+    app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
+    app.wsgi_app.add_files('static/', prefix='static/')
+
 # Configure app based on environment
 if os.environ.get('FLASK_ENV') == 'production':
     app.config.update(
