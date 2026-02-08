@@ -286,7 +286,10 @@
             /* Additional safety margin */
             width: 100%;
             max-width: 100%;
-            overflow-x: hidden;
+            /* overflow-x: hidden REMOVED - body already has overflow-x: hidden.
+               Having it on main creates a Block Formatting Context that clips the
+               hero section's negative margin-top, causing a gap between the navbar
+               and hero background image on the landing page. */
             position: relative;
             z-index: 1;
             /* Ensure main content is below navbar */
