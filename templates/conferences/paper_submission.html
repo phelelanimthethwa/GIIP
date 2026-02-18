@@ -106,7 +106,11 @@
 
 {% block content %}
 <div class="conference-header">
-    <h1><i class="fas fa-file-alt"></i> Submit Paper to {{ conference.basic_info.name }}</h1>
+    <h1>
+        <i class="fas fa-file-alt"></i>
+        {% if is_edit %}Edit Submission for{% else %}Submit Paper to{% endif %}
+        {{ conference.basic_info.name }}
+    </h1>
     <p>
         {% if conference.basic_info.date %}
         Conference Date: {{ conference.basic_info.date }}
@@ -118,45 +122,51 @@
 </div>
 
 <div class="content-section">
-    <form id="paperSubmissionForm" method="POST" enctype="multipart/form-data" class="submission-form">
+    <form id="paperSubmissionForm"
+          method="POST"
+          action="{{ form_action if form_action else url_for('conference_paper_submission', conference_id=conference_id) }}"
+          enctype="multipart/form-data"
+          class="submission-form">
         <div class="form-section">
             <h3><i class="fas fa-file-alt"></i> Paper Details</h3>
             <div class="form-group">
                 <label for="paper_title">Paper Title *</label>
-                <input type="text" id="paper_title" name="paper_title" class="form-control" required>
+                <input type="text" id="paper_title" name="paper_title" class="form-control" required
+                       value="{{ paper.paper_title if paper else '' }}">
             </div>
             <div class="form-group">
                 <label for="paper_abstract">Abstract *</label>
-                <textarea id="paper_abstract" name="paper_abstract" class="form-control" rows="5" required></textarea>
+                <textarea id="paper_abstract" name="paper_abstract" class="form-control" rows="5" required>{{ paper.paper_abstract if paper else '' }}</textarea>
             </div>
             <div class="form-group">
                 <label for="keywords">Keywords * (comma-separated)</label>
-                <input type="text" id="keywords" name="keywords" class="form-control" placeholder="e.g., AI, Machine Learning, Data Science" required>
+                <input type="text" id="keywords" name="keywords" class="form-control" placeholder="e.g., AI, Machine Learning, Data Science" required
+                       value="{{ (paper.keywords|join(', ')) if paper and paper.keywords else '' }}">
             </div>
             <div class="form-group">
                 <label for="research_area">Research Area *</label>
                 <select id="research_area" name="research_area" class="form-control" required>
                     <option value="">Select Research Area</option>
-                    <option value="artificial_intelligence">Artificial Intelligence</option>
-                    <option value="machine_learning">Machine Learning</option>
-                    <option value="data_science">Data Science</option>
-                    <option value="computer_vision">Computer Vision</option>
-                    <option value="natural_language_processing">Natural Language Processing</option>
-                    <option value="robotics">Robotics</option>
-                    <option value="cybersecurity">Cybersecurity</option>
-                    <option value="cloud_computing">Cloud Computing</option>
-                    <option value="internet_of_things">Internet of Things</option>
-                    <option value="blockchain">Blockchain</option>
-                    <option value="other">Other</option>
+                    <option value="artificial_intelligence" {% if paper and paper.research_area == 'artificial_intelligence' %}selected{% endif %}>Artificial Intelligence</option>
+                    <option value="machine_learning" {% if paper and paper.research_area == 'machine_learning' %}selected{% endif %}>Machine Learning</option>
+                    <option value="data_science" {% if paper and paper.research_area == 'data_science' %}selected{% endif %}>Data Science</option>
+                    <option value="computer_vision" {% if paper and paper.research_area == 'computer_vision' %}selected{% endif %}>Computer Vision</option>
+                    <option value="natural_language_processing" {% if paper and paper.research_area == 'natural_language_processing' %}selected{% endif %}>Natural Language Processing</option>
+                    <option value="robotics" {% if paper and paper.research_area == 'robotics' %}selected{% endif %}>Robotics</option>
+                    <option value="cybersecurity" {% if paper and paper.research_area == 'cybersecurity' %}selected{% endif %}>Cybersecurity</option>
+                    <option value="cloud_computing" {% if paper and paper.research_area == 'cloud_computing' %}selected{% endif %}>Cloud Computing</option>
+                    <option value="internet_of_things" {% if paper and paper.research_area == 'internet_of_things' %}selected{% endif %}>Internet of Things</option>
+                    <option value="blockchain" {% if paper and paper.research_area == 'blockchain' %}selected{% endif %}>Blockchain</option>
+                    <option value="other" {% if paper and paper.research_area == 'other' %}selected{% endif %}>Other</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="presentation_type">Presentation Type *</label>
                 <select id="presentation_type" name="presentation_type" class="form-control" required>
                     <option value="">Select Presentation Type</option>
-                    <option value="oral">Oral Presentation</option>
-                    <option value="poster">Poster Presentation</option>
-                    <option value="virtual">Virtual Presentation</option>
+                    <option value="oral" {% if paper and paper.presentation_type == 'oral' %}selected{% endif %}>Oral Presentation</option>
+                    <option value="poster" {% if paper and paper.presentation_type == 'poster' %}selected{% endif %}>Poster Presentation</option>
+                    <option value="virtual" {% if paper and paper.presentation_type == 'virtual' %}selected{% endif %}>Virtual Presentation</option>
                 </select>
             </div>
         </div>
@@ -164,7 +174,34 @@
         <div class="form-section">
             <h3><i class="fas fa-users"></i> Authors</h3>
             <div id="authors-container">
-                <!-- Primary Author (always present) -->
+                {% if paper and paper.authors %}
+                    {% for author in paper.authors %}
+                <div class="author-entry">
+                    {% if loop.first %}
+                    <h4>Primary Author</h4>
+                    {% else %}
+                    <div class="author-header">
+                        <h4>Co-Author {{ loop.index0 }}</h4>
+                        <button type="button" class="btn btn-danger btn-sm remove-author-btn" onclick="removeCoAuthor(this)" title="Remove this co-author">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="authors[{{ loop.index0 }}][name]" class="form-control" value="{{ author.name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="authors[{{ loop.index0 }}][email]" class="form-control" value="{{ author.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Institution/Organization *</label>
+                        <input type="text" name="authors[{{ loop.index0 }}][institution]" class="form-control" value="{{ author.institution }}" required>
+                    </div>
+                </div>
+                    {% endfor %}
+                {% else %}
                 <div class="author-entry">
                     <h4>Primary Author</h4>
                     <div class="form-group">
@@ -180,6 +217,7 @@
                         <input type="text" name="authors[0][institution]" class="form-control" required>
                     </div>
                 </div>
+                {% endif %}
             </div>
             <button type="button" class="btn btn-outline-primary" onclick="addCoAuthor()">
                 <i class="fas fa-plus"></i> Add Co-Author
@@ -189,17 +227,22 @@
         <div class="form-section">
             <h3><i class="fas fa-upload"></i> Paper Upload</h3>
             <div class="form-group">
-                <label for="paper_file">Upload Paper * (PDF only)</label>
-                <input type="file" id="paper_file" name="paper_file" class="form-control" accept=".pdf" required>
-                <small class="form-text text-muted">Maximum file size: 10MB</small>
+                <label for="paper_file">
+                    {% if is_edit %}Replace Paper File (PDF only, optional){% else %}Upload Paper * (PDF only){% endif %}
+                </label>
+                <input type="file" id="paper_file" name="paper_file" class="form-control" accept=".pdf" {% if not is_edit %}required{% endif %}>
+                <small class="form-text text-muted">Maximum file size: 10MB{% if is_edit %}. Leave empty to keep current file.{% endif %}</small>
+                {% if is_edit and paper and paper.file_name %}
+                <small class="form-text text-muted d-block">Current file: {{ paper.file_name }}</small>
+                {% endif %}
             </div>
         </div>
 
         <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-paper-plane"></i> Submit Paper
+            <button type="submit" class="btn btn-primary" data-default-label="{{ 'Update Submission' if is_edit else 'Submit Paper' }}">
+                <i class="fas fa-paper-plane"></i> {{ 'Update Submission' if is_edit else 'Submit Paper' }}
             </button>
             <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Conference
@@ -280,7 +323,7 @@
 }
 </style>
 <script>
-let authorCount = 1;
+let authorCount = {{ (paper.authors|length) if paper and paper.authors else 1 }};
 let isProcessing = false; // Prevent race conditions
 
 function addCoAuthor() {
@@ -448,6 +491,7 @@ document.getElementById('paperSubmissionForm').addEventListener('submit', functi
     
     const submitButton = this.querySelector('button[type="submit"]');
     const originalText = submitButton.innerHTML;
+    const defaultLabel = submitButton.dataset.defaultLabel || 'Submit Paper';
     
     try {
         // Show loading state
@@ -506,8 +550,8 @@ document.getElementById('paperSubmissionForm').addEventListener('submit', functi
         console.error('Form submission error:', error);
         showError('An error occurred while submitting the form. Please try again.');
     } finally {
-        if (!document.querySelector('.loading-overlay').style.display === 'flex') {
-            submitButton.innerHTML = originalText;
+        if (document.querySelector('.loading-overlay').style.display !== 'flex') {
+            submitButton.innerHTML = originalText || `<i class="fas fa-paper-plane"></i> ${defaultLabel}`;
             submitButton.disabled = false;
             isProcessing = false;
         }
@@ -543,7 +587,8 @@ function showError(message) {
     
     // Reset submit button
     const submitButton = form.querySelector('button[type="submit"]');
-    submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Paper';
+    const defaultLabel = submitButton.dataset.defaultLabel || 'Submit Paper';
+    submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> ${defaultLabel}`;
     submitButton.disabled = false;
     isProcessing = false;
 }

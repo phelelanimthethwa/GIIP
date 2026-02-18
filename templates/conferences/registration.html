@@ -33,7 +33,7 @@
 
 <div class="content-section">
     <!-- Registration Status Check -->
-    {% if not conference.settings.registration_enabled %}
+    {% if not conference.settings.registration_enabled and not existing_registration %}
     <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i>
         <h3>Registration Closed</h3>
@@ -44,23 +44,130 @@
     </div>
     {% else %}
 
-    <!-- Registration Form with Online Payment -->
+    {% if existing_registration and not show_edit_form %}
     <div class="registration-form-container">
         <div class="form-header">
+            <h2>Registration Workflow Status</h2>
+            <p>Your registration is saved. Complete the remaining steps below.</p>
+        </div>
+
+        <div class="workflow-status-card">
+            <div class="workflow-item">
+                <strong>Registration Type:</strong>
+                <span>{{ existing_registration.registration_type|replace('_', ' ')|title }}</span>
+            </div>
+            <div class="workflow-item">
+                <strong>Institution:</strong>
+                <span>{{ existing_registration.institution }}</span>
+            </div>
+            <div class="workflow-item">
+                <strong>Total Amount:</strong>
+                <span>{{ fees.currency.symbol if fees and fees.currency else 'R' }}{{ existing_registration.total_amount }}</span>
+            </div>
+            <div class="workflow-item">
+                <strong>Paper Status:</strong>
+                <span class="workflow-badge">
+                    {% if latest_paper_status %}
+                        {{ latest_paper_status|replace('_', ' ')|title }}
+                    {% else %}
+                        Not Submitted
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        {% if existing_registration.payment_status == 'paid' %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <div>
+                <h3>Payment Completed</h3>
+                <p>Your conference fee has been paid successfully.</p>
+            </div>
+        </div>
+        {% elif can_pay %}
+        <div class="alert alert-success">
+            <i class="fas fa-unlock"></i>
+            <div>
+                <h3>Payment Unlocked</h3>
+                <p>Your paper is approved. You can now complete conference payment.</p>
+            </div>
+        </div>
+        {% elif latest_paper_status == 'pending' %}
+        <div class="alert alert-info">
+            <i class="fas fa-clock"></i>
+            <div>
+                <h3>Waiting for Admin Review</h3>
+                <p>Payment will unlock after admin approves your paper.</p>
+            </div>
+        </div>
+        {% elif latest_paper_status == 'revision' %}
+        <div class="alert alert-warning">
+            <i class="fas fa-edit"></i>
+            <div>
+                <h3>Revision Requested</h3>
+                <p>Please submit an updated paper. Payment remains locked until approval.</p>
+            </div>
+        </div>
+        {% elif latest_paper_status == 'rejected' %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <h3>Paper Needs Attention</h3>
+                <p>Your submission was not approved. You can submit an updated paper.</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-file-alt"></i>
+            <div>
+                <h3>Step 2 Required</h3>
+                <p>Submit your paper to continue. Payment becomes available after admin approval.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-actions workflow-actions">
+            {% if can_pay %}
+            <button type="button"
+                    id="unlock-pay-button"
+                    class="btn btn-primary"
+                    data-registration-id="{{ existing_registration_id }}">
+                <i class="fas fa-credit-card"></i>
+                Pay Conference Fee
+            </button>
+            {% elif existing_registration.payment_status != 'paid' and latest_paper_status != 'pending' %}
+            <a href="{{ url_for('conference_paper_submission', conference_id=conference_id) }}" class="btn btn-primary">
+                <i class="fas fa-file-upload"></i>
+                Submit Paper
+            </a>
+            {% endif %}
+            <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Back to Conference</a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Registration Form (Step 1 only, no payment yet) -->
+    <div class="registration-form-container">
+        <div class="form-header">
+            {% if show_edit_form %}
+            <h2>Edit Registration Selections</h2>
+            <p>Update your registration options before starting payment.</p>
+            {% else %}
             <h2>Register for {{ conference.basic_info.name }}</h2>
-            <p>Complete your registration and pay online securely</p>
+            <p>Step 1 of 3: Save registration details (payment comes after paper approval)</p>
+            {% endif %}
         </div>
 
         <form id="registration-form">
             <!-- Hidden Conference ID -->
             <input type="hidden" id="conference_id" value="{{ conference_id }}">
+            <input type="hidden" id="is_edit_mode" value="{{ '1' if show_edit_form else '0' }}">
             
             <!-- Registration Period Info -->
-            {% if fees and current_period %}
+            {% if fees and form_registration_period %}
             <div class="form-section period-info">
                 <div class="period-badge">
                     <i class="fas fa-calendar-check"></i>
-                    <span>Current Period: <strong>{{ current_period|replace('_', ' ')|title }}</strong></span>
+                    <span>Fee Period: <strong>{{ form_registration_period|replace('_', ' ')|title }}</strong></span>
                 </div>
             </div>
             {% endif %}
@@ -70,7 +177,7 @@
                 <h3>Select Registration Type</h3>
                 <div class="type-options" id="type-options">
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="student_author" value="student_author" required>
+                        <input type="radio" name="registration_type" id="student_author" value="student_author" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'student_author' %}checked{% endif %}>
                         <label for="student_author">
                             <div class="type-header">
                                 <i class="fas fa-user-graduate"></i>
@@ -87,7 +194,7 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="regular_author" value="regular_author" required>
+                        <input type="radio" name="registration_type" id="regular_author" value="regular_author" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'regular_author' %}checked{% endif %}>
                         <label for="regular_author">
                             <div class="type-header">
                                 <i class="fas fa-user"></i>
@@ -104,7 +211,7 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate" required>
+                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'virtual_delegate' %}checked{% endif %}>
                         <label for="virtual_delegate">
                             <div class="type-header">
                                 <i class="fas fa-laptop"></i>
@@ -121,7 +228,7 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="physical_delegate" value="physical_delegate" required>
+                        <input type="radio" name="registration_type" id="physical_delegate" value="physical_delegate" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'physical_delegate' %}checked{% endif %}>
                         <label for="physical_delegate">
                             <div class="type-header">
                                 <i class="fas fa-user-friends"></i>
@@ -155,12 +262,12 @@
                     
                     <div class="form-group">
                         <label for="institution">Institution/Organization *</label>
-                        <input type="text" id="institution" name="institution" required>
+                        <input type="text" id="institution" name="institution" value="{{ existing_registration.institution if show_edit_form and existing_registration else '' }}" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="country">Country *</label>
-                        <input type="text" id="country" name="country" required>
+                        <input type="text" id="country" name="country" value="{{ existing_registration.country if show_edit_form and existing_registration else '' }}" required>
                     </div>
                 </div>
             </div>
@@ -173,7 +280,7 @@
                     {% if fees.additional_items.extra_paper and fees.additional_items.extra_paper.enabled %}
                     <div class="additional-item">
                         <label class="checkbox-label">
-                            <input type="checkbox" id="extra_paper" name="extra_paper">
+                            <input type="checkbox" id="extra_paper" name="extra_paper" {% if show_edit_form and existing_registration and existing_registration.extra_paper %}checked{% endif %}>
                             <span class="checkbox-custom"></span>
                             <div class="item-content">
                                 <span class="item-name">{{ fees.additional_items.extra_paper.description or 'Extra Paper Submission' }}</span>
@@ -186,7 +293,7 @@
                     {% if fees.additional_items.workshop and fees.additional_items.workshop.enabled %}
                     <div class="additional-item">
                         <label class="checkbox-label">
-                            <input type="checkbox" id="workshop" name="workshop">
+                            <input type="checkbox" id="workshop" name="workshop" {% if show_edit_form and existing_registration and existing_registration.workshop %}checked{% endif %}>
                             <span class="checkbox-custom"></span>
                             <div class="item-content">
                                 <span class="item-name">{{ fees.additional_items.workshop.description or 'Workshop' }}</span>
@@ -199,7 +306,7 @@
                     {% if fees.additional_items.banquet and fees.additional_items.banquet.enabled %}
                     <div class="additional-item">
                         <label class="checkbox-label">
-                            <input type="checkbox" id="banquet" name="banquet">
+                            <input type="checkbox" id="banquet" name="banquet" {% if show_edit_form and existing_registration and existing_registration.banquet %}checked{% endif %}>
                             <span class="checkbox-custom"></span>
                             <div class="item-content">
                                 <span class="item-name">{{ fees.additional_items.banquet.description or 'Banquet' }}</span>
@@ -214,7 +321,7 @@
 
             <!-- Payment Summary -->
             <div class="form-section payment-summary">
-                <h3>Payment Summary</h3>
+                <h3>Payment Summary (Pay Later)</h3>
                 <div class="summary-box">
                     <div class="summary-row">
                         <span>Registration Fee:</span>
@@ -233,14 +340,15 @@
 
             <!-- Submit Button -->
             <div class="form-actions">
-                <button type="button" id="pay-button" class="btn btn-primary" disabled>
-                    <i class="fas fa-credit-card"></i>
-                    Proceed to Payment
+                <button type="button" id="register-button" class="btn btn-primary" disabled>
+                    <i class="fas fa-check-circle"></i>
+                    {{ 'Save Changes' if show_edit_form else 'Complete Registration' }}
                 </button>
-                <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Cancel</a>
+                <a href="{{ url_for('conference_registration', conference_id=conference_id) if show_edit_form else url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
     </div>
+    {% endif %}
     {% endif %}
 </div>
 
@@ -653,6 +761,51 @@
     color: #856404;
 }
 
+.alert-success {
+    background: #e8f5e9;
+    border: 1px solid #c8e6c9;
+    color: #1b5e20;
+}
+
+.alert-info {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    color: #0d47a1;
+}
+
+.workflow-status-card {
+    background: #f8f9fa;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.workflow-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.workflow-item:last-child {
+    border-bottom: none;
+}
+
+.workflow-badge {
+    background: #eef2ff;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.workflow-actions {
+    margin-top: 1.25rem;
+}
+
 .alert i {
     font-size: 1.5rem;
     margin-top: 0.25rem;
@@ -694,172 +847,179 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Fees data from server
     const fees = {{ fees|tojson|safe if fees else 'null' }};
     const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
+    const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
+    const activePeriod = formRegistrationPeriod || currentPeriod;
+    const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
     const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
-    
-    let selectedType = null;
-    let totalAmount = 0;
-    
-    // Update prices when page loads
-    function updatePrices() {
-        if (!fees || !currentPeriod) return;
-        
-        const periodFees = fees[currentPeriod]?.fees || {};
-        const typeCards = document.querySelectorAll('.type-card');
-        
-        typeCards.forEach(card => {
-            const radio = card.querySelector('input[type="radio"]');
-            const priceElement = card.querySelector('.price-value');
-            
-            if (radio && priceElement) {
-                const type = radio.value;
-                const price = periodFees[type] || 0;
-                priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
-            }
-        });
-    }
-    
-    // Calculate total amount
-    function calculateTotal() {
-        if (!fees || !currentPeriod || !selectedType) {
-            totalAmount = 0;
-            updateSummary();
-            return;
-        }
-        
-        const periodFees = fees[currentPeriod]?.fees || {};
-        totalAmount = periodFees[selectedType] || 0;
-        
-        // Add additional items
-        if (fees.additional_items) {
-            ['extra_paper', 'workshop', 'banquet'].forEach(item => {
-                const checkbox = document.getElementById(item);
-                if (checkbox && checkbox.checked) {
-                    const itemData = fees.additional_items[item];
-                    if (itemData && itemData.enabled) {
-                        totalAmount += itemData.fee || 0;
-                    }
+    const registrationForm = document.getElementById('registration-form');
+    const registerButton = document.getElementById('register-button');
+    const unlockPayButton = document.getElementById('unlock-pay-button');
+
+    if (registrationForm && registerButton) {
+        let selectedType = null;
+        let totalAmount = 0;
+
+        function updatePrices() {
+            if (!fees || !activePeriod) return;
+            const periodFees = fees[activePeriod]?.fees || {};
+
+            document.querySelectorAll('.type-card').forEach(card => {
+                const radio = card.querySelector('input[type="radio"]');
+                const priceElement = card.querySelector('.price-value');
+                if (radio && priceElement) {
+                    const price = periodFees[radio.value] || 0;
+                    priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
                 }
             });
         }
-        
-        updateSummary();
-    }
-    
-    // Update payment summary
-    function updateSummary() {
-        const baseFee = selectedType && fees && currentPeriod 
-            ? (fees[currentPeriod]?.fees?.[selectedType] || 0) 
-            : 0;
-        
-        const additionalFee = totalAmount - baseFee;
-        
-        document.getElementById('base-fee').textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
-        
-        if (additionalFee > 0) {
-            document.getElementById('additional-fee').textContent = `${currencySymbol}${additionalFee.toFixed(2)}`;
-            document.getElementById('additional-items-summary').style.display = 'flex';
-        } else {
-            document.getElementById('additional-items-summary').style.display = 'none';
+
+        function updateSummary() {
+            const baseFee = selectedType && fees && activePeriod
+                ? (fees[activePeriod]?.fees?.[selectedType] || 0)
+                : 0;
+            const additionalFee = totalAmount - baseFee;
+
+            const baseFeeEl = document.getElementById('base-fee');
+            const additionalFeeEl = document.getElementById('additional-fee');
+            const additionalSummaryEl = document.getElementById('additional-items-summary');
+            const totalAmountEl = document.getElementById('total-amount');
+
+            if (baseFeeEl) baseFeeEl.textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
+            if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${additionalFee.toFixed(2)}`;
+            if (additionalSummaryEl) additionalSummaryEl.style.display = additionalFee > 0 ? 'flex' : 'none';
+            if (totalAmountEl) totalAmountEl.innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
+
+            registerButton.disabled = !(totalAmount > 0 && selectedType);
         }
-        
-        document.getElementById('total-amount').innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
-        
-        // Enable/disable pay button
-        const payButton = document.getElementById('pay-button');
-        if (totalAmount > 0 && selectedType) {
-            payButton.disabled = false;
-        } else {
-            payButton.disabled = true;
-        }
-    }
-    
-    // Handle registration type selection
-    document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            selectedType = this.value;
-            calculateTotal();
-        });
-    });
-    
-    // Handle additional items
-    ['extra_paper', 'workshop', 'banquet'].forEach(item => {
-        const checkbox = document.getElementById(item);
-        if (checkbox) {
-            checkbox.addEventListener('change', calculateTotal);
-        }
-    });
-    
-    // Handle form submission
-    document.getElementById('pay-button').addEventListener('click', async function() {
-        const form = document.getElementById('registration-form');
-        const formData = new FormData(form);
-        
-        // Validate required fields
-        const fullName = document.getElementById('full_name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const institution = document.getElementById('institution').value.trim();
-        const country = document.getElementById('country').value.trim();
-        
-        if (!fullName || !email || !institution || !country || !selectedType) {
-            alert('Please fill in all required fields and select a registration type.');
-            return;
-        }
-        
-        if (totalAmount <= 0) {
-            alert('Invalid amount. Please check your selection.');
-            return;
-        }
-        
-        // Disable button during processing
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        try {
-            // Prepare registration data
-            const registrationData = {
-                registration_type: selectedType,
-                registration_period: currentPeriod,
-                total_amount: totalAmount,
-                institution: institution,
-                country: country,
-                extra_paper: document.getElementById('extra_paper')?.checked || false,
-                workshop: document.getElementById('workshop')?.checked || false,
-                banquet: document.getElementById('banquet')?.checked || false
-            };
-            
-            // Create payment session
-            const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(registrationData)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success && result.payment_url) {
-                // Redirect to payment page
-                window.location.href = result.payment_url;
-            } else {
-                alert(result.error || 'Failed to create payment session. Please try again.');
-                this.disabled = false;
-                this.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
+
+        function calculateTotal() {
+            if (!fees || !activePeriod || !selectedType) {
+                totalAmount = 0;
+                updateSummary();
+                return;
             }
-        } catch (error) {
-            console.error('Payment error:', error);
-            alert('An error occurred. Please try again.');
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-credit-card"></i> Proceed to Payment';
+
+            totalAmount = fees[activePeriod]?.fees?.[selectedType] || 0;
+            if (fees.additional_items) {
+                ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+                    const checkbox = document.getElementById(item);
+                    if (checkbox && checkbox.checked) {
+                        const itemData = fees.additional_items[item];
+                        if (itemData && itemData.enabled) {
+                            totalAmount += itemData.fee || 0;
+                        }
+                    }
+                });
+            }
+            updateSummary();
         }
-    });
-    
-    // Initialize prices
-    updatePrices();
-    calculateTotal();
+
+        document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                selectedType = this.value;
+                calculateTotal();
+            });
+        });
+
+        ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+            const checkbox = document.getElementById(item);
+            if (checkbox) checkbox.addEventListener('change', calculateTotal);
+        });
+
+        registerButton.addEventListener('click', async function() {
+            const fullName = document.getElementById('full_name')?.value?.trim();
+            const email = document.getElementById('email')?.value?.trim();
+            const institution = document.getElementById('institution')?.value?.trim();
+            const country = document.getElementById('country')?.value?.trim();
+
+            if (!fullName || !email || !institution || !country || !selectedType) {
+                alert('Please fill in all required fields and select a registration type.');
+                return;
+            }
+
+            if (totalAmount <= 0) {
+                alert('Invalid amount. Please check your selection.');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const registrationData = {
+                    registration_type: selectedType,
+                    registration_period: activePeriod,
+                    total_amount: totalAmount,
+                    institution,
+                    country,
+                    extra_paper: document.getElementById('extra_paper')?.checked || false,
+                    workshop: document.getElementById('workshop')?.checked || false,
+                    banquet: document.getElementById('banquet')?.checked || false,
+                    stay_on_registration: isEditMode
+                };
+
+                const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(registrationData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.location.href = result.redirect_url || window.location.href;
+                } else {
+                    alert(result.error || 'Failed to save registration. Please try again.');
+                    this.disabled = false;
+                    this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('An error occurred. Please try again.');
+                this.disabled = false;
+                this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
+            }
+        });
+
+        const selectedRadio = registrationForm.querySelector('input[name="registration_type"]:checked');
+        if (selectedRadio) {
+            selectedType = selectedRadio.value;
+        }
+
+        updatePrices();
+        calculateTotal();
+    }
+
+    if (unlockPayButton) {
+        unlockPayButton.addEventListener('click', async function() {
+            const registrationId = this.dataset.registrationId;
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
+
+            try {
+                const response = await fetch('{{ url_for("conference_create_payment", conference_id=conference_id) }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ registration_id: registrationId })
+                });
+                const result = await response.json();
+
+                if (result.success && result.payment_url) {
+                    window.location.href = result.payment_url;
+                } else {
+                    alert(result.error || 'Could not start payment.');
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+                }
+            } catch (error) {
+                console.error('Payment start error:', error);
+                alert('An error occurred while starting payment.');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

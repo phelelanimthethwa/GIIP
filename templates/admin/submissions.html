@@ -89,6 +89,12 @@
     margin-bottom: 0.25rem;
 }
 
+.paper-conference {
+    font-size: 0.8rem;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
+}
+
 .paper-type {
     font-size: 0.85rem;
     color: var(--gray);
@@ -266,6 +272,9 @@
                             <tr class="submission-row" data-status="{{ paper.status|default('pending') }}">
                                 <td>
                                     <div class="paper-title">{{ paper.paper_title }}</div>
+                                    {% if paper._conference_name %}
+                                    <div class="paper-conference">{{ paper._conference_name }}</div>
+                                    {% endif %}
                                     <div class="paper-type">{{ paper.presentation_type|default('Not specified')|title }}</div>
                                 </td>
                                 <td>
@@ -302,30 +311,41 @@
                                     {% set status_map = {
                                         'pending': {'class': 'warning', 'icon': 'clock', 'text': 'Under Review'},
                                         'accepted': {'class': 'success', 'icon': 'check-circle', 'text': 'Accepted'},
-                                        'rejected': {'class': 'danger', 'icon': 'times-circle', 'text': 'Rejected'}
+                                        'rejected': {'class': 'danger', 'icon': 'times-circle', 'text': 'Rejected'},
+                                        'revision': {'class': 'warning', 'icon': 'redo', 'text': 'Revision Required'}
                                     } %}
-                                    <span class="status-badge badge-{{ status_map[status]['class'] }}">
-                                        <i class="fas fa-{{ status_map[status]['icon'] }}"></i>
-                                        {{ status_map[status]['text'] }}
+                                    {% set status_meta = status_map.get(status, status_map['pending']) %}
+                                    <span class="status-badge badge-{{ status_meta['class'] }}">
+                                        <i class="fas fa-{{ status_meta['icon'] }}"></i>
+                                        {{ status_meta['text'] }}
                                     </span>
                                 </td>
                                 <td>
                                     <div class="action-buttons">
                                         {% if paper.file_data %}
-                                        <a href="{{ url_for('download_paper', paper_id=paper_id) }}" 
+                                        {% if paper._conference_id %}
+                                        <a href="{{ url_for('download_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}" 
                                            class="btn btn-primary btn-sm" 
-                                           data-paper-id="{{ paper_id }}"
+                                           data-paper-id="{{ paper._paper_id }}"
+                                           onclick="trackDownload(event, this)">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('download_paper', paper_id=paper._paper_id) }}" 
+                                           class="btn btn-primary btn-sm" 
+                                           data-paper-id="{{ paper._paper_id }}"
                                            onclick="trackDownload(event, this)">
                                             <i class="fas fa-download"></i> Download
                                         </a>
                                         {% endif %}
-                                        {% if status == 'pending' %}
+                                        {% endif %}
+                                        {% if status in ['pending', 'revision'] %}
                                         <button class="btn btn-success btn-sm" 
-                                                onclick="updateStatus('{{ paper_id }}', 'accepted')">
+                                                onclick="updateStatus('{{ paper._paper_id }}', 'accepted', '{{ paper._conference_id }}')">
                                             <i class="fas fa-check"></i> Accept
                                         </button>
                                         <button class="btn btn-danger btn-sm" 
-                                                onclick="updateStatus('{{ paper_id }}', 'rejected')">
+                                                onclick="updateStatus('{{ paper._paper_id }}', 'rejected', '{{ paper._conference_id }}')">
                                             <i class="fas fa-times"></i> Reject
                                         </button>
                                         {% endif %}
@@ -383,7 +403,7 @@ function initializeDataTable() {
     });
 }
 
-function updateStatus(id, status) {
+function updateStatus(id, status, conferenceId = '') {
     if (!confirm(`Are you sure you want to mark this submission as ${status}?`)) {
         return;
     }
@@ -392,6 +412,9 @@ function updateStatus(id, status) {
         status: status,
         comments: status === 'rejected' ? 'Paper rejected by admin.' : ''  // Default comment for rejection
     };
+    if (conferenceId) {
+        requestData.conference_id = conferenceId;
+    }
     
     fetch(`/admin/papers/${id}/status`, {
         method: 'POST',

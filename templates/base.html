@@ -300,11 +300,95 @@
             padding-top: 160px;
             /* Fallback */
         }
+
+        body.clean-shell {
+            padding-top: 0 !important;
+            background: #eef1f5;
+        }
+
+        body.clean-shell main {
+            margin-top: 0;
+            padding-top: 0;
+        }
+
+        .clean-user-utility {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.7rem 1rem;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 1100;
+        }
+
+        .clean-user-identity {
+            color: #374151;
+            font-size: 0.86rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .clean-user-links {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clean-user-link {
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.38rem 0.65rem;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            color: #111827;
+            background: #f9fafb;
+        }
+
+        .clean-user-link:hover {
+            background: #f3f4f6;
+        }
+
+        .clean-user-link.logout {
+            color: #991b1b;
+            border-color: #fecaca;
+            background: #fff1f2;
+        }
+
+        @media (max-width: 640px) {
+            .clean-user-identity {
+                display: none;
+            }
+
+            .clean-user-utility {
+                justify-content: flex-end;
+            }
+        }
     </style>
 </head>
 
-<body>
+{% set show_global_nav = not (current_user.is_authenticated and not (current_user.is_admin|default(false))) %}
+<body class="{% if not show_global_nav %}clean-shell{% endif %}">
+    {% if show_global_nav %}
     {% include 'user/components/header.html' %}
+    {% endif %}
+    {% if not show_global_nav and current_user.is_authenticated %}
+    <div class="clean-user-utility">
+        <div class="clean-user-identity">
+            {{ current_user.full_name or current_user.email }}
+        </div>
+        <div class="clean-user-links">
+            <a class="clean-user-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a class="clean-user-link" href="{{ url_for('profile') }}">Profile</a>
+            <a class="clean-user-link logout" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </div>
+    {% endif %}
 
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -320,7 +404,9 @@
         {% block content %}{% endblock %}
     </main>
 
+    {% if show_global_nav %}
     {% include 'user/components/footer.html' %}
+    {% endif %}
 
     <script>
         // Dynamic navbar height adjustment - DISABLED for Static Nav
@@ -347,15 +433,17 @@
             }
 
             // Close menu when clicking outside / on backdrop
-            document.addEventListener('click', function (event) {
-                if (!navLinks.contains(event.target) && !menuToggle.contains(event.target)) {
-                    navLinks.classList.remove('show');
-                    menuToggle.classList.remove('active');
-                    dropdowns.forEach(dropdown => {
-                        dropdown.classList.remove('active');
-                    });
-                }
-            });
+            if (menuToggle && navLinks) {
+                document.addEventListener('click', function (event) {
+                    if (!navLinks.contains(event.target) && !menuToggle.contains(event.target)) {
+                        navLinks.classList.remove('show');
+                        menuToggle.classList.remove('active');
+                        dropdowns.forEach(dropdown => {
+                            dropdown.classList.remove('active');
+                        });
+                    }
+                });
+            }
 
             // Dropdown tap functionality (≤1024px)
             dropdowns.forEach(dropdown => {
@@ -378,15 +466,17 @@
             });
 
             // Clean up on resize to desktop
-            window.addEventListener('resize', function () {
-                if (window.innerWidth > 1024) {
-                    navLinks.classList.remove('show');
-                    menuToggle.classList.remove('active');
-                    dropdowns.forEach(dropdown => {
-                        dropdown.classList.remove('active');
-                    });
-                }
-            });
+            if (menuToggle && navLinks) {
+                window.addEventListener('resize', function () {
+                    if (window.innerWidth > 1024) {
+                        navLinks.classList.remove('show');
+                        menuToggle.classList.remove('active');
+                        dropdowns.forEach(dropdown => {
+                            dropdown.classList.remove('active');
+                        });
+                    }
+                });
+            }
 
             // Auto-hide flash messages
             const alerts = document.querySelectorAll('.alert');
@@ -401,7 +491,9 @@
         });
     </script>
 
+    {% if show_global_nav %}
     {% include 'user/components/chatbot.html' %}
+    {% endif %}
 </body>
 
 </html>

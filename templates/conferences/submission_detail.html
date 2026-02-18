@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Submission Details - {{ conference.basic_info.name }}{% endblock %}
+
+{% block content %}
+<div class="submission-detail-page">
+    <div class="submission-detail-card">
+        <div class="submission-detail-header">
+            <div>
+                <h1>{{ paper.paper_title or 'Untitled Submission' }}</h1>
+                <p>{{ conference.basic_info.name }}</p>
+            </div>
+            {% set status = (paper.status or 'pending')|lower %}
+            <span class="status-badge status-{{ status }}">
+                {{ status|replace('_', ' ')|title }}
+            </span>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label>Research Area</label>
+                <p>{{ (paper.research_area or 'N/A')|replace('_', ' ')|title }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Presentation Type</label>
+                <p>{{ (paper.presentation_type or 'N/A')|replace('_', ' ')|title }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Submitted At</label>
+                <p>{{ paper.submitted_at[:19]|replace('T', ' ') if paper.submitted_at else 'N/A' }}</p>
+            </div>
+            <div class="detail-item">
+                <label>Last Updated</label>
+                <p>{{ paper.updated_at[:19]|replace('T', ' ') if paper.updated_at else 'N/A' }}</p>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3>Abstract</h3>
+            <p>{{ paper.paper_abstract or 'No abstract provided.' }}</p>
+        </div>
+
+        <div class="detail-section">
+            <h3>Keywords</h3>
+            <p>
+                {% if paper.keywords %}
+                    {{ paper.keywords|join(', ') }}
+                {% else %}
+                    No keywords provided.
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="detail-section">
+            <h3>Authors</h3>
+            <ul class="authors-list">
+                {% if paper.authors %}
+                    {% for author in paper.authors %}
+                    <li>
+                        <strong>{{ author.name }}</strong>
+                        <span>{{ author.email }}</span>
+                        <span>{{ author.institution }}</span>
+                    </li>
+                    {% endfor %}
+                {% else %}
+                    <li>No authors listed.</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        {% if paper.review_comments %}
+        <div class="detail-section">
+            <h3>Reviewer Comments</h3>
+            <p>{{ paper.review_comments }}</p>
+        </div>
+        {% endif %}
+
+        <div class="action-row">
+            <a class="btn btn-secondary" href="{{ url_for('conference_registration', conference_id=conference_id) }}">
+                Back to Registration
+            </a>
+            <a class="btn btn-primary" href="{{ url_for('download_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
+                Download PDF
+            </a>
+            {% if can_edit %}
+            <a class="btn btn-primary" href="{{ url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
+                Edit Submission
+            </a>
+            {% endif %}
+            {% if can_withdraw %}
+            <form method="POST" action="{{ url_for('withdraw_conference_submission', conference_id=conference_id, paper_id=paper_id) }}" onsubmit="return confirm('Withdraw this submission? You can submit again later.');">
+                <button type="submit" class="btn btn-danger">Withdraw Submission</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.submission-detail-page {
+    max-width: 980px;
+    margin: 1.5rem auto 2rem;
+    padding: 0 1rem;
+}
+
+.submission-detail-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    padding: 1.25rem;
+}
+
+.submission-detail-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+}
+
+.submission-detail-header h1 {
+    font-size: 1.2rem;
+    margin: 0 0 0.35rem;
+}
+
+.submission-detail-header p {
+    margin: 0;
+    color: #6b7280;
+}
+
+.status-badge {
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-revision { background: #fde68a; color: #92400e; }
+.status-rejected { background: #fecaca; color: #991b1b; }
+.status-accepted { background: #d1fae5; color: #065f46; }
+.status-withdrawn { background: #e5e7eb; color: #374151; }
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.detail-item {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+}
+
+.detail-item label {
+    display: block;
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.detail-item p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #111827;
+}
+
+.detail-section {
+    margin-bottom: 1rem;
+}
+
+.detail-section h3 {
+    margin: 0 0 0.45rem;
+    font-size: 0.98rem;
+}
+
+.detail-section p {
+    margin: 0;
+    line-height: 1.5;
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.authors-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.authors-list li {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.88rem;
+}
+
+.authors-list strong {
+    color: #111827;
+}
+
+.authors-list span {
+    color: #6b7280;
+}
+
+.action-row {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #111827;
+    color: #fff;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #fff;
+}
+</style>
+{% endblock %}

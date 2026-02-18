@@ -1581,58 +1581,90 @@ def payment_callback():
             print(f"Verification result: {verification_result}")
             
             if verification_result['success'] and verification_result.get('status') == 'paid':
-                # Payment successful - create registration
+                # Payment successful
                 registration_data = pending_registration['registration_data']
                 payment_data = pending_registration['payment_data']
                 
-                # Create registration record with payment info
-                registration_record = {
-                    'user_id': current_user.id,
-                    'full_name': current_user.full_name,
-                    'email': current_user.email,
-                    'registration_type': registration_data.get('registration_type') or registration_data.get('selected_type'),
-                    'registration_period': registration_data.get('registration_period') or registration_data.get('selected_period'),
-                    'total_amount': float(registration_data['total_amount']),
-                    'extra_paper': registration_data.get('extra_paper', False),
-                    'workshop': registration_data.get('workshop', False),
-                    'banquet': registration_data.get('banquet', False),
-                    'payment_status': 'paid',
-                    'payment_method': 'yoco',
-                    'payment_id': payment_id,
-                    'transaction_reference': transaction_ref or verification_result.get('reference'),
-                    'payment_date': datetime.now().isoformat(),
-                    'submission_date': datetime.now().isoformat(),
-                    'created_at': datetime.now().isoformat(),
-                    'updated_at': datetime.now().isoformat()
-                }
-                
-                # Add conference-specific fields if this is a conference registration
+                registration_record = {}
+                registration_id_for_email = None
+
+                # Preferred path for conference flow: update existing registration created before payment
+                if is_conference_registration and pending_registration.get('registration_id'):
+                    registration_id_for_email = pending_registration.get('registration_id')
+                    registration_ref = db.reference(f'registrations/{registration_id_for_email}')
+                    existing_registration = registration_ref.get()
+
+                    if existing_registration and existing_registration.get('user_id') == current_user.id:
+                        registration_ref.update({
+                            'payment_status': 'paid',
+                            'payment_method': 'yoco',
+                            'payment_id': payment_id,
+                            'transaction_reference': transaction_ref or verification_result.get('reference'),
+                            'payment_date': datetime.now().isoformat(),
+                            'payment_unlocked': True,
+                            'workflow_status': 'paid',
+                            'updated_at': datetime.now().isoformat()
+                        })
+                        registration_record = registration_ref.get() or {}
+                    else:
+                        # Fallback to legacy behavior if saved registration cannot be found
+                        registration_id_for_email = None
+
+                # Legacy fallback: create a new registration record
+                if not registration_id_for_email:
+                    registration_record = {
+                        'user_id': current_user.id,
+                        'full_name': current_user.full_name,
+                        'email': current_user.email,
+                        'registration_type': registration_data.get('registration_type') or registration_data.get('selected_type'),
+                        'registration_period': registration_data.get('registration_period') or registration_data.get('selected_period'),
+                        'total_amount': float(registration_data['total_amount']),
+                        'extra_paper': registration_data.get('extra_paper', False),
+                        'workshop': registration_data.get('workshop', False),
+                        'banquet': registration_data.get('banquet', False),
+                        'payment_status': 'paid',
+                        'payment_method': 'yoco',
+                        'payment_id': payment_id,
+                        'transaction_reference': transaction_ref or verification_result.get('reference'),
+                        'payment_date': datetime.now().isoformat(),
+                        'submission_date': datetime.now().isoformat(),
+                        'created_at': datetime.now().isoformat(),
+                        'updated_at': datetime.now().isoformat()
+                    }
+
+                    if is_conference_registration:
+                        conference_id = pending_registration.get('conference_id')
+                        conference = get_conference_data(conference_id) if conference_id else None
+                        registration_record.update({
+                            'conference_id': conference_id,
+                            'conference_code': conference.get('conference_code', '') if conference else '',
+                            'conference_name': conference.get('basic_info', {}).get('name', '') if conference else '',
+                            'institution': registration_data.get('institution', ''),
+                            'country': registration_data.get('country', '')
+                        })
+
+                    registrations_ref = db.reference('registrations')
+                    new_registration = registrations_ref.push(registration_record)
+                    registration_id_for_email = new_registration.key
+
+                # Ensure user registration index exists for conference registrations
                 if is_conference_registration:
                     conference_id = pending_registration.get('conference_id')
-                    conference = get_conference_data(conference_id) if conference_id else None
-                    registration_record.update({
-                        'conference_id': conference_id,
-                        'conference_code': conference.get('conference_code', '') if conference else '',
-                        'conference_name': conference.get('basic_info', {}).get('name', '') if conference else '',
-                        'institution': registration_data.get('institution', ''),
-                        'country': registration_data.get('country', '')
-                    })
-                
-                # Save registration to Firebase
-                registrations_ref = db.reference('registrations')
-                new_registration = registrations_ref.push(registration_record)
-                
-                # Also save under user's registrations for easy access
-                if is_conference_registration:
-                    conference_id = pending_registration.get('conference_id')
-                    user_reg_ref = db.reference(f'user_registrations/{current_user.id}').push()
-                    user_reg_ref.set({
-                        'conference_id': conference_id,
-                        'registration_id': new_registration.key,
-                        'conference_name': registration_record.get('conference_name', 'Unknown Conference'),
-                        'status': 'paid',
-                        'created_at': datetime.now().isoformat()
-                    })
+                    user_registrations_ref = db.reference(f'user_registrations/{current_user.id}')
+                    existing_user_regs = user_registrations_ref.get() or {}
+                    already_indexed = any(
+                        reg and reg.get('registration_id') == registration_id_for_email
+                        for reg in existing_user_regs.values()
+                    )
+
+                    if not already_indexed:
+                        user_registrations_ref.push({
+                            'conference_id': conference_id,
+                            'registration_id': registration_id_for_email,
+                            'conference_name': registration_record.get('conference_name', 'Unknown Conference'),
+                            'status': 'paid',
+                            'created_at': datetime.now().isoformat()
+                        })
                 
                 # Clear session
                 if is_conference_registration:
@@ -1644,13 +1676,13 @@ def payment_callback():
                 try:
                     if is_conference_registration:
                         send_registration_confirmation_email(
-                            registration_record['email'],
+                            registration_record.get('email', current_user.email),
                             registration_record.get('conference_name', 'Conference'),
-                            new_registration.key,
+                            registration_id_for_email,
                             registration_record.get('conference_code', '')
                         )
                     else:
-                        send_registration_confirmation_email(registration_record, new_registration.key)
+                        send_registration_confirmation_email(registration_record, registration_id_for_email)
                 except Exception as email_error:
                     print(f"Email sending failed: {email_error}")
                 
@@ -1791,38 +1823,6 @@ def payment_demo():
     </body>
     </html>
     """
-
-def send_registration_confirmation_email(registration_data, registration_id):
-    """Send registration confirmation email using Resend"""
-    try:
-        subject = f"Registration Confirmation - {registration_data.get('registration_type', 'Conference')}"
-        
-        # Simple email content
-        body = f"""
-        Dear {registration_data.get('full_name', 'Participant')},
-
-        Your conference registration has been confirmed!
-
-        Registration Details:
-        - Registration ID: {registration_id}
-        - Type: {registration_data.get('registration_type', 'N/A')}
-        - Period: {registration_data.get('registration_period', 'N/A')}
-        - Amount: R{registration_data.get('total_amount', 0):.2f}
-        - Payment Status: {registration_data.get('payment_status', 'Pending')}
-
-        Thank you for your registration!
-
-        Best regards,
-        GIIP Conference Team
-        """
-        
-        # Use send_email function which uses Resend
-        send_email(registration_data.get('email'), subject, body)
-        print(f"Confirmation email sent to {registration_data.get('email')}")
-        
-    except Exception as e:
-        print(f"Failed to send confirmation email: {str(e)}")
-        raise
 
 @app.route('/schedule')
 def schedule():
@@ -5182,18 +5182,44 @@ def download_firebase_file():
 @admin_required
 def admin_submissions():
     try:
-        # Get all papers from Firebase
-        papers_ref = db.reference('papers')
-        papers = papers_ref.get() or {}
-        
+        all_submissions = {}
+
+        # Legacy/global paper submissions
+        papers = db.reference('papers').get() or {}
+        for paper_id, paper in papers.items():
+            if not paper:
+                continue
+            enriched = dict(paper)
+            enriched['_paper_id'] = paper_id
+            enriched['_conference_id'] = ''
+            enriched['_conference_name'] = 'General Submissions'
+            all_submissions[f'global::{paper_id}'] = enriched
+
+        # Conference-scoped submissions (new workflow)
+        conferences = get_all_conferences()
+        for conference_id, conference in conferences.items():
+            if not conference:
+                continue
+            conference_name = conference.get('basic_info', {}).get('name', 'Conference')
+            conference_papers = conference.get('paper_submissions', {}) or {}
+
+            for paper_id, paper in conference_papers.items():
+                if not paper:
+                    continue
+                if paper.get('is_deleted') or (paper.get('status') or '').lower() == 'withdrawn':
+                    continue
+                enriched = dict(paper)
+                enriched['_paper_id'] = paper_id
+                enriched['_conference_id'] = conference_id
+                enriched['_conference_name'] = conference_name
+                all_submissions[f'{conference_id}::{paper_id}'] = enriched
+
         # Sort papers by submission date (newest first)
         sorted_papers = dict(sorted(
-            papers.items(),
+            all_submissions.items(),
             key=lambda x: x[1].get('submitted_at', ''),
             reverse=True
         ))
-        
-        print("Fetched papers:", sorted_papers)  # Debug print
         
         return render_template(
             'admin/submissions.html',
@@ -5214,9 +5240,10 @@ def admin_submissions():
 @admin_required
 def update_paper_status(paper_id):
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         new_status = data.get('status')
         comments = data.get('comments', '')
+        conference_id = (data.get('conference_id') or request.args.get('conference_id') or '').strip()
         
         if new_status not in ['accepted', 'rejected', 'revision']:
             return jsonify({'success': False, 'error': 'Invalid status'}), 400
@@ -5224,8 +5251,9 @@ def update_paper_status(paper_id):
         if not comments.strip() and new_status in ['rejected', 'revision']:
             return jsonify({'success': False, 'error': 'Comments are required for rejection or revision'}), 400
         
-        # Update paper status in Firebase
-        paper_ref = db.reference(f'papers/{paper_id}')
+        # Update paper status in Firebase (conference-scoped or legacy global)
+        paper_path = f'conferences/{conference_id}/paper_submissions/{paper_id}' if conference_id else f'papers/{paper_id}'
+        paper_ref = db.reference(paper_path)
         paper = paper_ref.get()
         
         if not paper:
@@ -5243,6 +5271,55 @@ def update_paper_status(paper_id):
         
         # Get updated paper data for email
         updated_paper = paper_ref.get()
+
+        # Keep user submission index in sync for conference submissions
+        if conference_id and paper.get('user_id'):
+            user_submissions_ref = db.reference(f'user_paper_submissions/{paper.get("user_id")}')
+            user_submissions = user_submissions_ref.get() or {}
+            for submission_id, submission in user_submissions.items():
+                if (
+                    submission
+                    and submission.get('conference_id') == conference_id
+                    and submission.get('paper_id') == paper_id
+                ):
+                    user_submissions_ref.child(submission_id).update({
+                        'status': new_status,
+                        'updated_at': datetime.now().isoformat(),
+                        'reviewed_by': current_user.email
+                    })
+
+        # Unlock/lock conference payment based on paper review decision
+        if conference_id and paper.get('user_id'):
+            registrations = db.reference('registrations').get() or {}
+            target_registration_id = (paper.get('registration_id') or '').strip()
+            for registration_id, registration in registrations.items():
+                if not registration:
+                    continue
+
+                if target_registration_id and registration_id != target_registration_id:
+                    continue
+
+                if (
+                    registration.get('user_id') == paper.get('user_id')
+                    and registration.get('conference_id') == conference_id
+                    and (registration.get('payment_status') or '').lower() != 'paid'
+                ):
+                    registration_update = {
+                        'paper_submission_id': paper_id,
+                        'paper_status': new_status,
+                        'payment_unlocked': new_status == 'accepted',
+                        'updated_at': datetime.now().isoformat()
+                    }
+
+                    if new_status == 'accepted':
+                        registration_update['workflow_status'] = 'paper_accepted_payment_unlocked'
+                        registration_update['payment_unlocked_at'] = datetime.now().isoformat()
+                    elif new_status == 'revision':
+                        registration_update['workflow_status'] = 'paper_revision_requested'
+                    else:
+                        registration_update['workflow_status'] = 'paper_rejected'
+
+                    db.reference(f'registrations/{registration_id}').update(registration_update)
         
         # Send email notification
         try:
@@ -5265,11 +5342,13 @@ def update_paper_status(paper_id):
 @admin_required
 def save_paper_comments(paper_id):
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         comments = data.get('comments', '')
+        conference_id = (data.get('conference_id') or request.args.get('conference_id') or '').strip()
         
         # Update paper comments in Firebase
-        paper_ref = db.reference(f'papers/{paper_id}')
+        paper_path = f'conferences/{conference_id}/paper_submissions/{paper_id}' if conference_id else f'papers/{paper_id}'
+        paper_ref = db.reference(paper_path)
         paper = paper_ref.get()
         
         if not paper:
@@ -5986,9 +6065,24 @@ def admin_contact_page_settings():
 @admin_required
 def download_paper(paper_id):
     try:
-        # Get paper data from Firebase
-        paper_ref = db.reference(f'papers/{paper_id}')
-        paper = paper_ref.get()
+        conference_id = (request.args.get('conference_id') or '').strip()
+
+        # Get paper data from Firebase (conference-scoped first if provided)
+        paper = None
+        if conference_id:
+            paper = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').get()
+
+        if not paper:
+            paper = db.reference(f'papers/{paper_id}').get()
+
+        # Fallback lookup for conference-scoped submissions when conference_id is omitted
+        if not paper and not conference_id:
+            conferences = get_all_conferences()
+            for lookup_conference_id, conference in conferences.items():
+                conference_papers = (conference or {}).get('paper_submissions', {}) or {}
+                if paper_id in conference_papers:
+                    paper = conference_papers.get(paper_id)
+                    break
         
         if not paper:
             flash('Paper not found.', 'error')
@@ -7832,6 +7926,152 @@ def get_all_conferences():
         print(f"Error getting conferences: {e}")
         return {}
 
+def get_user_conference_registration(user_id, conference_id):
+    """Return the latest registration tuple (registration_id, data) for a user and conference."""
+    try:
+        registrations = db.reference('registrations').get() or {}
+        matches = []
+
+        for registration_id, registration in registrations.items():
+            if (
+                registration
+                and registration.get('user_id') == user_id
+                and registration.get('conference_id') == conference_id
+            ):
+                matches.append((registration_id, registration))
+
+        if not matches:
+            return None, None
+
+        matches.sort(
+            key=lambda item: (
+                item[1].get('updated_at')
+                or item[1].get('created_at')
+                or item[1].get('submission_date')
+                or ''
+            ),
+            reverse=True
+        )
+        return matches[0]
+    except Exception as e:
+        print(f"Error getting user conference registration: {e}")
+        return None, None
+
+def get_latest_user_conference_submission(user_id, conference_id):
+    """Return the latest conference submission tuple (paper_id, data) for a user."""
+    try:
+        user_submissions = db.reference(f'user_paper_submissions/{user_id}').get() or {}
+        matches = []
+
+        for _, submission in user_submissions.items():
+            if (
+                submission
+                and submission.get('conference_id') == conference_id
+                and not submission.get('is_deleted')
+                and (submission.get('status') or '').lower() != 'withdrawn'
+            ):
+                matches.append(submission)
+
+        if not matches:
+            return None, None
+
+        matches.sort(key=lambda item: item.get('submitted_at', ''), reverse=True)
+        for latest in matches:
+            paper_id = latest.get('paper_id')
+
+            paper_data = None
+            if paper_id:
+                paper_data = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').get()
+                if not paper_data:
+                    paper_data = db.reference(f'papers/{paper_id}').get()
+
+            if paper_data:
+                if paper_data.get('is_deleted') or (paper_data.get('status') or '').lower() == 'withdrawn':
+                    continue
+                paper_data['paper_id'] = paper_id
+                paper_data.setdefault('status', latest.get('status', 'pending'))
+                return paper_id, paper_data
+
+            if (latest.get('status') or '').lower() == 'withdrawn':
+                continue
+            return paper_id, latest
+
+        return None, None
+    except Exception as e:
+        print(f"Error getting latest conference submission: {e}")
+        return None, None
+
+def upsert_user_conference_submission_index(user_id, conference_id, paper_id, payload):
+    """Create or update user submission index entry for a conference paper."""
+    try:
+        user_submissions_ref = db.reference(f'user_paper_submissions/{user_id}')
+        indexed_submissions = user_submissions_ref.get() or {}
+
+        for index_id, indexed_submission in indexed_submissions.items():
+            if (
+                indexed_submission
+                and indexed_submission.get('conference_id') == conference_id
+                and indexed_submission.get('paper_id') == paper_id
+            ):
+                user_submissions_ref.child(index_id).update(payload)
+                return index_id
+
+        new_ref = user_submissions_ref.push(payload)
+        return new_ref.key
+    except Exception as e:
+        print(f"Error upserting user submission index: {e}")
+        return None
+
+def get_conference_submission_for_user(user_id, conference_id, paper_id, include_deleted=False):
+    """Get a conference submission and enforce ownership checks."""
+    try:
+        paper = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').get()
+        if not paper:
+            return None
+        if paper.get('user_id') != user_id:
+            return None
+        if not include_deleted and (paper.get('is_deleted') or (paper.get('status') or '').lower() == 'withdrawn'):
+            return None
+        return paper
+    except Exception as e:
+        print(f"Error getting conference submission for user: {e}")
+        return None
+
+def get_active_registration_submission(user_id, conference_id, registration_id=None):
+    """Return latest active (not withdrawn/deleted) submission for a registration."""
+    try:
+        submissions = db.reference(f'conferences/{conference_id}/paper_submissions').get() or {}
+        matches = []
+
+        for paper_id, submission in submissions.items():
+            if not submission:
+                continue
+            if submission.get('user_id') != user_id:
+                continue
+            if registration_id and submission.get('registration_id') != registration_id:
+                continue
+            if submission.get('is_deleted'):
+                continue
+            if (submission.get('status') or '').lower() == 'withdrawn':
+                continue
+            matches.append((paper_id, submission))
+
+        if not matches:
+            return None, None
+
+        matches.sort(
+            key=lambda item: (
+                item[1].get('updated_at')
+                or item[1].get('submitted_at')
+                or ''
+            ),
+            reverse=True
+        )
+        return matches[0]
+    except Exception as e:
+        print(f"Error getting active registration submission: {e}")
+        return None, None
+
 @app.route('/conferences')
 def conference_discover():
     """Conference discovery page - list all available conferences from Firebase"""
@@ -8010,142 +8250,347 @@ def conference_details(conference_id):
 @app.route('/conferences/<conference_id>/register', methods=['GET', 'POST'])
 @login_required
 def conference_registration(conference_id):
-    """Conference-specific registration"""
+    """Conference registration step (payment happens only after paper approval)."""
     try:
         conference = get_conference_data(conference_id)
         if not conference:
             flash('Conference not found.', 'error')
             return redirect(url_for('conference_discover'))
-        
-        # Check if registration is enabled
-        if not conference.get('settings', {}).get('registration_enabled', False):
+
+        registration_id, existing_registration = get_user_conference_registration(current_user.id, conference_id)
+        edit_mode_requested = request.args.get('edit') == '1'
+        show_edit_form = False
+        existing_payment_status = ((existing_registration or {}).get('payment_status') or '').lower()
+        if existing_registration and edit_mode_requested:
+            if existing_payment_status in ['paid', 'payment_initiated']:
+                flash('Registration selections cannot be edited after payment has started.', 'info')
+            else:
+                show_edit_form = True
+        _, latest_submission = get_latest_user_conference_submission(current_user.id, conference_id)
+        registration_enabled = conference.get('settings', {}).get('registration_enabled', False)
+        latest_paper_status = None
+        if latest_submission:
+            latest_paper_status = latest_submission.get('status')
+        elif existing_registration:
+            latest_paper_status = existing_registration.get('paper_status')
+
+        # Allow existing registrants to complete submission/payment even after
+        # admins close new registrations.
+        if not registration_enabled and not existing_registration:
             flash('Registration is not enabled for this conference.', 'error')
             return redirect(url_for('conference_details', conference_id=conference_id))
-        
+
         if request.method == 'GET':
-            # Get registration fees
             fees = get_registration_fees()
             current_period = get_current_registration_period()
-            
-            # Display registration form
-            return render_template('conferences/registration.html',
-                                 conference=conference,
-                                 conference_id=conference_id,
-                                 fees=fees,
-                                 current_period=current_period,
-                                 site_design=get_site_design())
-        
-        # POST request - handle payment creation
+            form_registration_period = (
+                (existing_registration or {}).get('registration_period')
+                or current_period
+            )
+            can_pay = bool(
+                existing_registration
+                and existing_registration.get('payment_unlocked', False)
+                and ((existing_registration.get('payment_status') or '').lower() not in ['paid', 'payment_initiated'])
+            )
+
+            return render_template(
+                'conferences/registration.html',
+                conference=conference,
+                conference_id=conference_id,
+                fees=fees,
+                current_period=current_period,
+                existing_registration=existing_registration,
+                existing_registration_id=registration_id,
+                latest_paper_status=latest_paper_status,
+                can_pay=can_pay,
+                show_edit_form=show_edit_form,
+                form_registration_period=form_registration_period,
+                site_design=get_site_design()
+            )
+
         if request.is_json:
-            # This is a payment creation request
-            registration_data = request.get_json()
-            
-            # Validate required fields
-            required_fields = ['registration_type', 'registration_period', 'total_amount']
+            registration_data = request.get_json(silent=True) or {}
+            if not registration_enabled and not existing_registration:
+                return jsonify({
+                    'success': False,
+                    'error': 'Registration is not enabled for this conference.'
+                }), 403
+
+            required_fields = [
+                'registration_type',
+                'registration_period',
+                'total_amount',
+                'institution',
+                'country'
+            ]
             for field in required_fields:
-                if field not in registration_data:
+                if not registration_data.get(field):
                     return jsonify({
                         'success': False,
                         'error': f'Missing required field: {field}'
                     }), 400
-            
-            # Get registration fees to validate amount
+
+            if existing_registration and existing_payment_status == 'paid':
+                return jsonify({
+                    'success': False,
+                    'error': 'This conference registration has already been paid.'
+                }), 400
+            if existing_registration and existing_payment_status == 'payment_initiated':
+                return jsonify({
+                    'success': False,
+                    'error': 'Payment has already started for this registration. Please complete payment first.'
+                }), 400
+
             fees = get_registration_fees()
             if not fees:
                 return jsonify({
                     'success': False,
                     'error': 'Registration fees not configured'
                 }), 500
-            
-            # Calculate expected amount
+
             period = registration_data['registration_period']
             reg_type = registration_data['registration_type']
             expected_amount = fees.get(period, {}).get('fees', {}).get(reg_type, 0)
-            
-            # Add additional items if selected
+
             if fees.get('additional_items'):
                 for item in ['extra_paper', 'workshop', 'banquet']:
                     if registration_data.get(item, False):
                         item_data = fees['additional_items'].get(item, {})
                         if item_data.get('enabled', False):
                             expected_amount += item_data.get('fee', 0)
-            
-            # Validate amount (allow small floating point differences)
+
             if abs(float(registration_data['total_amount']) - expected_amount) > 0.01:
                 return jsonify({
                     'success': False,
                     'error': 'Invalid amount calculation'
                 }), 400
-            
-            # Prepare payment data
-            payment_data = {
+
+            now_iso = datetime.now().isoformat()
+            full_name = current_user.full_name or current_user.email.split('@')[0]
+            registration_record = {
                 'user_id': current_user.id,
-                'full_name': current_user.full_name,
+                'full_name': full_name,
                 'email': current_user.email,
                 'phone': getattr(current_user, 'phone', ''),
-                'total_amount': float(registration_data['total_amount']),
-                'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
                 'conference_id': conference_id,
                 'conference_code': conference.get('conference_code', ''),
+                'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
                 'registration_type': reg_type,
                 'registration_period': period,
-                'institution': registration_data.get('institution', ''),
-                'country': registration_data.get('country', ''),
-                'additional_items': {
-                    'extra_paper': registration_data.get('extra_paper', False),
-                    'workshop': registration_data.get('workshop', False),
-                    'banquet': registration_data.get('banquet', False)
-                }
+                'institution': registration_data.get('institution', '').strip(),
+                'country': registration_data.get('country', '').strip(),
+                'total_amount': float(registration_data['total_amount']),
+                'extra_paper': registration_data.get('extra_paper', False),
+                'workshop': registration_data.get('workshop', False),
+                'banquet': registration_data.get('banquet', False),
+                'payment_status': (existing_registration or {}).get('payment_status', 'pending'),
+                'payment_method': (existing_registration or {}).get('payment_method', ''),
+                'payment_unlocked': (existing_registration or {}).get('payment_unlocked', False),
+                'paper_status': (existing_registration or {}).get('paper_status', 'not_submitted'),
+                'workflow_status': (existing_registration or {}).get('workflow_status', 'registered'),
+                'submission_date': (existing_registration or {}).get('submission_date', now_iso),
+                'created_at': (existing_registration or {}).get('created_at', now_iso),
+                'updated_at': now_iso
             }
-            
-            # Create payment session
-            payment_result = create_payment_session(payment_data)
-            
-            if payment_result['success']:
-                # Store registration data in session for completion after payment
-                session['pending_conference_registration'] = {
-                    'conference_id': conference_id,
-                    'registration_data': registration_data,
-                    'payment_data': payment_data,
-                    'transaction_reference': payment_result['transaction_reference'],
-                    'payment_id': payment_result.get('payment_id')
-                }
-                
-                return jsonify({
-                    'success': True,
-                    'payment_url': payment_result['payment_url'],
-                    'transaction_reference': payment_result['transaction_reference']
-                })
+
+            registrations_ref = db.reference('registrations')
+            if registration_id:
+                registrations_ref.child(registration_id).update(registration_record)
             else:
-                return jsonify({
-                    'success': False,
-                    'error': payment_result.get('error', 'Payment initialization failed')
-                }), 500
-        
-        # Legacy POST (form submission) - redirect to payment flow
-        flash('Please use the online payment option to complete your registration.', 'info')
+                new_registration_ref = registrations_ref.push(registration_record)
+                registration_id = new_registration_ref.key
+
+            stay_on_registration_raw = registration_data.get('stay_on_registration', False)
+            if isinstance(stay_on_registration_raw, str):
+                stay_on_registration = stay_on_registration_raw.strip().lower() in ['1', 'true', 'yes', 'on']
+            else:
+                stay_on_registration = bool(stay_on_registration_raw)
+
+            redirect_url = (
+                url_for('conference_registration', conference_id=conference_id)
+                if stay_on_registration
+                else url_for('conference_paper_submission', conference_id=conference_id)
+            )
+
+            message = (
+                'Conference registration updated successfully.'
+                if existing_registration
+                else 'Conference registration saved. Continue with paper submission.'
+            )
+
+            return jsonify({
+                'success': True,
+                'registration_id': registration_id,
+                'message': message,
+                'redirect_url': redirect_url
+            })
+
+        flash('Please use the registration form on this page.', 'info')
         return redirect(url_for('conference_registration', conference_id=conference_id))
-        
+
     except Exception as e:
-        print(f"Error processing registration: {e}")
+        print(f"Error processing conference registration: {e}")
         import traceback
         traceback.print_exc()
         flash('Error processing registration. Please try again.', 'error')
         return redirect(url_for('conference_registration', conference_id=conference_id))
 
-def send_registration_confirmation_email(email, conference_name, registration_id, conference_code=None):
-    """Send registration confirmation email"""
+@app.route('/conferences/<conference_id>/payment/create', methods=['POST'])
+@login_required
+def conference_create_payment(conference_id):
+    """Create payment only after paper approval unlocks the registration."""
     try:
-        subject = f"Registration Confirmation - {conference_name}"
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+
+        payload = request.get_json(silent=True) or {}
+        requested_registration_id = payload.get('registration_id')
+
+        registration_id, registration = get_user_conference_registration(current_user.id, conference_id)
+        if requested_registration_id and requested_registration_id != registration_id:
+            requested_registration = db.reference(f'registrations/{requested_registration_id}').get()
+            if (
+                requested_registration
+                and requested_registration.get('user_id') == current_user.id
+                and requested_registration.get('conference_id') == conference_id
+            ):
+                registration_id = requested_registration_id
+                registration = requested_registration
+
+        if not registration:
+            return jsonify({
+                'success': False,
+                'error': 'No registration found for this conference. Please register first.'
+            }), 404
+
+        if registration.get('payment_status') == 'paid':
+            return jsonify({
+                'success': False,
+                'error': 'This registration has already been paid.'
+            }), 400
+
+        if (registration.get('payment_status') or '').lower() == 'payment_initiated':
+            return jsonify({
+                'success': False,
+                'error': 'Payment has already been started. Please complete the existing payment session.'
+            }), 400
+
+        if not registration.get('payment_unlocked', False):
+            return jsonify({
+                'success': False,
+                'error': 'Payment is locked until your paper is approved by admin.'
+            }), 400
+
+        total_amount = float(registration.get('total_amount') or 0)
+        if total_amount <= 0:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid registration amount. Please update your registration.'
+            }), 400
+
+        payment_data = {
+            'user_id': current_user.id,
+            'full_name': registration.get('full_name') or current_user.full_name or current_user.email.split('@')[0],
+            'email': registration.get('email') or current_user.email,
+            'phone': registration.get('phone') or getattr(current_user, 'phone', ''),
+            'total_amount': total_amount,
+            'conference_name': registration.get('conference_name') or conference.get('basic_info', {}).get('name', 'Conference'),
+            'conference_id': conference_id,
+            'conference_code': registration.get('conference_code') or conference.get('conference_code', ''),
+            'registration_type': registration.get('registration_type'),
+            'registration_period': registration.get('registration_period'),
+            'institution': registration.get('institution', ''),
+            'country': registration.get('country', ''),
+            'additional_items': {
+                'extra_paper': registration.get('extra_paper', False),
+                'workshop': registration.get('workshop', False),
+                'banquet': registration.get('banquet', False)
+            }
+        }
+
+        payment_result = create_payment_session(payment_data)
+        if not payment_result.get('success'):
+            return jsonify({
+                'success': False,
+                'error': payment_result.get('error', 'Payment initialization failed')
+            }), 500
+
+        transaction_reference = payment_result.get('transaction_reference', '')
+        db.reference(f'registrations/{registration_id}').update({
+            'payment_status': 'pending',
+            'payment_method': 'yoco',
+            'transaction_reference': transaction_reference,
+            'payment_id': payment_result.get('payment_id'),
+            'workflow_status': 'payment_initiated',
+            'updated_at': datetime.now().isoformat()
+        })
+
+        session['pending_conference_registration'] = {
+            'conference_id': conference_id,
+            'registration_id': registration_id,
+            'registration_data': {
+                'registration_type': registration.get('registration_type'),
+                'registration_period': registration.get('registration_period'),
+                'total_amount': total_amount,
+                'extra_paper': registration.get('extra_paper', False),
+                'workshop': registration.get('workshop', False),
+                'banquet': registration.get('banquet', False),
+                'institution': registration.get('institution', ''),
+                'country': registration.get('country', '')
+            },
+            'payment_data': payment_data,
+            'transaction_reference': transaction_reference,
+            'payment_id': payment_result.get('payment_id')
+        }
+
+        return jsonify({
+            'success': True,
+            'payment_url': payment_result.get('payment_url'),
+            'transaction_reference': transaction_reference
+        })
+
+    except Exception as e:
+        print(f"Error creating conference payment session: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+def send_registration_confirmation_email(email_or_data, conference_name=None, registration_id=None, conference_code=None):
+    """Send registration confirmation email.
+
+    Supports both:
+    1) send_registration_confirmation_email(email, conference_name, registration_id, conference_code)
+    2) send_registration_confirmation_email(registration_data_dict, registration_id)  # legacy
+    """
+    try:
+        if isinstance(email_or_data, dict):
+            registration_data = email_or_data
+            recipient_email = registration_data.get('email')
+            conference_name_value = registration_data.get('conference_name', 'Conference')
+            conference_code_value = registration_data.get('conference_code')
+            # Legacy call style passes registration_id as the second positional arg.
+            registration_id_value = registration_id if registration_id is not None else conference_name
+        else:
+            recipient_email = email_or_data
+            conference_name_value = conference_name or 'Conference'
+            conference_code_value = conference_code
+            registration_id_value = registration_id
+
+        if not recipient_email:
+            return
+
+        subject = f"Registration Confirmation - {conference_name_value}"
         body = f"""
         Dear Participant,
 
-        Thank you for registering for {conference_name}!
-        {"Conference Code: " + conference_code if conference_code else ""}
+        Thank you for registering for {conference_name_value}!
+        {"Conference Code: " + conference_code_value if conference_code_value else ""}
 
-        Your registration ID is: {registration_id}
+        Your registration ID is: {registration_id_value}
 
-        Your registration is currently being reviewed. You will receive another email once your registration is approved.
+        Your registration has been received successfully.
 
         If you have any questions, please contact our support team.
 
@@ -8154,7 +8599,7 @@ def send_registration_confirmation_email(email, conference_name, registration_id
         """
 
         # Use existing send_email function
-        send_email([email], subject, body)
+        send_email([recipient_email], subject, body)
 
     except Exception as e:
         print(f"Error sending confirmation email: {e}")
@@ -8162,7 +8607,7 @@ def send_registration_confirmation_email(email, conference_name, registration_id
 @app.route('/conferences/<conference_id>/submit-paper', methods=['GET', 'POST'])
 @login_required
 def conference_paper_submission(conference_id):
-    """Conference-specific paper submission"""
+    """Create a conference paper submission (one active submission per registration)."""
     try:
         conference = get_conference_data(conference_id)
         if not conference:
@@ -8172,32 +8617,73 @@ def conference_paper_submission(conference_id):
         if not conference.get('settings', {}).get('paper_submission_enabled', False):
             flash('Paper submission is not enabled for this conference.', 'error')
             return redirect(url_for('conference_details', conference_id=conference_id))
+
+        registration_id, existing_registration = get_user_conference_registration(current_user.id, conference_id)
+        if not existing_registration:
+            flash('Please complete conference registration before submitting a paper.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        active_paper_id, active_submission = get_active_registration_submission(
+            current_user.id,
+            conference_id,
+            registration_id=registration_id
+        )
         
         if request.method == 'GET':
-            # Display paper submission form
+            if active_submission:
+                active_status = (active_submission.get('status') or '').lower()
+                if active_status == 'accepted':
+                    flash(
+                        'Your paper has already been accepted. '
+                        'Further edits are locked unless admin requests revision.',
+                        'info'
+                    )
+                    return redirect(url_for('conference_registration', conference_id=conference_id))
+
+                flash('You already have a submission for this conference.', 'info')
+                return redirect(url_for(
+                    'conference_submission_details',
+                    conference_id=conference_id,
+                    paper_id=active_paper_id
+                ))
+
             return render_template('conferences/paper_submission.html',
                                  conference=conference,
                                  conference_id=conference_id,
+                                 paper=None,
+                                 is_edit=False,
+                                 form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                  site_design=get_site_design())
         
-        # POST request - process paper submission  
+        # POST request - process new paper submission
         try:
-            # Get form data
+            if active_submission:
+                flash('You already have an active submission. Please edit that submission instead.', 'info')
+                return redirect(url_for(
+                    'edit_conference_submission',
+                    conference_id=conference_id,
+                    paper_id=active_paper_id
+                ))
+
+            now_iso = datetime.now().isoformat()
             paper_data = {
                 'conference_id': conference_id,
                 'user_id': current_user.id,
                 'user_email': current_user.email,
-                'paper_title': request.form.get('paper_title'),
-                'paper_abstract': request.form.get('paper_abstract'),
-                'presentation_type': request.form.get('presentation_type'),
-                'research_area': request.form.get('research_area'),
+                'registration_id': registration_id,
+                'paper_title': (request.form.get('paper_title') or '').strip(),
+                'paper_abstract': (request.form.get('paper_abstract') or '').strip(),
+                'presentation_type': (request.form.get('presentation_type') or '').strip(),
+                'research_area': (request.form.get('research_area') or '').strip(),
                 'keywords': [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()],
-                'submitted_at': datetime.now().isoformat(),
+                'submitted_at': now_iso,
+                'created_at': now_iso,
                 'status': 'pending',
                 'authors': [],
                 'review_comments': '',
                 'reviewed_by': '',
-                'updated_at': datetime.now().isoformat()
+                'is_deleted': False,
+                'updated_at': now_iso
             }
 
             # Process authors
@@ -8212,6 +8698,8 @@ def conference_paper_submission(conference_id):
                     paper_data['authors'].append(author)
                 author_count += 1
 
+            draft_paper = dict(paper_data)
+
             # Validate required fields
             required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area']
             for field in required_fields:
@@ -8220,6 +8708,9 @@ def conference_paper_submission(conference_id):
                     return render_template('conferences/paper_submission.html',
                                          conference=conference,
                                          conference_id=conference_id,
+                                         paper=draft_paper,
+                                         is_edit=False,
+                                         form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                          site_design=get_site_design())
 
             if not paper_data['authors']:
@@ -8227,6 +8718,9 @@ def conference_paper_submission(conference_id):
                 return render_template('conferences/paper_submission.html',
                                      conference=conference,
                                      conference_id=conference_id,
+                                     paper=draft_paper,
+                                     is_edit=False,
+                                     form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                      site_design=get_site_design())
 
             # Handle paper file upload
@@ -8235,6 +8729,9 @@ def conference_paper_submission(conference_id):
                 return render_template('conferences/paper_submission.html',
                                      conference=conference,
                                      conference_id=conference_id,
+                                     paper=draft_paper,
+                                     is_edit=False,
+                                     form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                      site_design=get_site_design())
 
             file = request.files['paper_file']
@@ -8243,6 +8740,9 @@ def conference_paper_submission(conference_id):
                 return render_template('conferences/paper_submission.html',
                                      conference=conference,
                                      conference_id=conference_id,
+                                     paper=draft_paper,
+                                     is_edit=False,
+                                     form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                      site_design=get_site_design())
 
             if not file.filename.lower().endswith('.pdf'):
@@ -8250,6 +8750,9 @@ def conference_paper_submission(conference_id):
                 return render_template('conferences/paper_submission.html',
                                      conference=conference,
                                      conference_id=conference_id,
+                                     paper=draft_paper,
+                                     is_edit=False,
+                                     form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                      site_design=get_site_design())
 
             # Read and encode file data
@@ -8269,16 +8772,28 @@ def conference_paper_submission(conference_id):
             new_paper = papers_ref.push(paper_data)
             paper_id = new_paper.key
 
-            # Store in user's submissions for easy access
-            user_submissions_ref = db.reference(f'user_paper_submissions/{current_user.id}')
-            user_submissions_ref.push({
+            # Store in user's submissions index for easy access
+            upsert_user_conference_submission_index(current_user.id, conference_id, paper_id, {
                 'conference_id': conference_id,
                 'paper_id': paper_id,
+                'registration_id': registration_id,
                 'paper_title': paper_data['paper_title'],
                 'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
                 'status': 'pending',
-                'submitted_at': datetime.now().isoformat()
+                'is_deleted': False,
+                'submitted_at': now_iso,
+                'updated_at': now_iso
             })
+
+            # Link paper state to conference registration workflow
+            if registration_id and existing_registration.get('payment_status') != 'paid':
+                db.reference(f'registrations/{registration_id}').update({
+                    'paper_submission_id': paper_id,
+                    'paper_status': 'pending',
+                    'payment_unlocked': False,
+                    'workflow_status': 'paper_submitted',
+                    'updated_at': datetime.now().isoformat()
+                })
 
             # Send confirmation email
             try:
@@ -8294,8 +8809,12 @@ def conference_paper_submission(conference_id):
             except Exception as e:
                 print(f"Error sending confirmation email: {str(e)}")
 
-            flash(f'Paper submitted successfully to {conference.get("basic_info", {}).get("name", "Conference")}!', 'success')
-            return redirect(url_for('conference_details', conference_id=conference_id))
+            flash(
+                f'Paper submitted to {conference.get("basic_info", {}).get("name", "Conference")}. '
+                'Waiting for admin review before payment is enabled.',
+                'success'
+            )
+            return redirect(url_for('conference_registration', conference_id=conference_id))
             
         except Exception as e:
             print(f"Error submitting paper: {str(e)}")
@@ -8303,12 +8822,336 @@ def conference_paper_submission(conference_id):
             return render_template('conferences/paper_submission.html',
                                  conference=conference,
                                  conference_id=conference_id,
+                                 paper=None,
+                                 is_edit=False,
+                                 form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                  site_design=get_site_design())
         
     except Exception as e:
         print(f"Error processing paper submission: {e}")
         flash('Error processing paper submission.', 'error')
         return redirect(url_for('conference_details', conference_id=conference_id))
+
+@app.route('/conferences/<conference_id>/submissions/<paper_id>')
+@login_required
+def conference_submission_details(conference_id, paper_id):
+    """Read a user's conference submission details."""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('conference_discover'))
+
+        paper = get_conference_submission_for_user(current_user.id, conference_id, paper_id, include_deleted=True)
+        if not paper:
+            flash('Submission not found.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        status = (paper.get('status') or '').lower()
+        registration = None
+        registration_id = paper.get('registration_id')
+        if registration_id:
+            registration = db.reference(f'registrations/{registration_id}').get()
+
+        payment_status = ((registration or {}).get('payment_status') or '').lower()
+        can_edit = (
+            not paper.get('is_deleted')
+            and status in ['pending', 'revision', 'rejected']
+            and payment_status != 'paid'
+        )
+        can_withdraw = (
+            not paper.get('is_deleted')
+            and status not in ['accepted', 'withdrawn']
+            and payment_status not in ['payment_initiated', 'paid']
+        )
+
+        return render_template(
+            'conferences/submission_detail.html',
+            conference=conference,
+            conference_id=conference_id,
+            paper=paper,
+            paper_id=paper_id,
+            can_edit=can_edit,
+            can_withdraw=can_withdraw,
+            site_design=get_site_design()
+        )
+    except Exception as e:
+        print(f"Error loading conference submission details: {e}")
+        flash('Could not load submission details.', 'error')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
+
+@app.route('/conferences/<conference_id>/submissions/<paper_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_conference_submission(conference_id, paper_id):
+    """Update an existing conference submission (owner only)."""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('conference_discover'))
+
+        if not conference.get('settings', {}).get('paper_submission_enabled', False):
+            flash('Paper submission is not enabled for this conference.', 'error')
+            return redirect(url_for('conference_details', conference_id=conference_id))
+
+        paper_ref = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}')
+        paper = paper_ref.get()
+        if not paper or paper.get('user_id') != current_user.id or paper.get('is_deleted'):
+            flash('Submission not found.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        status = (paper.get('status') or '').lower()
+        if status not in ['pending', 'revision', 'rejected']:
+            flash('This submission can no longer be edited.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        registration_id = paper.get('registration_id')
+        if not registration_id:
+            registration_id, _ = get_user_conference_registration(current_user.id, conference_id)
+
+        registration = db.reference(f'registrations/{registration_id}').get() if registration_id else {}
+        if ((registration or {}).get('payment_status') or '').lower() == 'paid':
+            flash('Paid registrations cannot edit paper submissions.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        if request.method == 'GET':
+            return render_template(
+                'conferences/paper_submission.html',
+                conference=conference,
+                conference_id=conference_id,
+                paper=paper,
+                paper_id=paper_id,
+                is_edit=True,
+                form_action=url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id),
+                site_design=get_site_design()
+            )
+
+        now_iso = datetime.now().isoformat()
+        updated_paper = {
+            'paper_title': (request.form.get('paper_title') or '').strip(),
+            'paper_abstract': (request.form.get('paper_abstract') or '').strip(),
+            'presentation_type': (request.form.get('presentation_type') or '').strip(),
+            'research_area': (request.form.get('research_area') or '').strip(),
+            'keywords': [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()],
+            'authors': []
+        }
+
+        author_count = 0
+        while f'authors[{author_count}][name]' in request.form:
+            author = {
+                'name': request.form.get(f'authors[{author_count}][name]'),
+                'email': request.form.get(f'authors[{author_count}][email]'),
+                'institution': request.form.get(f'authors[{author_count}][institution]')
+            }
+            if all(author.values()):
+                updated_paper['authors'].append(author)
+            author_count += 1
+
+        draft_paper = dict(paper)
+        draft_paper.update(updated_paper)
+
+        required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area']
+        for field in required_fields:
+            if not updated_paper.get(field):
+                flash('Please fill in all required fields.', 'error')
+                return render_template(
+                    'conferences/paper_submission.html',
+                    conference=conference,
+                    conference_id=conference_id,
+                    paper=draft_paper,
+                    paper_id=paper_id,
+                    is_edit=True,
+                    form_action=url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id),
+                    site_design=get_site_design()
+                )
+
+        if not updated_paper['authors']:
+            flash('At least one author is required.', 'error')
+            return render_template(
+                'conferences/paper_submission.html',
+                conference=conference,
+                conference_id=conference_id,
+                paper=draft_paper,
+                paper_id=paper_id,
+                is_edit=True,
+                form_action=url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id),
+                site_design=get_site_design()
+            )
+
+        new_file = request.files.get('paper_file')
+        file_update = {}
+        if new_file and new_file.filename:
+            if not new_file.filename.lower().endswith('.pdf'):
+                flash('Only PDF files are allowed.', 'error')
+                return render_template(
+                    'conferences/paper_submission.html',
+                    conference=conference,
+                    conference_id=conference_id,
+                    paper=draft_paper,
+                    paper_id=paper_id,
+                    is_edit=True,
+                    form_action=url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id),
+                    site_design=get_site_design()
+                )
+
+            file_bytes = new_file.read()
+            file_update = {
+                'file_data': base64.b64encode(file_bytes).decode('utf-8'),
+                'file_name': secure_filename(new_file.filename),
+                'file_type': new_file.content_type,
+                'file_size': len(file_bytes)
+            }
+
+        update_data = {
+            'paper_title': updated_paper['paper_title'],
+            'paper_abstract': updated_paper['paper_abstract'],
+            'presentation_type': updated_paper['presentation_type'],
+            'research_area': updated_paper['research_area'],
+            'keywords': updated_paper['keywords'],
+            'authors': updated_paper['authors'],
+            'status': 'pending',
+            'review_comments': '',
+            'reviewed_by': '',
+            'submitted_at': now_iso,
+            'updated_at': now_iso
+        }
+        update_data.update(file_update)
+        paper_ref.update(update_data)
+
+        upsert_user_conference_submission_index(current_user.id, conference_id, paper_id, {
+            'conference_id': conference_id,
+            'paper_id': paper_id,
+            'registration_id': registration_id,
+            'paper_title': update_data['paper_title'],
+            'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
+            'status': 'pending',
+            'is_deleted': False,
+            'submitted_at': now_iso,
+            'updated_at': now_iso
+        })
+
+        if registration_id and ((registration or {}).get('payment_status') or '').lower() != 'paid':
+            db.reference(f'registrations/{registration_id}').update({
+                'paper_submission_id': paper_id,
+                'paper_status': 'pending',
+                'payment_unlocked': False,
+                'workflow_status': 'paper_submitted',
+                'updated_at': now_iso
+            })
+
+        flash('Submission updated successfully. Waiting for admin review.', 'success')
+        return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+    except Exception as e:
+        print(f"Error editing conference submission: {e}")
+        flash('Could not update submission.', 'error')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
+
+@app.route('/conferences/<conference_id>/submissions/<paper_id>/withdraw', methods=['POST'])
+@login_required
+def withdraw_conference_submission(conference_id, paper_id):
+    """Soft-delete/withdraw a conference submission (owner only)."""
+    try:
+        paper_ref = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}')
+        paper = paper_ref.get()
+        if not paper or paper.get('user_id') != current_user.id or paper.get('is_deleted'):
+            flash('Submission not found.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        status = (paper.get('status') or '').lower()
+        if status == 'accepted':
+            flash('Accepted submissions cannot be withdrawn.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        registration_id = paper.get('registration_id')
+        registration = db.reference(f'registrations/{registration_id}').get() if registration_id else {}
+        payment_status = ((registration or {}).get('payment_status') or '').lower()
+        if payment_status in ['payment_initiated', 'paid']:
+            flash('Submission cannot be withdrawn after payment has started.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        now_iso = datetime.now().isoformat()
+        paper_ref.update({
+            'status': 'withdrawn',
+            'is_deleted': True,
+            'withdrawn_at': now_iso,
+            'deleted_at': now_iso,
+            'updated_at': now_iso
+        })
+
+        user_submissions_ref = db.reference(f'user_paper_submissions/{current_user.id}')
+        indexed_submissions = user_submissions_ref.get() or {}
+        for index_id, indexed_submission in indexed_submissions.items():
+            if (
+                indexed_submission
+                and indexed_submission.get('conference_id') == conference_id
+                and indexed_submission.get('paper_id') == paper_id
+            ):
+                user_submissions_ref.child(index_id).update({
+                    'status': 'withdrawn',
+                    'is_deleted': True,
+                    'updated_at': now_iso
+                })
+
+        if registration_id and payment_status != 'paid':
+            db.reference(f'registrations/{registration_id}').update({
+                'paper_submission_id': '',
+                'paper_status': 'not_submitted',
+                'payment_unlocked': False,
+                'workflow_status': 'paper_withdrawn',
+                'updated_at': now_iso
+            })
+
+        flash('Submission withdrawn. You can submit a new paper when ready.', 'success')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
+    except Exception as e:
+        print(f"Error withdrawing submission: {e}")
+        flash('Could not withdraw submission.', 'error')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
+
+@app.route('/conferences/<conference_id>/submissions/<paper_id>/download')
+@login_required
+def download_conference_submission(conference_id, paper_id):
+    """Download a user's own conference paper PDF."""
+    try:
+        paper = get_conference_submission_for_user(
+            current_user.id,
+            conference_id,
+            paper_id,
+            include_deleted=True
+        )
+        if not paper:
+            flash('Submission not found.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        file_data = paper.get('file_data')
+        if not file_data:
+            flash('Paper file not found.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        file_bytes = base64.b64decode(file_data)
+        file_obj = io.BytesIO(file_bytes)
+        original_filename = paper.get('file_name', 'paper.pdf')
+        safe_filename = secure_filename(original_filename)
+
+        mimetype = paper.get('file_type')
+        if not mimetype or mimetype == 'application/octet-stream':
+            guessed_mimetype, _ = mimetypes.guess_type(original_filename)
+            mimetype = guessed_mimetype or 'application/pdf'
+
+        response = send_file(
+            file_obj,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=safe_filename,
+            max_age=0
+        )
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        return response
+    except Exception as e:
+        print(f"Error downloading conference submission: {e}")
+        flash('Could not download submission file.', 'error')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
 
 @app.route('/admin/conferences')
 @login_required
@@ -9004,6 +9847,8 @@ def dashboard():
             if registration and registration.get('user_id') == current_user.id:
                 # Get conference details if available
                 conference_id = registration.get('conference_id')
+                if not conference_id:
+                    continue
                 if conference_id:
                     conference = get_conference_data(conference_id)
                     if conference:
@@ -9014,18 +9859,68 @@ def dashboard():
                         }
                 
                 user_registrations[reg_id] = registration
+
+        user_registrations = dict(sorted(
+            user_registrations.items(),
+            key=lambda item: (
+                item[1].get('updated_at')
+                or item[1].get('created_at')
+                or item[1].get('submission_date')
+                or ''
+            ),
+            reverse=True
+        ))
         
-        # Get user's paper submissions
-        submissions_ref = db.reference('paper_submissions')
-        all_submissions = submissions_ref.get() or {}
-        
+        # Get user's legacy/global paper submissions
+        all_submissions = db.reference('paper_submissions').get() or {}
         for sub_id, submission in all_submissions.items():
             if submission and submission.get('user_id') == current_user.id:
-                user_submissions[sub_id] = submission
+                user_submissions[f'legacy::{sub_id}'] = submission
+
+        # Get user's conference submissions via user index
+        indexed_submissions = db.reference(f'user_paper_submissions/{current_user.id}').get() or {}
+        for index_id, indexed_submission in indexed_submissions.items():
+            conference_id = indexed_submission.get('conference_id')
+            paper_id = indexed_submission.get('paper_id')
+
+            submission_data = None
+            if conference_id and paper_id:
+                submission_data = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').get()
+
+            if not submission_data and paper_id:
+                submission_data = db.reference(f'papers/{paper_id}').get()
+
+            if submission_data:
+                submission_data = dict(submission_data)
+            else:
+                submission_data = dict(indexed_submission)
+
+            submission_data.setdefault('status', indexed_submission.get('status', 'pending'))
+            submission_data.setdefault('submitted_at', indexed_submission.get('submitted_at', ''))
+            submission_data.setdefault('paper_title', indexed_submission.get('paper_title', 'Untitled Paper'))
+            submission_data.setdefault('conference_id', conference_id)
+            submission_data.setdefault('conference_name', indexed_submission.get('conference_name', ''))
+            submission_data.setdefault('paper_id', paper_id)
+            submission_data.setdefault('registration_id', indexed_submission.get('registration_id'))
+            submission_data.setdefault('is_deleted', indexed_submission.get('is_deleted', False))
+
+            key = f'{conference_id or "global"}::{paper_id or index_id}'
+            user_submissions[key] = submission_data
+
+        approved_count = sum(
+            1 for registration in user_registrations.values()
+            if (registration.get('payment_status') or '').lower() in ['approved', 'paid']
+        )
+        pending_count = sum(
+            1 for registration in user_registrations.values()
+            if (registration.get('payment_status') or '').lower() == 'pending'
+        )
         
         return render_template('user/dashboard.html',
                              registrations=user_registrations,
                              submissions=user_submissions,
+                             approved_count=approved_count,
+                             pending_count=pending_count,
                              site_design=get_site_design())
                              
     except Exception as e:
@@ -9036,6 +9931,8 @@ def dashboard():
         return render_template('user/dashboard.html',
                              registrations={},
                              submissions={},
+                             approved_count=0,
+                             pending_count=0,
                              site_design=get_site_design())
 
 @app.route('/admin/conference-proceedings', methods=['GET'])
@@ -9790,4 +10687,3 @@ if __name__ == '__main__':
         create_admin_user()
     
     app.run(debug=True, host='0.0.0.0', port=5000)
-
