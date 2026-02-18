@@ -12,7 +12,8 @@ class EmailService:
     
     def _get_sender(self):
         """Get the default sender email"""
-        return current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
+        domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
+        return current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIP Conference <noreply@{domain}>')
     
     def _configure_resend(self):
         """Configure Resend API key"""
@@ -25,7 +26,8 @@ class EmailService:
     
     def _get_conference_url(self):
         """Get the conference website URL"""
-        return current_app.config.get('CONFERENCE_URL', 'https://globalconference.co.za')
+        domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
+        return current_app.config.get('CONFERENCE_URL', f'https://{domain}')
 
     def send_email(self, to, subject, body, html=None):
         """
@@ -347,7 +349,8 @@ def send_email_resend(recipients, subject, body, html=None):
             return False
         
         resend.api_key = api_key
-        sender = current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
+        domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
+        sender = current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIP Conference <noreply@{domain}>')
         
         # Ensure recipients is a list
         if isinstance(recipients, str):

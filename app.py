@@ -20,7 +20,7 @@ from models.email_service import EmailService
 import pytz
 from google.cloud import storage as gcs_storage
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from utils import register_filters, get_conference_by_code
 # Temporarily commented out to use app.py /registration route instead of blueprint route
@@ -2984,7 +2984,7 @@ def admin_announcements():
         resend_configured = bool(app.config.get('RESEND_API_KEY'))
         
         # Get sender email
-        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
+        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
         
         return render_template(
             'admin/announcements.html',
@@ -3008,7 +3008,7 @@ def admin_announcements():
             important_count=0,
             total_users=0,
             resend_configured=bool(app.config.get('RESEND_API_KEY')),
-            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
+            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
         )
 
 def send_email(recipients, subject, body, attachments=None, html=None):
@@ -3028,7 +3028,7 @@ def send_email(recipients, subject, body, attachments=None, html=None):
         resend.api_key = api_key
         
         # Get sender email from config or Firebase
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'noreply@globalconference.co.za')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
         
         # Try to get custom sender from Firebase settings
         try:
@@ -5271,6 +5271,10 @@ def update_paper_status(paper_id):
         
         # Get updated paper data for email
         updated_paper = paper_ref.get()
+        if updated_paper:
+            updated_paper['paper_id'] = paper_id
+            if conference_id:
+                updated_paper['conference_id'] = conference_id
 
         # Keep user submission index in sync for conference submissions
         if conference_id and paper.get('user_id'):
@@ -5289,6 +5293,7 @@ def update_paper_status(paper_id):
                     })
 
         # Unlock/lock conference payment based on paper review decision
+        ensured_registration = None
         if conference_id and paper.get('user_id'):
             registrations = db.reference('registrations').get() or {}
             target_registration_id = (paper.get('registration_id') or '').strip()
@@ -5324,7 +5329,7 @@ def update_paper_status(paper_id):
             # Legacy conference submissions may not have registration yet.
             # Ensure accepted papers always get a registration so payment can start.
             if new_status == 'accepted':
-                ensured_registration_id, _, created_registration = ensure_conference_registration_for_accepted_paper(
+                ensured_registration_id, ensured_registration, created_registration = ensure_conference_registration_for_accepted_paper(
                     paper.get('user_id'),
                     conference_id,
                     paper_id,
@@ -5338,7 +5343,27 @@ def update_paper_status(paper_id):
         
         # Send email notification
         try:
-            email_service.send_paper_status_update(updated_paper, new_status, comments)
+            if new_status == 'accepted' and conference_id:
+                conference_data = get_conference_data(conference_id) or {}
+                if not ensured_registration:
+                    linked_registration_id = (
+                        (updated_paper or {}).get('registration_id')
+                        or (paper or {}).get('registration_id')
+                    )
+                    if linked_registration_id:
+                        ensured_registration = db.reference(f'registrations/{linked_registration_id}').get()
+
+                acceptance_sent = send_acceptance_letter_email(
+                    paper_data=updated_paper,
+                    conference_data=conference_data,
+                    registration_data=ensured_registration,
+                    comments=comments
+                )
+
+                if not acceptance_sent:
+                    email_service.send_paper_status_update(updated_paper, new_status, comments)
+            else:
+                email_service.send_paper_status_update(updated_paper, new_status, comments)
         except Exception as e:
             print(f"Error sending email notification: {str(e)}")
             # Continue even if email fails
@@ -5704,7 +5729,7 @@ GIIR Conference Team
 def get_email_settings():
     """Return email sender info for UI display - Resend handles actual sending"""
     try:
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'Global Conference <noreply@globalconference.co.za>')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
         return jsonify({
             'success': True,
             'sender': sender
@@ -8329,6 +8354,304 @@ def ensure_conference_registration_for_accepted_paper(user_id, conference_id, pa
     except Exception as e:
         print(f"Error ensuring conference registration for accepted paper: {e}")
         return None, None, False
+
+def _parse_human_date(value):
+    """Convert ISO/date strings to a human-readable date."""
+    if not value:
+        return ''
+    text = str(value)
+    date_only = text.split('T')[0].split(' ')[0]
+    parsed = None
+    for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%m/%d/%Y'):
+        try:
+            parsed = datetime.strptime(date_only, fmt)
+            break
+        except Exception:
+            continue
+    if not parsed:
+        try:
+            parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
+        except Exception:
+            return text
+    return parsed.strftime('%d %b %Y')
+
+def _load_letter_font(size, bold=False):
+    """Load a truetype font for PDF rendering with safe fallbacks."""
+    candidates = [
+        (
+            '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+            '/System/Library/Fonts/Supplemental/Arial.ttf'
+        ),
+        (
+            '/Library/Fonts/Arial Bold.ttf',
+            '/Library/Fonts/Arial.ttf'
+        ),
+        (
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+        )
+    ]
+
+    for bold_path, regular_path in candidates:
+        path = bold_path if bold else regular_path
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+def _draw_wrapped_text(draw, text, x, y, font, fill, max_width, line_spacing=6):
+    """Draw wrapped text and return the next y position."""
+    if not text:
+        return y
+    lines = []
+    for paragraph in str(text).split('\n'):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            lines.append('')
+            continue
+        words = paragraph.split()
+        current = words[0]
+        for word in words[1:]:
+            candidate = f"{current} {word}"
+            bbox = draw.textbbox((0, 0), candidate, font=font)
+            if (bbox[2] - bbox[0]) <= max_width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
+
+    for line in lines:
+        draw.text((x, y), line, font=font, fill=fill)
+        bbox = draw.textbbox((x, y), line if line else 'Ag', font=font)
+        y += (bbox[3] - bbox[1]) + line_spacing
+    return y
+
+def generate_acceptance_letter_pdf(paper_data, conference_data, registration_data=None, comments=''):
+    """Generate a branded acceptance letter PDF as bytes."""
+    width, height = 1240, 1754  # A4-ish at high readability
+    image = Image.new('RGB', (width, height), '#ffffff')
+    draw = ImageDraw.Draw(image)
+
+    navy = '#123e7a'
+    deep_blue = '#0f2f62'
+    red = '#d01616'
+    gold = '#f0b400'
+    text_dark = '#10243f'
+    text_muted = '#334e68'
+
+    font_title = _load_letter_font(44, bold=True)
+    font_h2 = _load_letter_font(28, bold=True)
+    font_body = _load_letter_font(22, bold=False)
+    font_body_bold = _load_letter_font(22, bold=True)
+    font_small = _load_letter_font(18, bold=False)
+    font_label = _load_letter_font(20, bold=True)
+
+    conference_basic = (conference_data or {}).get('basic_info', {}) or {}
+    conference_name = conference_basic.get('name', 'GIIP Conference')
+    conference_id = (conference_data or {}).get('conference_id') or paper_data.get('conference_id') or ''
+    location = conference_basic.get('location', 'Conference Venue')
+    start_date = _parse_human_date(conference_basic.get('start_date') or conference_basic.get('date') or '')
+    end_date = _parse_human_date(conference_basic.get('end_date') or '')
+    conference_code = (
+        (registration_data or {}).get('conference_code')
+        or (conference_data or {}).get('conference_code')
+        or ''
+    )
+
+    authors = paper_data.get('authors') or []
+    primary_author = authors[0].get('name') if authors else 'Author'
+    co_authors = ', '.join(a.get('name') for a in authors[1:] if a.get('name')) if len(authors) > 1 else 'None'
+
+    paper_title = paper_data.get('paper_title', 'Untitled Paper')
+    paper_id = paper_data.get('paper_id') or 'N/A'
+    acceptance_date = _parse_human_date(paper_data.get('updated_at') or datetime.now().isoformat())
+    presentation_type = (paper_data.get('presentation_type') or 'Oral').replace('_', ' ').title()
+
+    total_amount = _safe_float((registration_data or {}).get('total_amount'), 0.0)
+    payment_link = f"{app.config.get('CONFERENCE_URL', '').rstrip('/')}/conferences/{conference_id}/register" if conference_id else f"{app.config.get('CONFERENCE_URL', '').rstrip('/')}/dashboard"
+    if not app.config.get('CONFERENCE_URL'):
+        payment_link = f"/conferences/{conference_id}/register" if conference_id else "/dashboard"
+
+    registration_deadline = _parse_human_date(conference_basic.get('start_date') or '') or 'Before conference start date'
+
+    y = 70
+    margin = 70
+    content_width = width - (margin * 2)
+
+    # Header
+    draw.text((margin, y), "GIIP", font=font_title, fill=red)
+    draw.text((margin + 150, y + 8), "Global Institute on Innovative Research", font=font_h2, fill=navy)
+    y += 70
+    draw.text((margin + 150, y), conference_name, font=font_h2, fill=deep_blue)
+    y += 38
+
+    date_line = f"{location}"
+    if start_date and end_date:
+        date_line = f"{location} | {start_date} - {end_date}"
+    elif start_date:
+        date_line = f"{location} | {start_date}"
+    draw.text((margin + 150, y), date_line, font=font_small, fill=text_muted)
+
+    y += 52
+    draw.rectangle([margin, y, width - margin, y + 48], fill=deep_blue)
+    draw.text((margin + 20, y + 10), "PAPER ACCEPTANCE LETTER", font=font_h2, fill='#ffffff')
+    y += 72
+
+    # Intro
+    draw.text((margin, y), f"Dear {primary_author},", font=font_body_bold, fill=text_dark)
+    y += 44
+    intro = (
+        f"Congratulations! We are pleased to confirm that your paper has been accepted for presentation at {conference_name}. "
+        f"Presentation type: {presentation_type}. To secure your participation, please complete your registration and payment before the deadline."
+    )
+    y = _draw_wrapped_text(draw, intro, margin, y, font_body, text_dark, content_width, line_spacing=8)
+    y += 14
+
+    # Key details rows
+    def detail_row(label, value, current_y):
+        label_width = 240
+        row_h = 46
+        draw.rectangle([margin, current_y, margin + label_width, current_y + row_h], fill=red)
+        draw.text((margin + 10, current_y + 10), label, font=font_label, fill='#ffffff')
+        draw.rectangle([margin + label_width, current_y, width - margin, current_y + row_h], outline='#d6dde7', width=2)
+        draw.text((margin + label_width + 12, current_y + 10), str(value), font=font_body_bold, fill=text_dark)
+        return current_y + row_h + 8
+
+    y = detail_row("Paper Title:", paper_title, y)
+    y = detail_row("Author(s):", primary_author, y)
+    y = detail_row("Co-author(s):", co_authors, y)
+    y = detail_row("Paper ID:", paper_id, y)
+    y = detail_row("Conference Code:", conference_code or 'N/A', y)
+    y = detail_row("Acceptance Date:", acceptance_date, y)
+
+    y += 10
+    draw.text((margin, y), "Complete registration and payment using one of the options below:", font=font_body_bold, fill=navy)
+    y += 42
+
+    # Options
+    draw.rectangle([margin, y, width - margin, y + 38], fill=deep_blue)
+    draw.text((margin + 12, y + 8), "Option 1: Online Payment", font=font_label, fill='#ffffff')
+    y += 38
+    draw.rectangle([margin, y, width - margin, y + 58], outline='#cdd7e3', width=2)
+    draw.text((margin + 12, y + 16), payment_link, font=font_body_bold, fill=navy)
+    y += 76
+
+    draw.rectangle([margin, y, width - margin, y + 38], fill=gold)
+    draw.text((margin + 12, y + 8), "Option 2: Offline Payment (Bank Transfer)", font=font_label, fill=text_dark)
+    y += 38
+    draw.rectangle([margin, y, width - margin, y + 112], outline='#cdd7e3', width=2)
+    support_email = app.config.get(
+        'SUPPORT_EMAIL',
+        f"info@{app.config.get('APP_DOMAIN', 'globalconferences.co.za')}"
+    )
+    offline_text = (
+        "For offline transfer details, contact the conference secretariat.\n"
+        f"Email: {support_email}"
+    )
+    y = _draw_wrapped_text(draw, offline_text, margin + 12, y + 12, font_body, text_dark, content_width - 20, line_spacing=6)
+    y += 18
+
+    # Notes
+    notes_y = y
+    notes = [
+        "After payment, send proof of payment to the official conference email.",
+        "Registration fee is non-refundable once processed.",
+        "Travel, visa, and accommodation arrangements are the responsibility of the author."
+    ]
+    for note in notes:
+        draw.text((margin, notes_y), f"- {note}", font=font_small, fill=red)
+        notes_y += 28
+    y = notes_y + 8
+
+    # Deadline box
+    draw.rectangle([margin, y, width - margin, y + 60], fill='#e6eff8', outline='#8fa8c5', width=2)
+    draw.text((margin + 14, y + 16), "Last date for registration/payment:", font=font_body_bold, fill=navy)
+    draw.text((margin + 520, y + 16), registration_deadline, font=font_body_bold, fill=text_dark)
+    y += 80
+
+    if comments:
+        draw.text((margin, y), "Reviewer Notes:", font=font_body_bold, fill=text_dark)
+        y += 32
+        y = _draw_wrapped_text(draw, comments, margin, y, font_small, text_muted, content_width, line_spacing=6)
+        y += 10
+
+    footer = (
+        "Kindly confirm your registration before the deadline.\n"
+        "GIIP Conference Secretariat"
+    )
+    _draw_wrapped_text(draw, footer, margin, y, font_small, text_dark, content_width, line_spacing=6)
+
+    pdf_buffer = io.BytesIO()
+    image.save(pdf_buffer, format='PDF', resolution=150.0)
+    return pdf_buffer.getvalue()
+
+def send_acceptance_letter_email(paper_data, conference_data, registration_data=None, comments=''):
+    """Send acceptance email with generated acceptance-letter PDF attachment via Resend."""
+    try:
+        conference_basic = (conference_data or {}).get('basic_info', {}) or {}
+        conference_name = conference_basic.get('name', 'Conference')
+        conference_code = (conference_data or {}).get('conference_code') or ''
+        paper_title = paper_data.get('paper_title', 'Untitled Paper')
+        paper_id = paper_data.get('paper_id', 'paper')
+        recipient = paper_data.get('user_email')
+        if not recipient:
+            return False
+
+        pdf_bytes = generate_acceptance_letter_pdf(
+            paper_data=paper_data,
+            conference_data=conference_data,
+            registration_data=registration_data,
+            comments=comments
+        )
+
+        payment_link = f"{app.config.get('CONFERENCE_URL', '').rstrip('/')}/conferences/{paper_data.get('conference_id', '')}/register"
+        if not app.config.get('CONFERENCE_URL'):
+            payment_link = f"/conferences/{paper_data.get('conference_id', '')}/register"
+
+        subject = f"Acceptance Letter - {conference_name}"
+        body = f"""
+Dear {((paper_data.get('authors') or [{}])[0]).get('name', 'Author')},
+
+Congratulations. Your paper has been accepted for {conference_name}.
+
+Paper Title: {paper_title}
+Paper ID: {paper_id}
+Conference Code: {conference_code}
+
+Please find your acceptance letter attached as a PDF.
+Complete registration and payment here: {payment_link}
+
+Best regards,
+GIIP Conference Secretariat
+""".strip()
+
+        html = f"""
+<p>Dear {((paper_data.get('authors') or [{}])[0]).get('name', 'Author')},</p>
+<p>Congratulations. Your paper has been accepted for <strong>{conference_name}</strong>.</p>
+<p><strong>Paper Title:</strong> {paper_title}<br>
+<strong>Paper ID:</strong> {paper_id}<br>
+<strong>Conference Code:</strong> {conference_code or 'N/A'}</p>
+<p>Please find your acceptance letter attached as a PDF.</p>
+<p>Complete registration and payment here: <a href="{payment_link}">{payment_link}</a></p>
+<p>Best regards,<br>GIIP Conference Secretariat</p>
+"""
+
+        attachment_name = f"Acceptance_Letter_{secure_filename(str(paper_id))}.pdf"
+        return send_email(
+            recipients=[recipient],
+            subject=subject,
+            body=body,
+            attachments=[{
+                'path': attachment_name,
+                'data': pdf_bytes
+            }],
+            html=html
+        )
+    except Exception as e:
+        print(f"Error sending acceptance letter email: {e}")
+        return False
 
 @app.route('/conferences')
 def conference_discover():

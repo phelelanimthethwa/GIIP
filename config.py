@@ -35,7 +35,9 @@ class Config:
     # Email Configuration (Resend)
     # Supports both 'RESEND_API_KEY' and legacy 'Resend_api_key' environment variable names
     RESEND_API_KEY = os.environ.get('RESEND_API_KEY') or os.environ.get('Resend_api_key')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@globalconference.co.za'
+    APP_DOMAIN = os.environ.get('APP_DOMAIN', 'globalconferences.co.za')
+    CONFERENCE_URL = os.environ.get('CONFERENCE_URL', f'https://{APP_DOMAIN}')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or f'GIIP Conference <noreply@{APP_DOMAIN}>'
 
     # Admin Configuration
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@giirconference.com')
@@ -61,8 +63,8 @@ class Config:
     YOCO_PUBLIC_KEY = os.environ.get('YOCO_PUBLIC_KEY')
     YOCO_BASE_URL = os.environ.get('YOCO_BASE_URL', 'https://payments.yoco.com')
     YOCO_WEBHOOK_SECRET = os.environ.get('YOCO_WEBHOOK_SECRET')
-    YOCO_RETURN_URL = os.environ.get('YOCO_RETURN_URL', 'https://globalconference.co.za/payment/callback')
-    YOCO_CANCEL_URL = os.environ.get('YOCO_CANCEL_URL', 'https://globalconference.co.za/payment/cancelled')
+    YOCO_RETURN_URL = os.environ.get('YOCO_RETURN_URL', f'{CONFERENCE_URL}/payment/callback')
+    YOCO_CANCEL_URL = os.environ.get('YOCO_CANCEL_URL', f'{CONFERENCE_URL}/payment/cancelled')
 
     # TinyMCE configuration
     TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY')
