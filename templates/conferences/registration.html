@@ -64,6 +64,15 @@
                 <strong>Total Amount:</strong>
                 <span>{{ fees.currency.symbol if fees and fees.currency else 'R' }}{{ existing_registration.total_amount }}</span>
             </div>
+            {% if (existing_registration.extra_paper_count or 0)|int > 0 %}
+            <div class="workflow-item">
+                <strong>Extra Paper Surcharge:</strong>
+                <span>
+                    ${{ '%.2f'|format((existing_registration.extra_paper_fee_total or 0)|float) }}
+                    ({{ existing_registration.extra_paper_count }} extra paper{{ 's' if (existing_registration.extra_paper_count or 0)|int != 1 else '' }})
+                </span>
+            </div>
+            {% endif %}
             <div class="workflow-item">
                 <strong>Paper Status:</strong>
                 <span class="workflow-badge">
@@ -276,20 +285,11 @@
             {% if fees and fees.additional_items %}
             <div class="form-section">
                 <h3>Additional Options</h3>
+                <p class="auto-extra-paper-note">
+                    <i class="fas fa-info-circle"></i>
+                    Delegates pay <strong>$50.00</strong> for each extra paper beyond the first submission.
+                </p>
                 <div class="additional-items">
-                    {% if fees.additional_items.extra_paper and fees.additional_items.extra_paper.enabled %}
-                    <div class="additional-item">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="extra_paper" name="extra_paper" {% if show_edit_form and existing_registration and existing_registration.extra_paper %}checked{% endif %}>
-                            <span class="checkbox-custom"></span>
-                            <div class="item-content">
-                                <span class="item-name">{{ fees.additional_items.extra_paper.description or 'Extra Paper Submission' }}</span>
-                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{ fees.additional_items.extra_paper.fee|default(0) }}</span>
-                            </div>
-                        </label>
-                    </div>
-                    {% endif %}
-
                     {% if fees.additional_items.workshop and fees.additional_items.workshop.enabled %}
                     <div class="additional-item">
                         <label class="checkbox-label">
@@ -330,6 +330,10 @@
                     <div class="summary-row additional-items-summary" id="additional-items-summary" style="display: none;">
                         <span>Additional Items:</span>
                         <span id="additional-fee">{{ fees.currency.symbol or 'R' }}0.00</span>
+                    </div>
+                    <div class="summary-row extra-paper-summary" id="extra-paper-summary" style="display: none;">
+                        <span id="extra-paper-label">Extra Paper Surcharge:</span>
+                        <span id="extra-paper-fee">$0.00</span>
                     </div>
                     <div class="summary-row total-row">
                         <span><strong>Total Amount:</strong></span>
@@ -592,6 +596,19 @@
     gap: 1rem;
 }
 
+.auto-extra-paper-note {
+    margin: 0 0 1rem 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
 .additional-item {
     border: 2px solid #e1e8ed;
     border-radius: 8px;
@@ -850,6 +867,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fees = {{ fees|tojson|safe if fees else 'null' }};
     const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
     const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
+    const multiSubmitFeeInfo = {{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}' }};
     const activePeriod = formRegistrationPeriod || currentPeriod;
     const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
     const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
@@ -860,6 +878,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (registrationForm && registerButton) {
         let selectedType = null;
         let totalAmount = 0;
+        let selectedAdditionalFee = 0;
+        const extraPaperCount = Number(multiSubmitFeeInfo?.extra_paper_count || 0);
+        const extraPaperFeeTotal = Number(multiSubmitFeeInfo?.extra_paper_fee_total || 0);
+        const extraPaperFeePerItem = Number(multiSubmitFeeInfo?.extra_paper_fee_per_item || 50);
 
         function updatePrices() {
             if (!fees || !activePeriod) return;
@@ -879,16 +901,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const baseFee = selectedType && fees && activePeriod
                 ? (fees[activePeriod]?.fees?.[selectedType] || 0)
                 : 0;
-            const additionalFee = totalAmount - baseFee;
 
             const baseFeeEl = document.getElementById('base-fee');
             const additionalFeeEl = document.getElementById('additional-fee');
             const additionalSummaryEl = document.getElementById('additional-items-summary');
+            const extraPaperSummaryEl = document.getElementById('extra-paper-summary');
+            const extraPaperLabelEl = document.getElementById('extra-paper-label');
+            const extraPaperFeeEl = document.getElementById('extra-paper-fee');
             const totalAmountEl = document.getElementById('total-amount');
 
             if (baseFeeEl) baseFeeEl.textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
-            if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${additionalFee.toFixed(2)}`;
-            if (additionalSummaryEl) additionalSummaryEl.style.display = additionalFee > 0 ? 'flex' : 'none';
+            if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${selectedAdditionalFee.toFixed(2)}`;
+            if (additionalSummaryEl) additionalSummaryEl.style.display = selectedAdditionalFee > 0 ? 'flex' : 'none';
+            if (extraPaperSummaryEl) extraPaperSummaryEl.style.display = extraPaperCount > 0 ? 'flex' : 'none';
+            if (extraPaperLabelEl) {
+                extraPaperLabelEl.textContent = `Extra Paper Surcharge (${extraPaperCount} × $${extraPaperFeePerItem.toFixed(2)}):`;
+            }
+            if (extraPaperFeeEl) {
+                extraPaperFeeEl.textContent = `$${extraPaperFeeTotal.toFixed(2)}`;
+            }
             if (totalAmountEl) totalAmountEl.innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
 
             registerButton.disabled = !(totalAmount > 0 && selectedType);
@@ -902,17 +933,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             totalAmount = fees[activePeriod]?.fees?.[selectedType] || 0;
+            selectedAdditionalFee = 0;
             if (fees.additional_items) {
-                ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+                ['workshop', 'banquet'].forEach(item => {
                     const checkbox = document.getElementById(item);
                     if (checkbox && checkbox.checked) {
                         const itemData = fees.additional_items[item];
                         if (itemData && itemData.enabled) {
-                            totalAmount += itemData.fee || 0;
+                            const feeValue = itemData.fee || 0;
+                            totalAmount += feeValue;
+                            selectedAdditionalFee += feeValue;
                         }
                     }
                 });
             }
+            totalAmount += extraPaperFeeTotal;
             updateSummary();
         }
 
@@ -923,7 +958,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        ['extra_paper', 'workshop', 'banquet'].forEach(item => {
+        ['workshop', 'banquet'].forEach(item => {
             const checkbox = document.getElementById(item);
             if (checkbox) checkbox.addEventListener('change', calculateTotal);
         });
@@ -954,7 +989,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     total_amount: totalAmount,
                     institution,
                     country,
-                    extra_paper: document.getElementById('extra_paper')?.checked || false,
                     workshop: document.getElementById('workshop')?.checked || false,
                     banquet: document.getElementById('banquet')?.checked || false,
                     stay_on_registration: isEditMode

@@ -46,21 +46,42 @@
             
             <div class="hero-actions">
                 {% if conference.basic_info.status == 'active' %}
-                    {% if conference.settings.registration_enabled %}
-                    <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-ticket-alt"></i> Register Now
-                    </a>
-                    {% endif %}
                     {% if conference.settings.paper_submission_enabled %}
                     <a href="{{ url_for('conference_paper_submission', conference_id=conference_id) }}" class="btn btn-secondary btn-lg">
                         <i class="fas fa-file-upload"></i> Submit Paper
                     </a>
+                    {% endif %}
+                    {% if conference.settings.registration_enabled %}
+                        {% if current_user.is_authenticated %}
+                            {% if user_can_register %}
+                            <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-ticket-alt"></i> Register Now
+                            </a>
+                            {% else %}
+                            <button type="button" class="btn btn-primary btn-lg btn-disabled" disabled>
+                                <i class="fas fa-lock"></i> Register (After Acceptance)
+                            </button>
+                            {% endif %}
+                        {% else %}
+                        <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-ticket-alt"></i> Register (After Acceptance)
+                        </a>
+                        {% endif %}
                     {% endif %}
                 {% endif %}
                 <a href="{{ url_for('conference_discover') }}" class="btn btn-outline btn-lg">
                     <i class="fas fa-arrow-left"></i> All Conferences
                 </a>
             </div>
+            {% if conference.basic_info.status == 'active' and current_user.is_authenticated and not user_can_register %}
+            <p class="hero-note">
+                {% if user_submission_status %}
+                    Registration unlocks after paper acceptance. Current status: {{ user_submission_status|replace('_', ' ')|title }}.
+                {% else %}
+                    Submit your paper first. Registration unlocks after admin accepts your submission.
+                {% endif %}
+            </p>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -331,6 +352,15 @@
     transform: translateY(-2px);
 }
 
+.btn-disabled,
+.btn-disabled:hover {
+    background: rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.95);
+    border: 2px solid rgba(255,255,255,0.4);
+    cursor: not-allowed;
+    transform: none;
+}
+
 .btn-secondary {
     background: rgba(255,255,255,0.2);
     color: white;
@@ -345,6 +375,12 @@
 
 .btn-outline:hover {
     background: rgba(255,255,255,0.1);
+}
+
+.hero-note {
+    margin: 0.9rem 0 0 0;
+    font-size: 0.92rem;
+    opacity: 0.95;
 }
 
 .conference-details-grid {

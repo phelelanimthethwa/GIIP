@@ -215,6 +215,7 @@ ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip',
 
 # Add these constants near the top of the file
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif'}
+EXTRA_PAPER_FEE_USD = 50.0
 DEFAULT_THEME = {
     'primary_color': '#007bff',
     'secondary_color': '#6c757d',
@@ -8189,6 +8190,139 @@ def _calculate_registration_amount(fees, registration_period, registration_type)
     period_fees = ((fees or {}).get(registration_period) or {}).get('fees') or {}
     return _safe_float(period_fees.get(registration_type), 0.0)
 
+def _as_bool(value):
+    """Normalize booleans from mixed payload formats."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in ['1', 'true', 'yes', 'on', 'y']
+    return False
+
+def get_conference_submission_count(user_id, conference_id):
+    """Count active (non-withdrawn) submissions for a user in a conference."""
+    try:
+        submissions = db.reference(f'conferences/{conference_id}/paper_submissions').get() or {}
+        count = 0
+        for _, submission in submissions.items():
+            if not submission:
+                continue
+            if submission.get('user_id') != user_id:
+                continue
+            if submission.get('is_deleted'):
+                continue
+            if (submission.get('status') or '').lower() == 'withdrawn':
+                continue
+            count += 1
+        return count
+    except Exception as e:
+        print(f"Error counting conference submissions: {e}")
+        return 0
+
+def get_multi_submit_fee_info(user_id, conference_id):
+    """Return extra-paper pricing info for multi submissions."""
+    submission_count = get_conference_submission_count(user_id, conference_id)
+    extra_paper_count = max(submission_count - 1, 0)
+    extra_paper_fee_total = round(extra_paper_count * EXTRA_PAPER_FEE_USD, 2)
+    return {
+        'submission_count': submission_count,
+        'extra_paper_count': extra_paper_count,
+        'extra_paper_fee_per_item': EXTRA_PAPER_FEE_USD,
+        'extra_paper_fee_total': extra_paper_fee_total
+    }
+
+def _calculate_optional_additional_amount(fees, workshop=False, banquet=False):
+    """Calculate configured workshop/banquet add-ons (excludes extra-paper pricing)."""
+    additional_items = (fees or {}).get('additional_items') or {}
+    total = 0.0
+
+    for item_name, selected in [('workshop', workshop), ('banquet', banquet)]:
+        if not _as_bool(selected):
+            continue
+        item_data = additional_items.get(item_name) or {}
+        if item_data.get('enabled', False):
+            total += _safe_float(item_data.get('fee'), 0.0)
+
+    return round(total, 2)
+
+def calculate_conference_registration_pricing(
+    user_id,
+    conference_id,
+    fees,
+    registration_period,
+    registration_type,
+    workshop=False,
+    banquet=False
+):
+    """Calculate conference total with mandatory extra-paper surcharge for multi submissions."""
+    base_amount = _calculate_registration_amount(fees, registration_period, registration_type)
+    additional_amount = _calculate_optional_additional_amount(
+        fees,
+        workshop=workshop,
+        banquet=banquet
+    )
+    extra_info = get_multi_submit_fee_info(user_id, conference_id)
+    total_amount = round(base_amount + additional_amount + extra_info['extra_paper_fee_total'], 2)
+
+    return {
+        'base_amount': round(base_amount, 2),
+        'additional_amount': additional_amount,
+        'total_amount': total_amount,
+        **extra_info
+    }
+
+def sync_conference_registration_pricing(registration_id, registration_data, user_id, conference_id, fees=None):
+    """Persist pricing fields so dashboard/payment always use current multi-submit totals."""
+    try:
+        if not registration_id or not registration_data:
+            return registration_data
+
+        payment_status = (registration_data.get('payment_status') or '').lower()
+        if payment_status == 'paid':
+            return registration_data
+
+        fees = fees or get_registration_fees() or {}
+        registration_period = (
+            registration_data.get('registration_period')
+            or _select_registration_period_for_fees(fees)
+        )
+        registration_type = (
+            registration_data.get('registration_type')
+            or _select_default_registration_type(fees, registration_period)
+        )
+        workshop_selected = _as_bool(registration_data.get('workshop', False))
+        banquet_selected = _as_bool(registration_data.get('banquet', False))
+
+        pricing = calculate_conference_registration_pricing(
+            user_id=user_id,
+            conference_id=conference_id,
+            fees=fees,
+            registration_period=registration_period,
+            registration_type=registration_type,
+            workshop=workshop_selected,
+            banquet=banquet_selected
+        )
+
+        update_data = {
+            'registration_period': registration_period,
+            'registration_type': registration_type,
+            'total_amount': pricing['total_amount'],
+            'extra_paper': pricing['extra_paper_count'] > 0,
+            'extra_paper_count': pricing['extra_paper_count'],
+            'extra_paper_fee_per_item': pricing['extra_paper_fee_per_item'],
+            'extra_paper_fee_total': pricing['extra_paper_fee_total'],
+            'updated_at': datetime.now().isoformat()
+        }
+
+        db.reference(f'registrations/{registration_id}').update(update_data)
+        merged = dict(registration_data)
+        merged.update(update_data)
+        return merged
+    except Exception as e:
+        print(f"Error syncing conference registration pricing: {e}")
+        return registration_data
+
 def ensure_conference_registration_for_accepted_paper(user_id, conference_id, paper_id, paper_data=None):
     """Ensure accepted conference papers have a payment-ready registration."""
     try:
@@ -8212,11 +8346,16 @@ def ensure_conference_registration_for_accepted_paper(user_id, conference_id, pa
         fees = get_registration_fees() or {}
         registration_period = _select_registration_period_for_fees(fees)
         default_registration_type = _select_default_registration_type(fees, registration_period)
-        default_amount = _calculate_registration_amount(
-            fees,
-            registration_period,
-            default_registration_type
+        default_pricing = calculate_conference_registration_pricing(
+            user_id=user_id,
+            conference_id=conference_id,
+            fees=fees,
+            registration_period=registration_period,
+            registration_type=default_registration_type,
+            workshop=False,
+            banquet=False
         )
+        default_amount = default_pricing['total_amount']
 
         user_profile = db.reference(f'users/{user_id}').get() or {}
         authors = paper_data.get('authors') or []
@@ -8244,17 +8383,36 @@ def ensure_conference_registration_for_accepted_paper(user_id, conference_id, pa
             registration_period_value = (
                 existing_registration.get('registration_period') or registration_period
             )
+            workshop_selected = _as_bool(existing_registration.get('workshop', False))
+            banquet_selected = _as_bool(existing_registration.get('banquet', False))
+            registration_pricing = calculate_conference_registration_pricing(
+                user_id=user_id,
+                conference_id=conference_id,
+                fees=fees,
+                registration_period=registration_period_value,
+                registration_type=registration_type,
+                workshop=workshop_selected,
+                banquet=banquet_selected
+            )
 
-            total_amount = _safe_float(existing_registration.get('total_amount'), 0.0)
-            if total_amount <= 0:
-                recalculated_amount = _calculate_registration_amount(
-                    fees,
-                    registration_period_value,
-                    registration_type
+            if payment_status == 'paid':
+                total_amount = _safe_float(existing_registration.get('total_amount'), 0.0)
+                if total_amount <= 0:
+                    total_amount = registration_pricing['total_amount']
+                extra_paper_count = int(existing_registration.get('extra_paper_count') or 0)
+                extra_paper_fee_per_item = _safe_float(
+                    existing_registration.get('extra_paper_fee_per_item'),
+                    EXTRA_PAPER_FEE_USD
                 )
-                if recalculated_amount <= 0:
-                    recalculated_amount = default_amount
-                total_amount = recalculated_amount
+                extra_paper_fee_total = _safe_float(
+                    existing_registration.get('extra_paper_fee_total'),
+                    extra_paper_count * extra_paper_fee_per_item
+                )
+            else:
+                total_amount = registration_pricing['total_amount']
+                extra_paper_count = registration_pricing['extra_paper_count']
+                extra_paper_fee_per_item = registration_pricing['extra_paper_fee_per_item']
+                extra_paper_fee_total = registration_pricing['extra_paper_fee_total']
 
             registration_update = {
                 'full_name': existing_registration.get('full_name') or full_name,
@@ -8267,6 +8425,10 @@ def ensure_conference_registration_for_accepted_paper(user_id, conference_id, pa
                 'institution': existing_registration.get('institution') or institution,
                 'country': existing_registration.get('country') or country,
                 'total_amount': total_amount,
+                'extra_paper': extra_paper_count > 0,
+                'extra_paper_count': extra_paper_count,
+                'extra_paper_fee_per_item': extra_paper_fee_per_item,
+                'extra_paper_fee_total': extra_paper_fee_total,
                 'paper_submission_id': paper_id,
                 'paper_status': 'accepted',
                 'payment_unlocked': True,
@@ -8296,7 +8458,10 @@ def ensure_conference_registration_for_accepted_paper(user_id, conference_id, pa
                 'institution': institution,
                 'country': country,
                 'total_amount': default_amount,
-                'extra_paper': False,
+                'extra_paper': default_pricing['extra_paper_count'] > 0,
+                'extra_paper_count': default_pricing['extra_paper_count'],
+                'extra_paper_fee_per_item': default_pricing['extra_paper_fee_per_item'],
+                'extra_paper_fee_total': default_pricing['extra_paper_fee_total'],
                 'workshop': False,
                 'banquet': False,
                 'payment_status': 'pending',
@@ -8818,10 +8983,36 @@ def conference_details(conference_id):
         if not conference:
             flash('Conference not found.', 'error')
             return redirect(url_for('conference_discover'))
-        
+
+        user_can_register = False
+        user_submission_status = None
+        if current_user.is_authenticated:
+            _, existing_registration = get_user_conference_registration(current_user.id, conference_id)
+            latest_submission_id, latest_submission = get_latest_user_conference_submission(
+                current_user.id,
+                conference_id
+            )
+            accepted_submission_id, accepted_submission = get_latest_accepted_conference_submission(
+                current_user.id,
+                conference_id
+            )
+
+            if existing_registration:
+                user_can_register = True
+                user_submission_status = (
+                    existing_registration.get('paper_status')
+                    or (latest_submission or {}).get('status')
+                )
+            else:
+                user_can_register = bool(accepted_submission_id and accepted_submission)
+                if latest_submission_id and latest_submission:
+                    user_submission_status = latest_submission.get('status')
+
         return render_template('conferences/details.html',
                              conference=conference,
                              conference_id=conference_id,
+                             user_can_register=user_can_register,
+                             user_submission_status=(user_submission_status or '').lower(),
                              site_design=get_site_design())
     except Exception as e:
         print(f"Error loading conference details: {e}")
@@ -8841,13 +9032,36 @@ def conference_registration(conference_id):
         registration_id, existing_registration = get_user_conference_registration(current_user.id, conference_id)
         edit_mode_requested = request.args.get('edit') == '1'
         show_edit_form = False
+        latest_submission_id, latest_submission = get_latest_user_conference_submission(current_user.id, conference_id)
+        accepted_submission_id, accepted_submission = get_latest_accepted_conference_submission(
+            current_user.id,
+            conference_id
+        )
+        has_accepted_submission = bool(accepted_submission_id and accepted_submission)
+
+        if has_accepted_submission:
+            needs_unlock_sync = (
+                not existing_registration
+                or not _as_bool((existing_registration or {}).get('payment_unlocked', False))
+                or (existing_registration.get('paper_status') or '').lower() != 'accepted'
+            )
+            if needs_unlock_sync:
+                ensured_registration_id, ensured_registration, _ = ensure_conference_registration_for_accepted_paper(
+                    current_user.id,
+                    conference_id,
+                    accepted_submission_id,
+                    accepted_submission
+                )
+                if ensured_registration_id and ensured_registration:
+                    registration_id = ensured_registration_id
+                    existing_registration = ensured_registration
+
         existing_payment_status = ((existing_registration or {}).get('payment_status') or '').lower()
         if existing_registration and edit_mode_requested:
             if existing_payment_status in ['paid', 'payment_initiated']:
                 flash('Registration selections cannot be edited after payment has started.', 'info')
             else:
                 show_edit_form = True
-        _, latest_submission = get_latest_user_conference_submission(current_user.id, conference_id)
         registration_enabled = conference.get('settings', {}).get('registration_enabled', False)
         latest_paper_status = None
         if latest_submission:
@@ -8857,9 +9071,31 @@ def conference_registration(conference_id):
 
         # Allow existing registrants to complete submission/payment even after
         # admins close new registrations.
-        if not registration_enabled and not existing_registration:
+        if not registration_enabled and not existing_registration and not has_accepted_submission:
             flash('Registration is not enabled for this conference.', 'error')
             return redirect(url_for('conference_details', conference_id=conference_id))
+
+        # New workflow gate: registration unlocks only after paper acceptance.
+        if request.method == 'GET' and not existing_registration and not has_accepted_submission:
+            if latest_submission_id and latest_submission:
+                current_status = (latest_submission.get('status') or 'pending').replace('_', ' ').title()
+                flash(
+                    f'Registration unlocks only after your paper is accepted. Current paper status: {current_status}.',
+                    'info'
+                )
+                return redirect(
+                    url_for(
+                        'conference_submission_details',
+                        conference_id=conference_id,
+                        paper_id=latest_submission_id
+                    )
+                )
+
+            flash(
+                'You must submit a paper first. Registration will unlock after admin accepts your submission.',
+                'info'
+            )
+            return redirect(url_for('conference_paper_submission', conference_id=conference_id))
 
         if request.method == 'GET':
             fees = get_registration_fees()
@@ -8868,9 +9104,20 @@ def conference_registration(conference_id):
                 (existing_registration or {}).get('registration_period')
                 or current_period
             )
+            multi_submit_fee_info = get_multi_submit_fee_info(current_user.id, conference_id)
+
+            if existing_registration and existing_payment_status != 'paid':
+                existing_registration = sync_conference_registration_pricing(
+                    registration_id=registration_id,
+                    registration_data=existing_registration,
+                    user_id=current_user.id,
+                    conference_id=conference_id,
+                    fees=fees
+                )
+
             can_pay = bool(
                 existing_registration
-                and existing_registration.get('payment_unlocked', False)
+                and _as_bool(existing_registration.get('payment_unlocked', False))
                 and ((existing_registration.get('payment_status') or '').lower() not in ['paid', 'payment_initiated'])
             )
 
@@ -8886,15 +9133,22 @@ def conference_registration(conference_id):
                 can_pay=can_pay,
                 show_edit_form=show_edit_form,
                 form_registration_period=form_registration_period,
+                multi_submit_fee_info=multi_submit_fee_info,
                 site_design=get_site_design()
             )
 
         if request.is_json:
             registration_data = request.get_json(silent=True) or {}
-            if not registration_enabled and not existing_registration:
+            if not registration_enabled and not existing_registration and not has_accepted_submission:
                 return jsonify({
                     'success': False,
                     'error': 'Registration is not enabled for this conference.'
+                }), 403
+
+            if not existing_registration and not has_accepted_submission:
+                return jsonify({
+                    'success': False,
+                    'error': 'Registration is available only after your paper is accepted.'
                 }), 403
 
             required_fields = [
@@ -8931,23 +9185,51 @@ def conference_registration(conference_id):
 
             period = registration_data['registration_period']
             reg_type = registration_data['registration_type']
-            expected_amount = fees.get(period, {}).get('fees', {}).get(reg_type, 0)
+            period_fees = (fees.get(period) or {}).get('fees') or {}
+            if reg_type not in period_fees:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid registration type for selected fee period.'
+                }), 400
 
-            if fees.get('additional_items'):
-                for item in ['extra_paper', 'workshop', 'banquet']:
-                    if registration_data.get(item, False):
-                        item_data = fees['additional_items'].get(item, {})
-                        if item_data.get('enabled', False):
-                            expected_amount += item_data.get('fee', 0)
-
-            if abs(float(registration_data['total_amount']) - expected_amount) > 0.01:
+            workshop_selected = _as_bool(registration_data.get('workshop', False))
+            banquet_selected = _as_bool(registration_data.get('banquet', False))
+            pricing = calculate_conference_registration_pricing(
+                user_id=current_user.id,
+                conference_id=conference_id,
+                fees=fees,
+                registration_period=period,
+                registration_type=reg_type,
+                workshop=workshop_selected,
+                banquet=banquet_selected
+            )
+            expected_amount = pricing['total_amount']
+            client_total = _safe_float(registration_data.get('total_amount'), -1.0)
+            if client_total < 0:
                 return jsonify({
                     'success': False,
                     'error': 'Invalid amount calculation'
                 }), 400
+            if abs(client_total - expected_amount) > 0.01:
+                print(
+                    f"[PRICING] Registration amount mismatch for user {current_user.id} conference {conference_id}. "
+                    f"Client={client_total}, Server={expected_amount}. Using server value."
+                )
 
             now_iso = datetime.now().isoformat()
             full_name = current_user.full_name or current_user.email.split('@')[0]
+            existing_payment_unlocked = _as_bool((existing_registration or {}).get('payment_unlocked', False))
+            payment_unlocked = existing_payment_unlocked or has_accepted_submission
+            paper_status = (
+                'accepted'
+                if has_accepted_submission
+                else (existing_registration or {}).get('paper_status', 'not_submitted')
+            )
+            workflow_status = (
+                'paper_accepted_payment_unlocked'
+                if payment_unlocked
+                else (existing_registration or {}).get('workflow_status', 'registered')
+            )
             registration_record = {
                 'user_id': current_user.id,
                 'full_name': full_name,
@@ -8960,19 +9242,25 @@ def conference_registration(conference_id):
                 'registration_period': period,
                 'institution': registration_data.get('institution', '').strip(),
                 'country': registration_data.get('country', '').strip(),
-                'total_amount': float(registration_data['total_amount']),
-                'extra_paper': registration_data.get('extra_paper', False),
-                'workshop': registration_data.get('workshop', False),
-                'banquet': registration_data.get('banquet', False),
+                'total_amount': expected_amount,
+                'extra_paper': pricing['extra_paper_count'] > 0,
+                'extra_paper_count': pricing['extra_paper_count'],
+                'extra_paper_fee_per_item': pricing['extra_paper_fee_per_item'],
+                'extra_paper_fee_total': pricing['extra_paper_fee_total'],
+                'workshop': workshop_selected,
+                'banquet': banquet_selected,
                 'payment_status': (existing_registration or {}).get('payment_status', 'pending'),
                 'payment_method': (existing_registration or {}).get('payment_method', ''),
-                'payment_unlocked': (existing_registration or {}).get('payment_unlocked', False),
-                'paper_status': (existing_registration or {}).get('paper_status', 'not_submitted'),
-                'workflow_status': (existing_registration or {}).get('workflow_status', 'registered'),
+                'payment_unlocked': payment_unlocked,
+                'paper_status': paper_status,
+                'workflow_status': workflow_status,
                 'submission_date': (existing_registration or {}).get('submission_date', now_iso),
                 'created_at': (existing_registration or {}).get('created_at', now_iso),
                 'updated_at': now_iso
             }
+
+            if payment_unlocked and not (existing_registration or {}).get('payment_unlocked_at'):
+                registration_record['payment_unlocked_at'] = now_iso
 
             registrations_ref = db.reference('registrations')
             if registration_id:
@@ -8987,23 +9275,22 @@ def conference_registration(conference_id):
             else:
                 stay_on_registration = bool(stay_on_registration_raw)
 
-            redirect_url = (
-                url_for('conference_registration', conference_id=conference_id)
-                if stay_on_registration
-                else url_for('conference_paper_submission', conference_id=conference_id)
-            )
+            redirect_url = url_for('conference_registration', conference_id=conference_id)
 
             message = (
                 'Conference registration updated successfully.'
                 if existing_registration
-                else 'Conference registration saved. Continue with paper submission.'
+                else 'Conference registration saved. You can now proceed to payment.'
             )
 
             return jsonify({
                 'success': True,
                 'registration_id': registration_id,
                 'message': message,
-                'redirect_url': redirect_url
+                'redirect_url': redirect_url,
+                'calculated_total_amount': expected_amount,
+                'extra_paper_count': pricing['extra_paper_count'],
+                'extra_paper_fee_total': pricing['extra_paper_fee_total']
             })
 
         flash('Please use the registration form on this page.', 'info')
@@ -9046,7 +9333,7 @@ def conference_create_payment(conference_id):
         )
         if accepted_submission and (
             not registration
-            or not registration.get('payment_unlocked', False)
+            or not _as_bool(registration.get('payment_unlocked', False))
             or _safe_float((registration or {}).get('total_amount'), 0.0) <= 0
         ):
             ensured_registration_id, ensured_registration, _ = ensure_conference_registration_for_accepted_paper(
@@ -9077,11 +9364,20 @@ def conference_create_payment(conference_id):
                 'error': 'Payment has already been started. Please complete the existing payment session.'
             }), 400
 
-        if not registration.get('payment_unlocked', False):
+        if not _as_bool(registration.get('payment_unlocked', False)):
             return jsonify({
                 'success': False,
                 'error': 'Payment is locked until your paper is approved by admin.'
             }), 400
+
+        fees = get_registration_fees() or {}
+        registration = sync_conference_registration_pricing(
+            registration_id=registration_id,
+            registration_data=registration,
+            user_id=current_user.id,
+            conference_id=conference_id,
+            fees=fees
+        ) or registration
 
         total_amount = float(registration.get('total_amount') or 0)
         if total_amount <= 0:
@@ -9105,6 +9401,9 @@ def conference_create_payment(conference_id):
             'country': registration.get('country', ''),
             'additional_items': {
                 'extra_paper': registration.get('extra_paper', False),
+                'extra_paper_count': registration.get('extra_paper_count', 0),
+                'extra_paper_fee_per_item': registration.get('extra_paper_fee_per_item', EXTRA_PAPER_FEE_USD),
+                'extra_paper_fee_total': registration.get('extra_paper_fee_total', 0),
                 'workshop': registration.get('workshop', False),
                 'banquet': registration.get('banquet', False)
             }
@@ -9135,6 +9434,9 @@ def conference_create_payment(conference_id):
                 'registration_period': registration.get('registration_period'),
                 'total_amount': total_amount,
                 'extra_paper': registration.get('extra_paper', False),
+                'extra_paper_count': registration.get('extra_paper_count', 0),
+                'extra_paper_fee_per_item': registration.get('extra_paper_fee_per_item', EXTRA_PAPER_FEE_USD),
+                'extra_paper_fee_total': registration.get('extra_paper_fee_total', 0),
                 'workshop': registration.get('workshop', False),
                 'banquet': registration.get('banquet', False),
                 'institution': registration.get('institution', ''),
@@ -9208,7 +9510,7 @@ def send_registration_confirmation_email(email_or_data, conference_name=None, re
 @app.route('/conferences/<conference_id>/submit-paper', methods=['GET', 'POST'])
 @login_required
 def conference_paper_submission(conference_id):
-    """Create a conference paper submission (one active submission per registration)."""
+    """Create a conference paper submission (one active submission per user/conference)."""
     try:
         conference = get_conference_data(conference_id)
         if not conference:
@@ -9220,14 +9522,11 @@ def conference_paper_submission(conference_id):
             return redirect(url_for('conference_details', conference_id=conference_id))
 
         registration_id, existing_registration = get_user_conference_registration(current_user.id, conference_id)
-        if not existing_registration:
-            flash('Please complete conference registration before submitting a paper.', 'error')
-            return redirect(url_for('conference_registration', conference_id=conference_id))
 
         active_paper_id, active_submission = get_active_registration_submission(
             current_user.id,
             conference_id,
-            registration_id=registration_id
+            registration_id=registration_id if registration_id else None
         )
         
         if request.method == 'GET':
@@ -9271,7 +9570,7 @@ def conference_paper_submission(conference_id):
                 'conference_id': conference_id,
                 'user_id': current_user.id,
                 'user_email': current_user.email,
-                'registration_id': registration_id,
+                'registration_id': registration_id or '',
                 'paper_title': (request.form.get('paper_title') or '').strip(),
                 'paper_abstract': (request.form.get('paper_abstract') or '').strip(),
                 'presentation_type': (request.form.get('presentation_type') or '').strip(),
@@ -9387,7 +9686,7 @@ def conference_paper_submission(conference_id):
             })
 
             # Link paper state to conference registration workflow
-            if registration_id and existing_registration.get('payment_status') != 'paid':
+            if registration_id and ((existing_registration.get('payment_status') or '').lower() != 'paid'):
                 db.reference(f'registrations/{registration_id}').update({
                     'paper_submission_id': paper_id,
                     'paper_status': 'pending',
@@ -9395,6 +9694,13 @@ def conference_paper_submission(conference_id):
                     'workflow_status': 'paper_submitted',
                     'updated_at': datetime.now().isoformat()
                 })
+                refreshed_registration = db.reference(f'registrations/{registration_id}').get() or {}
+                sync_conference_registration_pricing(
+                    registration_id=registration_id,
+                    registration_data=refreshed_registration,
+                    user_id=current_user.id,
+                    conference_id=conference_id
+                )
 
             # Send confirmation email
             try:
@@ -9412,10 +9718,16 @@ def conference_paper_submission(conference_id):
 
             flash(
                 f'Paper submitted to {conference.get("basic_info", {}).get("name", "Conference")}. '
-                'Waiting for admin review before payment is enabled.',
+                'Registration will unlock after admin accepts your paper.',
                 'success'
             )
-            return redirect(url_for('conference_registration', conference_id=conference_id))
+            return redirect(
+                url_for(
+                    'conference_submission_details',
+                    conference_id=conference_id,
+                    paper_id=paper_id
+                )
+            )
             
         except Exception as e:
             print(f"Error submitting paper: {str(e)}")
@@ -9701,6 +10013,13 @@ def withdraw_conference_submission(conference_id, paper_id):
                 'workflow_status': 'paper_withdrawn',
                 'updated_at': now_iso
             })
+            refreshed_registration = db.reference(f'registrations/{registration_id}').get() or {}
+            sync_conference_registration_pricing(
+                registration_id=registration_id,
+                registration_data=refreshed_registration,
+                user_id=current_user.id,
+                conference_id=conference_id
+            )
 
         flash('Submission withdrawn. You can submit a new paper when ready.', 'success')
         return redirect(url_for('conference_registration', conference_id=conference_id))
@@ -10508,13 +10827,29 @@ def dashboard():
             key = f'{conference_id or "global"}::{paper_id or index_id}'
             user_submissions[key] = submission_data
 
+        def _is_truthy(value):
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return value != 0
+            if isinstance(value, str):
+                return value.strip().lower() in ['1', 'true', 'yes', 'y', 'on']
+            return False
+
+        for registration in user_registrations.values():
+            registration['payment_unlocked'] = _is_truthy(registration.get('payment_unlocked'))
+
         approved_count = sum(
-            1 for registration in user_registrations.values()
-            if (registration.get('payment_status') or '').lower() in ['approved', 'paid']
+            1
+            for registration in user_registrations.values()
+            if registration.get('payment_unlocked')
+            or (registration.get('payment_status') or '').lower() in ['approved', 'paid']
         )
         pending_count = sum(
-            1 for registration in user_registrations.values()
+            1
+            for registration in user_registrations.values()
             if (registration.get('payment_status') or '').lower() == 'pending'
+            and not registration.get('payment_unlocked')
         )
         
         return render_template('user/dashboard.html',

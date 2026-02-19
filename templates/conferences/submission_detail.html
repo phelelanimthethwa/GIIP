@@ -76,8 +76,8 @@
         {% endif %}
 
         <div class="action-row">
-            <a class="btn btn-secondary" href="{{ url_for('conference_registration', conference_id=conference_id) }}">
-                Back to Registration
+            <a class="btn btn-secondary" href="{{ url_for('conference_details', conference_id=conference_id) }}">
+                Back to Conference
             </a>
             <a class="btn btn-primary" href="{{ url_for('download_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
                 Download PDF
