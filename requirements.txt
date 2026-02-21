@@ -9,6 +9,8 @@ blinker==1.7.0
 Flask-Login==0.6.3
 Flask-SQLAlchemy==3.1.1
 Pillow==11.1.0
+reportlab>=4.0.0
+pypdf>=4.0.0
 python-dotenv==1.0.0
 pytz==2024.1
 gunicorn>=22.0.0

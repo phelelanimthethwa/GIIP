@@ -8664,10 +8664,19 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
         draw.text((margin, y), "GIIR", font=font_title, fill=red)
         text_x = margin + 150
 
-    draw.text((text_x, y + 8), "Global Institute on Innovative Research", font=font_h2, fill=navy)
-    y += logo_h + 8
-    draw.text((margin, y), conference_name, font=font_h2, fill=deep_blue)
-    y += 38
+    # Draw org name beside the logo (vertically centred within logo height)
+    org_text = "Global Institute on Innovative Research"
+    org_bbox = draw.textbbox((0, 0), org_text, font=font_h2)
+    org_h = org_bbox[3] - org_bbox[1]
+    org_y = y + max(0, (logo_h - org_h) // 2)
+    draw.text((text_x, org_y), org_text, font=font_h2, fill=navy)
+
+    # Move below the logo row
+    y += logo_h + 16
+
+    # Conference name on its own NEW line, wrapped if long
+    y = _draw_wrapped_text(draw, conference_name, margin, y, font_h2, deep_blue, content_width, line_spacing=6)
+    y += 10
 
     date_line = f"{location}"
     if start_date and end_date:
@@ -8716,8 +8725,11 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     draw.rectangle([margin, y, width - margin, y + 38], fill=deep_blue)
     draw.text((margin + 12, y + 8), "Option 1: Online Payment", font=font_label, fill='#ffffff')
     y += 38
+    link_box_top = y  # remember for PDF hyperlink annotation
     draw.rectangle([margin, y, width - margin, y + 58], outline='#cdd7e3', width=2)
-    draw.text((margin + 12, y + 16), payment_link, font=font_body_bold, fill=navy)
+    # Draw payment link text in a clearly-clickable style
+    draw.text((margin + 12, y + 16), payment_link, font=font_body_bold, fill='#1a56a8')
+    link_box_bottom = y + 58
     y += 76
 
     draw.rectangle([margin, y, width - margin, y + 38], fill=gold)
@@ -8765,9 +8777,58 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     )
     _draw_wrapped_text(draw, footer, margin, y, font_small, text_dark, content_width, line_spacing=6)
 
-    pdf_buffer = io.BytesIO()
-    image.save(pdf_buffer, format='PDF', resolution=150.0)
-    return pdf_buffer.getvalue()
+    # ── Save as PDF via Pillow (image layer) ──────────────────────────────────
+    img_pdf_buffer = io.BytesIO()
+    image.save(img_pdf_buffer, format='PDF', resolution=150.0)
+    img_pdf_bytes = img_pdf_buffer.getvalue()
+
+    # ── Overlay a clickable hyperlink annotation using ReportLab ──────────────
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate
+        from reportlab.lib.utils import ImageReader
+        from reportlab.pdfgen import canvas as rl_canvas
+        import pypdf
+
+        # Build a transparent ReportLab overlay PDF with just the link annotation
+        overlay_buf = io.BytesIO()
+        # A4 in points: 595.27 x 841.89 pt
+        # Our image is 1240 x 1754 px @ 150 dpi → in pt: (1240/150)*72 ≈ 594.6 x (1754/150)*72 ≈ 841.9
+        page_w_pt = (width / 150.0) * 72.0
+        page_h_pt = (height / 150.0) * 72.0
+        c = rl_canvas.Canvas(overlay_buf, pagesize=(page_w_pt, page_h_pt))
+
+        # Convert pixel coords → PDF points (PDF origin is bottom-left)
+        def px_to_pt_x(px):
+            return (px / 150.0) * 72.0
+
+        def px_to_pt_y(px_from_top):
+            return page_h_pt - (px_from_top / 150.0) * 72.0
+
+        link_x1 = px_to_pt_x(margin)
+        link_y1 = px_to_pt_y(link_box_bottom)   # bottom of box in PDF coords
+        link_x2 = px_to_pt_x(width - margin)
+        link_y2 = px_to_pt_y(link_box_top)      # top of box in PDF coords
+
+        c.linkURL(payment_link, (link_x1, link_y1, link_x2, link_y2), relative=0)
+        c.save()
+
+        # Merge the image PDF with the overlay using pypdf
+        overlay_buf.seek(0)
+        img_pdf_buffer.seek(0)
+        reader_img = pypdf.PdfReader(img_pdf_buffer)
+        reader_overlay = pypdf.PdfReader(overlay_buf)
+        writer = pypdf.PdfWriter()
+        page = reader_img.pages[0]
+        page.merge_page(reader_overlay.pages[0])
+        writer.add_page(page)
+        final_buf = io.BytesIO()
+        writer.write(final_buf)
+        return final_buf.getvalue()
+
+    except Exception as _pdf_link_err:
+        print(f"[PDF] ReportLab/pypdf not available, returning image-only PDF: {_pdf_link_err}")
+        return img_pdf_bytes
 
 def send_acceptance_letter_email(paper_data, conference_data, registration_data=None, comments=''):
     """Send acceptance email with PDF attachment via Resend.
@@ -8866,16 +8927,10 @@ globalconferences.co.za
           <p style="margin:0;color:#78350f;font-size:13px;line-height:1.6;">{comments}</p>
         </div>''' if comments else ''
 
-        # ── Embed logo as base64 for reliable email rendering ─────────────────
-        _logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'giirlogo.jpg')
-        _logo_tag = ''
-        try:
-            with open(_logo_path, 'rb') as _lf:
-                _logo_b64 = base64.b64encode(_lf.read()).decode('utf-8')
-            _logo_tag = f'<img src="data:image/jpeg;base64,{_logo_b64}" alt="GIIR Logo" height="60" style="display:block;height:60px;width:auto;border:0;">'
-        except Exception as _le:
-            print(f'[EMAIL] Could not embed GIIR logo: {_le}')
-            _logo_tag = '<p style="margin:0 0 4px;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">GIIR</p>'
+        # ── Logo via hosted URL (base64 bloats email past Gmail 102KB clip limit) ──
+        _base_url = app.config.get('CONFERENCE_URL', 'https://globalconferences.co.za').rstrip('/')
+        _logo_url = f"{_base_url}/static/images/giirlogo.jpg"
+        _logo_tag = f'<img src="{_logo_url}" alt="GIIR Logo" height="60" style="display:block;height:60px;width:auto;border:0;">'
 
         html = f"""
 <!DOCTYPE html>
