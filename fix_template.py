@@ -1,6 +1,6 @@
 import os
 
-path = r"c:\Users\ACE\G\GIIP\templates\base.html"
+path = r"c:\Users\ACE\G\GIIR\templates\base.html"
 with open(path, 'r', encoding='utf-8') as f:
     lines = f.readlines()
 

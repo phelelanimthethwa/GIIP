@@ -1497,7 +1497,7 @@ def create_payment():
             'email': current_user.email,
             'phone': getattr(current_user, 'phone', ''),
             'total_amount': float(registration_data['total_amount']),
-            'conference_name': 'GIIP Conference Registration',
+            'conference_name': 'GIIR Conference Registration',
             'registration_type': reg_type,
             'registration_period': period,
             'additional_items': {
@@ -2985,7 +2985,7 @@ def admin_announcements():
         resend_configured = bool(app.config.get('RESEND_API_KEY'))
         
         # Get sender email
-        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
+        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
         
         return render_template(
             'admin/announcements.html',
@@ -3009,7 +3009,7 @@ def admin_announcements():
             important_count=0,
             total_users=0,
             resend_configured=bool(app.config.get('RESEND_API_KEY')),
-            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
+            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
         )
 
 def send_email(recipients, subject, body, attachments=None, html=None):
@@ -3029,7 +3029,7 @@ def send_email(recipients, subject, body, attachments=None, html=None):
         resend.api_key = api_key
         
         # Get sender email from config or Firebase
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
         
         # Try to get custom sender from Firebase settings
         try:
@@ -5346,6 +5346,8 @@ def update_paper_status(paper_id):
         try:
             if new_status == 'accepted' and conference_id:
                 conference_data = get_conference_data(conference_id) or {}
+                # Inject conference_id so PDF/payment links resolve correctly
+                conference_data['conference_id'] = conference_id
                 if not ensured_registration:
                     linked_registration_id = (
                         (updated_paper or {}).get('registration_id')
@@ -5730,7 +5732,7 @@ GIIR Conference Team
 def get_email_settings():
     """Return email sender info for UI display - Resend handles actual sending"""
     try:
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIP Conference <noreply@globalconferences.co.za>')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
         return jsonify({
             'success': True,
             'sender': sender
@@ -8614,7 +8616,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     font_label = _load_letter_font(20, bold=True)
 
     conference_basic = (conference_data or {}).get('basic_info', {}) or {}
-    conference_name = conference_basic.get('name', 'GIIP Conference')
+    conference_name = conference_basic.get('name', 'GIIR Conference')
     conference_id = (conference_data or {}).get('conference_id') or paper_data.get('conference_id') or ''
     location = conference_basic.get('location', 'Conference Venue')
     start_date = _parse_human_date(conference_basic.get('start_date') or conference_basic.get('date') or '')
@@ -8645,11 +8647,26 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     margin = 70
     content_width = width - (margin * 2)
 
-    # Header
-    draw.text((margin, y), "GIIP", font=font_title, fill=red)
-    draw.text((margin + 150, y + 8), "Global Institute on Innovative Research", font=font_h2, fill=navy)
-    y += 70
-    draw.text((margin + 150, y), conference_name, font=font_h2, fill=deep_blue)
+    # ── Header: logo + conference info ────────────────────────────────────────
+    logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'giirlogo.jpg')
+    logo_h = 110  # target logo height in PDF pixels
+    text_x = margin  # default: text starts at left margin
+    try:
+        logo_img = Image.open(logo_path).convert('RGBA')
+        aspect = logo_img.width / logo_img.height
+        logo_w = int(logo_h * aspect)
+        logo_img = logo_img.resize((logo_w, logo_h), Image.LANCZOS)
+        # Paste logo at top-left
+        image.paste(logo_img, (margin, y), logo_img)
+        text_x = margin + logo_w + 20  # text starts after the logo
+    except Exception as _logo_err:
+        print(f"[PDF] Could not load GIIR logo: {_logo_err}")
+        draw.text((margin, y), "GIIR", font=font_title, fill=red)
+        text_x = margin + 150
+
+    draw.text((text_x, y + 8), "Global Institute on Innovative Research", font=font_h2, fill=navy)
+    y += logo_h + 8
+    draw.text((margin, y), conference_name, font=font_h2, fill=deep_blue)
     y += 38
 
     date_line = f"{location}"
@@ -8657,7 +8674,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
         date_line = f"{location} | {start_date} - {end_date}"
     elif start_date:
         date_line = f"{location} | {start_date}"
-    draw.text((margin + 150, y), date_line, font=font_small, fill=text_muted)
+    draw.text((margin, y), date_line, font=font_small, fill=text_muted)
 
     y += 52
     draw.rectangle([margin, y, width - margin, y + 48], fill=deep_blue)
@@ -8744,7 +8761,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
 
     footer = (
         "Kindly confirm your registration before the deadline.\n"
-        "GIIP Conference Secretariat"
+        "GIIR Conference Secretariat"
     )
     _draw_wrapped_text(draw, footer, margin, y, font_small, text_dark, content_width, line_spacing=6)
 
@@ -8753,17 +8770,54 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     return pdf_buffer.getvalue()
 
 def send_acceptance_letter_email(paper_data, conference_data, registration_data=None, comments=''):
-    """Send acceptance email with generated acceptance-letter PDF attachment via Resend."""
+    """Send acceptance email with PDF attachment via Resend.
+    
+    Auto-enrolls the author into the conference registration when the paper is accepted.
+    Falls back to fetching the author's email from their user profile if not embedded in paper_data.
+    """
     try:
         conference_basic = (conference_data or {}).get('basic_info', {}) or {}
         conference_name = conference_basic.get('name', 'Conference')
+        conference_id = (
+            (conference_data or {}).get('conference_id')
+            or paper_data.get('conference_id')
+            or ''
+        )
         conference_code = (conference_data or {}).get('conference_code') or ''
         paper_title = paper_data.get('paper_title', 'Untitled Paper')
         paper_id = paper_data.get('paper_id', 'paper')
+        location = conference_basic.get('location', '')
+        start_date = conference_basic.get('start_date') or conference_basic.get('date') or ''
+
+        # ── Resolve recipient email ─────────────────────────────────────────────
         recipient = paper_data.get('user_email')
         if not recipient:
+            user_id = paper_data.get('user_id')
+            if user_id:
+                try:
+                    user_profile = db.reference(f'users/{user_id}').get() or {}
+                    recipient = user_profile.get('email')
+                except Exception:
+                    pass
+        if not recipient:
+            print('[ACCEPTANCE EMAIL] No recipient email found — skipping send.')
             return False
 
+        # ── Primary author name ─────────────────────────────────────────────────
+        authors = paper_data.get('authors') or [{}]
+        primary_author_name = authors[0].get('name', 'Author')
+        presentation_type = (paper_data.get('presentation_type') or 'Oral').replace('_', ' ').title()
+
+        # ── Payment / registration link ────────────────────────────────────────
+        base_url = app.config.get('CONFERENCE_URL', '').rstrip('/')
+        if base_url and conference_id:
+            payment_link = f"{base_url}/conferences/{conference_id}/register"
+        elif conference_id:
+            payment_link = f"/conferences/{conference_id}/register"
+        else:
+            payment_link = f"{base_url}/dashboard" if base_url else '/dashboard'
+
+        # ── Generate PDF ───────────────────────────────────────────────────────
         pdf_bytes = generate_acceptance_letter_pdf(
             paper_data=paper_data,
             conference_data=conference_data,
@@ -8771,40 +8825,194 @@ def send_acceptance_letter_email(paper_data, conference_data, registration_data=
             comments=comments
         )
 
-        payment_link = f"{app.config.get('CONFERENCE_URL', '').rstrip('/')}/conferences/{paper_data.get('conference_id', '')}/register"
-        if not app.config.get('CONFERENCE_URL'):
-            payment_link = f"/conferences/{paper_data.get('conference_id', '')}/register"
-
-        subject = f"Acceptance Letter - {conference_name}"
+        # ── Plain-text body ────────────────────────────────────────────────────
+        subject = f"\U0001F389 Acceptance Letter – {conference_name}"
         body = f"""
-Dear {((paper_data.get('authors') or [{}])[0]).get('name', 'Author')},
+Dear {primary_author_name},
 
-Congratulations. Your paper has been accepted for {conference_name}.
+Congratulations! We are delighted to inform you that your paper has been accepted for presentation at {conference_name}.
 
-Paper Title: {paper_title}
-Paper ID: {paper_id}
-Conference Code: {conference_code}
+You have also been automatically enrolled in the conference.
 
-Please find your acceptance letter attached as a PDF.
-Complete registration and payment here: {payment_link}
+Submission Details
+------------------
+Paper Title      : {paper_title}
+Paper ID         : {paper_id}
+Presentation Type: {presentation_type}
+Conference       : {conference_name}{f" ({conference_code})" if conference_code else ''}
+{f"Location         : {location}" if location else ''}
+{f"Date             : {start_date}" if start_date else ''}
 
-Best regards,
-GIIP Conference Secretariat
+Next Steps
+----------
+Please complete your conference registration and payment to secure your spot:
+{payment_link}
+
+Your acceptance letter is attached as a PDF — please keep it for your records.
+
+We look forward to welcoming you to {conference_name}!
+
+Warm regards,
+GIIR Conference Secretariat
+globalconferences.co.za
 """.strip()
 
+        # ── Rich HTML body ─────────────────────────────────────────────────────
+        location_row = f'<tr><td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Location</td><td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{location}</td></tr>' if location else ''
+        date_row = f'<tr><td style="padding:8px 12px;color:#64748b;font-size:13px;">Date</td><td style="padding:8px 12px;font-weight:600;font-size:13px;">{start_date}</td></tr>' if start_date else ''
+        comments_block = f'''
+        <div style="margin:24px 0;padding:16px 20px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;">
+          <p style="margin:0 0 4px;font-weight:700;color:#92400e;font-size:13px;">Reviewer Notes</p>
+          <p style="margin:0;color:#78350f;font-size:13px;line-height:1.6;">{comments}</p>
+        </div>''' if comments else ''
+
+        # ── Embed logo as base64 for reliable email rendering ─────────────────
+        _logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'giirlogo.jpg')
+        _logo_tag = ''
+        try:
+            with open(_logo_path, 'rb') as _lf:
+                _logo_b64 = base64.b64encode(_lf.read()).decode('utf-8')
+            _logo_tag = f'<img src="data:image/jpeg;base64,{_logo_b64}" alt="GIIR Logo" height="60" style="display:block;height:60px;width:auto;border:0;">'
+        except Exception as _le:
+            print(f'[EMAIL] Could not embed GIIR logo: {_le}')
+            _logo_tag = '<p style="margin:0 0 4px;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">GIIR</p>'
+
         html = f"""
-<p>Dear {((paper_data.get('authors') or [{}])[0]).get('name', 'Author')},</p>
-<p>Congratulations. Your paper has been accepted for <strong>{conference_name}</strong>.</p>
-<p><strong>Paper Title:</strong> {paper_title}<br>
-<strong>Paper ID:</strong> {paper_id}<br>
-<strong>Conference Code:</strong> {conference_code or 'N/A'}</p>
-<p>Please find your acceptance letter attached as a PDF.</p>
-<p>Complete registration and payment here: <a href="{payment_link}">{payment_link}</a></p>
-<p>Best regards,<br>GIIP Conference Secretariat</p>
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paper Accepted – {conference_name}</title></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+
+  <!-- Wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f4f8;padding:40px 0;">
+    <tr><td align="center">
+
+      <!-- Card -->
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
+
+        <!-- Header banner -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f2f62 0%,#123e7a 60%,#1a56a8 100%);padding:32px 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;">
+                  {_logo_tag}
+                  <p style="margin:10px 0 0;font-size:12px;color:#93c5fd;letter-spacing:1px;text-transform:uppercase;">Global Institute on Innovative Research</p>
+                </td>
+                <td align="right" style="vertical-align:middle;">
+                  <span style="display:inline-block;background:#d01616;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;padding:6px 14px;border-radius:20px;text-transform:uppercase;">Accepted</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Congratulations band -->
+        <tr>
+          <td style="background:#d01616;padding:14px 40px;">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:.5px;">
+              &#127881; Congratulations — Your Paper Has Been Accepted!
+            </p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px 0;">
+            <p style="margin:0 0 20px;font-size:16px;color:#10243f;line-height:1.6;">Dear <strong>{primary_author_name}</strong>,</p>
+            <p style="margin:0 0 20px;font-size:15px;color:#334e68;line-height:1.7;">
+              We are thrilled to inform you that your paper has been <strong style="color:#0f2f62;">accepted for presentation</strong> at
+              <strong>{conference_name}</strong>. You have also been <strong>automatically enrolled</strong> in the conference.
+            </p>
+            <p style="margin:0 0 28px;font-size:15px;color:#334e68;line-height:1.7;">
+              Please find your official acceptance letter attached as a PDF — keep it for your records and any visa or travel arrangements.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Submission details table -->
+        <tr>
+          <td style="padding:0 40px;">
+            <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#0f2f62;text-transform:uppercase;letter-spacing:1px;">Submission Details</p>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+              <tr style="background:#f8fafc;">
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Paper Title</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{paper_title}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Paper ID</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{paper_id}</td>
+              </tr>
+              <tr style="background:#f8fafc;">
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Presentation Type</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{presentation_type}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Conference</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{conference_name}{' (' + conference_code + ')' if conference_code else ''}</td>
+              </tr>
+              {location_row}
+              {date_row}
+            </table>
+          </td>
+        </tr>
+
+        {comments_block}
+
+        <!-- CTA -->
+        <tr>
+          <td style="padding:32px 40px;">
+            <p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#0f2f62;">Next Steps</p>
+            <p style="margin:0 0 20px;font-size:14px;color:#334e68;line-height:1.7;">
+              To secure your place at the conference, please complete your <strong>registration and payment</strong> as soon as possible:
+            </p>
+            <table cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border-radius:8px;background:linear-gradient(135deg,#d01616,#b91c1c);">
+                  <a href="{payment_link}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;letter-spacing:.3px;">Complete Registration &amp; Payment &rarr;</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">Or copy this link: <a href="{payment_link}" style="color:#123e7a;">{payment_link}</a></p>
+          </td>
+        </tr>
+
+        <!-- Info note -->
+        <tr>
+          <td style="padding:0 40px 32px;">
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;">
+              <p style="margin:0;font-size:13px;color:#1e40af;line-height:1.7;">
+                &#8505;&nbsp; <strong>Important:</strong> Registration fees are non-refundable once processed.
+                Travel, visa and accommodation arrangements remain the responsibility of the author.
+                After bank transfer, send your proof of payment to the conference secretariat.
+              </p>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#0f2f62;padding:28px 40px;border-radius:0 0 16px 16px;">
+            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;">GIIR Conference Secretariat</p>
+            <p style="margin:0;font-size:12px;color:#93c5fd;">
+              <a href="https://globalconferences.co.za" style="color:#93c5fd;text-decoration:none;">globalconferences.co.za</a>
+              &nbsp;|&nbsp; noreply@globalconferences.co.za
+            </p>
+            <p style="margin:12px 0 0;font-size:11px;color:#475569;">This email was sent automatically when your paper status was updated. Please do not reply directly to this email.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+
+</body>
+</html>
 """
 
         attachment_name = f"Acceptance_Letter_{secure_filename(str(paper_id))}.pdf"
-        return send_email(
+        print(f"[ACCEPTANCE EMAIL] Sending acceptance letter to {recipient} for paper {paper_id}")
+        result = send_email(
             recipients=[recipient],
             subject=subject,
             body=body,
@@ -8814,8 +9022,15 @@ GIIP Conference Secretariat
             }],
             html=html
         )
+        if result:
+            print(f"[ACCEPTANCE EMAIL] ✓ Sent successfully to {recipient}")
+        else:
+            print(f"[ACCEPTANCE EMAIL] ✗ Failed to send to {recipient}")
+        return result
     except Exception as e:
-        print(f"Error sending acceptance letter email: {e}")
+        print(f"[ACCEPTANCE EMAIL] Error: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 @app.route('/conferences')

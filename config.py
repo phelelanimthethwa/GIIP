@@ -37,7 +37,7 @@ class Config:
     RESEND_API_KEY = os.environ.get('RESEND_API_KEY') or os.environ.get('Resend_api_key')
     APP_DOMAIN = os.environ.get('APP_DOMAIN', 'globalconferences.co.za')
     CONFERENCE_URL = os.environ.get('CONFERENCE_URL', f'https://{APP_DOMAIN}')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or f'GIIP Conference <noreply@{APP_DOMAIN}>'
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or f'GIIR Conference <noreply@{APP_DOMAIN}>'
 
     # Admin Configuration
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@giirconference.com')

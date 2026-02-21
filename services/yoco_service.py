@@ -94,7 +94,7 @@ class YocoPaymentService:
                     "email": registration_data.get('email', ''),
                     "registration_type": registration_data.get('registration_type', ''),
                     "registration_period": registration_data.get('registration_period', ''),
-                    "conference_name": registration_data.get('conference_name', 'GIIP Conference'),
+                    "conference_name": registration_data.get('conference_name', 'GIIR Conference'),
                     "conference_id": registration_data.get('conference_id', '')
                 }
             }

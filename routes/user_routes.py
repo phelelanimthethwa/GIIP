@@ -356,9 +356,9 @@ def chat():
         genai.configure(api_key=Config.GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-pro')
 
-        # Create context about the GIIP Conference
+        # Create context about the GIIR Conference
         context = """
-        I am an AI assistant for the GIIP Conference 2024. I can help with:
+        I am an AI assistant for the GIIR Conference 2024. I can help with:
         - Registration process and fees
         - Paper submission guidelines
         - Conference schedule and venue information

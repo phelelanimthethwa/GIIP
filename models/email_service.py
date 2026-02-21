@@ -13,7 +13,7 @@ class EmailService:
     def _get_sender(self):
         """Get the default sender email"""
         domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
-        return current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIP Conference <noreply@{domain}>')
+        return current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIR Conference <noreply@{domain}>')
     
     def _configure_resend(self):
         """Configure Resend API key"""
@@ -350,7 +350,7 @@ def send_email_resend(recipients, subject, body, html=None):
         
         resend.api_key = api_key
         domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
-        sender = current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIP Conference <noreply@{domain}>')
+        sender = current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIR Conference <noreply@{domain}>')
         
         # Ensure recipients is a list
         if isinstance(recipients, str):
