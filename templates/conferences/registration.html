@@ -1091,12 +1091,19 @@
         cursor: not-allowed;
     }
 </style>
+<script id="fees-data" type="text/plain">{{ fees|tojson|safe if fees else 'null' }}</script>
+<script id="current-period-data"
+    type="text/plain">{{ current_period|tojson|safe if current_period else 'null' }}</script>
+<script id="form-registration-period-data"
+    type="text/plain">{{ form_registration_period|tojson|safe if form_registration_period else 'null' }}</script>
+<script id="multi-submit-fee-info-data"
+    type="text/plain">{{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}'|safe }}</script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const fees = {{ fees|tojson|safe if fees else 'null' }};
-        const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
-        const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
-        const multiSubmitFeeInfo = {{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}' }};
+        const fees = JSON.parse(document.getElementById('fees-data').textContent || 'null');
+        const currentPeriod = JSON.parse(document.getElementById('current-period-data').textContent || 'null');
+        const formRegistrationPeriod = JSON.parse(document.getElementById('form-registration-period-data').textContent || 'null');
+        const multiSubmitFeeInfo = JSON.parse(document.getElementById('multi-submit-fee-info-data').textContent || 'null');
         const activePeriod = formRegistrationPeriod || currentPeriod;
         const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
         const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
@@ -1104,269 +1111,269 @@
         const registerButton = document.getElementById('register-button');
         const unlockPayButton = document.getElementById('unlock-pay-button');
 
-    if (registrationForm && registerButton) {
-        let selectedType = null;
-        let totalAmount = 0;
-        let selectedAdditionalFee = 0;
-        const extraPaperCount = Number(multiSubmitFeeInfo?.extra_paper_count || 0);
-        const extraPaperFeeTotal = Number(multiSubmitFeeInfo?.extra_paper_fee_total || 0);
-        const extraPaperFeePerItem = Number(multiSubmitFeeInfo?.extra_paper_fee_per_item || 50);
+        if (registrationForm && registerButton) {
+            let selectedType = null;
+            let totalAmount = 0;
+            let selectedAdditionalFee = 0;
+            const extraPaperCount = Number(multiSubmitFeeInfo?.extra_paper_count || 0);
+            const extraPaperFeeTotal = Number(multiSubmitFeeInfo?.extra_paper_fee_total || 0);
+            const extraPaperFeePerItem = Number(multiSubmitFeeInfo?.extra_paper_fee_per_item || 50);
 
-        function updatePrices() {
-            if (!fees || !activePeriod) return;
-            const periodFees = fees[activePeriod]?.fees || {};
+            function updatePrices() {
+                if (!fees || !activePeriod) return;
+                const periodFees = fees[activePeriod]?.fees || {};
 
-            document.querySelectorAll('.type-card').forEach(card => {
-                const radio = card.querySelector('input[type="radio"]');
-                const priceElement = card.querySelector('.price-value');
-                if (radio && priceElement) {
-                    const price = periodFees[radio.value] || 0;
-                    priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
-                }
-            });
-        }
-
-        function updateSummary() {
-            const baseFee = selectedType && fees && activePeriod
-                ? (fees[activePeriod]?.fees?.[selectedType] || 0)
-                : 0;
-
-            const baseFeeEl = document.getElementById('base-fee');
-            const additionalFeeEl = document.getElementById('additional-fee');
-            const additionalSummaryEl = document.getElementById('additional-items-summary');
-            const extraPaperSummaryEl = document.getElementById('extra-paper-summary');
-            const extraPaperLabelEl = document.getElementById('extra-paper-label');
-            const extraPaperFeeEl = document.getElementById('extra-paper-fee');
-            const totalAmountEl = document.getElementById('total-amount');
-
-            if (baseFeeEl) baseFeeEl.textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
-            if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${selectedAdditionalFee.toFixed(2)}`;
-            if (additionalSummaryEl) additionalSummaryEl.style.display = selectedAdditionalFee > 0 ? 'flex' : 'none';
-            if (extraPaperSummaryEl) extraPaperSummaryEl.style.display = extraPaperCount > 0 ? 'flex' : 'none';
-            if (extraPaperLabelEl) {
-                extraPaperLabelEl.textContent = `Extra Paper Surcharge (${extraPaperCount} × $${extraPaperFeePerItem.toFixed(2)}):`;
-            }
-            if (extraPaperFeeEl) {
-                extraPaperFeeEl.textContent = `$${extraPaperFeeTotal.toFixed(2)}`;
-            }
-            if (totalAmountEl) totalAmountEl.innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
-
-            registerButton.disabled = !(totalAmount > 0 && selectedType);
-        }
-
-        function calculateTotal() {
-            if (!fees || !activePeriod || !selectedType) {
-                totalAmount = 0;
-                updateSummary();
-                return;
-            }
-
-            totalAmount = fees[activePeriod]?.fees?.[selectedType] || 0;
-            selectedAdditionalFee = 0;
-            if (fees.additional_items) {
-                ['workshop', 'banquet'].forEach(item => {
-                    const checkbox = document.getElementById(item);
-                    if (checkbox && checkbox.checked) {
-                        const itemData = fees.additional_items[item];
-                        if (itemData && itemData.enabled) {
-                            const feeValue = itemData.fee || 0;
-                            totalAmount += feeValue;
-                            selectedAdditionalFee += feeValue;
-                        }
+                document.querySelectorAll('.type-card').forEach(card => {
+                    const radio = card.querySelector('input[type="radio"]');
+                    const priceElement = card.querySelector('.price-value');
+                    if (radio && priceElement) {
+                        const price = periodFees[radio.value] || 0;
+                        priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
                     }
                 });
             }
-            totalAmount += extraPaperFeeTotal;
-            updateSummary();
-        }
 
-        document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
-            radio.addEventListener('change', function () {
-                selectedType = this.value;
-                calculateTotal();
-            });
-        });
+            function updateSummary() {
+                const baseFee = selectedType && fees && activePeriod
+                    ? (fees[activePeriod]?.fees?.[selectedType] || 0)
+                    : 0;
 
-        ['workshop', 'banquet'].forEach(item => {
-            const checkbox = document.getElementById(item);
-            if (checkbox) checkbox.addEventListener('change', calculateTotal);
-        });
+                const baseFeeEl = document.getElementById('base-fee');
+                const additionalFeeEl = document.getElementById('additional-fee');
+                const additionalSummaryEl = document.getElementById('additional-items-summary');
+                const extraPaperSummaryEl = document.getElementById('extra-paper-summary');
+                const extraPaperLabelEl = document.getElementById('extra-paper-label');
+                const extraPaperFeeEl = document.getElementById('extra-paper-fee');
+                const totalAmountEl = document.getElementById('total-amount');
 
-        registerButton.addEventListener('click', async function () {
-            const fullName = document.getElementById('full_name')?.value?.trim();
-            const email = document.getElementById('email')?.value?.trim();
-            const institution = document.getElementById('institution')?.value?.trim();
-            const country = document.getElementById('country')?.value?.trim();
+                if (baseFeeEl) baseFeeEl.textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
+                if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${selectedAdditionalFee.toFixed(2)}`;
+                if (additionalSummaryEl) additionalSummaryEl.style.display = selectedAdditionalFee > 0 ? 'flex' : 'none';
+                if (extraPaperSummaryEl) extraPaperSummaryEl.style.display = extraPaperCount > 0 ? 'flex' : 'none';
+                if (extraPaperLabelEl) {
+                    extraPaperLabelEl.textContent = `Extra Paper Surcharge (${extraPaperCount} × $${extraPaperFeePerItem.toFixed(2)}):`;
+                }
+                if (extraPaperFeeEl) {
+                    extraPaperFeeEl.textContent = `$${extraPaperFeeTotal.toFixed(2)}`;
+                }
+                if (totalAmountEl) totalAmountEl.innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
 
-            if (!fullName || !email || !institution || !country || !selectedType) {
-                alert('Please fill in all required fields and select a registration type.');
-                return;
+                registerButton.disabled = !(totalAmount > 0 && selectedType);
             }
 
-            if (totalAmount <= 0) {
-                alert('Invalid amount. Please check your selection.');
-                return;
+            function calculateTotal() {
+                if (!fees || !activePeriod || !selectedType) {
+                    totalAmount = 0;
+                    updateSummary();
+                    return;
+                }
+
+                totalAmount = fees[activePeriod]?.fees?.[selectedType] || 0;
+                selectedAdditionalFee = 0;
+                if (fees.additional_items) {
+                    ['workshop', 'banquet'].forEach(item => {
+                        const checkbox = document.getElementById(item);
+                        if (checkbox && checkbox.checked) {
+                            const itemData = fees.additional_items[item];
+                            if (itemData && itemData.enabled) {
+                                const feeValue = itemData.fee || 0;
+                                totalAmount += feeValue;
+                                selectedAdditionalFee += feeValue;
+                            }
+                        }
+                    });
+                }
+                totalAmount += extraPaperFeeTotal;
+                updateSummary();
             }
 
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-            try {
-                const registrationData = {
-                    registration_type: selectedType,
-                    registration_period: activePeriod,
-                    total_amount: totalAmount,
-                    institution,
-                    country,
-                    workshop: document.getElementById('workshop')?.checked || false,
-                    banquet: document.getElementById('banquet')?.checked || false,
-                    stay_on_registration: isEditMode
-                };
-
-                const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(registrationData)
+            document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
+                radio.addEventListener('change', function () {
+                    selectedType = this.value;
+                    calculateTotal();
                 });
+            });
 
-                const result = await response.json();
-                if (result.success) {
-                    window.location.href = result.redirect_url || window.location.href;
-                } else {
-                    alert(result.error || 'Failed to save registration. Please try again.');
+            ['workshop', 'banquet'].forEach(item => {
+                const checkbox = document.getElementById(item);
+                if (checkbox) checkbox.addEventListener('change', calculateTotal);
+            });
+
+            registerButton.addEventListener('click', async function () {
+                const fullName = document.getElementById('full_name')?.value?.trim();
+                const email = document.getElementById('email')?.value?.trim();
+                const institution = document.getElementById('institution')?.value?.trim();
+                const country = document.getElementById('country')?.value?.trim();
+
+                if (!fullName || !email || !institution || !country || !selectedType) {
+                    alert('Please fill in all required fields and select a registration type.');
+                    return;
+                }
+
+                if (totalAmount <= 0) {
+                    alert('Invalid amount. Please check your selection.');
+                    return;
+                }
+
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+                try {
+                    const registrationData = {
+                        registration_type: selectedType,
+                        registration_period: activePeriod,
+                        total_amount: totalAmount,
+                        institution,
+                        country,
+                        workshop: document.getElementById('workshop')?.checked || false,
+                        banquet: document.getElementById('banquet')?.checked || false,
+                        stay_on_registration: isEditMode
+                    };
+
+                    const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(registrationData)
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.href = result.redirect_url || window.location.href;
+                    } else {
+                        alert(result.error || 'Failed to save registration. Please try again.');
+                        this.disabled = false;
+                        this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
+                    }
+                } catch (error) {
+                    console.error('Registration error:', error);
+                    alert('An error occurred. Please try again.');
                     this.disabled = false;
                     this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
                 }
-            } catch (error) {
-                console.error('Registration error:', error);
-                alert('An error occurred. Please try again.');
-                this.disabled = false;
-                this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
-            }
-        });
-
-        const selectedRadio = registrationForm.querySelector('input[name="registration_type"]:checked');
-        if (selectedRadio) {
-            selectedType = selectedRadio.value;
-        }
-
-        updatePrices();
-        calculateTotal();
-    }
-
-    // ── ZAR Confirmation Modal logic ───────────────────────────────────────
-    const backdrop = document.getElementById('zar-confirm-backdrop');
-    const modalClose = document.getElementById('zar-modal-close');
-    const modalCancel = document.getElementById('zar-modal-cancel');
-    const modalProceed = document.getElementById('zar-modal-proceed');
-    const usdDisplay = document.getElementById('zar-usd-display');
-    const zarDisplay = document.getElementById('zar-zar-display');
-    const rateNote = document.getElementById('zar-rate-note');
-
-    let _pendingPayCallback = null;  // stores the actual fetch+redirect logic
-
-    function openZarModal(usdAmount, payCallback) {
-        _pendingPayCallback = payCallback;
-        usdDisplay.textContent = `$${usdAmount.toFixed(2)}`;
-        zarDisplay.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1rem;"></i>';
-        rateNote.textContent = 'Fetching live exchange rate…';
-        modalProceed.disabled = true;
-        backdrop.classList.add('open');
-        document.body.style.overflow = 'hidden';
-
-        // Fetch live rate
-        fetch('/api/fx-rate')
-            .then(r => r.json())
-            .then(data => {
-                const rate = data.usd_to_zar || 18.5;
-                const zarAmt = usdAmount * rate;
-                zarDisplay.textContent = `R${zarAmt.toFixed(2)}`;
-                const liveLabel = data.live ? 'live rate' : 'estimated rate';
-                rateNote.innerHTML = `Exchange rate: <span>1 USD = R${rate.toFixed(4)}</span> (${liveLabel}). Actual charge may differ slightly.`;
-                modalProceed.disabled = false;
-            })
-            .catch(() => {
-                const fallbackRate = 18.5;
-                zarDisplay.textContent = `R${(usdAmount * fallbackRate).toFixed(2)}`;
-                rateNote.innerHTML = `Estimated rate: <span>1 USD ≈ R${fallbackRate}</span>. Actual charge may differ.`;
-                modalProceed.disabled = false;
             });
-    }
 
-    function closeZarModal() {
-        backdrop.classList.remove('open');
-        document.body.style.overflow = '';
-        _pendingPayCallback = null;
-    }
-
-    if (modalClose) modalClose.addEventListener('click', closeZarModal);
-    if (modalCancel) modalCancel.addEventListener('click', closeZarModal);
-    backdrop.addEventListener('click', e => { if (e.target === backdrop) closeZarModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZarModal(); });
-
-    if (modalProceed) {
-        modalProceed.addEventListener('click', async function () {
-            if (!_pendingPayCallback) return;
-            modalProceed.disabled = true;
-            modalProceed.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
-            await _pendingPayCallback();
-        });
-    }
-
-    // ── Wire up the Pay Conference Fee button ──────────────────────────────
-    if (unlockPayButton) {
-        // Read the registration USD amount from the workflow status card
-        const amountText = document.querySelector('.workflow-item span:last-child')?.textContent || '';
-        // Try to parse a numeric total from the displayed amount (e.g. "$500.00" or "R500")
-        function parseDisplayedAmount() {
-            // Walk all workflow-items and find the one that has an amount
-            const items = document.querySelectorAll('.workflow-item');
-            for (const item of items) {
-                const label = item.querySelector('strong')?.textContent?.toLowerCase() || '';
-                if (label.includes('total')) {
-                    const val = parseFloat((item.querySelector('span:last-child')?.textContent || '').replace(/[^0-9.]/g, ''));
-                    if (!isNaN(val) && val > 0) return val;
-                }
+            const selectedRadio = registrationForm.querySelector('input[name="registration_type"]:checked');
+            if (selectedRadio) {
+                selectedType = selectedRadio.value;
             }
-            return 0;
+
+            updatePrices();
+            calculateTotal();
         }
 
-        unlockPayButton.addEventListener('click', function () {
-            const registrationId = this.dataset.registrationId;
-            const usdAmount = parseDisplayedAmount();
+        // ── ZAR Confirmation Modal logic ───────────────────────────────────────
+        const backdrop = document.getElementById('zar-confirm-backdrop');
+        const modalClose = document.getElementById('zar-modal-close');
+        const modalCancel = document.getElementById('zar-modal-cancel');
+        const modalProceed = document.getElementById('zar-modal-proceed');
+        const usdDisplay = document.getElementById('zar-usd-display');
+        const zarDisplay = document.getElementById('zar-zar-display');
+        const rateNote = document.getElementById('zar-rate-note');
 
-            // The actual fetch+redirect is the callback passed to the modal
-            async function doPayment() {
-                unlockPayButton.disabled = true;
-                unlockPayButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
-                closeZarModal();
+        let _pendingPayCallback = null;  // stores the actual fetch+redirect logic
 
-                try {
-                    const response = await fetch('{{ url_for("conference_create_payment", conference_id=conference_id) }}', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ registration_id: registrationId })
-                    });
-                    const result = await response.json();
+        function openZarModal(usdAmount, payCallback) {
+            _pendingPayCallback = payCallback;
+            usdDisplay.textContent = `$${usdAmount.toFixed(2)}`;
+            zarDisplay.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1rem;"></i>';
+            rateNote.textContent = 'Fetching live exchange rate…';
+            modalProceed.disabled = true;
+            backdrop.classList.add('open');
+            document.body.style.overflow = 'hidden';
 
-                    if (result.success && result.payment_url) {
-                        window.location.href = result.payment_url;
-                    } else {
-                        alert(result.error || 'Could not start payment.');
+            // Fetch live rate
+            fetch('/api/fx-rate')
+                .then(r => r.json())
+                .then(data => {
+                    const rate = data.usd_to_zar || 18.5;
+                    const zarAmt = usdAmount * rate;
+                    zarDisplay.textContent = `R${zarAmt.toFixed(2)}`;
+                    const liveLabel = data.live ? 'live rate' : 'estimated rate';
+                    rateNote.innerHTML = `Exchange rate: <span>1 USD = R${rate.toFixed(4)}</span> (${liveLabel}). Actual charge may differ slightly.`;
+                    modalProceed.disabled = false;
+                })
+                .catch(() => {
+                    const fallbackRate = 18.5;
+                    zarDisplay.textContent = `R${(usdAmount * fallbackRate).toFixed(2)}`;
+                    rateNote.innerHTML = `Estimated rate: <span>1 USD ≈ R${fallbackRate}</span>. Actual charge may differ.`;
+                    modalProceed.disabled = false;
+                });
+        }
+
+        function closeZarModal() {
+            backdrop.classList.remove('open');
+            document.body.style.overflow = '';
+            _pendingPayCallback = null;
+        }
+
+        if (modalClose) modalClose.addEventListener('click', closeZarModal);
+        if (modalCancel) modalCancel.addEventListener('click', closeZarModal);
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) closeZarModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZarModal(); });
+
+        if (modalProceed) {
+            modalProceed.addEventListener('click', async function () {
+                if (!_pendingPayCallback) return;
+                modalProceed.disabled = true;
+                modalProceed.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
+                await _pendingPayCallback();
+            });
+        }
+
+        // ── Wire up the Pay Conference Fee button ──────────────────────────────
+        if (unlockPayButton) {
+            // Read the registration USD amount from the workflow status card
+            const amountText = document.querySelector('.workflow-item span:last-child')?.textContent || '';
+            // Try to parse a numeric total from the displayed amount (e.g. "$500.00" or "R500")
+            function parseDisplayedAmount() {
+                // Walk all workflow-items and find the one that has an amount
+                const items = document.querySelectorAll('.workflow-item');
+                for (const item of items) {
+                    const label = item.querySelector('strong')?.textContent?.toLowerCase() || '';
+                    if (label.includes('total')) {
+                        const val = parseFloat((item.querySelector('span:last-child')?.textContent || '').replace(/[^0-9.]/g, ''));
+                        if (!isNaN(val) && val > 0) return val;
+                    }
+                }
+                return 0;
+            }
+
+            unlockPayButton.addEventListener('click', function () {
+                const registrationId = this.dataset.registrationId;
+                const usdAmount = parseDisplayedAmount();
+
+                // The actual fetch+redirect is the callback passed to the modal
+                async function doPayment() {
+                    unlockPayButton.disabled = true;
+                    unlockPayButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
+                    closeZarModal();
+
+                    try {
+                        const response = await fetch('{{ url_for("conference_create_payment", conference_id=conference_id) }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ registration_id: registrationId })
+                        });
+                        const result = await response.json();
+
+                        if (result.success && result.payment_url) {
+                            window.location.href = result.payment_url;
+                        } else {
+                            alert(result.error || 'Could not start payment.');
+                            unlockPayButton.disabled = false;
+                            unlockPayButton.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+                        }
+                    } catch (error) {
+                        console.error('Payment start error:', error);
+                        alert('An error occurred while starting payment.');
                         unlockPayButton.disabled = false;
                         unlockPayButton.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
                     }
-                } catch (error) {
-                    console.error('Payment start error:', error);
-                    alert('An error occurred while starting payment.');
-                    unlockPayButton.disabled = false;
-                    unlockPayButton.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
                 }
-            }
 
-            openZarModal(usdAmount, doPayment);
-        });
-    }
-});
+                openZarModal(usdAmount, doPayment);
+            });
+        }
+    });
 </script>
 {% endblock %}
