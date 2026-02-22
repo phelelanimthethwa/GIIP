@@ -216,6 +216,25 @@ ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip',
 # Add these constants near the top of the file
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif'}
 EXTRA_PAPER_FEE_USD = 50.0
+
+# Schedule configuration constants
+SCHEDULE_DAYS = [
+    'Day 1',
+    'Day 2',
+    'Day 3',
+    'Day 4',
+    'Day 5'
+]
+
+TRACKS = [
+    'Keynote',
+    'Technical Track 1',
+    'Technical Track 2',
+    'Workshop',
+    'Panel Discussion',
+    'Networking'
+]
+
 DEFAULT_THEME = {
     'primary_color': '#007bff',
     'secondary_color': '#6c757d',
