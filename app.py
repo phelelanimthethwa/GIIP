@@ -660,6 +660,11 @@ def paper_submission():
         if (conf_data and 'basic_info' in conf_data and 
             conf_data.get('settings', {}).get('paper_submission_enabled', True)):  # Default to True for backward compatibility
             available_conferences[conf_id] = conf_data
+
+    # Calculate per-conference submission counts for the current user
+    user_submission_counts = {}
+    for conf_id in available_conferences:
+        user_submission_counts[conf_id] = get_conference_submission_count(current_user.id, conf_id)
     
     if request.method == 'POST':
         try:
@@ -672,31 +677,19 @@ def paper_submission():
                 return render_template('user/papers/submit.html', 
                                      site_design=get_site_design(),
                                      conferences=available_conferences,
-                                     paper_settings=paper_settings)
+                                     paper_settings=paper_settings,
+                                     user_submission_counts=user_submission_counts,
+                                     extra_paper_fee=EXTRA_PAPER_FEE_USD)
             
             # If only one conference or none selected, use first/default
             if not selected_conference_id and available_conferences:
                 selected_conference_id = list(available_conferences.keys())[0]
-            
-            # Get form data
-            paper_data = {
-                'conference_id': selected_conference_id,
-                'user_id': current_user.id,
-                'user_email': current_user.email,
-                'paper_title': request.form.get('paper_title'),
-                'paper_abstract': request.form.get('paper_abstract'),
-                'presentation_type': request.form.get('presentation_type'),
-                'research_area': request.form.get('research_area'),
-                'keywords': [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()],
-                'submitted_at': datetime.now().isoformat(),
-                'status': 'pending',
-                'authors': [],
-                'review_comments': '',
-                'reviewed_by': '',
-                'updated_at': datetime.now().isoformat()
-            }
 
-            # Process authors
+            # Get initial submission count
+            initial_count = get_conference_submission_count(current_user.id, selected_conference_id) if selected_conference_id else 0
+            
+            # Process authors (shared across all papers)
+            authors = []
             author_count = 0
             while f'authors[{author_count}][name]' in request.form:
                 author = {
@@ -705,89 +698,124 @@ def paper_submission():
                     'institution': request.form.get(f'authors[{author_count}][institution]')
                 }
                 if all(author.values()):  # Only add if all fields are filled
-                    paper_data['authors'].append(author)
+                    authors.append(author)
                 author_count += 1
 
-            # Validate required fields
-            required_fields = ['paper_title', 'paper_abstract', 'presentation_type', 'research_area']
-            for field in required_fields:
-                if not paper_data.get(field):
-                    flash('Please fill in all required fields.', 'error')
-                    return redirect(url_for('paper_submission'))
-
-            if not paper_data['authors']:
+            if not authors:
                 flash('At least one author is required.', 'error')
                 return redirect(url_for('paper_submission'))
 
-            # Handle paper file upload
-            if 'paper_file' not in request.files:
-                flash('Please upload a paper file.', 'error')
-                return redirect(url_for('paper_submission'))
+            # Process papers - handle both paper 1 and paper 2
+            papers_submitted = 0
+            paper_count = 0
+            submitted_papers = []
 
-            file = request.files['paper_file']
-            if not file or not file.filename:
-                flash('Please select a paper file.', 'error')
-                return redirect(url_for('paper_submission'))
+            while f'papers[{paper_count}][title]' in request.form:
+                paper_title = request.form.get(f'papers[{paper_count}][title]', '').strip()
+                paper_abstract = request.form.get(f'papers[{paper_count}][abstract]', '').strip()
+                research_area = request.form.get(f'papers[{paper_count}][research_area]', '').strip()
+                presentation_type = request.form.get(f'papers[{paper_count}][presentation_type]', '').strip()
+                keywords_str = request.form.get(f'papers[{paper_count}][keywords]', '').strip()
 
-            if not file.filename.lower().endswith('.pdf'):
-                flash('Only PDF files are allowed.', 'error')
-                return redirect(url_for('paper_submission'))
+                # Skip empty papers
+                if not paper_title or not paper_abstract:
+                    paper_count += 1
+                    continue
 
-            # Read and encode file data
-            file_data = file.read()
-            file_base64 = base64.b64encode(file_data).decode('utf-8')
+                # Check file upload
+                file_key = f'papers[{paper_count}][file]'
+                if file_key not in request.files:
+                    flash(f'Please upload a file for Paper {paper_count + 1}.', 'error')
+                    return redirect(url_for('paper_submission'))
 
-            # Add file data to paper_data
-            paper_data.update({
-                'file_data': file_base64,
-                'file_name': secure_filename(file.filename),
-                'file_type': file.content_type,
-                'file_size': len(file_data)
-            })
+                file = request.files[file_key]
+                if not file or not file.filename:
+                    flash(f'Please select a file for Paper {paper_count + 1}.', 'error')
+                    return redirect(url_for('paper_submission'))
 
-            # Debug print before saving
-            print("Saving paper data:", {k: v for k, v in paper_data.items() if k != 'file_data'})
+                if not file.filename.lower().endswith('.pdf'):
+                    flash(f'Only PDF files are allowed for Paper {paper_count + 1}.', 'error')
+                    return redirect(url_for('paper_submission'))
 
-            # Store paper in Firebase under conference-specific path
-            if selected_conference_id:
-                papers_ref = db.reference(f'conferences/{selected_conference_id}/paper_submissions')
-            else:
-                # Fallback to global papers collection for backward compatibility
-                papers_ref = db.reference('papers')
-            
-            new_paper = papers_ref.push(paper_data)
-            paper_id = new_paper.key
+                # Enforce max papers constraint
+                if initial_count + papers_submitted >= 2:
+                    flash(f'You can only submit a maximum of 2 papers per conference. You are trying to submit {papers_submitted + 1} paper(s).', 'error')
+                    return redirect(url_for('paper_submission'))
 
-            # Also store in user's submissions for easy access
-            if selected_conference_id:
-                user_submissions_ref = db.reference(f'user_paper_submissions/{current_user.id}')
-                user_submissions_ref.push({
+                # Read and encode file data
+                file_data = file.read()
+                file_base64 = base64.b64encode(file_data).decode('utf-8')
+
+                # Create paper data
+                paper_data = {
                     'conference_id': selected_conference_id,
-                    'paper_id': paper_id,
-                    'paper_title': paper_data['paper_title'],
-                    'conference_name': available_conferences.get(selected_conference_id, {}).get('basic_info', {}).get('name', 'Unknown Conference'),
+                    'user_id': current_user.id,
+                    'user_email': current_user.email,
+                    'paper_title': paper_title,
+                    'paper_abstract': paper_abstract,
+                    'presentation_type': presentation_type,
+                    'research_area': research_area,
+                    'keywords': [k.strip() for k in keywords_str.split(',') if k.strip()],
+                    'submitted_at': datetime.now().isoformat(),
                     'status': 'pending',
-                    'submitted_at': datetime.now().isoformat()
+                    'authors': authors,
+                    'review_comments': '',
+                    'reviewed_by': '',
+                    'updated_at': datetime.now().isoformat(),
+                    'file_data': file_base64,
+                    'file_name': secure_filename(file.filename),
+                    'file_type': file.content_type,
+                    'file_size': len(file_data)
+                }
+
+                # Store paper in Firebase
+                if selected_conference_id:
+                    papers_ref = db.reference(f'conferences/{selected_conference_id}/paper_submissions')
+                else:
+                    papers_ref = db.reference('papers')
+                
+                new_paper = papers_ref.push(paper_data)
+                paper_id = new_paper.key
+
+                # Store in user's submissions
+                if selected_conference_id:
+                    user_submissions_ref = db.reference(f'user_paper_submissions/{current_user.id}')
+                    user_submissions_ref.push({
+                        'conference_id': selected_conference_id,
+                        'paper_id': paper_id,
+                        'paper_title': paper_title,
+                        'conference_name': available_conferences.get(selected_conference_id, {}).get('basic_info', {}).get('name', 'Unknown Conference'),
+                        'status': 'pending',
+                        'submitted_at': datetime.now().isoformat()
+                    })
+
+                submitted_papers.append({
+                    'title': paper_title,
+                    'id': paper_id,
+                    'type': presentation_type
                 })
+                
+                papers_submitted += 1
+                paper_count += 1
 
-            # Debug print after saving
-            print("Paper saved with ID:", paper_id)
+            if papers_submitted == 0:
+                flash('Please provide at least one paper with all required fields.', 'error')
+                return redirect(url_for('paper_submission'))
 
-            # Send confirmation email
+            # Send confirmation emails for all submitted papers
             try:
                 conference_name = available_conferences.get(selected_conference_id, {}).get('basic_info', {}).get('name', 'Conference')
                 email_service.send_paper_confirmation({
-                    'authors': paper_data['authors'],
-                    'paper_title': paper_data['paper_title'],
-                    'presentation_type': paper_data['presentation_type'],
-                    'paper_id': paper_id,
+                    'authors': authors,
+                    'papers': submitted_papers,
                     'user_email': current_user.email,
-                    'conference_name': conference_name
+                    'conference_name': conference_name,
+                    'paper_count': papers_submitted
                 })
             except Exception as e:
                 print(f"Error sending confirmation email: {str(e)}")
 
-            flash(f'Paper submitted successfully to {conference_name}! Check your email for confirmation.', 'success')
+            flash(f'{papers_submitted} paper(s) submitted successfully to {conference_name}! Check your email for confirmation.', 'success')
             return redirect(url_for('dashboard'))
             
         except Exception as e:
@@ -796,12 +824,16 @@ def paper_submission():
             return render_template('user/papers/submit.html', 
                                  site_design=get_site_design(),
                                  conferences=available_conferences,
-                                 paper_settings=paper_settings)
+                                 paper_settings=paper_settings,
+                                 user_submission_counts=user_submission_counts,
+                                 extra_paper_fee=EXTRA_PAPER_FEE_USD)
 
     return render_template('user/papers/submit.html', 
                          site_design=get_site_design(),
                          conferences=available_conferences,
-                         paper_settings=paper_settings)
+                         paper_settings=paper_settings,
+                         user_submission_counts=user_submission_counts,
+                         extra_paper_fee=EXTRA_PAPER_FEE_USD)
 
 @app.route('/author-guidelines')
 def author_guidelines():
@@ -5205,6 +5237,15 @@ def admin_submissions():
             enriched['_paper_id'] = paper_id
             enriched['_conference_id'] = ''
             enriched['_conference_name'] = 'General Submissions'
+            # Strip heavy base64 data for template rendering
+            enriched['file_data'] = bool(paper.get('file_data'))
+            file_history = paper.get('file_history', []) or []
+            if isinstance(file_history, dict):
+                file_history = list(file_history.values())
+            enriched['file_history'] = [
+                {k: v for k, v in entry.items() if k != 'file_data'}
+                for entry in file_history
+            ]
             all_submissions[f'global::{paper_id}'] = enriched
 
         # Conference-scoped submissions (new workflow)
@@ -5224,6 +5265,15 @@ def admin_submissions():
                 enriched['_paper_id'] = paper_id
                 enriched['_conference_id'] = conference_id
                 enriched['_conference_name'] = conference_name
+                # Strip heavy base64 data for template rendering
+                enriched['file_data'] = bool(paper.get('file_data'))
+                file_history = paper.get('file_history', []) or []
+                if isinstance(file_history, dict):
+                    file_history = list(file_history.values())
+                enriched['file_history'] = [
+                    {k: v for k, v in entry.items() if k != 'file_data'}
+                    for entry in file_history
+                ]
                 all_submissions[f'{conference_id}::{paper_id}'] = enriched
 
         # Sort papers by submission date (newest first)
@@ -5232,6 +5282,27 @@ def admin_submissions():
             key=lambda x: x[1].get('submitted_at', ''),
             reverse=True
         ))
+
+        # Calculate per-user submission counts & accepted status per conference
+        user_conference_counts = {}  # (user_id, conference_id) -> {count, has_accepted}
+        for key, paper in sorted_papers.items():
+            user_id = paper.get('user_id') or paper.get('submitted_by') or ''
+            conf_id = paper.get('_conference_id', '')
+            uc_key = (user_id, conf_id)
+            if uc_key not in user_conference_counts:
+                user_conference_counts[uc_key] = {'count': 0, 'has_accepted': False}
+            user_conference_counts[uc_key]['count'] += 1
+            if (paper.get('status') or '').lower() == 'accepted':
+                user_conference_counts[uc_key]['has_accepted'] = True
+
+        # Inject counts into each paper
+        for key, paper in sorted_papers.items():
+            user_id = paper.get('user_id') or paper.get('submitted_by') or ''
+            conf_id = paper.get('_conference_id', '')
+            uc_key = (user_id, conf_id)
+            info = user_conference_counts.get(uc_key, {'count': 1, 'has_accepted': False})
+            paper['_user_submission_count'] = info['count']
+            paper['_user_has_accepted'] = info['has_accepted']
         
         return render_template(
             'admin/submissions.html',
@@ -5337,6 +5408,16 @@ def update_paper_status(paper_id):
                         registration_update['workflow_status'] = 'paper_rejected'
 
                     db.reference(f'registrations/{registration_id}').update(registration_update)
+
+                    # Re-sync pricing to recalculate extra paper fee
+                    # (fee is waived when at least one paper is accepted)
+                    updated_reg = db.reference(f'registrations/{registration_id}').get() or {}
+                    sync_conference_registration_pricing(
+                        registration_id=registration_id,
+                        registration_data=updated_reg,
+                        user_id=paper.get('user_id'),
+                        conference_id=conference_id
+                    )
 
             # Legacy conference submissions may not have registration yet.
             # Ensure accepted papers always get a registration so payment can start.
@@ -6191,6 +6272,99 @@ def download_paper(paper_id):
         
     except Exception as e:
         print(f"Error downloading paper: {str(e)}")
+        flash(f'Error downloading paper: {str(e)}', 'error')
+        return redirect(url_for('admin_submissions'))
+
+
+@app.route('/admin/papers/<paper_id>/download/<int:version>')
+@login_required
+@admin_required
+def download_paper_version(paper_id, version):
+    """Download a specific historical version of a paper file."""
+    try:
+        conference_id = (request.args.get('conference_id') or '').strip()
+
+        # Get paper data from Firebase
+        paper = None
+        if conference_id:
+            paper = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').get()
+
+        if not paper:
+            paper = db.reference(f'papers/{paper_id}').get()
+
+        # Fallback lookup
+        if not paper and not conference_id:
+            conferences = get_all_conferences()
+            for lookup_conference_id, conference in conferences.items():
+                conference_papers = (conference or {}).get('paper_submissions', {}) or {}
+                if paper_id in conference_papers:
+                    paper = conference_papers.get(paper_id)
+                    break
+
+        if not paper:
+            flash('Paper not found.', 'error')
+            return redirect(url_for('admin_submissions'))
+
+        # Get file_history
+        file_history = paper.get('file_history', []) or []
+        if isinstance(file_history, dict):
+            file_history = list(file_history.values())
+
+        # version 0 = current file, version 1..N = historical versions
+        if version == 0:
+            # Download current file
+            file_data = paper.get('file_data')
+            file_name = paper.get('file_name', 'paper.pdf')
+            file_type = paper.get('file_type', 'application/pdf')
+        else:
+            # Download historical version (1-indexed)
+            idx = version - 1
+            if idx < 0 or idx >= len(file_history):
+                flash('File version not found.', 'error')
+                return redirect(url_for('admin_submissions'))
+            history_entry = file_history[idx]
+            file_data = history_entry.get('file_data')
+            file_name = history_entry.get('file_name', 'paper.pdf')
+            file_type = history_entry.get('file_type', 'application/pdf')
+
+        if not file_data:
+            flash('Paper file not found for this version.', 'error')
+            return redirect(url_for('admin_submissions'))
+
+        try:
+            file_bytes = base64.b64decode(file_data)
+        except Exception as e:
+            print(f"Error decoding file data: {str(e)}")
+            flash('Error processing file data.', 'error')
+            return redirect(url_for('admin_submissions'))
+
+        file_obj = io.BytesIO(file_bytes)
+        safe_filename_str = secure_filename(file_name)
+
+        # Prefix version to filename for clarity
+        if version > 0:
+            name_root, name_ext = os.path.splitext(safe_filename_str)
+            safe_filename_str = f"{name_root}_v{version}{name_ext}"
+
+        mimetype = file_type
+        if not mimetype or mimetype == 'application/octet-stream':
+            mimetype, _ = mimetypes.guess_type(file_name)
+            if not mimetype:
+                mimetype = 'application/pdf'
+
+        response = send_file(
+            file_obj,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=safe_filename_str,
+            max_age=0
+        )
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        return response
+
+    except Exception as e:
+        print(f"Error downloading paper version: {str(e)}")
         flash(f'Error downloading paper: {str(e)}', 'error')
         return redirect(url_for('admin_submissions'))
 
@@ -8234,15 +8408,29 @@ def get_conference_submission_count(user_id, conference_id):
         return 0
 
 def get_multi_submit_fee_info(user_id, conference_id):
-    """Return extra-paper pricing info for multi submissions."""
+    """Return extra-paper pricing info for multi submissions.
+    
+    The $50 extra paper fee is waived when at least one paper is accepted.
+    """
     submission_count = get_conference_submission_count(user_id, conference_id)
     extra_paper_count = max(submission_count - 1, 0)
-    extra_paper_fee_total = round(extra_paper_count * EXTRA_PAPER_FEE_USD, 2)
+
+    # Check if user has at least one accepted paper -> waive extra fee
+    accepted_id, accepted_data = get_latest_accepted_conference_submission(user_id, conference_id)
+    fee_waived = bool(accepted_id and accepted_data)
+
+    if fee_waived:
+        extra_paper_fee_total = 0.0
+    else:
+        extra_paper_fee_total = round(extra_paper_count * EXTRA_PAPER_FEE_USD, 2)
+
     return {
         'submission_count': submission_count,
         'extra_paper_count': extra_paper_count,
         'extra_paper_fee_per_item': EXTRA_PAPER_FEE_USD,
-        'extra_paper_fee_total': extra_paper_fee_total
+        'extra_paper_fee_total': extra_paper_fee_total,
+        'fee_waived': fee_waived,
+        'fee_waived_reason': 'Paper accepted' if fee_waived else ''
     }
 
 def _calculate_optional_additional_amount(fees, workshop=False, banquet=False):
@@ -9791,7 +9979,7 @@ def send_registration_confirmation_email(email_or_data, conference_name=None, re
 @app.route('/conferences/<conference_id>/submit-paper', methods=['GET', 'POST'])
 @login_required
 def conference_paper_submission(conference_id):
-    """Create a conference paper submission (one active submission per user/conference)."""
+    """Create a conference paper submission (up to 2 per user/conference; extra paper fee for 2nd)."""
     try:
         conference = get_conference_data(conference_id)
         if not conference:
@@ -9809,24 +9997,26 @@ def conference_paper_submission(conference_id):
             conference_id,
             registration_id=registration_id if registration_id else None
         )
+
+        # Count how many active submissions the user already has
+        existing_submission_count = get_conference_submission_count(current_user.id, conference_id)
         
         if request.method == 'GET':
-            if active_submission:
-                active_status = (active_submission.get('status') or '').lower()
-                if active_status == 'accepted':
-                    flash(
-                        'Your paper has already been accepted. '
-                        'Further edits are locked unless admin requests revision.',
-                        'info'
-                    )
-                    return redirect(url_for('conference_registration', conference_id=conference_id))
+            # Allow the user to submit additional papers (max 2).
+            # If they already have 2 active submissions, block further ones.
+            if existing_submission_count >= 2:
+                flash(
+                    'You have already submitted the maximum of 2 papers for this conference.',
+                    'info'
+                )
+                return redirect(url_for('conference_registration', conference_id=conference_id))
 
-                flash('You already have a submission for this conference.', 'info')
-                return redirect(url_for(
-                    'conference_submission_details',
-                    conference_id=conference_id,
-                    paper_id=active_paper_id
-                ))
+            if existing_submission_count == 1 and active_submission:
+                flash(
+                    'You already have one submission. You may submit one additional paper '
+                    '(a $50 extra paper fee will apply unless one paper is accepted).',
+                    'info'
+                )
 
             return render_template('conferences/paper_submission.html',
                                  conference=conference,
@@ -9838,13 +10028,9 @@ def conference_paper_submission(conference_id):
         
         # POST request - process new paper submission
         try:
-            if active_submission:
-                flash('You already have an active submission. Please edit that submission instead.', 'info')
-                return redirect(url_for(
-                    'edit_conference_submission',
-                    conference_id=conference_id,
-                    paper_id=active_paper_id
-                ))
+            if existing_submission_count >= 2:
+                flash('You have already submitted the maximum of 2 papers for this conference.', 'info')
+                return redirect(url_for('conference_registration', conference_id=conference_id))
 
             now_iso = datetime.now().isoformat()
             paper_data = {
@@ -10188,12 +10374,27 @@ def edit_conference_submission(conference_id, paper_id):
                     site_design=get_site_design()
                 )
 
+            # Preserve the current file in file_history before overwriting
+            file_history = paper.get('file_history', []) or []
+            if isinstance(file_history, dict):
+                file_history = list(file_history.values())
+            if paper.get('file_data'):
+                file_history.append({
+                    'file_data': paper['file_data'],
+                    'file_name': paper.get('file_name', 'paper.pdf'),
+                    'file_type': paper.get('file_type', 'application/pdf'),
+                    'file_size': paper.get('file_size', 0),
+                    'uploaded_at': paper.get('submitted_at') or paper.get('updated_at') or now_iso,
+                    'version': len(file_history) + 1
+                })
+
             file_bytes = new_file.read()
             file_update = {
                 'file_data': base64.b64encode(file_bytes).decode('utf-8'),
                 'file_name': secure_filename(new_file.filename),
                 'file_type': new_file.content_type,
-                'file_size': len(file_bytes)
+                'file_size': len(file_bytes),
+                'file_history': file_history
             }
 
         update_data = {
