@@ -1437,6 +1437,17 @@ def registration_select():
                           type=request.form.get('registration_type'),
                           period=request.form.get('registration_period')))
 
+# ── FX Rate API (used by front-end to show ZAR equivalent in confirmation modal) ──
+@app.route('/api/fx-rate')
+def api_fx_rate():
+    """Return the current USD→ZAR exchange rate (cached for 1 hour)."""
+    try:
+        from services.exchange_rate_service import convert_usd_to_zar
+        _, rate, is_live = convert_usd_to_zar(1.0, app.config.get('EXCHANGE_RATE_API_KEY', ''))
+        return jsonify({'success': True, 'usd_to_zar': rate, 'live': is_live})
+    except Exception as exc:
+        return jsonify({'success': False, 'usd_to_zar': 18.5, 'live': False, 'error': str(exc)})
+
 # Payment Routes for Yoco Integration
 @app.route('/payment/create', methods=['POST'])
 @login_required

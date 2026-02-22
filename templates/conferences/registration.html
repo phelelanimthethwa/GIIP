@@ -860,6 +860,156 @@
         padding: 1.5rem;
     }
 }
+/* ── ZAR Confirmation Modal ─────────────────────────────────────────── */
+#zar-confirm-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 20, 40, 0.60);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+#zar-confirm-backdrop.open {
+    display: flex;
+}
+#zar-confirm-modal {
+    background: #ffffff;
+    border-radius: 18px;
+    max-width: 460px;
+    width: 100%;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+    overflow: hidden;
+    animation: zarModalIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes zarModalIn {
+    from { opacity:0; transform: scale(0.88) translateY(24px); }
+    to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+#zar-modal-header {
+    background: linear-gradient(135deg, #0f2f62 0%, #1a56a8 100%);
+    padding: 1.5rem 1.75rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+#zar-modal-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+#zar-modal-close {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+#zar-modal-close:hover { background: rgba(255,255,255,0.30); }
+#zar-modal-body {
+    padding: 1.5rem 1.75rem;
+}
+.zar-info-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
+    color: #1e40af;
+    line-height: 1.45;
+}
+.zar-info-badge i { font-size: 1.1rem; flex-shrink: 0; }
+.zar-amounts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+.zar-amount-card {
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+}
+.zar-amount-card.highlight {
+    border-color: #0f2f62;
+    background: #eef2ff;
+}
+.zar-amount-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+.zar-amount-value {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0f2f62;
+}
+.zar-amount-card.highlight .zar-amount-value { color: #1a56a8; }
+.zar-rate-note {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    text-align: center;
+    margin-bottom: 1.25rem;
+}
+.zar-rate-note span { font-weight: 600; color: #64748b; }
+#zar-modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0 1.75rem 1.5rem;
+}
+#zar-modal-cancel {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+#zar-modal-cancel:hover { border-color: #94a3b8; background: #f8fafc; }
+#zar-modal-proceed {
+    flex: 2;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #d01616, #b91c1c);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: opacity 0.2s;
+}
+#zar-modal-proceed:hover { opacity: 0.9; }
+#zar-modal-proceed:disabled { opacity: 0.55; cursor: not-allowed; }
 </style>
 
 <script>
@@ -1025,33 +1175,313 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateTotal();
     }
 
-    if (unlockPayButton) {
-        unlockPayButton.addEventListener('click', async function() {
-            const registrationId = this.dataset.registrationId;
+<!-- ── ZAR Confirmation Modal ──────────────────────────────────────────── -->
+<div id="zar-confirm-backdrop">
+    <div id="zar-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="zar-modal-title">
+        <div id="zar-modal-header">
+            <h2 id="zar-modal-title"><i class="fas fa-credit-card" style="margin-right:.5rem;"></i>Payment Currency Notice</h2>
+            <button id="zar-modal-close" aria-label="Close">&#x2715;</button>
+        </div>
+        <div id="zar-modal-body">
+            <div class="zar-info-badge">
+                <i class="fas fa-info-circle"></i>
+                <span>Registration fees are listed in <strong>USD</strong>, but Yoco processes payments in <strong>South African Rand (ZAR)</strong>. The ZAR amount below will be charged to your card.</span>
+            </div>
+            <div class="zar-amounts-grid">
+                <div class="zar-amount-card">
+                    <div class="zar-amount-label">Your Fee (USD)</div>
+                    <div class="zar-amount-value" id="zar-usd-display">$0.00</div>
+                </div>
+                <div class="zar-amount-card highlight">
+                    <div class="zar-amount-label">Charged in ZAR</div>
+                    <div class="zar-amount-value" id="zar-zar-display"><i class="fas fa-spinner fa-spin" style="font-size:1rem;"></i></div>
+                </div>
+            </div>
+            <p class="zar-rate-note" id="zar-rate-note">Fetching live exchange rate…</p>
+        </div>
+        <div id="zar-modal-actions">
+            <button id="zar-modal-cancel" type="button">Cancel</button>
+            <button id="zar-modal-proceed" type="button" disabled>
+                <i class="fas fa-lock-open"></i> Proceed to Payment
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fees = {{ fees|tojson|safe if fees else 'null' }};
+    const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
+    const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
+    const multiSubmitFeeInfo = {{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}' }};
+    const activePeriod = formRegistrationPeriod || currentPeriod;
+    const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
+    const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
+    const registrationForm = document.getElementById('registration-form');
+    const registerButton = document.getElementById('register-button');
+    const unlockPayButton = document.getElementById('unlock-pay-button');
+
+    if (registrationForm && registerButton) {
+        let selectedType = null;
+        let totalAmount = 0;
+        let selectedAdditionalFee = 0;
+        const extraPaperCount = Number(multiSubmitFeeInfo?.extra_paper_count || 0);
+        const extraPaperFeeTotal = Number(multiSubmitFeeInfo?.extra_paper_fee_total || 0);
+        const extraPaperFeePerItem = Number(multiSubmitFeeInfo?.extra_paper_fee_per_item || 50);
+
+        function updatePrices() {
+            if (!fees || !activePeriod) return;
+            const periodFees = fees[activePeriod]?.fees || {};
+
+            document.querySelectorAll('.type-card').forEach(card => {
+                const radio = card.querySelector('input[type="radio"]');
+                const priceElement = card.querySelector('.price-value');
+                if (radio && priceElement) {
+                    const price = periodFees[radio.value] || 0;
+                    priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
+                }
+            });
+        }
+
+        function updateSummary() {
+            const baseFee = selectedType && fees && activePeriod
+                ? (fees[activePeriod]?.fees?.[selectedType] || 0)
+                : 0;
+
+            const baseFeeEl = document.getElementById('base-fee');
+            const additionalFeeEl = document.getElementById('additional-fee');
+            const additionalSummaryEl = document.getElementById('additional-items-summary');
+            const extraPaperSummaryEl = document.getElementById('extra-paper-summary');
+            const extraPaperLabelEl = document.getElementById('extra-paper-label');
+            const extraPaperFeeEl = document.getElementById('extra-paper-fee');
+            const totalAmountEl = document.getElementById('total-amount');
+
+            if (baseFeeEl) baseFeeEl.textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
+            if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${selectedAdditionalFee.toFixed(2)}`;
+            if (additionalSummaryEl) additionalSummaryEl.style.display = selectedAdditionalFee > 0 ? 'flex' : 'none';
+            if (extraPaperSummaryEl) extraPaperSummaryEl.style.display = extraPaperCount > 0 ? 'flex' : 'none';
+            if (extraPaperLabelEl) {
+                extraPaperLabelEl.textContent = `Extra Paper Surcharge (${extraPaperCount} × $${extraPaperFeePerItem.toFixed(2)}):`;
+            }
+            if (extraPaperFeeEl) {
+                extraPaperFeeEl.textContent = `$${extraPaperFeeTotal.toFixed(2)}`;
+            }
+            if (totalAmountEl) totalAmountEl.innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
+
+            registerButton.disabled = !(totalAmount > 0 && selectedType);
+        }
+
+        function calculateTotal() {
+            if (!fees || !activePeriod || !selectedType) {
+                totalAmount = 0;
+                updateSummary();
+                return;
+            }
+
+            totalAmount = fees[activePeriod]?.fees?.[selectedType] || 0;
+            selectedAdditionalFee = 0;
+            if (fees.additional_items) {
+                ['workshop', 'banquet'].forEach(item => {
+                    const checkbox = document.getElementById(item);
+                    if (checkbox && checkbox.checked) {
+                        const itemData = fees.additional_items[item];
+                        if (itemData && itemData.enabled) {
+                            const feeValue = itemData.fee || 0;
+                            totalAmount += feeValue;
+                            selectedAdditionalFee += feeValue;
+                        }
+                    }
+                });
+            }
+            totalAmount += extraPaperFeeTotal;
+            updateSummary();
+        }
+
+        document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                selectedType = this.value;
+                calculateTotal();
+            });
+        });
+
+        ['workshop', 'banquet'].forEach(item => {
+            const checkbox = document.getElementById(item);
+            if (checkbox) checkbox.addEventListener('change', calculateTotal);
+        });
+
+        registerButton.addEventListener('click', async function() {
+            const fullName = document.getElementById('full_name')?.value?.trim();
+            const email = document.getElementById('email')?.value?.trim();
+            const institution = document.getElementById('institution')?.value?.trim();
+            const country = document.getElementById('country')?.value?.trim();
+
+            if (!fullName || !email || !institution || !country || !selectedType) {
+                alert('Please fill in all required fields and select a registration type.');
+                return;
+            }
+
+            if (totalAmount <= 0) {
+                alert('Invalid amount. Please check your selection.');
+                return;
+            }
+
             this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
             try {
-                const response = await fetch('{{ url_for("conference_create_payment", conference_id=conference_id) }}', {
+                const registrationData = {
+                    registration_type: selectedType,
+                    registration_period: activePeriod,
+                    total_amount: totalAmount,
+                    institution,
+                    country,
+                    workshop: document.getElementById('workshop')?.checked || false,
+                    banquet: document.getElementById('banquet')?.checked || false,
+                    stay_on_registration: isEditMode
+                };
+
+                const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ registration_id: registrationId })
+                    body: JSON.stringify(registrationData)
                 });
-                const result = await response.json();
 
-                if (result.success && result.payment_url) {
-                    window.location.href = result.payment_url;
+                const result = await response.json();
+                if (result.success) {
+                    window.location.href = result.redirect_url || window.location.href;
                 } else {
-                    alert(result.error || 'Could not start payment.');
+                    alert(result.error || 'Failed to save registration. Please try again.');
                     this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+                    this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
                 }
             } catch (error) {
-                console.error('Payment start error:', error);
-                alert('An error occurred while starting payment.');
+                console.error('Registration error:', error);
+                alert('An error occurred. Please try again.');
                 this.disabled = false;
-                this.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+                this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
             }
+        });
+
+        const selectedRadio = registrationForm.querySelector('input[name="registration_type"]:checked');
+        if (selectedRadio) {
+            selectedType = selectedRadio.value;
+        }
+
+        updatePrices();
+        calculateTotal();
+    }
+
+    // ── ZAR Confirmation Modal logic ───────────────────────────────────────
+    const backdrop   = document.getElementById('zar-confirm-backdrop');
+    const modalClose = document.getElementById('zar-modal-close');
+    const modalCancel  = document.getElementById('zar-modal-cancel');
+    const modalProceed = document.getElementById('zar-modal-proceed');
+    const usdDisplay   = document.getElementById('zar-usd-display');
+    const zarDisplay   = document.getElementById('zar-zar-display');
+    const rateNote     = document.getElementById('zar-rate-note');
+
+    let _pendingPayCallback = null;  // stores the actual fetch+redirect logic
+
+    function openZarModal(usdAmount, payCallback) {
+        _pendingPayCallback = payCallback;
+        usdDisplay.textContent = `$${usdAmount.toFixed(2)}`;
+        zarDisplay.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1rem;"></i>';
+        rateNote.textContent = 'Fetching live exchange rate…';
+        modalProceed.disabled = true;
+        backdrop.classList.add('open');
+        document.body.style.overflow = 'hidden';
+
+        // Fetch live rate
+        fetch('/api/fx-rate')
+            .then(r => r.json())
+            .then(data => {
+                const rate = data.usd_to_zar || 18.5;
+                const zarAmt = usdAmount * rate;
+                zarDisplay.textContent = `R${zarAmt.toFixed(2)}`;
+                const liveLabel = data.live ? 'live rate' : 'estimated rate';
+                rateNote.innerHTML = `Exchange rate: <span>1 USD = R${rate.toFixed(4)}</span> (${liveLabel}). Actual charge may differ slightly.`;
+                modalProceed.disabled = false;
+            })
+            .catch(() => {
+                const fallbackRate = 18.5;
+                zarDisplay.textContent = `R${(usdAmount * fallbackRate).toFixed(2)}`;
+                rateNote.innerHTML = `Estimated rate: <span>1 USD ≈ R${fallbackRate}</span>. Actual charge may differ.`;
+                modalProceed.disabled = false;
+            });
+    }
+
+    function closeZarModal() {
+        backdrop.classList.remove('open');
+        document.body.style.overflow = '';
+        _pendingPayCallback = null;
+    }
+
+    if (modalClose)  modalClose.addEventListener('click', closeZarModal);
+    if (modalCancel) modalCancel.addEventListener('click', closeZarModal);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) closeZarModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZarModal(); });
+
+    if (modalProceed) {
+        modalProceed.addEventListener('click', async function() {
+            if (!_pendingPayCallback) return;
+            modalProceed.disabled = true;
+            modalProceed.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
+            await _pendingPayCallback();
+        });
+    }
+
+    // ── Wire up the Pay Conference Fee button ──────────────────────────────
+    if (unlockPayButton) {
+        // Read the registration USD amount from the workflow status card
+        const amountText = document.querySelector('.workflow-item span:last-child')?.textContent || '';
+        // Try to parse a numeric total from the displayed amount (e.g. "$500.00" or "R500")
+        function parseDisplayedAmount() {
+            // Walk all workflow-items and find the one that has an amount
+            const items = document.querySelectorAll('.workflow-item');
+            for (const item of items) {
+                const label = item.querySelector('strong')?.textContent?.toLowerCase() || '';
+                if (label.includes('total')) {
+                    const val = parseFloat((item.querySelector('span:last-child')?.textContent || '').replace(/[^0-9.]/g, ''));
+                    if (!isNaN(val) && val > 0) return val;
+                }
+            }
+            return 0;
+        }
+
+        unlockPayButton.addEventListener('click', function() {
+            const registrationId = this.dataset.registrationId;
+            const usdAmount = parseDisplayedAmount();
+
+            // The actual fetch+redirect is the callback passed to the modal
+            async function doPayment() {
+                unlockPayButton.disabled = true;
+                unlockPayButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
+                closeZarModal();
+
+                try {
+                    const response = await fetch('{{ url_for("conference_create_payment", conference_id=conference_id) }}', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ registration_id: registrationId })
+                    });
+                    const result = await response.json();
+
+                    if (result.success && result.payment_url) {
+                        window.location.href = result.payment_url;
+                    } else {
+                        alert(result.error || 'Could not start payment.');
+                        unlockPayButton.disabled = false;
+                        unlockPayButton.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+                    }
+                } catch (error) {
+                    console.error('Payment start error:', error);
+                    alert('An error occurred while starting payment.');
+                    unlockPayButton.disabled = false;
+                    unlockPayButton.innerHTML = '<i class="fas fa-credit-card"></i> Pay Conference Fee';
+                }
+            }
+
+            openZarModal(usdAmount, doPayment);
         });
     }
 });
