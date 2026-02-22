@@ -44,9 +44,9 @@
             <h3>Keywords</h3>
             <p>
                 {% if paper.keywords %}
-                    {{ paper.keywords|join(', ') }}
+                {{ paper.keywords|join(', ') }}
                 {% else %}
-                    No keywords provided.
+                No keywords provided.
                 {% endif %}
             </p>
         </div>
@@ -55,15 +55,15 @@
             <h3>Authors</h3>
             <ul class="authors-list">
                 {% if paper.authors %}
-                    {% for author in paper.authors %}
-                    <li>
-                        <strong>{{ author.name }}</strong>
-                        <span>{{ author.email }}</span>
-                        <span>{{ author.institution }}</span>
-                    </li>
-                    {% endfor %}
+                {% for author in paper.authors %}
+                <li>
+                    <strong>{{ author.name }}</strong>
+                    <span>{{ author.email }}</span>
+                    <span>{{ author.institution }}</span>
+                </li>
+                {% endfor %}
                 {% else %}
-                    <li>No authors listed.</li>
+                <li>No authors listed.</li>
                 {% endif %}
             </ul>
         </div>
@@ -79,16 +79,20 @@
             <a class="btn btn-secondary" href="{{ url_for('conference_details', conference_id=conference_id) }}">
                 Back to Conference
             </a>
-            <a class="btn btn-primary" href="{{ url_for('download_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
+            <a class="btn btn-primary"
+                href="{{ url_for('download_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
                 Download PDF
             </a>
             {% if can_edit %}
-            <a class="btn btn-primary" href="{{ url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
+            <a class="btn btn-primary"
+                href="{{ url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
                 Edit Submission
             </a>
             {% endif %}
             {% if can_withdraw %}
-            <form method="POST" action="{{ url_for('withdraw_conference_submission', conference_id=conference_id, paper_id=paper_id) }}" onsubmit="return confirm('Withdraw this submission? You can submit again later.');">
+            <form method="POST"
+                action="{{ url_for('withdraw_conference_submission', conference_id=conference_id, paper_id=paper_id) }}"
+                onsubmit="return confirm('Withdraw this submission? You can submit again later.');">
                 <button type="submit" class="btn btn-danger">Withdraw Submission</button>
             </form>
             {% endif %}
@@ -97,155 +101,174 @@
 </div>
 
 <style>
-.submission-detail-page {
-    max-width: 980px;
-    margin: 1.5rem auto 2rem;
-    padding: 0 1rem;
-}
+    .submission-detail-page {
+        max-width: 980px;
+        margin: 1.5rem auto 2rem;
+        padding: 0 1rem;
+    }
 
-.submission-detail-card {
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid #e5e7eb;
-    padding: 1.25rem;
-}
+    .submission-detail-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        padding: 1.25rem;
+    }
 
-.submission-detail-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    margin-bottom: 1.25rem;
-}
+    .submission-detail-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+    }
 
-.submission-detail-header h1 {
-    font-size: 1.2rem;
-    margin: 0 0 0.35rem;
-}
+    .submission-detail-header h1 {
+        font-size: 1.2rem;
+        margin: 0 0 0.35rem;
+    }
 
-.submission-detail-header p {
-    margin: 0;
-    color: #6b7280;
-}
+    .submission-detail-header p {
+        margin: 0;
+        color: #6b7280;
+    }
 
-.status-badge {
-    padding: 0.35rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: capitalize;
-}
+    .status-badge {
+        padding: 0.35rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
 
-.status-pending { background: #fef3c7; color: #92400e; }
-.status-revision { background: #fde68a; color: #92400e; }
-.status-rejected { background: #fecaca; color: #991b1b; }
-.status-accepted { background: #d1fae5; color: #065f46; }
-.status-withdrawn { background: #e5e7eb; color: #374151; }
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
 
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.85rem;
-    margin-bottom: 1rem;
-}
+    .status-revision {
+        background: #fde68a;
+        color: #92400e;
+    }
 
-.detail-item {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0.7rem 0.8rem;
-}
+    .status-rejected {
+        background: #fecaca;
+        color: #991b1b;
+    }
 
-.detail-item label {
-    display: block;
-    color: #6b7280;
-    font-size: 0.72rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
+    .status-accepted {
+        background: #d1fae5;
+        color: #065f46;
+    }
 
-.detail-item p {
-    margin: 0;
-    font-size: 0.9rem;
-    color: #111827;
-}
+    .status-withdrawn {
+        background: #e5e7eb;
+        color: #374151;
+    }
 
-.detail-section {
-    margin-bottom: 1rem;
-}
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+    }
 
-.detail-section h3 {
-    margin: 0 0 0.45rem;
-    font-size: 0.98rem;
-}
+    .detail-item {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.7rem 0.8rem;
+    }
 
-.detail-section p {
-    margin: 0;
-    line-height: 1.5;
-    color: #1f2937;
-    font-size: 0.9rem;
-}
+    .detail-item label {
+        display: block;
+        color: #6b7280;
+        font-size: 0.72rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
 
-.authors-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 0.6rem;
-}
+    .detail-item p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #111827;
+    }
 
-.authors-list li {
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0.65rem 0.8rem;
-    display: grid;
-    gap: 0.25rem;
-    font-size: 0.88rem;
-}
+    .detail-section {
+        margin-bottom: 1rem;
+    }
 
-.authors-list strong {
-    color: #111827;
-}
+    .detail-section h3 {
+        margin: 0 0 0.45rem;
+        font-size: 0.98rem;
+    }
 
-.authors-list span {
-    color: #6b7280;
-}
+    .detail-section p {
+        margin: 0;
+        line-height: 1.5;
+        color: #1f2937;
+        font-size: 0.9rem;
+    }
 
-.action-row {
-    margin-top: 1.25rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-}
+    .authors-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 0.6rem;
+    }
 
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    border-radius: 8px;
-    padding: 0.5rem 0.8rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-}
+    .authors-list li {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.65rem 0.8rem;
+        display: grid;
+        gap: 0.25rem;
+        font-size: 0.88rem;
+    }
 
-.btn-primary {
-    background: #111827;
-    color: #fff;
-}
+    .authors-list strong {
+        color: #111827;
+    }
 
-.btn-secondary {
-    background: #f3f4f6;
-    color: #111827;
-}
+    .authors-list span {
+        color: #6b7280;
+    }
 
-.btn-danger {
-    background: #dc2626;
-    color: #fff;
-}
+    .action-row {
+        margin-top: 1.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: #111827;
+        color: #fff;
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #111827;
+    }
+
+    .btn-danger {
+        background: #dc2626;
+        color: #fff;
+    }
 </style>
 {% endblock %}

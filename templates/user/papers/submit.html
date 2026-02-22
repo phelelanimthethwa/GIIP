@@ -403,27 +403,26 @@
 
                 <div class="paper-form-group">
                     <label for="research_area_1">Research Area *</label>
-                    <select id="research_area_1" name="papers[0][research_area]" class="form-control" required>
+                    <select id="research_area_1" name="papers[0][research_area]" class="form-control" required onchange="toggleCustomResearchArea(this, 'paper-1')">
                         <option value="">Select Research Area</option>
                         {% if paper_settings and paper_settings.fields and paper_settings.fields.research_areas %}
                         {% for area in paper_settings.fields.research_areas %}
                         <option value="{{ area.value }}">{{ area.label }}</option>
                         {% endfor %}
                         {% else %}
+                        <!-- Default options if admin hasn't configured any -->
                         <option value="artificial_intelligence">Artificial Intelligence</option>
                         <option value="machine_learning">Machine Learning</option>
                         <option value="data_science">Data Science</option>
-                        <option value="computer_vision">Computer Vision</option>
-                        <option value="natural_language_processing">Natural Language Processing</option>
                         <option value="computer_networks">Computer Networks</option>
                         <option value="cybersecurity">Cybersecurity</option>
                         <option value="cloud_computing">Cloud Computing</option>
                         <option value="iot">Internet of Things (IoT)</option>
                         <option value="blockchain">Blockchain</option>
-                        <option value="edge_computing">Edge Computing</option>
-                        <option value="quantum_computing">Quantum Computing</option>
                         {% endif %}
+                        <option value="other">Other (please specify)</option>
                     </select>
+                    <input type="text" id="research_area_1_custom" name="papers[0][research_area_custom]" class="form-control mt-2" placeholder="Please specify your research area" style="display: none;">
                 </div>
 
                 <div class="paper-form-group">
@@ -435,6 +434,7 @@
                         <option value="{{ type.value }}">{{ type.label }}</option>
                         {% endfor %}
                         {% else %}
+                        <!-- Default options if admin hasn't configured any -->
                         <option value="oral">Oral Presentation</option>
                         <option value="poster">Poster Presentation</option>
                         <option value="virtual">Virtual Presentation</option>
@@ -479,27 +479,26 @@
 
                 <div class="paper-form-group">
                     <label for="research_area_2">Research Area</label>
-                    <select id="research_area_2" name="papers[1][research_area]" class="form-control">
+                    <select id="research_area_2" name="papers[1][research_area]" class="form-control" onchange="toggleCustomResearchArea(this, 'paper-2')">
                         <option value="">Select Research Area</option>
                         {% if paper_settings and paper_settings.fields and paper_settings.fields.research_areas %}
                         {% for area in paper_settings.fields.research_areas %}
                         <option value="{{ area.value }}">{{ area.label }}</option>
                         {% endfor %}
                         {% else %}
+                        <!-- Default options if admin hasn't configured any -->
                         <option value="artificial_intelligence">Artificial Intelligence</option>
                         <option value="machine_learning">Machine Learning</option>
                         <option value="data_science">Data Science</option>
-                        <option value="computer_vision">Computer Vision</option>
-                        <option value="natural_language_processing">Natural Language Processing</option>
                         <option value="computer_networks">Computer Networks</option>
                         <option value="cybersecurity">Cybersecurity</option>
                         <option value="cloud_computing">Cloud Computing</option>
                         <option value="iot">Internet of Things (IoT)</option>
                         <option value="blockchain">Blockchain</option>
-                        <option value="edge_computing">Edge Computing</option>
-                        <option value="quantum_computing">Quantum Computing</option>
                         {% endif %}
+                        <option value="other">Other (please specify)</option>
                     </select>
+                    <input type="text" id="research_area_2_custom" name="papers[1][research_area_custom]" class="form-control mt-2" placeholder="Please specify your research area" style="display: none;">
                 </div>
 
                 <div class="paper-form-group">
@@ -511,6 +510,7 @@
                         <option value="{{ type.value }}">{{ type.label }}</option>
                         {% endfor %}
                         {% else %}
+                        <!-- Default options if admin hasn't configured any -->
                         <option value="oral">Oral Presentation</option>
                         <option value="poster">Poster Presentation</option>
                         <option value="virtual">Virtual Presentation</option>
@@ -645,6 +645,20 @@
             
             container.style.display = 'none';
             button.style.display = 'block';
+        }
+    }
+
+    function toggleCustomResearchArea(selectElement, paperId) {
+        const customInput = document.getElementById('research_area_' + paperId.replace('paper-', '') + '_custom');
+        if (customInput) {
+            if (selectElement.value === 'other') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
         }
     }
 
@@ -963,6 +977,16 @@
                 }
             }
 
+            // If Paper 1 research area is "other", validate custom research area input
+            const paper1ResearchArea = document.getElementById('research_area_1');
+            if (paper1ResearchArea.value === 'other') {
+                const customResearchArea1 = document.getElementById('research_area_1_custom');
+                if (!customResearchArea1 || !customResearchArea1.value.trim()) {
+                    showError('Please specify your research area in the text field.');
+                    return;
+                }
+            }
+
             // Validate paper 2 if visible
             if (isPaper2Visible) {
                 const paper2File = document.getElementById('paper_file_2');
@@ -987,6 +1011,16 @@
                             return;
                         }
                     }
+
+                    // If Paper 2 research area is "other", validate custom research area input
+                    const paper2ResearchArea = document.getElementById('research_area_2');
+                    if (paper2ResearchArea.value === 'other') {
+                        const customResearchArea2 = document.getElementById('research_area_2_custom');
+                        if (!customResearchArea2 || !customResearchArea2.value.trim()) {
+                            showError('Please specify your research area for Paper 2 in the text field.');
+                            return;
+                        }
+                    }
                 } else {
                     // Clear paper 2 data if no file is provided
                     const paper2Fields = [
@@ -994,7 +1028,8 @@
                         document.getElementById('paper_abstract_2'),
                         document.getElementById('keywords_2'),
                         document.getElementById('research_area_2'),
-                        document.getElementById('presentation_type_2')
+                        document.getElementById('presentation_type_2'),
+                        document.getElementById('research_area_2_custom')
                     ];
                     for (let field of paper2Fields) {
                         field.value = '';

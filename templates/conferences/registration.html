@@ -71,9 +71,18 @@
             <div class="workflow-item">
                 <strong>Extra Paper Surcharge:</strong>
                 <span>
+                    {% if (existing_registration.extra_paper_fee_total or 0)|float == 0 %}
+                    <span style="color: #2E7D32; font-weight: 600;">
+                        <i class="fas fa-check-circle"></i> Waived
+                    </span>
+                    ({{ existing_registration.extra_paper_count }} extra paper{{ 's' if
+                    (existing_registration.extra_paper_count or 0)|int != 1 else '' }} – fee waived because paper
+                    accepted)
+                    {% else %}
                     ${{ '%.2f'|format((existing_registration.extra_paper_fee_total or 0)|float) }}
                     ({{ existing_registration.extra_paper_count }} extra paper{{ 's' if
                     (existing_registration.extra_paper_count or 0)|int != 1 else '' }})
+                    {% endif %}
                 </span>
             </div>
             {% endif %}
