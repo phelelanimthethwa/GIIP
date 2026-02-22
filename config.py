@@ -69,5 +69,8 @@ class Config:
     # TinyMCE configuration
     TINYMCE_API_KEY = os.environ.get('TINYMCE_API_KEY')
 
+    # Exchange rate configuration (exchangerate-api.com)
+    EXCHANGE_RATE_API_KEY = os.environ.get('EXCHANGE_RATE_API_KEY', '')
+
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=60)

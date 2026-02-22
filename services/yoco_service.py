@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import logging
 from config import Config
+from services.exchange_rate_service import convert_usd_to_zar
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +77,19 @@ class YocoPaymentService:
         try:
             # Generate unique reference
             payment_reference = f"REG_{registration_data.get('user_id', 'ANON')}_{int(datetime.now().timestamp())}"
-            
-            # Convert amount to cents (Yoco uses cents)
-            amount_in_cents = int(float(registration_data['total_amount']) * 100)
+
+            # ── Currency conversion: fees are stored in USD, Yoco charges in ZAR ──
+            usd_amount = float(registration_data['total_amount'])
+            fx_api_key = Config.EXCHANGE_RATE_API_KEY or ''
+            zar_amount, fx_rate, rate_is_live = convert_usd_to_zar(usd_amount, fx_api_key)
+
+            # Convert ZAR amount to cents (Yoco uses integer cents)
+            amount_in_cents = int(round(zar_amount * 100))
+
+            logger.info(
+                f"[FX] Payment: ${usd_amount:.2f} USD → R{zar_amount:.2f} ZAR "
+                f"({amount_in_cents} cents) | rate={fx_rate} live={rate_is_live}"
+            )
             
             # Prepare request according to Yoco API structure
             request_data = {
@@ -95,7 +106,12 @@ class YocoPaymentService:
                     "registration_type": registration_data.get('registration_type', ''),
                     "registration_period": registration_data.get('registration_period', ''),
                     "conference_name": registration_data.get('conference_name', 'GIIR Conference'),
-                    "conference_id": registration_data.get('conference_id', '')
+                    "conference_id": registration_data.get('conference_id', ''),
+                    # Currency details for transparency
+                    "usd_amount": str(usd_amount),
+                    "zar_amount": str(zar_amount),
+                    "fx_rate": str(fx_rate),
+                    "fx_rate_live": str(rate_is_live),
                 }
             }
             
@@ -105,10 +121,10 @@ class YocoPaymentService:
                 "Authorization": f"Bearer {self.secret_key}"
             }
             
-            print(f"YOCO: Making payment request for R{registration_data['total_amount']}")
+            print(f"YOCO: Charging R{zar_amount:.2f} ZAR (= ${usd_amount:.2f} USD @ rate {fx_rate})")
             logger.info(
-                f"Making Yoco payment request for amount: "
-                f"R{registration_data['total_amount']} ({amount_in_cents} cents)"
+                f"Making Yoco payment request for "
+                f"${usd_amount:.2f} USD → R{zar_amount:.2f} ZAR ({amount_in_cents} cents)"
             )
             logger.debug(f"Request URL: {self.api_endpoint}")
             logger.debug(f"Request Body: {json.dumps(request_data, indent=2)}")
