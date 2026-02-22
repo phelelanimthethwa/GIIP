@@ -15,7 +15,8 @@
                 {{ conference.conference_code }}
             </span>
             {% endif %}
-            <span class="conference-dates">{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</span>
+            <span class="conference-dates">{{ conference.basic_info.start_date|format_date }} - {{
+                conference.basic_info.end_date|format_date }}</span>
             <span class="conference-location">
                 <i class="fas fa-map-marker-alt"></i>
                 {{ conference.basic_info.location }}
@@ -37,7 +38,8 @@
     <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i>
         <h3>Registration Closed</h3>
-        <p>Registration for this conference is currently closed. Please check back later or contact the organizers for more information.</p>
+        <p>Registration for this conference is currently closed. Please check back later or contact the organizers for
+            more information.</p>
         <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-primary">
             View Conference Details
         </a>
@@ -62,14 +64,16 @@
             </div>
             <div class="workflow-item">
                 <strong>Total Amount:</strong>
-                <span>{{ fees.currency.symbol if fees and fees.currency else 'R' }}{{ existing_registration.total_amount }}</span>
+                <span>{{ fees.currency.symbol if fees and fees.currency else 'R' }}{{ existing_registration.total_amount
+                    }}</span>
             </div>
             {% if (existing_registration.extra_paper_count or 0)|int > 0 %}
             <div class="workflow-item">
                 <strong>Extra Paper Surcharge:</strong>
                 <span>
                     ${{ '%.2f'|format((existing_registration.extra_paper_fee_total or 0)|float) }}
-                    ({{ existing_registration.extra_paper_count }} extra paper{{ 's' if (existing_registration.extra_paper_count or 0)|int != 1 else '' }})
+                    ({{ existing_registration.extra_paper_count }} extra paper{{ 's' if
+                    (existing_registration.extra_paper_count or 0)|int != 1 else '' }})
                 </span>
             </div>
             {% endif %}
@@ -77,9 +81,9 @@
                 <strong>Paper Status:</strong>
                 <span class="workflow-badge">
                     {% if latest_paper_status %}
-                        {{ latest_paper_status|replace('_', ' ')|title }}
+                    {{ latest_paper_status|replace('_', ' ')|title }}
                     {% else %}
-                        Not Submitted
+                    Not Submitted
                     {% endif %}
                 </span>
             </div>
@@ -137,10 +141,8 @@
 
         <div class="form-actions workflow-actions">
             {% if can_pay %}
-            <button type="button"
-                    id="unlock-pay-button"
-                    class="btn btn-primary"
-                    data-registration-id="{{ existing_registration_id }}">
+            <button type="button" id="unlock-pay-button" class="btn btn-primary"
+                data-registration-id="{{ existing_registration_id }}">
                 <i class="fas fa-credit-card"></i>
                 Pay Conference Fee
             </button>
@@ -150,7 +152,8 @@
                 Submit Paper
             </a>
             {% endif %}
-            <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Back to Conference</a>
+            <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Back to
+                Conference</a>
         </div>
     </div>
     {% else %}
@@ -170,7 +173,7 @@
             <!-- Hidden Conference ID -->
             <input type="hidden" id="conference_id" value="{{ conference_id }}">
             <input type="hidden" id="is_edit_mode" value="{{ '1' if show_edit_form else '0' }}">
-            
+
             <!-- Registration Period Info -->
             {% if fees and form_registration_period %}
             <div class="form-section period-info">
@@ -186,7 +189,9 @@
                 <h3>Select Registration Type</h3>
                 <div class="type-options" id="type-options">
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="student_author" value="student_author" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'student_author' %}checked{% endif %}>
+                        <input type="radio" name="registration_type" id="student_author" value="student_author" required
+                            {% if show_edit_form and existing_registration and
+                            existing_registration.registration_type=='student_author' %}checked{% endif %}>
                         <label for="student_author">
                             <div class="type-header">
                                 <i class="fas fa-user-graduate"></i>
@@ -203,7 +208,9 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="regular_author" value="regular_author" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'regular_author' %}checked{% endif %}>
+                        <input type="radio" name="registration_type" id="regular_author" value="regular_author" required
+                            {% if show_edit_form and existing_registration and
+                            existing_registration.registration_type=='regular_author' %}checked{% endif %}>
                         <label for="regular_author">
                             <div class="type-header">
                                 <i class="fas fa-user"></i>
@@ -220,7 +227,9 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'virtual_delegate' %}checked{% endif %}>
+                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate"
+                            required {% if show_edit_form and existing_registration and
+                            existing_registration.registration_type=='virtual_delegate' %}checked{% endif %}>
                         <label for="virtual_delegate">
                             <div class="type-header">
                                 <i class="fas fa-laptop"></i>
@@ -237,7 +246,9 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="physical_delegate" value="physical_delegate" required {% if show_edit_form and existing_registration and existing_registration.registration_type == 'physical_delegate' %}checked{% endif %}>
+                        <input type="radio" name="registration_type" id="physical_delegate" value="physical_delegate"
+                            required {% if show_edit_form and existing_registration and
+                            existing_registration.registration_type=='physical_delegate' %}checked{% endif %}>
                         <label for="physical_delegate">
                             <div class="type-header">
                                 <i class="fas fa-user-friends"></i>
@@ -261,22 +272,28 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="full_name">Full Name *</label>
-                        <input type="text" id="full_name" name="full_name" value="{{ current_user.full_name if current_user.is_authenticated else '' }}" required>
+                        <input type="text" id="full_name" name="full_name"
+                            value="{{ current_user.full_name if current_user.is_authenticated else '' }}" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="email">Email Address *</label>
-                        <input type="email" id="email" name="email" value="{{ current_user.email if current_user.is_authenticated else '' }}" required>
+                        <input type="email" id="email" name="email"
+                            value="{{ current_user.email if current_user.is_authenticated else '' }}" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="institution">Institution/Organization *</label>
-                        <input type="text" id="institution" name="institution" value="{{ existing_registration.institution if show_edit_form and existing_registration else '' }}" required>
+                        <input type="text" id="institution" name="institution"
+                            value="{{ existing_registration.institution if show_edit_form and existing_registration else '' }}"
+                            required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="country">Country *</label>
-                        <input type="text" id="country" name="country" value="{{ existing_registration.country if show_edit_form and existing_registration else '' }}" required>
+                        <input type="text" id="country" name="country"
+                            value="{{ existing_registration.country if show_edit_form and existing_registration else '' }}"
+                            required>
                     </div>
                 </div>
             </div>
@@ -293,11 +310,14 @@
                     {% if fees.additional_items.workshop and fees.additional_items.workshop.enabled %}
                     <div class="additional-item">
                         <label class="checkbox-label">
-                            <input type="checkbox" id="workshop" name="workshop" {% if show_edit_form and existing_registration and existing_registration.workshop %}checked{% endif %}>
+                            <input type="checkbox" id="workshop" name="workshop" {% if show_edit_form and
+                                existing_registration and existing_registration.workshop %}checked{% endif %}>
                             <span class="checkbox-custom"></span>
                             <div class="item-content">
-                                <span class="item-name">{{ fees.additional_items.workshop.description or 'Workshop' }}</span>
-                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{ fees.additional_items.workshop.fee|default(0) }}</span>
+                                <span class="item-name">{{ fees.additional_items.workshop.description or 'Workshop'
+                                    }}</span>
+                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{
+                                    fees.additional_items.workshop.fee|default(0) }}</span>
                             </div>
                         </label>
                     </div>
@@ -306,11 +326,14 @@
                     {% if fees.additional_items.banquet and fees.additional_items.banquet.enabled %}
                     <div class="additional-item">
                         <label class="checkbox-label">
-                            <input type="checkbox" id="banquet" name="banquet" {% if show_edit_form and existing_registration and existing_registration.banquet %}checked{% endif %}>
+                            <input type="checkbox" id="banquet" name="banquet" {% if show_edit_form and
+                                existing_registration and existing_registration.banquet %}checked{% endif %}>
                             <span class="checkbox-custom"></span>
                             <div class="item-content">
-                                <span class="item-name">{{ fees.additional_items.banquet.description or 'Banquet' }}</span>
-                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{ fees.additional_items.banquet.fee|default(0) }}</span>
+                                <span class="item-name">{{ fees.additional_items.banquet.description or 'Banquet'
+                                    }}</span>
+                                <span class="item-price">{{ fees.currency.symbol or 'R' }}{{
+                                    fees.additional_items.banquet.fee|default(0) }}</span>
                             </div>
                         </label>
                     </div>
@@ -327,7 +350,8 @@
                         <span>Registration Fee:</span>
                         <span id="base-fee">{{ fees.currency.symbol or 'R' }}0.00</span>
                     </div>
-                    <div class="summary-row additional-items-summary" id="additional-items-summary" style="display: none;">
+                    <div class="summary-row additional-items-summary" id="additional-items-summary"
+                        style="display: none;">
                         <span>Additional Items:</span>
                         <span id="additional-fee">{{ fees.currency.symbol or 'R' }}0.00</span>
                     </div>
@@ -348,7 +372,8 @@
                     <i class="fas fa-check-circle"></i>
                     {{ 'Save Changes' if show_edit_form else 'Complete Registration' }}
                 </button>
-                <a href="{{ url_for('conference_registration', conference_id=conference_id) if show_edit_form else url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">Cancel</a>
+                <a href="{{ url_for('conference_registration', conference_id=conference_id) if show_edit_form else url_for('conference_details', conference_id=conference_id) }}"
+                    class="btn btn-secondary">Cancel</a>
             </div>
         </form>
     </div>
@@ -357,673 +382,727 @@
 </div>
 
 <style>
-.conference-context {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    color: white;
-    padding: 2rem;
-    border-radius: 12px;
-    margin-bottom: 2rem;
-}
+    .conference-context {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+
+    .conference-info h1 {
+        margin: 0 0 1rem 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
 
-.conference-info h1 {
-    margin: 0 0 1rem 0;
-    font-size: 2rem;
-    font-weight: 700;
-}
-
-.conference-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.conference-year {
-    background: rgba(255,255,255,0.2);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-weight: 600;
-}
-
-.conference-dates, .conference-location {
-    font-size: 1rem;
-    opacity: 0.9;
-}
-
-.breadcrumb {
-    opacity: 0.8;
-    font-size: 0.9rem;
-}
-
-.breadcrumb a {
-    color: white;
-    text-decoration: none;
-}
-
-.breadcrumb a:hover {
-    text-decoration: underline;
-}
-
-.breadcrumb span {
-    margin: 0 0.5rem;
-}
-
-.registration-form-container {
-    background: white;
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.form-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.form-header h2 {
-    margin: 0;
-    color: var(--primary-color);
-}
-
-.form-header p {
-    margin: 0.5rem 0 0;
-    color: var(--text-secondary);
-}
-
-.form-section {
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #e1e8ed;
-}
-
-.form-section:last-child {
-    border-bottom: none;
-}
-
-.form-section h3 {
-    margin: 0 0 1.5rem 0;
-    color: var(--primary-color);
-    font-size: 1.25rem;
-}
-
-.period-info {
-    background: #e8f5e9;
-    padding: 1rem;
-    border-radius: 8px;
-    border-bottom: none;
-}
-
-.period-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #2d5a2d;
-    font-weight: 600;
-}
-
-.type-options {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-}
-
-.type-card {
-    position: relative;
-    border: 2px solid #e1e8ed;
-    border-radius: 12px;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
-    background: #ffffff;
-    cursor: pointer;
-}
-
-.type-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.type-card input[type="radio"] {
-    position: absolute;
-    opacity: 0;
-}
-
-.type-card input[type="radio"]:checked + label .type-card {
-    border-color: var(--primary-color);
-}
-
-.type-card:has(input[type="radio"]:checked) {
-    border-color: var(--primary-color);
-    background: #f0f7ff;
-}
-
-.type-card:has(input[type="radio"]:checked)::before {
-    content: '✓';
-    position: absolute;
-    top: -1px;
-    right: -1px;
-    background: var(--primary-color);
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 0 12px 0 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-}
-
-.type-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-}
-
-.type-header i {
-    font-size: 1.5rem;
-    color: var(--primary-color);
-}
-
-.type-header h4 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.type-description p {
-    margin: 0 0 0.75rem 0;
-    color: #666;
-    font-size: 0.9rem;
-}
-
-.type-price {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid #e1e8ed;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.price-label {
-    font-size: 0.875rem;
-    color: #666;
-}
-
-.price-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--primary-color);
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #333;
-}
-
-.form-group input, .form-group select, .form-group textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid #e1e8ed;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s ease;
-}
-
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
-}
-
-.additional-items {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.auto-extra-paper-note {
-    margin: 0 0 1rem 0;
-    padding: 0.75rem 0.9rem;
-    border-radius: 8px;
-    border: 1px solid #bfdbfe;
-    background: #eff6ff;
-    color: #1e3a8a;
-    font-size: 0.9rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-}
-
-.additional-item {
-    border: 2px solid #e1e8ed;
-    border-radius: 8px;
-    padding: 1rem;
-    transition: all 0.3s ease;
-}
-
-.additional-item:hover {
-    border-color: var(--primary-color);
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
-    margin: 0;
-}
-
-.checkbox-label input[type="checkbox"] {
-    display: none;
-}
-
-.checkbox-custom {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #e1e8ed;
-    border-radius: 4px;
-    position: relative;
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-weight: bold;
-}
-
-.item-content {
-    flex: 1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.item-name {
-    font-weight: 500;
-    color: #333;
-}
-
-.item-price {
-    font-weight: 600;
-    color: var(--primary-color);
-}
-
-.payment-summary {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 8px;
-}
-
-.summary-box {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 2px solid #e1e8ed;
-}
-
-.summary-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #e1e8ed;
-}
-
-.summary-row:last-child {
-    border-bottom: none;
-}
-
-.total-row {
-    margin-top: 0.5rem;
-    padding-top: 1rem;
-    border-top: 2px solid var(--primary-color);
-    font-size: 1.1rem;
-}
-
-.form-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 2rem;
-}
-
-.btn {
-    padding: 0.75rem 2rem;
-    border-radius: 8px;
-    font-weight: 600;
-    text-decoration: none;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.btn-primary {
-    background: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: var(--primary-dark);
-}
-
-.btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #5a6268;
-}
-
-.conference-code {
-    background: #e8f5e8;
-    color: #2d5a2d;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-family: monospace;
-    font-size: 0.875rem;
-    border: 1px solid #4caf50;
-    margin: 0 0.5rem;
-}
-
-.conference-code i {
-    margin-right: 0.25rem;
-}
-
-.alert {
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.alert-warning {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-}
-
-.alert-success {
-    background: #e8f5e9;
-    border: 1px solid #c8e6c9;
-    color: #1b5e20;
-}
-
-.alert-info {
-    background: #e3f2fd;
-    border: 1px solid #bbdefb;
-    color: #0d47a1;
-}
-
-.workflow-status-card {
-    background: #f8f9fa;
-    border: 1px solid #e1e8ed;
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
-}
-
-.workflow-item {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.workflow-item:last-child {
-    border-bottom: none;
-}
-
-.workflow-badge {
-    background: #eef2ff;
-    color: #1e3a8a;
-    border-radius: 999px;
-    padding: 0.2rem 0.7rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.workflow-actions {
-    margin-top: 1.25rem;
-}
-
-.alert i {
-    font-size: 1.5rem;
-    margin-top: 0.25rem;
-}
-
-.alert h3 {
-    margin: 0 0 0.5rem 0;
-    color: inherit;
-}
-
-.alert p {
-    margin: 0 0 1rem 0;
-}
-
-@media (max-width: 768px) {
     .conference-meta {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+        margin-bottom: 1rem;
     }
-    
-    .type-options {
-        grid-template-columns: 1fr;
+
+    .conference-year {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
     }
-    
-    .form-grid {
-        grid-template-columns: 1fr;
+
+    .conference-dates,
+    .conference-location {
+        font-size: 1rem;
+        opacity: 0.9;
     }
-    
-    .form-actions {
-        flex-direction: column;
+
+    .breadcrumb {
+        opacity: 0.8;
+        font-size: 0.9rem;
     }
-    
+
+    .breadcrumb a {
+        color: white;
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb span {
+        margin: 0 0.5rem;
+    }
+
     .registration-form-container {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .form-header h2 {
+        margin: 0;
+        color: var(--primary-color);
+    }
+
+    .form-header p {
+        margin: 0.5rem 0 0;
+        color: var(--text-secondary);
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid #e1e8ed;
+    }
+
+    .form-section:last-child {
+        border-bottom: none;
+    }
+
+    .form-section h3 {
+        margin: 0 0 1.5rem 0;
+        color: var(--primary-color);
+        font-size: 1.25rem;
+    }
+
+    .period-info {
+        background: #e8f5e9;
+        padding: 1rem;
+        border-radius: 8px;
+        border-bottom: none;
+    }
+
+    .period-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #2d5a2d;
+        font-weight: 600;
+    }
+
+    .type-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .type-card {
+        position: relative;
+        border: 2px solid #e1e8ed;
+        border-radius: 12px;
         padding: 1.5rem;
+        transition: all 0.3s ease;
+        background: #ffffff;
+        cursor: pointer;
     }
-}
-/* ── ZAR Confirmation Modal ─────────────────────────────────────────── */
-#zar-confirm-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 20, 40, 0.60);
-    backdrop-filter: blur(4px);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-#zar-confirm-backdrop.open {
-    display: flex;
-}
-#zar-confirm-modal {
-    background: #ffffff;
-    border-radius: 18px;
-    max-width: 460px;
-    width: 100%;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.22);
-    overflow: hidden;
-    animation: zarModalIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
-}
-@keyframes zarModalIn {
-    from { opacity:0; transform: scale(0.88) translateY(24px); }
-    to   { opacity:1; transform: scale(1)   translateY(0); }
-}
-#zar-modal-header {
-    background: linear-gradient(135deg, #0f2f62 0%, #1a56a8 100%);
-    padding: 1.5rem 1.75rem 1.25rem;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-}
-#zar-modal-header h2 {
-    margin: 0;
-    color: #fff;
-    font-size: 1.2rem;
-    font-weight: 700;
-    line-height: 1.3;
-}
-#zar-modal-close {
-    background: rgba(255,255,255,0.15);
-    border: none;
-    color: #fff;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.2s;
-}
-#zar-modal-close:hover { background: rgba(255,255,255,0.30); }
-#zar-modal-body {
-    padding: 1.5rem 1.75rem;
-}
-.zar-info-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 0.85rem 1.1rem;
-    margin-bottom: 1.25rem;
-    font-size: 0.88rem;
-    color: #1e40af;
-    line-height: 1.45;
-}
-.zar-info-badge i { font-size: 1.1rem; flex-shrink: 0; }
-.zar-amounts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem;
-    margin-bottom: 1.25rem;
-}
-.zar-amount-card {
-    background: #f8fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1rem;
-    text-align: center;
-}
-.zar-amount-card.highlight {
-    border-color: #0f2f62;
-    background: #eef2ff;
-}
-.zar-amount-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: #64748b;
-    font-weight: 600;
-    margin-bottom: 0.35rem;
-}
-.zar-amount-value {
-    font-size: 1.45rem;
-    font-weight: 800;
-    color: #0f2f62;
-}
-.zar-amount-card.highlight .zar-amount-value { color: #1a56a8; }
-.zar-rate-note {
-    font-size: 0.78rem;
-    color: #94a3b8;
-    text-align: center;
-    margin-bottom: 1.25rem;
-}
-.zar-rate-note span { font-weight: 600; color: #64748b; }
-#zar-modal-actions {
-    display: flex;
-    gap: 0.75rem;
-    padding: 0 1.75rem 1.5rem;
-}
-#zar-modal-cancel {
-    flex: 1;
-    padding: 0.75rem;
-    border: 2px solid #e2e8f0;
-    background: #fff;
-    color: #475569;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-#zar-modal-cancel:hover { border-color: #94a3b8; background: #f8fafc; }
-#zar-modal-proceed {
-    flex: 2;
-    padding: 0.75rem;
-    background: linear-gradient(135deg, #d01616, #b91c1c);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 0.95rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: opacity 0.2s;
-}
-#zar-modal-proceed:hover { opacity: 0.9; }
-#zar-modal-proceed:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .type-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .type-card input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+    }
+
+    .type-card input[type="radio"]:checked+label .type-card {
+        border-color: var(--primary-color);
+    }
+
+    .type-card:has(input[type="radio"]:checked) {
+        border-color: var(--primary-color);
+        background: #f0f7ff;
+    }
+
+    .type-card:has(input[type="radio"]:checked)::before {
+        content: '✓';
+        position: absolute;
+        top: -1px;
+        right: -1px;
+        background: var(--primary-color);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 0 12px 0 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .type-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .type-header i {
+        font-size: 1.5rem;
+        color: var(--primary-color);
+    }
+
+    .type-header h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .type-description p {
+        margin: 0 0 0.75rem 0;
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .type-price {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e1e8ed;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .price-label {
+        font-size: 0.875rem;
+        color: #666;
+    }
+
+    .price-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+    }
+
+    .additional-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .auto-extra-paper-note {
+        margin: 0 0 1rem 0;
+        padding: 0.75rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .additional-item {
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .additional-item:hover {
+        border-color: var(--primary-color);
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        display: none;
+    }
+
+    .checkbox-custom {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #e1e8ed;
+        border-radius: 4px;
+        position: relative;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .checkbox-label input[type="checkbox"]:checked+.checkbox-custom {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .checkbox-label input[type="checkbox"]:checked+.checkbox-custom::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-weight: bold;
+    }
+
+    .item-content {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .item-name {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .item-price {
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    .payment-summary {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+    }
+
+    .summary-box {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 2px solid #e1e8ed;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e1e8ed;
+    }
+
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+
+    .total-row {
+        margin-top: 0.5rem;
+        padding-top: 1rem;
+        border-top: 2px solid var(--primary-color);
+        font-size: 1.1rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: var(--primary-dark);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .conference-code {
+        background: #e8f5e8;
+        color: #2d5a2d;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-family: monospace;
+        font-size: 0.875rem;
+        border: 1px solid #4caf50;
+        margin: 0 0.5rem;
+    }
+
+    .conference-code i {
+        margin-right: 0.25rem;
+    }
+
+    .alert {
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .alert-warning {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+    }
+
+    .alert-success {
+        background: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        color: #1b5e20;
+    }
+
+    .alert-info {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        color: #0d47a1;
+    }
+
+    .workflow-status-card {
+        background: #f8f9fa;
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .workflow-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .workflow-item:last-child {
+        border-bottom: none;
+    }
+
+    .workflow-badge {
+        background: #eef2ff;
+        color: #1e3a8a;
+        border-radius: 999px;
+        padding: 0.2rem 0.7rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .workflow-actions {
+        margin-top: 1.25rem;
+    }
+
+    .alert i {
+        font-size: 1.5rem;
+        margin-top: 0.25rem;
+    }
+
+    .alert h3 {
+        margin: 0 0 0.5rem 0;
+        color: inherit;
+    }
+
+    .alert p {
+        margin: 0 0 1rem 0;
+    }
+
+    @media (max-width: 768px) {
+        .conference-meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .type-options {
+            grid-template-columns: 1fr;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .registration-form-container {
+            padding: 1.5rem;
+        }
+    }
+
+    /* ── ZAR Confirmation Modal ─────────────────────────────────────────── */
+    #zar-confirm-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 20, 40, 0.60);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    #zar-confirm-backdrop.open {
+        display: flex;
+    }
+
+    #zar-confirm-modal {
+        background: #ffffff;
+        border-radius: 18px;
+        max-width: 460px;
+        width: 100%;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+        overflow: hidden;
+        animation: zarModalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    @keyframes zarModalIn {
+        from {
+            opacity: 0;
+            transform: scale(0.88) translateY(24px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    #zar-modal-header {
+        background: linear-gradient(135deg, #0f2f62 0%, #1a56a8 100%);
+        padding: 1.5rem 1.75rem 1.25rem;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    #zar-modal-header h2 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    #zar-modal-close {
+        background: rgba(255, 255, 255, 0.15);
+        border: none;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: background 0.2s;
+    }
+
+    #zar-modal-close:hover {
+        background: rgba(255, 255, 255, 0.30);
+    }
+
+    #zar-modal-body {
+        padding: 1.5rem 1.75rem;
+    }
+
+    .zar-info-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 0.85rem 1.1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.88rem;
+        color: #1e40af;
+        line-height: 1.45;
+    }
+
+    .zar-info-badge i {
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .zar-amounts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .zar-amount-card {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .zar-amount-card.highlight {
+        border-color: #0f2f62;
+        background: #eef2ff;
+    }
+
+    .zar-amount-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+    }
+
+    .zar-amount-value {
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #0f2f62;
+    }
+
+    .zar-amount-card.highlight .zar-amount-value {
+        color: #1a56a8;
+    }
+
+    .zar-rate-note {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        text-align: center;
+        margin-bottom: 1.25rem;
+    }
+
+    .zar-rate-note span {
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    #zar-modal-actions {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0 1.75rem 1.5rem;
+    }
+
+    #zar-modal-cancel {
+        flex: 1;
+        padding: 0.75rem;
+        border: 2px solid #e2e8f0;
+        background: #fff;
+        color: #475569;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    #zar-modal-cancel:hover {
+        border-color: #94a3b8;
+        background: #f8fafc;
+    }
+
+    #zar-modal-proceed {
+        flex: 2;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, #d01616, #b91c1c);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: opacity 0.2s;
+    }
+
+    #zar-modal-proceed:hover {
+        opacity: 0.9;
+    }
+
+    #zar-modal-proceed:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
 </style>
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const fees = {{ fees|tojson|safe if fees else 'null' }};
-    const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
-    const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
-    const multiSubmitFeeInfo = {{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}' }};
-    const activePeriod = formRegistrationPeriod || currentPeriod;
-    const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
-    const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
-    const registrationForm = document.getElementById('registration-form');
-    const registerButton = document.getElementById('register-button');
-    const unlockPayButton = document.getElementById('unlock-pay-button');
+    document.addEventListener('DOMContentLoaded', function () {
+        const fees = {{ fees|tojson|safe if fees else 'null' }};
+        const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
+        const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
+        const multiSubmitFeeInfo = {{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}' }};
+        const activePeriod = formRegistrationPeriod || currentPeriod;
+        const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
+        const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
+        const registrationForm = document.getElementById('registration-form');
+        const registerButton = document.getElementById('register-button');
+        const unlockPayButton = document.getElementById('unlock-pay-button');
 
     if (registrationForm && registerButton) {
         let selectedType = null;
@@ -1102,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
-            radio.addEventListener('change', function() {
+            radio.addEventListener('change', function () {
                 selectedType = this.value;
                 calculateTotal();
             });
@@ -1113,7 +1192,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (checkbox) checkbox.addEventListener('change', calculateTotal);
         });
 
-        registerButton.addEventListener('click', async function() {
+        registerButton.addEventListener('click', async function () {
             const fullName = document.getElementById('full_name')?.value?.trim();
             const email = document.getElementById('email')?.value?.trim();
             const institution = document.getElementById('institution')?.value?.trim();
@@ -1146,203 +1225,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(registrationData)
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.location.href = result.redirect_url || window.location.href;
-                } else {
-                    alert(result.error || 'Failed to save registration. Please try again.');
-                    this.disabled = false;
-                    this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                alert('An error occurred. Please try again.');
-                this.disabled = false;
-                this.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode ? 'Save Changes' : 'Complete Registration'}`;
-            }
-        });
-
-        const selectedRadio = registrationForm.querySelector('input[name="registration_type"]:checked');
-        if (selectedRadio) {
-            selectedType = selectedRadio.value;
-        }
-
-        updatePrices();
-        calculateTotal();
-    }
-
-<!-- ── ZAR Confirmation Modal ──────────────────────────────────────────── -->
-<div id="zar-confirm-backdrop">
-    <div id="zar-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="zar-modal-title">
-        <div id="zar-modal-header">
-            <h2 id="zar-modal-title"><i class="fas fa-credit-card" style="margin-right:.5rem;"></i>Payment Currency Notice</h2>
-            <button id="zar-modal-close" aria-label="Close">&#x2715;</button>
-        </div>
-        <div id="zar-modal-body">
-            <div class="zar-info-badge">
-                <i class="fas fa-info-circle"></i>
-                <span>Registration fees are listed in <strong>USD</strong>, but Yoco processes payments in <strong>South African Rand (ZAR)</strong>. The ZAR amount below will be charged to your card.</span>
-            </div>
-            <div class="zar-amounts-grid">
-                <div class="zar-amount-card">
-                    <div class="zar-amount-label">Your Fee (USD)</div>
-                    <div class="zar-amount-value" id="zar-usd-display">$0.00</div>
-                </div>
-                <div class="zar-amount-card highlight">
-                    <div class="zar-amount-label">Charged in ZAR</div>
-                    <div class="zar-amount-value" id="zar-zar-display"><i class="fas fa-spinner fa-spin" style="font-size:1rem;"></i></div>
-                </div>
-            </div>
-            <p class="zar-rate-note" id="zar-rate-note">Fetching live exchange rate…</p>
-        </div>
-        <div id="zar-modal-actions">
-            <button id="zar-modal-cancel" type="button">Cancel</button>
-            <button id="zar-modal-proceed" type="button" disabled>
-                <i class="fas fa-lock-open"></i> Proceed to Payment
-            </button>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const fees = {{ fees|tojson|safe if fees else 'null' }};
-    const currentPeriod = {{ current_period|tojson|safe if current_period else 'null' }};
-    const formRegistrationPeriod = {{ form_registration_period|tojson|safe if form_registration_period else 'null' }};
-    const multiSubmitFeeInfo = {{ multi_submit_fee_info|tojson|safe if multi_submit_fee_info else '{"submission_count":0,"extra_paper_count":0,"extra_paper_fee_per_item":50,"extra_paper_fee_total":0}' }};
-    const activePeriod = formRegistrationPeriod || currentPeriod;
-    const isEditMode = document.getElementById('is_edit_mode')?.value === '1';
-    const currencySymbol = fees ? (fees.currency?.symbol || 'R') : 'R';
-    const registrationForm = document.getElementById('registration-form');
-    const registerButton = document.getElementById('register-button');
-    const unlockPayButton = document.getElementById('unlock-pay-button');
-
-    if (registrationForm && registerButton) {
-        let selectedType = null;
-        let totalAmount = 0;
-        let selectedAdditionalFee = 0;
-        const extraPaperCount = Number(multiSubmitFeeInfo?.extra_paper_count || 0);
-        const extraPaperFeeTotal = Number(multiSubmitFeeInfo?.extra_paper_fee_total || 0);
-        const extraPaperFeePerItem = Number(multiSubmitFeeInfo?.extra_paper_fee_per_item || 50);
-
-        function updatePrices() {
-            if (!fees || !activePeriod) return;
-            const periodFees = fees[activePeriod]?.fees || {};
-
-            document.querySelectorAll('.type-card').forEach(card => {
-                const radio = card.querySelector('input[type="radio"]');
-                const priceElement = card.querySelector('.price-value');
-                if (radio && priceElement) {
-                    const price = periodFees[radio.value] || 0;
-                    priceElement.textContent = `${currencySymbol}${price.toFixed(2)}`;
-                }
-            });
-        }
-
-        function updateSummary() {
-            const baseFee = selectedType && fees && activePeriod
-                ? (fees[activePeriod]?.fees?.[selectedType] || 0)
-                : 0;
-
-            const baseFeeEl = document.getElementById('base-fee');
-            const additionalFeeEl = document.getElementById('additional-fee');
-            const additionalSummaryEl = document.getElementById('additional-items-summary');
-            const extraPaperSummaryEl = document.getElementById('extra-paper-summary');
-            const extraPaperLabelEl = document.getElementById('extra-paper-label');
-            const extraPaperFeeEl = document.getElementById('extra-paper-fee');
-            const totalAmountEl = document.getElementById('total-amount');
-
-            if (baseFeeEl) baseFeeEl.textContent = `${currencySymbol}${baseFee.toFixed(2)}`;
-            if (additionalFeeEl) additionalFeeEl.textContent = `${currencySymbol}${selectedAdditionalFee.toFixed(2)}`;
-            if (additionalSummaryEl) additionalSummaryEl.style.display = selectedAdditionalFee > 0 ? 'flex' : 'none';
-            if (extraPaperSummaryEl) extraPaperSummaryEl.style.display = extraPaperCount > 0 ? 'flex' : 'none';
-            if (extraPaperLabelEl) {
-                extraPaperLabelEl.textContent = `Extra Paper Surcharge (${extraPaperCount} × $${extraPaperFeePerItem.toFixed(2)}):`;
-            }
-            if (extraPaperFeeEl) {
-                extraPaperFeeEl.textContent = `$${extraPaperFeeTotal.toFixed(2)}`;
-            }
-            if (totalAmountEl) totalAmountEl.innerHTML = `<strong>${currencySymbol}${totalAmount.toFixed(2)}</strong>`;
-
-            registerButton.disabled = !(totalAmount > 0 && selectedType);
-        }
-
-        function calculateTotal() {
-            if (!fees || !activePeriod || !selectedType) {
-                totalAmount = 0;
-                updateSummary();
-                return;
-            }
-
-            totalAmount = fees[activePeriod]?.fees?.[selectedType] || 0;
-            selectedAdditionalFee = 0;
-            if (fees.additional_items) {
-                ['workshop', 'banquet'].forEach(item => {
-                    const checkbox = document.getElementById(item);
-                    if (checkbox && checkbox.checked) {
-                        const itemData = fees.additional_items[item];
-                        if (itemData && itemData.enabled) {
-                            const feeValue = itemData.fee || 0;
-                            totalAmount += feeValue;
-                            selectedAdditionalFee += feeValue;
-                        }
-                    }
-                });
-            }
-            totalAmount += extraPaperFeeTotal;
-            updateSummary();
-        }
-
-        document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                selectedType = this.value;
-                calculateTotal();
-            });
-        });
-
-        ['workshop', 'banquet'].forEach(item => {
-            const checkbox = document.getElementById(item);
-            if (checkbox) checkbox.addEventListener('change', calculateTotal);
-        });
-
-        registerButton.addEventListener('click', async function() {
-            const fullName = document.getElementById('full_name')?.value?.trim();
-            const email = document.getElementById('email')?.value?.trim();
-            const institution = document.getElementById('institution')?.value?.trim();
-            const country = document.getElementById('country')?.value?.trim();
-
-            if (!fullName || !email || !institution || !country || !selectedType) {
-                alert('Please fill in all required fields and select a registration type.');
-                return;
-            }
-
-            if (totalAmount <= 0) {
-                alert('Invalid amount. Please check your selection.');
-                return;
-            }
-
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-
-            try {
-                const registrationData = {
-                    registration_type: selectedType,
-                    registration_period: activePeriod,
-                    total_amount: totalAmount,
-                    institution,
-                    country,
-                    workshop: document.getElementById('workshop')?.checked || false,
-                    banquet: document.getElementById('banquet')?.checked || false,
-                    stay_on_registration: isEditMode
-                };
-
-                const response = await fetch('{{ url_for("conference_registration", conference_id=conference_id) }}', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(registrationData)
                 });
 
@@ -1372,13 +1255,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ── ZAR Confirmation Modal logic ───────────────────────────────────────
-    const backdrop   = document.getElementById('zar-confirm-backdrop');
+    const backdrop = document.getElementById('zar-confirm-backdrop');
     const modalClose = document.getElementById('zar-modal-close');
-    const modalCancel  = document.getElementById('zar-modal-cancel');
+    const modalCancel = document.getElementById('zar-modal-cancel');
     const modalProceed = document.getElementById('zar-modal-proceed');
-    const usdDisplay   = document.getElementById('zar-usd-display');
-    const zarDisplay   = document.getElementById('zar-zar-display');
-    const rateNote     = document.getElementById('zar-rate-note');
+    const usdDisplay = document.getElementById('zar-usd-display');
+    const zarDisplay = document.getElementById('zar-zar-display');
+    const rateNote = document.getElementById('zar-rate-note');
 
     let _pendingPayCallback = null;  // stores the actual fetch+redirect logic
 
@@ -1416,13 +1299,13 @@ document.addEventListener('DOMContentLoaded', function() {
         _pendingPayCallback = null;
     }
 
-    if (modalClose)  modalClose.addEventListener('click', closeZarModal);
+    if (modalClose) modalClose.addEventListener('click', closeZarModal);
     if (modalCancel) modalCancel.addEventListener('click', closeZarModal);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) closeZarModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZarModal(); });
 
     if (modalProceed) {
-        modalProceed.addEventListener('click', async function() {
+        modalProceed.addEventListener('click', async function () {
             if (!_pendingPayCallback) return;
             modalProceed.disabled = true;
             modalProceed.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
@@ -1448,7 +1331,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return 0;
         }
 
-        unlockPayButton.addEventListener('click', function() {
+        unlockPayButton.addEventListener('click', function () {
             const registrationId = this.dataset.registrationId;
             const usdAmount = parseDisplayedAmount();
 
@@ -1461,7 +1344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     const response = await fetch('{{ url_for("conference_create_payment", conference_id=conference_id) }}', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ registration_id: registrationId })
                     });
                     const result = await response.json();
