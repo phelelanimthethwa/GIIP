@@ -409,6 +409,19 @@
                         {% for area in paper_settings.fields.research_areas %}
                         <option value="{{ area.value }}">{{ area.label }}</option>
                         {% endfor %}
+                        {% else %}
+                        <option value="artificial_intelligence">Artificial Intelligence</option>
+                        <option value="machine_learning">Machine Learning</option>
+                        <option value="data_science">Data Science</option>
+                        <option value="computer_vision">Computer Vision</option>
+                        <option value="natural_language_processing">Natural Language Processing</option>
+                        <option value="computer_networks">Computer Networks</option>
+                        <option value="cybersecurity">Cybersecurity</option>
+                        <option value="cloud_computing">Cloud Computing</option>
+                        <option value="iot">Internet of Things (IoT)</option>
+                        <option value="blockchain">Blockchain</option>
+                        <option value="edge_computing">Edge Computing</option>
+                        <option value="quantum_computing">Quantum Computing</option>
                         {% endif %}
                     </select>
                 </div>
@@ -421,6 +434,10 @@
                         {% for type in paper_settings.fields.presentation_types %}
                         <option value="{{ type.value }}">{{ type.label }}</option>
                         {% endfor %}
+                        {% else %}
+                        <option value="oral">Oral Presentation</option>
+                        <option value="poster">Poster Presentation</option>
+                        <option value="virtual">Virtual Presentation</option>
                         {% endif %}
                     </select>
                 </div>
@@ -468,6 +485,19 @@
                         {% for area in paper_settings.fields.research_areas %}
                         <option value="{{ area.value }}">{{ area.label }}</option>
                         {% endfor %}
+                        {% else %}
+                        <option value="artificial_intelligence">Artificial Intelligence</option>
+                        <option value="machine_learning">Machine Learning</option>
+                        <option value="data_science">Data Science</option>
+                        <option value="computer_vision">Computer Vision</option>
+                        <option value="natural_language_processing">Natural Language Processing</option>
+                        <option value="computer_networks">Computer Networks</option>
+                        <option value="cybersecurity">Cybersecurity</option>
+                        <option value="cloud_computing">Cloud Computing</option>
+                        <option value="iot">Internet of Things (IoT)</option>
+                        <option value="blockchain">Blockchain</option>
+                        <option value="edge_computing">Edge Computing</option>
+                        <option value="quantum_computing">Quantum Computing</option>
                         {% endif %}
                     </select>
                 </div>
@@ -480,6 +510,10 @@
                         {% for type in paper_settings.fields.presentation_types %}
                         <option value="{{ type.value }}">{{ type.label }}</option>
                         {% endfor %}
+                        {% else %}
+                        <option value="oral">Oral Presentation</option>
+                        <option value="poster">Poster Presentation</option>
+                        <option value="virtual">Virtual Presentation</option>
                         {% endif %}
                     </select>
                 </div>
