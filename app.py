@@ -8813,6 +8813,22 @@ def _draw_wrapped_text(draw, text, x, y, font, fill, max_width, line_spacing=6):
         y += (bbox[3] - bbox[1]) + line_spacing
     return y
 
+
+def _get_acceptance_letter_bank_details():
+    """International bank transfer details used in acceptance communications."""
+    return [
+        ("Beneficiary Name", "Global Institute on Innovative Research"),
+        ("Bank Name", "First National Bank (FNB)"),
+        ("Branch Name", "My Branch"),
+        ("Account Number", "63141579186"),
+        ("Branch Code", "255355"),
+        ("SWIFT Code", "FIRNZAJJ"),
+        (
+            "Bank Address",
+            "First National Bank, a division of FirstRand Bank Limited, South Africa"
+        ),
+    ]
+
 def generate_acceptance_letter_pdf(paper_data, conference_data, registration_data=None, comments=''):
     """Generate a branded acceptance letter PDF as bytes."""
     width, height = 1240, 1754  # A4-ish at high readability
@@ -8953,22 +8969,30 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     draw.rectangle([margin, y, width - margin, y + 38], fill=gold)
     draw.text((margin + 12, y + 8), "Option 2: Offline Payment (Bank Transfer)", font=font_label, fill=text_dark)
     y += 38
-    draw.rectangle([margin, y, width - margin, y + 112], outline='#cdd7e3', width=2)
-    support_email = app.config.get(
-        'SUPPORT_EMAIL',
-        f"info@{app.config.get('APP_DOMAIN', 'globalconferences.co.za')}"
+    option2_top = y
+    option2_height = 250
+    draw.rectangle([margin, option2_top, width - margin, option2_top + option2_height], outline='#cdd7e3', width=2)
+    bank_detail_lines = [
+        f"{label}: {value}"
+        for label, value in _get_acceptance_letter_bank_details()
+    ]
+    offline_text = "\n".join(bank_detail_lines)
+    _draw_wrapped_text(
+        draw,
+        offline_text,
+        margin + 12,
+        option2_top + 12,
+        font_small,
+        text_dark,
+        content_width - 24,
+        line_spacing=5
     )
-    offline_text = (
-        "For offline transfer details, contact the conference secretariat.\n"
-        f"Email: {support_email}"
-    )
-    y = _draw_wrapped_text(draw, offline_text, margin + 12, y + 12, font_body, text_dark, content_width - 20, line_spacing=6)
-    y += 18
+    y = option2_top + option2_height + 18
 
     # Notes
     notes_y = y
     notes = [
-        "After payment, send proof of payment to the official conference email.",
+        "After payment, send proof of payment to conference admin: admin@globalconferences.co.za.",
         "Registration fee is non-refundable once processed.",
         "Travel, visa, and accommodation arrangements are the responsibility of the author."
     ]
@@ -8991,7 +9015,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
 
     footer = (
         "Kindly confirm your registration before the deadline.\n"
-        "GIIR Conference Secretariat"
+        "GIIR Conference Admin"
     )
     _draw_wrapped_text(draw, footer, margin, y, font_small, text_dark, content_width, line_spacing=6)
 
@@ -9095,6 +9119,16 @@ def send_acceptance_letter_email(paper_data, conference_data, registration_data=
             payment_link = f"/conferences/{conference_id}/register"
         else:
             payment_link = f"{base_url}/dashboard" if base_url else '/dashboard'
+        support_email = "admin@globalconferences.co.za"
+        bank_details = _get_acceptance_letter_bank_details()
+        bank_details_text = "\n".join(
+            f"{label}: {value}"
+            for label, value in bank_details
+        )
+        bank_details_html = "<br>".join(
+            f"<strong>{label}:</strong> {value}"
+            for label, value in bank_details
+        )
 
         # ── Generate PDF ───────────────────────────────────────────────────────
         pdf_bytes = generate_acceptance_letter_pdf(
@@ -9105,7 +9139,7 @@ def send_acceptance_letter_email(paper_data, conference_data, registration_data=
         )
 
         # ── Plain-text body ────────────────────────────────────────────────────
-        subject = f"\U0001F389 Acceptance Letter – {conference_name}"
+        subject = f"Acceptance Letter - {conference_name}"
         body = f"""
 Dear {primary_author_name},
 
@@ -9124,15 +9158,21 @@ Conference       : {conference_name}{f" ({conference_code})" if conference_code 
 
 Next Steps
 ----------
-Please complete your conference registration and payment to secure your spot:
+Please complete your conference registration and payment using one of the options below:
+
+Option 1: Online Payment
 {payment_link}
 
-Your acceptance letter is attached as a PDF — please keep it for your records.
+Option 2: International Bank Transfer
+{bank_details_text}
+After transfer, send your proof of payment to: {support_email}
+
+Your acceptance letter is attached as a PDF - please keep it for your records.
 
 We look forward to welcoming you to {conference_name}!
 
 Warm regards,
-GIIR Conference Secretariat
+GIIR Conference Admin
 globalconferences.co.za
 """.strip()
 
@@ -9237,7 +9277,7 @@ globalconferences.co.za
           <td style="padding:32px 40px;">
             <p style="margin:0 0 16px;font-size:14px;font-weight:700;color:#0f2f62;">Next Steps</p>
             <p style="margin:0 0 20px;font-size:14px;color:#334e68;line-height:1.7;">
-              To secure your place at the conference, please complete your <strong>registration and payment</strong> as soon as possible:
+              To secure your place at the conference, please complete your <strong>registration and payment</strong> using one of the options below:
             </p>
             <table cellpadding="0" cellspacing="0" border="0">
               <tr>
@@ -9247,6 +9287,16 @@ globalconferences.co.za
               </tr>
             </table>
             <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">Or copy this link: <a href="{payment_link}" style="color:#123e7a;">{payment_link}</a></p>
+            <div style="margin-top:20px;padding:16px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+              <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#0f2f62;">Option 2: International Bank Transfer</p>
+              <p style="margin:0;font-size:13px;color:#334e68;line-height:1.7;">
+                {bank_details_html}
+              </p>
+              <p style="margin:10px 0 0;font-size:12px;color:#475569;">
+                After transfer, send your proof of payment to
+                <a href="mailto:{support_email}" style="color:#123e7a;">{support_email}</a>.
+              </p>
+            </div>
           </td>
         </tr>
 
@@ -9257,7 +9307,7 @@ globalconferences.co.za
               <p style="margin:0;font-size:13px;color:#1e40af;line-height:1.7;">
                 &#8505;&nbsp; <strong>Important:</strong> Registration fees are non-refundable once processed.
                 Travel, visa and accommodation arrangements remain the responsibility of the author.
-                After bank transfer, send your proof of payment to the conference secretariat.
+                After bank transfer, send your proof of payment to <strong>{support_email}</strong>.
               </p>
             </div>
           </td>
@@ -9266,7 +9316,7 @@ globalconferences.co.za
         <!-- Footer -->
         <tr>
           <td style="background:#0f2f62;padding:28px 40px;border-radius:0 0 16px 16px;">
-            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;">GIIR Conference Secretariat</p>
+            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;">GIIR Conference Admin</p>
             <p style="margin:0;font-size:12px;color:#93c5fd;">
               <a href="https://globalconferences.co.za" style="color:#93c5fd;text-decoration:none;">globalconferences.co.za</a>
               &nbsp;|&nbsp; noreply@globalconferences.co.za
