@@ -1742,7 +1742,8 @@ def payment_callback():
                             registration_record.get('email', current_user.email),
                             registration_record.get('conference_name', 'Conference'),
                             registration_id_for_email,
-                            registration_record.get('conference_code', '')
+                            registration_record.get('conference_code', ''),
+                            registration_record.get('full_name', 'Participant')
                         )
                     else:
                         send_registration_confirmation_email(registration_record, registration_id_for_email)
@@ -2781,14 +2782,14 @@ Conference Team'''
             'subject': 'Conference Registration Status Update',
             'content': '''Dear {{full_name}},
 
-We regret to inform you that your conference registration could not be approved at this time.
+We regret to inform you that your conference application could not be approved at this time.
 
 Reason: {{rejection_reason}}
 
 If you believe this is an error or would like to discuss this further, please contact our support team at {{support_email}}.
 
 Best regards,
-Conference Team'''
+GIIR Organising Committee'''
         }
     }
     
@@ -2807,7 +2808,7 @@ def send_registration_email(registration, template_name, **kwargs):
             'registration_type': registration.get('registration_type', '').replace('_', ' ').title(),
             'amount_paid': registration.get('total_amount', '0'),
             'conference_dates': 'September 15-17, 2024',  # You should get this from your conference settings
-            'support_email': 'support@conference.com',  # You should get this from your conference settings
+            'support_email': 'admin@globalconferences.co.za',
             **kwargs
         }
         
@@ -9998,7 +9999,7 @@ def conference_create_payment(conference_id):
             'error': 'Internal server error'
         }), 500
 
-def send_registration_confirmation_email(email_or_data, conference_name=None, registration_id=None, conference_code=None):
+def send_registration_confirmation_email(email_or_data, conference_name=None, registration_id=None, conference_code=None, full_name=None):
     """Send registration confirmation email.
 
     Supports both:
@@ -10011,6 +10012,7 @@ def send_registration_confirmation_email(email_or_data, conference_name=None, re
             recipient_email = registration_data.get('email')
             conference_name_value = registration_data.get('conference_name', 'Conference')
             conference_code_value = registration_data.get('conference_code')
+            full_name_value = registration_data.get('full_name', 'Participant')
             # Legacy call style passes registration_id as the second positional arg.
             registration_id_value = registration_id if registration_id is not None else conference_name
         else:
@@ -10018,13 +10020,14 @@ def send_registration_confirmation_email(email_or_data, conference_name=None, re
             conference_name_value = conference_name or 'Conference'
             conference_code_value = conference_code
             registration_id_value = registration_id
+            full_name_value = full_name or 'Participant'
 
         if not recipient_email:
             return
 
         subject = f"Registration Confirmation - {conference_name_value}"
         body = f"""
-        Dear Participant,
+        Dear {full_name_value},
 
         Thank you for registering for {conference_name_value}!
         {"Conference Code: " + conference_code_value if conference_code_value else ""}
@@ -10033,10 +10036,10 @@ def send_registration_confirmation_email(email_or_data, conference_name=None, re
 
         Your registration has been received successfully.
 
-        If you have any questions, please contact our support team.
+        If you have any questions, please contact our support team at admin@globalconferences.co.za.
 
-        Best regards,
-        Conference Organizing Committee
+        Thanks & regards,
+        GIIR Organising Committee
         """
 
         # Use existing send_email function

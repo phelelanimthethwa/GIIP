@@ -11,8 +11,8 @@ Registration Details:
 
 Please keep this email for your records.
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
 
 PAPER_SUBMISSION_CONFIRMATION = """
