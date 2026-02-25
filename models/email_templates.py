@@ -28,8 +28,8 @@ Submission Details:
 
 We will review your submission and get back to you soon.
 
-Best regards,
-{conference_name} Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
 
 PAPER_STATUS_UPDATE = {
@@ -43,8 +43,8 @@ Presentation Type: {type}
 Please prepare your presentation according to the conference guidelines.
 {comments}
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """,
     'rejected': """
 Thank you for submitting your paper to the GIIR Conference 2024.
@@ -60,8 +60,8 @@ Review Comments:
 
 We encourage you to consider our feedback for future submissions.
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """,
     'revision': """
 Thank you for submitting your paper to the GIIR Conference 2024.
@@ -77,8 +77,8 @@ Review Comments:
 
 Please submit your revised version through the conference system.
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
 }
 
@@ -100,8 +100,8 @@ To get started, visit our website and log in with your email address.
 
 If you have any questions, please don't hesitate to contact us.
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
 
 PASSWORD_RESET_EMAIL = """
@@ -116,8 +116,8 @@ This link will expire in 1 hour for security reasons.
 
 If you did not request a password reset, please ignore this email or contact us if you have concerns.
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
 
 # Announcement Email Templates
@@ -130,8 +130,8 @@ ANNOUNCEMENT_EMAIL_TEXT = """
 Scheduled for: {scheduled_date} at {scheduled_time} ({timezone})
 Type: {announcement_type}
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 
 ---
 You received this email because you are registered with GIIR Conference.

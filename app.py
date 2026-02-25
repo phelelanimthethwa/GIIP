@@ -2775,8 +2775,8 @@ The conference will be held on {{conference_dates}}. We will send you additional
 
 Thank you for registering for our conference. We look forward to your participation!
 
-Best regards,
-Conference Team'''
+Thanks & regards,
+GIIR Organising Committee'''
         },
         'registration_rejection': {
             'subject': 'Conference Registration Status Update',
@@ -2942,8 +2942,8 @@ Registration Details:
 
 Thank you for registering for {conference_name}.
 
-Best regards,
-Conference Organizing Committee"""
+Thanks & regards,
+GIIR Organising Committee"""
 
     send_email(email, subject, body)
 
@@ -2953,17 +2953,18 @@ def send_rejection_email(email, registration):
 
     subject = f"{conference_name} - Registration Update"
 
+    rejection_reason = registration.get('rejection_reason', 'Not specified')
     body = f"""Dear {registration.get('full_name')},
 
-Your registration for {conference_name} requires attention.
+We regret to inform you that your conference application could not be approved at this time.
 {"Conference Code: " + conference_code if conference_code else ""}
 
-Please log in to your dashboard to view the status of your registration and make any necessary updates.
+Reason: {rejection_reason}
 
-If you have any questions, please contact us.
+If you believe this is an error or would like to discuss this further, please contact our support team at admin@globalconferences.co.za.
 
 Best regards,
-Conference Organizing Committee"""
+GIIR Organising Committee"""
 
     send_email(email, subject, body)
 
@@ -3009,8 +3010,8 @@ Reviewer Comments:
 
 {'Please submit your revised paper through the conference system.' if status == 'revision' else ''}
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
     
     send_email(email, subject, body)
@@ -5540,8 +5541,8 @@ def test_email():
         
         If you received this email, it means the email configuration is working correctly.
         
-        Best regards,
-        GIIR Conference Team
+        Thanks & regards,
+        GIIR Organising Committee
         '''
         
         # Print debug information
@@ -5683,7 +5684,7 @@ Message:
 {message}'''
                 
                 email_service.send_email(
-                    to_email=email_settings['email'],
+                    to=email_settings['email'],
                     subject=admin_subject,
                     body=admin_body
                 )
@@ -5691,7 +5692,7 @@ Message:
                 # Send auto-reply if configured
                 if email_settings.get('auto_reply'):
                     email_service.send_email(
-                        to_email=email,
+                        to=email,
                         subject='Thank you for contacting us',
                         body=email_settings['auto_reply']
                     )
@@ -5833,8 +5834,8 @@ Submission ID: {submission_id}
 
 Your paper has been received and will be reviewed by our committee. You will be notified of any updates regarding your submission.
 
-Best regards,
-GIIR Conference Team
+Thanks & regards,
+GIIR Organising Committee
 """
     send_email(email, subject, body)
 
@@ -6176,7 +6177,7 @@ Auto-reply message: {settings['auto_reply']}
 If you received this email, your contact form settings are working correctly.'''
         
         email_service.send_email(
-            to_email=settings['email'],
+            to=settings['email'],
             subject=subject,
             body=body
         )
@@ -6398,7 +6399,7 @@ def send_paper_status_notification(email, paper_title, status, comments):
     if comments:
         body += "Reviewer Comments:\n"
         body += comments + "\n\n"
-    body += "Best regards,\nConference Team"
+    body += "Thanks & regards,\nGIIR Organising Committee"
     
     try:
         send_email(email, subject, body)
@@ -12113,12 +12114,12 @@ Dear {full_name},
 
 Thank you for your interest in becoming a guest speaker at our conference!
 
-Your application (ID: {application_id}) has been received and is currently under review by our organizing committee.
+Your application (ID: {application_id}) has been received and is currently under review by our organising committee.
 
 We will contact you within 2-3 weeks regarding the status of your application. If you have any questions in the meantime, please don't hesitate to contact us.
 
-Best regards,
-Conference Organizing Committee
+Thanks & regards,
+GIIR Organising Committee
 """
 
         # Use existing send_email function
@@ -12140,8 +12141,8 @@ Congratulations! We are pleased to inform you that your guest speaker applicatio
 
 You will receive further details about the conference schedule and logistics soon.
 
-Best regards,
-Conference Organizing Committee
+Thanks & regards,
+GIIR Organising Committee
 """
 
         send_email([email], subject, body)
@@ -12162,8 +12163,8 @@ After careful review of your application, we regret to inform you that we are un
 
 {admin_notes if admin_notes else 'We encourage you to apply for future conferences and thank you for your interest.'}
 
-Best regards,
-Conference Organizing Committee
+Thanks & regards,
+GIIR Organising Committee
 """
 
         send_email([email], subject, body)
