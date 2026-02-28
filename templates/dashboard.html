@@ -7,13 +7,13 @@
     <h1>Welcome, {{ current_user.full_name }}!</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
     {% endwith %}
 
     <div class="dashboard-grid">
@@ -29,28 +29,29 @@
             <h2>My Registrations</h2>
             <div class="card-content">
                 {% if registrations %}
-                    {% for reg_id, reg in registrations.items() %}
-                        <div class="registration-item">
-                            <p><strong>Registration Type:</strong> {{ reg.registration_type }}</p>
-                            <p><strong>Total Amount:</strong> ${{ reg.total_amount }}</p>
-                            <p><strong>Status:</strong> <span class="status-{{ reg.payment_status }}">{{ reg.payment_status }}</span></p>
-                            {% if reg.paper_id %}
-                                <p><strong>Paper ID:</strong> {{ reg.paper_id }}</p>
-                            {% endif %}
-                            <p><strong>Additional Options:</strong></p>
-                            <ul>
-                                {% if reg.workshop %}
-                                    <li>Workshop</li>
-                                {% endif %}
-                                {% if reg.banquet %}
-                                    <li>Conference Banquet</li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                    {% endfor %}
+                {% for reg_id, reg in registrations.items() %}
+                <div class="registration-item">
+                    <p><strong>Registration Type:</strong> {{ reg.registration_type }}</p>
+                    <p><strong>Total Amount:</strong> ${{ reg.total_amount }}</p>
+                    <p><strong>Status:</strong> <span class="status-{{ reg.payment_status }}">{{ reg.payment_status
+                            }}</span></p>
+                    {% if reg.paper_id %}
+                    <p><strong>Paper ID:</strong> {{ reg.paper_id }}</p>
+                    {% endif %}
+                    <p><strong>Additional Options:</strong></p>
+                    <ul>
+                        {% if reg.workshop %}
+                        <li>Workshop</li>
+                        {% endif %}
+                        {% if reg.banquet %}
+                        <li>Conference Banquet</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endfor %}
                 {% else %}
-                    <p>No registrations found.</p>
-                    <a href="{{ url_for('registration') }}" class="btn-submit">Register Now</a>
+                <p>No registrations found.</p>
+                <a href="{{ url_for('registration') }}" class="btn-submit">Register Now</a>
                 {% endif %}
             </div>
         </div>
@@ -67,4 +68,4 @@
         {% endif %}
     </div>
 </div>
-{% endblock %} 
+{% endblock %}
