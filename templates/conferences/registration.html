@@ -169,7 +169,10 @@
     <!-- Registration Form (Step 1 only, no payment yet) -->
     <div class="registration-form-container">
         <div class="form-header">
-            {% if show_edit_form %}
+            {% if needs_type_confirmation %}
+            <h2>Your Paper Was Accepted!</h2>
+            <p>Please select your registration type and confirm your details before payment.</p>
+            {% elif show_edit_form %}
             <h2>Edit Registration Selections</h2>
             <p>Update your registration options before starting payment.</p>
             {% else %}
@@ -379,7 +382,7 @@
             <div class="form-actions">
                 <button type="button" id="register-button" class="btn btn-primary" disabled>
                     <i class="fas fa-check-circle"></i>
-                    {{ 'Save Changes' if show_edit_form else 'Complete Registration' }}
+                    {{ 'Confirm & Continue to Payment' if needs_type_confirmation else 'Save Changes' if show_edit_form else 'Complete Registration' }}
                 </button>
                 <a href="{{ url_for('conference_registration', conference_id=conference_id) if show_edit_form else url_for('conference_details', conference_id=conference_id) }}"
                     class="btn btn-secondary">Cancel</a>

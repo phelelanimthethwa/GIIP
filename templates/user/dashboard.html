@@ -187,6 +187,7 @@
                             {% set is_paid = payment_status == 'paid' %}
                             {% set is_payment_started = payment_status == 'payment_initiated' %}
                             {% set is_ready_to_pay = payment_unlocked or payment_status == 'approved' %}
+                            {% set needs_type_confirmation = reg.get('needs_type_confirmation') in [true, 1, '1', 'true', 'True', 'yes', 'on'] %}
                             {% set card_status = 'approved' if (is_ready_to_pay or is_paid) else ('rejected' if
                             paper_status == 'rejected' else 'pending') %}
                             <div class="registration-card compact-registration" data-status="{{ card_status }}"
@@ -285,12 +286,20 @@
 
                                     {% if reg.conference_id and not is_paid and not is_payment_started and
                                     is_ready_to_pay %}
+                                    {% if needs_type_confirmation %}
+                                    <a href="{{ url_for('conference_registration', conference_id=reg.conference_id) }}"
+                                        class="btn pay-now-btn choose-type-btn" role="button">
+                                        <i class="fas fa-user-edit"></i>
+                                        Choose Registration Type
+                                    </a>
+                                    {% else %}
                                     <button type="button" class="pay-now-btn"
                                         data-conference-id="{{ reg.conference_id }}"
                                         data-registration-id="{{ reg_id }}">
                                         <i class="fas fa-credit-card"></i>
                                         Pay Now
                                     </button>
+                                    {% endif %}
                                     {% elif is_payment_started %}
                                     <span class="pay-state pending-state">
                                         <i class="fas fa-hourglass-half"></i>
@@ -2436,7 +2445,7 @@
             });
         }
 
-        const payNowButtons = document.querySelectorAll('.pay-now-btn');
+        const payNowButtons = document.querySelectorAll('button.pay-now-btn');
         payNowButtons.forEach(button => {
             button.addEventListener('click', function () {
                 const conferenceId = this.dataset.conferenceId;

@@ -9602,6 +9602,14 @@ def conference_registration(conference_id):
                 flash('Registration selections cannot be edited after payment has started.', 'info')
             else:
                 show_edit_form = True
+        # Auto-created registrations (from paper acceptance): show type selection form
+        # so user can choose their registration type before paying.
+        if (
+            existing_registration
+            and existing_payment_status not in ['paid', 'payment_initiated']
+            and _as_bool((existing_registration or {}).get('auto_created_from_paper', False))
+        ):
+            show_edit_form = True
         registration_enabled = conference.get('settings', {}).get('registration_enabled', False)
         latest_paper_status = None
         if latest_submission:
@@ -9661,6 +9669,11 @@ def conference_registration(conference_id):
                 and ((existing_registration.get('payment_status') or '').lower() not in ['paid', 'payment_initiated'])
             )
 
+            needs_type_confirmation = (
+                show_edit_form
+                and existing_registration
+                and _as_bool((existing_registration or {}).get('auto_created_from_paper', False))
+            )
             return render_template(
                 'conferences/registration.html',
                 conference=conference,
@@ -9672,6 +9685,7 @@ def conference_registration(conference_id):
                 latest_paper_status=latest_paper_status,
                 can_pay=can_pay,
                 show_edit_form=show_edit_form,
+                needs_type_confirmation=needs_type_confirmation,
                 form_registration_period=form_registration_period,
                 multi_submit_fee_info=multi_submit_fee_info,
                 site_design=get_site_design()
@@ -9801,6 +9815,11 @@ def conference_registration(conference_id):
 
             if payment_unlocked and not (existing_registration or {}).get('payment_unlocked_at'):
                 registration_record['payment_unlocked_at'] = now_iso
+
+            # User confirmed their registration type; clear auto-created flag so they
+            # see the workflow status view (with Pay button) on next visit.
+            if registration_id and _as_bool((existing_registration or {}).get('auto_created_from_paper', False)):
+                registration_record['auto_created_from_paper'] = False
 
             registrations_ref = db.reference('registrations')
             if registration_id:
@@ -11393,6 +11412,10 @@ def dashboard():
 
         for registration in user_registrations.values():
             registration['payment_unlocked'] = _is_truthy(registration.get('payment_unlocked'))
+            registration['needs_type_confirmation'] = (
+                _is_truthy(registration.get('auto_created_from_paper', False))
+                and (registration.get('payment_status') or '').lower() not in ['paid', 'payment_initiated']
+            )
 
         approved_count = sum(
             1
