@@ -239,6 +239,25 @@ ANNOUNCEMENT_EMAIL_HTML = """
 </html>
 """
 
+# Admin notification when a paper is submitted
+ADMIN_SUBMISSION_NOTIFICATION = """
+New Paper Submission
+
+A new paper has been submitted to {conference_name}.
+
+Details:
+- Paper Title: {paper_title}
+- Submission ID: {paper_id}
+- Author(s): {author_names}
+- Submitter Email: {submitter_email}
+- Presentation Type: {presentation_type}
+
+Please log in to the admin dashboard to review this submission.
+
+Thanks & regards,
+GIIR Conference System
+"""
+
 # Type badge colors/text for announcements
 ANNOUNCEMENT_TYPE_BADGES = {
     'important': '⚠️ Important',

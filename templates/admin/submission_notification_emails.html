@@ -1,0 +1,127 @@
+{% extends "admin/base_notifications.html" %}
+
+{% block title %}Submission Notification Emails - Admin{% endblock %}
+
+{% block notifications_content %}
+<div class="notifications-page">
+    <div class="page-header">
+        <h1><i class="fas fa-envelope"></i> Submission Notification Emails</h1>
+        <p class="page-description">Emails that receive a notification when a new paper is submitted</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="content-card">
+        <h2><i class="fas fa-list-ul"></i> Notification Recipients</h2>
+        <p class="text-muted mb-4">
+            Add email addresses below. Each address will receive an email notification whenever a user submits a paper to any conference.
+        </p>
+        <form method="POST" class="needs-validation" novalidate>
+            <div class="form-group mb-3">
+                <label class="form-label">Email Addresses</label>
+                <div id="emails-container">
+                    {% if emails %}
+                        {% for email in emails %}
+                        <div class="email-item mb-2">
+                            <div class="input-group">
+                                <input type="email" class="form-control" name="notification_emails[]"
+                                    value="{{ email }}" placeholder="admin@example.com">
+                                <button type="button" class="btn btn-outline-danger" onclick="removeEmail(this)"
+                                    title="Remove">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="email-item mb-2">
+                            <div class="input-group">
+                                <input type="email" class="form-control" name="notification_emails[]"
+                                    placeholder="admin@example.com">
+                                <button type="button" class="btn btn-outline-danger" onclick="removeEmail(this)"
+                                    title="Remove">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addEmail()">
+                    <i class="fas fa-plus"></i> Add Email
+                </button>
+            </div>
+            <div class="form-actions mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if updated_at %}
+    <p class="text-muted small mt-3">
+        <i class="fas fa-clock"></i> Last updated: {{ updated_at|datetime }}
+        {% if updated_by %}(by {{ updated_by }}){% endif %}
+    </p>
+    {% endif %}
+</div>
+<style>
+.notifications-page { max-width: 720px; }
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 0.25rem 0;
+}
+.page-header h1 i { color: var(--primary-color); margin-right: 0.5rem; }
+.page-description { color: #64748b; margin: 0; font-size: 0.95rem; }
+.content-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid #e2e8f0;
+}
+.content-card h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 1rem 0;
+}
+.content-card h2 i { color: var(--primary-color); margin-right: 0.5rem; }
+</style>
+<script>
+function addEmail() {
+    const container = document.getElementById('emails-container');
+    const item = document.createElement('div');
+    item.className = 'email-item mb-2';
+    item.innerHTML = `
+        <div class="input-group">
+            <input type="email" class="form-control" name="notification_emails[]" placeholder="admin@example.com">
+            <button type="button" class="btn btn-outline-danger" onclick="removeEmail(this)" title="Remove">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(item);
+}
+function removeEmail(btn) {
+    const container = document.getElementById('emails-container');
+    if (container.querySelectorAll('.email-item').length > 1) {
+        btn.closest('.email-item').remove();
+    } else {
+        btn.closest('.email-item').querySelector('input').value = '';
+    }
+}
+</script>
+{% endblock %}

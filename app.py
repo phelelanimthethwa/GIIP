@@ -834,6 +834,22 @@ def paper_submission():
             except Exception as e:
                 print(f"Error sending confirmation email: {str(e)}")
 
+            # Notify admin emails of each new submission
+            try:
+                admin_emails = get_submission_notification_emails()
+                if admin_emails:
+                    for sp in submitted_papers:
+                        email_service.send_submission_notification_to_admins(admin_emails, {
+                            'paper_title': sp.get('title', 'Untitled'),
+                            'paper_id': sp.get('id', ''),
+                            'conference_name': conference_name,
+                            'authors': authors,
+                            'submitter_email': current_user.email,
+                            'presentation_type': sp.get('type', '')
+                        })
+            except Exception as e:
+                print(f"Error sending submission notification to admins: {str(e)}")
+
             flash(f'{papers_submitted} paper(s) submitted successfully to {conference_name}! Check your email for confirmation.', 'success')
             return redirect(url_for('dashboard'))
             
@@ -5813,6 +5829,21 @@ def submit_paper():
             )
         except Exception as e:
             print(f"Error sending confirmation email: {str(e)}")
+
+        # Notify admin emails of new submission
+        try:
+            admin_emails = get_submission_notification_emails()
+            if admin_emails:
+                email_service.send_submission_notification_to_admins(admin_emails, {
+                    'paper_title': paper_data['paper_title'],
+                    'paper_id': new_paper.key,
+                    'conference_name': 'GIIR Conference',
+                    'authors': authors,
+                    'submitter_email': current_user.email,
+                    'presentation_type': paper_data.get('presentation_type', '')
+                })
+        except Exception as e:
+            print(f"Error sending submission notification to admins: {str(e)}")
         
         flash('Paper submitted successfully!', 'success')
         return redirect(url_for('dashboard'))
@@ -6946,6 +6977,7 @@ def inject_admin_menu():
         {'text': 'Author Guidelines', 'url': 'admin_author_guidelines', 'icon': 'book'},
         {'text': 'Call for Papers', 'url': 'admin_call_for_papers_content', 'icon': 'file-alt'},
         {'text': 'Paper Submission Settings', 'url': 'admin_paper_submission_settings', 'icon': 'file-upload'},
+        {'text': 'Submission Notifications', 'url': 'admin_submission_notification_emails', 'icon': 'bell'},
         {'text': 'Design Settings', 'url': 'admin_design', 'icon': 'palette'},
         {'text': 'Venue', 'url': 'admin_venue', 'icon': 'map-marker-alt'},
         {'text': 'Speakers', 'url': 'admin_speakers', 'icon': 'microphone'},
@@ -10275,6 +10307,21 @@ def conference_paper_submission(conference_id):
             except Exception as e:
                 print(f"Error sending confirmation email: {str(e)}")
 
+            # Notify admin emails of new submission
+            try:
+                admin_emails = get_submission_notification_emails()
+                if admin_emails:
+                    email_service.send_submission_notification_to_admins(admin_emails, {
+                        'paper_title': paper_data['paper_title'],
+                        'paper_id': paper_id,
+                        'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
+                        'authors': paper_data.get('authors', []),
+                        'submitter_email': current_user.email,
+                        'presentation_type': paper_data.get('presentation_type', '')
+                    })
+            except Exception as e:
+                print(f"Error sending submission notification to admins: {str(e)}")
+
             flash(
                 f'Paper submitted to {conference.get("basic_info", {}).get("name", "Conference")}. '
                 'Registration will unlock after admin accepts your paper.',
@@ -11507,6 +11554,52 @@ def admin_conference_proceedings_content():
         flash('Error saving content changes.', 'error')
         return redirect(url_for('admin_conference_proceedings'))
 
+
+
+def get_submission_notification_emails():
+    """Get list of email addresses that receive submission notifications."""
+    try:
+        ref = db.reference('admin_submission_notification_emails')
+        data = ref.get() or {}
+        emails = data.get('emails') or []
+        return [e.strip() for e in emails if e and isinstance(e, str) and '@' in str(e).strip()]
+    except Exception as e:
+        print(f"Error loading submission notification emails: {e}")
+        return []
+
+
+@app.route('/admin/submission-notification-emails', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_submission_notification_emails():
+    """Admin page to manage emails that receive paper submission notifications."""
+    try:
+        if request.method == 'POST':
+            raw = request.form.getlist('notification_emails[]')
+            emails = [e.strip() for e in raw if e and isinstance(e, str) and '@' in e.strip()]
+            now_iso = datetime.now().isoformat()
+            ref = db.reference('admin_submission_notification_emails')
+            ref.set({
+                'emails': emails,
+                'updated_at': now_iso,
+                'updated_by': current_user.email
+            })
+            flash('Submission notification emails saved successfully.', 'success')
+            return redirect(url_for('admin_submission_notification_emails'))
+
+        ref = db.reference('admin_submission_notification_emails')
+        data = ref.get() or {}
+        emails = data.get('emails') or []
+        return render_template(
+            'admin/submission_notification_emails.html',
+            emails=emails,
+            updated_at=data.get('updated_at'),
+            updated_by=data.get('updated_by'),
+            site_design=get_site_design()
+        )
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
 
 
 @app.route('/admin/paper-submission-settings', methods=['GET', 'POST'])

@@ -1,0 +1,112 @@
+{% extends "admin/base_admin.html" %}
+
+{% block content %}
+<div class="notifications-view">
+    <div class="notifications-layout">
+        <!-- Side Panel Nav -->
+        <aside class="notifications-sidebar">
+            <div class="sidebar-header-inner">
+                <a href="{{ url_for('admin_dashboard') }}" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Admin</span>
+                </a>
+                <h3 class="sidebar-title">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </h3>
+            </div>
+            <nav class="notifications-nav">
+                <a href="{{ url_for('admin_submission_notification_emails') }}"
+                   class="nav-item-link {% if request.endpoint == 'admin_submission_notification_emails' %}active{% endif %}">
+                    <i class="fas fa-envelope"></i>
+                    <span>Submission Emails</span>
+                </a>
+            </nav>
+        </aside>
+        <!-- Main Content -->
+        <main class="notifications-main">
+            {% block notifications_content %}{% endblock %}
+        </main>
+    </div>
+</div>
+<style>
+.notifications-view {
+    padding: 0;
+    margin: -1rem -0.5rem 0;
+}
+.notifications-layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 0;
+    min-height: calc(100vh - 180px);
+    background: #f8f9fa;
+}
+.notifications-sidebar {
+    background: #fff;
+    border-right: 1px solid #e2e8f0;
+    padding: 1.5rem 0;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+}
+.sidebar-header-inner {
+    padding: 0 1.25rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+}
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    transition: color 0.2s;
+}
+.back-link:hover { color: var(--primary-color); }
+.sidebar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.sidebar-title i { color: var(--primary-color); }
+.notifications-nav { padding: 0 0.5rem; }
+.nav-item-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: #475569;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+.nav-item-link:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+.nav-item-link.active {
+    background: #eff6ff;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+.nav-item-link i { width: 20px; text-align: center; }
+.notifications-main {
+    padding: 2rem;
+    overflow-y: auto;
+}
+@media (max-width: 768px) {
+    .notifications-layout {
+        grid-template-columns: 1fr;
+    }
+    .notifications-sidebar {
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+}
+</style>
+{% endblock %}

@@ -82,6 +82,35 @@ class EmailService:
         )
         return self.send_email(registration_data['email'], subject, body)
 
+    def send_submission_notification_to_admins(self, recipients: List[str], submission_data: Dict) -> bool:
+        """
+        Send email notification to admin recipients when a new paper is submitted.
+
+        Args:
+            recipients: List of email addresses to notify
+            submission_data: Dict with paper_title, paper_id, conference_name, authors, submitter_email,
+                             presentation_type
+
+        Returns:
+            True if sent to at least one recipient, False otherwise
+        """
+        if not recipients:
+            return False
+        author_names = ', '.join(
+            a.get('name', a.get('email', 'Unknown'))
+            for a in submission_data.get('authors', [])
+        ) or 'Unknown'
+        body = ADMIN_SUBMISSION_NOTIFICATION.format(
+            conference_name=submission_data.get('conference_name', 'Conference'),
+            paper_title=submission_data.get('paper_title', 'Untitled'),
+            paper_id=submission_data.get('paper_id', ''),
+            author_names=author_names,
+            submitter_email=submission_data.get('submitter_email', ''),
+            presentation_type=submission_data.get('presentation_type', '').replace('_', ' ').title()
+        )
+        subject = f"New Paper Submission - {submission_data.get('paper_title', 'Untitled')} [{submission_data.get('conference_name', 'Conference')}]"
+        return self.send_email(recipients, subject, body)
+
     def send_paper_confirmation(self, paper_data):
         """
         Send paper submission confirmation email
