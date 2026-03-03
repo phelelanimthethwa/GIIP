@@ -248,6 +248,70 @@
         margin-top: 1rem;
     }
 
+    /* Registration Type Selection */
+    .registration-type-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .reg-type-card {
+        position: relative;
+    }
+
+    .reg-type-card input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+         cursor: pointer;
+    }
+
+    .reg-type-card label {
+        display: block;
+        padding: 1.25rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .reg-type-card input[type="radio"]:checked + label {
+        border-color: #667eea;
+        background: #f0f4ff;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .reg-type-card label:hover {
+        border-color: #667eea;
+    }
+
+    .type-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .type-header i {
+        font-size: 1.5rem;
+        color: #667eea;
+    }
+
+    .type-header h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .type-description {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #6b7280;
+        line-height: 1.4;
+    }
+
     @media (max-width: 768px) {
         .submission-form {
             padding: 1rem;
@@ -348,6 +412,47 @@
         <div id="submission-status-banner" class="submission-status-banner">
             <i class="banner-icon fas fa-info-circle"></i>
             <div class="banner-text" id="banner-text"></div>
+        </div>
+
+        <!-- Registration Type Selection -->
+        <div class="form-section">
+            <h3><i class="fas fa-id-card"></i> Registration Type</h3>
+            <p class="section-subtitle">Select your registration type. Payment will be processed after your paper is accepted.</p>
+            
+            <div class="registration-type-options">
+                <div class="reg-type-card">
+                    <input type="radio" name="registration_type" id="reg_student_author" value="student_author" required checked>
+                    <label for="reg_student_author">
+                        <div class="type-header">
+                            <i class="fas fa-user-graduate"></i>
+                            <h4>Student Author</h4>
+                        </div>
+                        <p class="type-description">For student researchers presenting papers</p>
+                    </label>
+                </div>
+                
+                <div class="reg-type-card">
+                    <input type="radio" name="registration_type" id="reg_regular_author" value="regular_author" required>
+                    <label for="reg_regular_author">
+                        <div class="type-header">
+                            <i class="fas fa-user"></i>
+                            <h4>Regular Author</h4>
+                        </div>
+                        <p class="type-description">For faculty and professional researchers</p>
+                    </label>
+                </div>
+                
+                <div class="reg-type-card">
+                    <input type="radio" name="registration_type" id="reg_listener" value="listener" required>
+                    <label for="reg_listener">
+                        <div class="type-header">
+                            <i class="fas fa-laptop"></i>
+                            <h4>Listener</h4>
+                        </div>
+                        <p class="type-description">Attend conference sessions without presenting</p>
+                    </label>
+                </div>
+            </div>
         </div>
 
         <div class="form-section">

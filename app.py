@@ -690,6 +690,9 @@ def paper_submission():
             # Get conference selection
             selected_conference_id = request.form.get('conference_id')
             
+            # Get registration type preference
+            registration_type = request.form.get('registration_type', 'student_author')
+            
             # If multiple conferences available, require selection
             if len(available_conferences) > 1 and not selected_conference_id:
                 flash('Please select a conference for your paper submission.', 'error')
@@ -784,7 +787,8 @@ def paper_submission():
                     'file_data': file_base64,
                     'file_name': secure_filename(file.filename),
                     'file_type': file.content_type,
-                    'file_size': len(file_data)
+                    'file_size': len(file_data),
+                    'registration_type': registration_type
                 }
 
                 # Store paper in Firebase
@@ -849,6 +853,63 @@ def paper_submission():
                         })
             except Exception as e:
                 print(f"Error sending submission notification to admins: {str(e)}")
+
+            # Create or update registration with selected type
+            try:
+                registration_id, existing_registration = get_user_conference_registration(current_user.id, selected_conference_id)
+                
+                if not existing_registration:
+                    # Create new registration with the selected type
+                    fees = get_registration_fees() or {}
+                    current_period = get_current_registration_period()
+                    
+                    pricing = calculate_conference_registration_pricing(
+                        user_id=current_user.id,
+                        conference_id=selected_conference_id,
+                        fees=fees,
+                        registration_period=current_period,
+                        registration_type=registration_type,
+                        workshop=False,
+                        banquet=False
+                    )
+                    
+                    now_iso = datetime.now().isoformat()
+                    full_name = current_user.full_name or current_user.email.split('@')[0]
+                    conference = get_conference_data(selected_conference_id)
+                    
+                    registration_record = {
+                        'user_id': current_user.id,
+                        'full_name': full_name,
+                        'email': current_user.email,
+                        'phone': getattr(current_user, 'phone', ''),
+                        'conference_id': selected_conference_id,
+                        'conference_code': conference.get('conference_code', ''),
+                        'conference_name': conference.get('basic_info', {}).get('name', 'Conference'),
+                        'registration_type': registration_type,
+                        'registration_period': current_period,
+                        'institution': '',
+                        'country': '',
+                        'total_amount': pricing['total_amount'],
+                        'extra_paper': pricing['extra_paper_count'] > 0,
+                        'extra_paper_count': pricing['extra_paper_count'],
+                        'extra_paper_fee_per_item': pricing['extra_paper_fee_per_item'],
+                        'extra_paper_fee_total': pricing['extra_paper_fee_total'],
+                        'workshop': False,
+                        'banquet': False,
+                        'payment_status': 'pending',
+                        'payment_method': '',
+                        'payment_unlocked': False,  # Locked until paper is accepted
+                        'paper_status': 'pending',
+                        'workflow_status': 'paper_submitted_payment_locked',
+                        'submission_date': now_iso,
+                        'created_at': now_iso,
+                        'updated_at': now_iso
+                    }
+                    
+                    registrations_ref = db.reference('registrations')
+                    new_registration = registrations_ref.push(registration_record)
+            except Exception as e:
+                print(f"Error creating registration from paper submission: {str(e)}")
 
             flash(f'{papers_submitted} paper(s) submitted successfully to {conference_name}! Check your email for confirmation.', 'success')
             return redirect(url_for('dashboard'))
