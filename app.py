@@ -2327,7 +2327,7 @@ def admin_registration_fees():
                         'student_author': get_float('early_bird_student'),
                         'regular_author': get_float('early_bird_regular'),
                         'physical_delegate': get_float('early_bird_physical'),
-                        'virtual_delegate': get_float('early_bird_virtual'),
+                        'listener': get_float('early_bird_listener'),
                         'listener': get_float('early_bird_listener')
                     },
                     'benefits': [b for b in request.form.getlist('early_bird_benefits[]') if b and b.strip()]
@@ -2338,7 +2338,7 @@ def admin_registration_fees():
                         'student_author': get_float('early_student'),
                         'regular_author': get_float('early_regular'),
                         'physical_delegate': get_float('early_physical'),
-                        'virtual_delegate': get_float('early_virtual'),
+                        'listener': get_float('early_listener'),
                         'listener': get_float('early_listener')
                     },
                     'benefits': [b for b in request.form.getlist('early_benefits[]') if b and b.strip()]
@@ -2349,7 +2349,7 @@ def admin_registration_fees():
                         'student_author': get_float('regular_student'),
                         'regular_author': get_float('regular_regular'),
                         'physical_delegate': get_float('regular_physical'),
-                        'virtual_delegate': get_float('regular_virtual')
+                        'listener': get_float('regular_listener')
                     },
                     'benefits': [b for b in request.form.getlist('regular_benefits[]') if b and b.strip()]
                 },
@@ -2359,7 +2359,7 @@ def admin_registration_fees():
                         'student_author': get_float('late_student'),
                         'regular_author': get_float('late_regular'),
                         'physical_delegate': get_float('late_physical'),
-                        'virtual_delegate': get_float('late_virtual'),
+                        'listener': get_float('late_listener'),
                         'listener': get_float('late_listener')
                     },
                     'benefits': [b for b in request.form.getlist('late_benefits[]') if b and b.strip()]
@@ -4793,7 +4793,6 @@ def get_registration_fees():
                         'student_author': 0,
                         'regular_author': 0,
                         'physical_delegate': 0,
-                        'virtual_delegate': 0,
                         'listener': 0
                     },
                     'benefits': []
@@ -4804,7 +4803,6 @@ def get_registration_fees():
                         'student_author': 0,
                         'regular_author': 0,
                         'physical_delegate': 0,
-                        'virtual_delegate': 0,
                         'listener': 0
                     },
                     'benefits': []
@@ -4815,7 +4813,6 @@ def get_registration_fees():
                         'student_author': 0,
                         'regular_author': 0,
                         'physical_delegate': 0,
-                        'virtual_delegate': 0,
                         'listener': 0
                     },
                     'benefits': []
@@ -4826,7 +4823,6 @@ def get_registration_fees():
                         'student_author': 0,
                         'regular_author': 0,
                         'physical_delegate': 0,
-                        'virtual_delegate': 0,
                         'listener': 0
                     },
                     'benefits': []
@@ -4867,7 +4863,7 @@ def get_registration_fees():
                     fees[period]['fees'] = {}
                 
                 # Ensure all registration types have a fee
-                for reg_type in ['student_author', 'regular_author', 'physical_delegate', 'virtual_delegate', 'listener']:
+                for reg_type in ['student_author', 'regular_author', 'physical_delegate', 'listener']:
                     if reg_type not in fees[period]['fees']:
                         fees[period]['fees'][reg_type] = 0
                 
@@ -8416,7 +8412,7 @@ def _select_default_registration_type(fees, registration_period):
         'regular_author',
         'student_author',
         'physical_delegate',
-        'virtual_delegate',
+        'listener',
         'listener'
     ]
     period_fees = ((fees or {}).get(registration_period) or {}).get('fees') or {}
@@ -9576,7 +9572,10 @@ def conference_details(conference_id):
                     or (latest_submission or {}).get('status')
                 )
             else:
-                user_can_register = bool(accepted_submission_id and accepted_submission)
+                # Allow delegates to register without submission; authors still need accepted submission
+                # The registration type is selected on the form, so allow access for all types
+                # Type-specific validation happens on form submission
+                user_can_register = True  # Allow access to registration page for all types
                 if latest_submission_id and latest_submission:
                     user_submission_status = latest_submission.get('status')
 
@@ -9651,31 +9650,22 @@ def conference_registration(conference_id):
 
         # Allow existing registrants to complete submission/payment even after
         # admins close new registrations.
-        if not registration_enabled and not existing_registration and not has_accepted_submission:
-            flash('Registration is not enabled for this conference.', 'error')
-            return redirect(url_for('conference_details', conference_id=conference_id))
+        # For new registrations, check will happen in POST with type-specific logic
+        # (delegates can register even if new registrations are closed)
+        registration_blocked_for_new = not registration_enabled and not existing_registration
+        if registration_blocked_for_new and not has_accepted_submission:
+            # Give users a chance to see the form and choose their type
+            # They'll be properly blocked on POST if not allowed
+            pass
 
-        # New workflow gate: registration unlocks only after paper acceptance.
+        # Delegates don't need submitted papers, only authors do
+        # For GET requests without existing registration and no accepted submission,
+        # allow them to access the form so they can choose registration type
+        # Type-specific validation happens on form submission (POST)
         if request.method == 'GET' and not existing_registration and not has_accepted_submission:
-            if latest_submission_id and latest_submission:
-                current_status = (latest_submission.get('status') or 'pending').replace('_', ' ').title()
-                flash(
-                    f'Registration unlocks only after your paper is accepted. Current paper status: {current_status}.',
-                    'info'
-                )
-                return redirect(
-                    url_for(
-                        'conference_submission_details',
-                        conference_id=conference_id,
-                        paper_id=latest_submission_id
-                    )
-                )
-
-            flash(
-                'You must submit a paper first. Registration will unlock after admin accepts your submission.',
-                'info'
-            )
-            return redirect(url_for('conference_paper_submission', conference_id=conference_id))
+            # Don't block access here - let them choose their registration type
+            # If they choose an author type on submission, they'll be prompted to submit
+            pass  # Allow access to the form for all types
 
         if request.method == 'GET':
             fees = get_registration_fees()
@@ -9725,16 +9715,21 @@ def conference_registration(conference_id):
 
         if request.is_json:
             registration_data = request.get_json(silent=True) or {}
+            reg_type = registration_data.get('registration_type', '').lower()
+            
             if not registration_enabled and not existing_registration and not has_accepted_submission:
                 return jsonify({
                     'success': False,
                     'error': 'Registration is not enabled for this conference.'
                 }), 403
 
-            if not existing_registration and not has_accepted_submission:
+            # Delegates don't need accepted submissions, but authors do
+            is_delegate_type = reg_type in ['physical_delegate', 'listener']
+            if not existing_registration and not has_accepted_submission and not is_delegate_type:
                 return jsonify({
                     'success': False,
-                    'error': 'Registration is available only after your paper is accepted.'
+                    'error': 'Registration as an author is available only after your paper is accepted. '
+                             'Please submit your paper first and wait for admin approval, or register as a delegate instead.'
                 }), 403
 
             required_fields = [
@@ -9805,7 +9800,9 @@ def conference_registration(conference_id):
             now_iso = datetime.now().isoformat()
             full_name = current_user.full_name or current_user.email.split('@')[0]
             existing_payment_unlocked = _as_bool((existing_registration or {}).get('payment_unlocked', False))
-            payment_unlocked = existing_payment_unlocked or has_accepted_submission
+            # Delegates can pay immediately without paper acceptance; authors need accepted submission
+            is_delegate_type = reg_type in ['physical_delegate', 'listener']
+            payment_unlocked = existing_payment_unlocked or has_accepted_submission or is_delegate_type
             paper_status = (
                 'accepted'
                 if has_accepted_submission

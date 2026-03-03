@@ -320,12 +320,12 @@ firebase.initializeApp(firebaseConfig);
                         </label>
                     </div>
 
-                    <div class="type-card" id="virtual_delegate_card">
-                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate">
-                        <label for="virtual_delegate">
+                    <div class="type-card" id="listener_card">
+                        <input type="radio" name="registration_type" id="listener" value="listener">
+                        <label for="listener">
                             <div class="type-header">
                                 <i class="fas fa-laptop"></i>
-                                <h4>Virtual Delegate</h4>
+                                <h4>Listener</h4>
                             </div>
                             <div class="type-price">
                                 <span class="amount"></span>
@@ -1423,8 +1423,8 @@ function updatePrices() {
                 priceElement.textContent = `${symbol} ${data.fee.toFixed(2)}`;
                 itemCard.style.display = 'block';
                 
-                // Handle virtual delegate restrictions
-                if (selectedType === 'virtual_delegate' && !data.virtual_eligible) {
+                // Handle listener restrictions
+                if (selectedType === 'listener' && !data.listener_eligible) {
                     checkbox.checked = false;
                     checkbox.disabled = true;
                     itemCard.classList.add('disabled');

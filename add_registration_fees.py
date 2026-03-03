@@ -48,7 +48,6 @@ def add_registration_fees():
                     'student_author': 376,      # Authors (Students) - Early Bird
                     'regular_author': 504,      # Authors (Regular) - Early Bird
                     'physical_delegate': 0,
-                    'virtual_delegate': 0,
                     'listener': 187             # Listener/Attendee - Early Bird
                 },
                 'benefits': []
@@ -59,7 +58,6 @@ def add_registration_fees():
                     'student_author': 0,
                     'regular_author': 0,
                     'physical_delegate': 0,
-                    'virtual_delegate': 0,
                     'listener': 0
                 },
                 'benefits': []
@@ -70,7 +68,6 @@ def add_registration_fees():
                     'student_author': 442,      # Authors (Students) - Regular Price
                     'regular_author': 593,       # Authors (Regular) - Regular Price
                     'physical_delegate': 0,
-                    'virtual_delegate': 0,
                     'listener': 220              # Listener/Attendee - Regular Price
                 },
                 'benefits': []
@@ -81,7 +78,6 @@ def add_registration_fees():
                     'student_author': 0,
                     'regular_author': 0,
                     'physical_delegate': 0,
-                    'virtual_delegate': 0,
                     'listener': 0
                 },
                 'benefits': []

@@ -239,18 +239,18 @@
                     </div>
 
                     <div class="type-card">
-                        <input type="radio" name="registration_type" id="virtual_delegate" value="virtual_delegate"
+                        <input type="radio" name="registration_type" id="listener" value="listener"
                             required {% if show_edit_form and existing_registration and
-                            existing_registration.registration_type=='virtual_delegate' %}checked{% endif %}>
-                        <label for="virtual_delegate">
+                            existing_registration.registration_type=='listener' %}checked{% endif %}>
+                        <label for="listener">
                             <div class="type-header">
                                 <i class="fas fa-laptop"></i>
-                                <h4>Virtual Delegate</h4>
+                                <h4>Listener</h4>
                             </div>
                             <div class="type-description">
                                 <p>Attend conference sessions online</p>
                             </div>
-                            <div class="type-price" data-type="virtual_delegate">
+                            <div class="type-price" data-type="listener">
                                 <span class="price-label">Price:</span>
                                 <span class="price-value">-</span>
                             </div>
@@ -391,6 +391,40 @@
     </div>
     {% endif %}
     {% endif %}
+
+    <!-- ZAR Confirmation Modal -->
+    <div id="zar-confirm-backdrop">
+        <div id="zar-confirm-modal">
+            <div id="zar-modal-header">
+                <h2>Payment Confirmation</h2>
+                <button type="button" id="zar-modal-close" aria-label="Close modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="zar-modal-body">
+                <div class="zar-info-badge">
+                    <i class="fas fa-info-circle"></i>
+                    You will be charged in South African Rands (ZAR).
+                </div>
+                <div class="zar-amounts-grid">
+                    <div class="zar-amount-card">
+                        <div class="zar-amount-label">Registration Total</div>
+                        <div class="zar-amount-value" id="zar-usd-display">...</div>
+                    </div>
+                    <div class="zar-amount-card highlight">
+                        <div class="zar-amount-label">You Pay (ZAR)</div>
+                        <div class="zar-amount-value" id="zar-zar-display"><i class="fas fa-spinner fa-spin"
+                                style="font-size:1rem;"></i></div>
+                    </div>
+                </div>
+                <div class="zar-rate-note" id="zar-rate-note">
+                    Fetching live exchange rate...
+                </div>
+            </div>
+            <div id="zar-modal-actions">
+                <button type="button" id="zar-modal-cancel">Cancel</button>
+                <button type="button" id="zar-modal-proceed">Proceed to Payment</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>

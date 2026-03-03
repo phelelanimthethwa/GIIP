@@ -372,11 +372,11 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="early_bird_virtual">Virtual Delegate</label>
+                                    <label for="early_bird_listener">Listener</label>
                                     <div class="input-group">
                                         <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                        <input type="number" id="early_bird_virtual" name="early_bird_virtual" 
-                                               value="{{ fees.early_bird.fees.virtual_delegate if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
+                                        <input type="number" id="early_bird_listener" name="early_bird_listener" 
+                                               value="{{ fees.early_bird.fees.listener if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
                                                step="0.01" min="0">
                                     </div>
                                 </div>
@@ -460,7 +460,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="early_virtual">Virtual Delegate</label>
+                        <label for="early_listener">Listener</label>
                         <div class="input-group">
                             <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
                             <input type="number" id="early_virtual" name="early_virtual" 
@@ -541,11 +541,11 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="regular_virtual">Virtual Delegate</label>
+                                <label for="regular_listener">Listener</label>
                                 <div class="input-group">
                                     <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="regular_virtual" name="regular_virtual" 
-                                           value="{{ fees.regular.fees.virtual_delegate if fees and fees.regular and fees.regular.fees else '' }}" 
+                                    <input type="number" id="regular_listener" name="regular_listener" 
+                                           value="{{ fees.regular.fees.listener if fees and fees.regular and fees.regular.fees else '' }}" 
                                            step="0.01" min="0">
                                 </div>
                             </div>
@@ -623,11 +623,11 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="late_virtual">Virtual Delegate</label>
+                                <label for="late_listener">Listener</label>
                                 <div class="input-group">
                                     <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="late_virtual" name="late_virtual" 
-                                           value="{{ fees.late.fees.virtual_delegate if fees and fees.late and fees.late.fees else '' }}" 
+                                    <input type="number" id="late_listener" name="late_listener" 
+                                           value="{{ fees.late.fees.listener if fees and fees.late and fees.late.fees else '' }}" 
                                            step="0.01" min="0">
                                 </div>
                             </div>
@@ -775,7 +775,7 @@
                                        {% if fees and fees.additional_items and fees.additional_items.banquet and fees.additional_items.banquet.virtual_eligible %}checked{% endif %}>
                                 <span class="slider round"></span>
                             </label>
-                            <label for="banquet_virtual_eligible">Available for Virtual Delegates</label>
+                            <label for="banquet_listener_eligible">Available for Listeners</label>
                         </div>
                     </div>
                 </div>
