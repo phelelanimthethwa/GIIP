@@ -4,15 +4,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %}</title>
+    <title>{% block title %}{{ seo.default_title }}{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}{{ seo.default_description }}{% endblock %}">
+    {% set resolved_title = self.title()|striptags|trim or seo.default_title %}
+    {% set resolved_description = self.meta_description()|striptags|trim or seo.default_description %}
+    <meta name="keywords" content="{% block meta_keywords %}{{ seo.keywords }}{% endblock %}">
+    <meta name="robots" content="{% block meta_robots %}{{ seo.robots }}{% endblock %}">
+    <link rel="canonical" href="{% block canonical_url %}{{ seo.canonical_url }}{% endblock %}">
+    <meta property="og:site_name" content="{{ seo.site_name }}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{{ resolved_title }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ resolved_description }}{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ seo.canonical_url }}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ seo.og_image_url }}{% endblock %}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}{{ resolved_title }}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{{ resolved_description }}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{{ seo.og_image_url }}{% endblock %}">
+    <meta name="theme-color" content="{{ site_design.primary_color }}">
 
-    <!-- Cache Control - Prevent caching of dynamic content -->
+    {% if seo.robots.startswith('noindex') %}
+    <!-- Private/utility pages should not be cached by browsers or intermediaries -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    {% endif %}
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block structured_data %}
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": {{ seo.site_name|tojson }},
+            "url": {{ seo.base_url|tojson }},
+            "logo": {{ seo.og_image_url|tojson }}
+        }
+    </script>
+    {% endblock %}
 
     {% set primary_rgb = site_design.primary_color|replace('#', '')|string %}
     {% if primary_rgb|length == 6 %}

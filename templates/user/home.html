@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 
 {% block title %}{{ home_content.welcome.title|default('Welcome to GIIR') }} - Global Institute on Innovative Research{% endblock %}
+{% block meta_description %}{{ home_content.welcome.message|default('Join GIIR for international research conferences, paper submissions, and global collaboration opportunities.')|striptags|truncate(160) }}{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": {{ seo.site_name|tojson }},
+        "url": {{ seo.base_url|tojson }},
+        "description": {{ (home_content.welcome.message|default(seo.default_description)|striptags)|tojson }}
+    }
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Hero Section with Full Background Image -->

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}About - GIIR Conference 2024{% endblock %}
+{% block meta_description %}{{ about_content.overview.description|default('Learn about GIIR, its mission, conference objectives, and global research community.')|striptags|truncate(160) }}{% endblock %}
 
 {% block content %}
 <div class="page-header">

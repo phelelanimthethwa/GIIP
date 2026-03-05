@@ -12,6 +12,7 @@ from werkzeug.utils import secure_filename
 import os
 import base64
 import logging
+from xml.etree import ElementTree as ET
 from dotenv import load_dotenv
 
 # Set up logging
@@ -217,6 +218,55 @@ ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip',
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif'}
 EXTRA_PAPER_FEE_USD = 50.0
 
+DEFAULT_SEO_TITLE = 'Global Institute on Innovative Research (GIIR)'
+DEFAULT_SEO_DESCRIPTION = (
+    'GIIR hosts international academic conferences for researchers to submit papers, '
+    'present findings, and collaborate globally.'
+)
+NOINDEX_PATH_PREFIXES = (
+    '/admin',
+    '/api',
+    '/payment',
+    '/uploads',
+    '/conference-by-code',
+)
+NOINDEX_PATHS = {
+    '/dashboard',
+    '/profile',
+    '/login',
+    '/register',
+    '/logout',
+    '/forgot-password',
+    '/reset-password',
+    '/debug-login',
+    '/setup-second-admin',
+    '/test-email',
+    '/download-firebase-file',
+    '/change-password',
+    '/update-email-preferences',
+    '/registration/register',
+    '/submit',
+}
+
+SITEMAP_PUBLIC_ENDPOINTS = [
+    ('home', 'daily', '1.0'),
+    ('conference_discover', 'daily', '0.9'),
+    ('about', 'monthly', '0.8'),
+    ('call_for_papers', 'weekly', '0.8'),
+    ('paper_submission', 'weekly', '0.7'),
+    ('author_guidelines', 'monthly', '0.7'),
+    ('venue', 'monthly', '0.7'),
+    ('guest_speakers', 'weekly', '0.7'),
+    ('video_conference', 'monthly', '0.6'),
+    ('registration', 'weekly', '0.8'),
+    ('schedule', 'weekly', '0.8'),
+    ('downloads', 'weekly', '0.7'),
+    ('conference_proceedings', 'weekly', '0.7'),
+    ('galleries', 'weekly', '0.7'),
+    ('contact', 'monthly', '0.6'),
+    ('guest_speaker_application', 'monthly', '0.5'),
+]
+
 # Schedule configuration constants
 SCHEDULE_DAYS = [
     'Day 1',
@@ -415,6 +465,161 @@ def get_site_design():
     except Exception as e:
         print(f"Error fetching site design: {str(e)}")
         return DEFAULT_THEME
+
+def get_public_base_url():
+    """Resolve the public site URL for canonical tags and sitemap entries."""
+    configured_url = (app.config.get('CONFERENCE_URL') or '').strip()
+    if configured_url:
+        if not configured_url.startswith(('http://', 'https://')):
+            configured_url = f"https://{configured_url.lstrip('/')}"
+        return configured_url.rstrip('/')
+
+    fallback_url = (request.url_root or '').strip()
+    return fallback_url.rstrip('/')
+
+def build_public_url(path='/'):
+    base_url = get_public_base_url()
+    normalized_path = path or '/'
+    if not normalized_path.startswith('/'):
+        normalized_path = f'/{normalized_path}'
+    if not base_url:
+        return normalized_path
+    return f'{base_url}{normalized_path}'
+
+def is_noindex_path(path):
+    if path in NOINDEX_PATHS:
+        return True
+    if any(path.startswith(prefix) for prefix in NOINDEX_PATH_PREFIXES):
+        return True
+
+    if path.startswith('/conferences/'):
+        private_conference_segments = (
+            '/register',
+            '/submit-paper',
+            '/submissions/',
+            '/payment/',
+        )
+        if any(segment in path for segment in private_conference_segments):
+            return True
+
+    return False
+
+def to_sitemap_lastmod(value):
+    if not value:
+        return None
+    text_value = str(value).strip()
+    if not text_value:
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(text_value.replace('Z', '+00:00'))
+        return parsed.date().isoformat()
+    except Exception:
+        pass
+
+    try:
+        parsed = datetime.strptime(text_value, '%Y-%m-%d')
+        return parsed.date().isoformat()
+    except Exception:
+        return None
+
+@app.route('/robots.txt')
+def robots_txt():
+    sitemap_url = build_public_url('/sitemap.xml')
+    robots_lines = [
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /admin/',
+        'Disallow: /api/',
+        'Disallow: /payment/',
+        'Disallow: /dashboard',
+        'Disallow: /profile',
+        'Disallow: /login',
+        'Disallow: /logout',
+        'Disallow: /forgot-password',
+        'Disallow: /reset-password',
+        'Disallow: /submit',
+        'Disallow: /uploads/',
+        'Disallow: /conference-by-code/',
+        f'Sitemap: {sitemap_url}',
+    ]
+    response = make_response('\n'.join(robots_lines) + '\n')
+    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+    return response
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    today_iso = datetime.utcnow().date().isoformat()
+    urls = []
+    seen = set()
+
+    def add_sitemap_entry(path, changefreq, priority, lastmod=None):
+        location = build_public_url(path)
+        if location in seen:
+            return
+        seen.add(location)
+        urls.append({
+            'loc': location,
+            'changefreq': changefreq,
+            'priority': priority,
+            'lastmod': lastmod or today_iso,
+        })
+
+    for endpoint, changefreq, priority in SITEMAP_PUBLIC_ENDPOINTS:
+        try:
+            add_sitemap_entry(url_for(endpoint), changefreq, priority)
+        except Exception:
+            continue
+
+    conferences = get_all_conferences() or {}
+    for conference_id, conference in conferences.items():
+        if not conference:
+            continue
+
+        basic_info = conference.get('basic_info', {}) or {}
+        settings = conference.get('settings', {}) or {}
+        conference_status = (basic_info.get('status') or '').strip().lower()
+
+        if conference_status == 'draft':
+            continue
+        if not basic_info.get('name'):
+            continue
+
+        lastmod = to_sitemap_lastmod(
+            basic_info.get('updated_at')
+            or conference.get('updated_at')
+            or basic_info.get('created_at')
+            or conference.get('created_at')
+            or basic_info.get('start_date')
+        )
+
+        add_sitemap_entry(
+            url_for('conference_details', conference_id=conference_id),
+            changefreq='weekly',
+            priority='0.8',
+            lastmod=lastmod,
+        )
+
+        if settings.get('gallery_enabled', True):
+            add_sitemap_entry(
+                url_for('conference_gallery', conference_id=conference_id),
+                changefreq='weekly',
+                priority='0.6',
+                lastmod=lastmod,
+            )
+
+    urlset = ET.Element('urlset', xmlns='http://www.sitemaps.org/schemas/sitemap/0.9')
+    for entry in urls:
+        url_element = ET.SubElement(urlset, 'url')
+        ET.SubElement(url_element, 'loc').text = entry['loc']
+        ET.SubElement(url_element, 'lastmod').text = entry['lastmod']
+        ET.SubElement(url_element, 'changefreq').text = entry['changefreq']
+        ET.SubElement(url_element, 'priority').text = entry['priority']
+
+    xml_output = ET.tostring(urlset, encoding='utf-8', xml_declaration=True)
+    response = make_response(xml_output)
+    response.headers['Content-Type'] = 'application/xml; charset=utf-8'
+    return response
 
 @app.route('/')
 def home():
@@ -6594,6 +6799,25 @@ def inject_home_content():
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
         return {'home_content': default_content}
+
+@app.context_processor
+def inject_seo_defaults():
+    current_path = request.path or '/'
+    canonical_url = build_public_url(current_path)
+    robots_value = 'noindex, nofollow' if is_noindex_path(current_path) else 'index, follow'
+
+    return {
+        'seo': {
+            'default_title': DEFAULT_SEO_TITLE,
+            'default_description': DEFAULT_SEO_DESCRIPTION,
+            'site_name': DEFAULT_SEO_TITLE,
+            'canonical_url': canonical_url,
+            'base_url': get_public_base_url(),
+            'og_image_url': build_public_url(url_for('static', filename='images/logotrans.png')),
+            'robots': robots_value,
+            'keywords': 'GIIR, international conference, research conference, paper submission, academic conference',
+        }
+    }
 
 @app.route('/admin/call-for-papers-content', methods=['GET', 'POST'])
 @login_required

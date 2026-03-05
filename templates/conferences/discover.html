@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 
 {% block title %}Available Conferences - Multi-Conference Portal{% endblock %}
+{% block meta_description %}Browse upcoming and active GIIR conferences, view details, and access paper submission and registration information.{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Available Conferences",
+        "url": {{ seo.canonical_url|tojson }},
+        "description": "Browse current GIIR conferences and participation options."
+    }
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="page-header">

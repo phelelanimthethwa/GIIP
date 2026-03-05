@@ -1,6 +1,33 @@
 {% extends "base.html" %}
 
 {% block title %}{{ conference.basic_info.name }} - {{ conference.basic_info.year }}{% endblock %}
+{% block meta_description %}{{ conference.basic_info.description|default('Conference details, dates, venue, and participation information.')|striptags|truncate(160) }}{% endblock %}
+{% block og_type %}event{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "name": {{ conference.basic_info.name|default('GIIR Conference')|tojson }},
+        "description": {{ conference.basic_info.description|default(seo.default_description)|striptags|tojson }},
+        "startDate": {{ conference.basic_info.start_date|default('')|tojson }},
+        "endDate": {{ conference.basic_info.end_date|default(conference.basic_info.start_date)|tojson }},
+        "eventAttendanceMode": "https://schema.org/MixedEventAttendanceMode",
+        "eventStatus": "https://schema.org/EventScheduled",
+        "url": {{ seo.canonical_url|tojson }},
+        "location": {
+            "@type": "Place",
+            "name": {{ conference.basic_info.location|default('Online')|tojson }},
+            "address": {{ conference.basic_info.location|default('Online')|tojson }}
+        },
+        "organizer": {
+            "@type": "Organization",
+            "name": {{ seo.site_name|tojson }},
+            "url": {{ seo.base_url|tojson }}
+        }
+    }
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Conference Hero Section -->
