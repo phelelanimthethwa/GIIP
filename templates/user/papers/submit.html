@@ -720,10 +720,20 @@
         pointer-events: none;
     }
 </style>
+<script id="paper-submit-config" type="application/json">
+    {
+        "userSubmissionCounts": {{ (user_submission_counts or {}) | tojson | safe }},
+        "extraPaperFee": {{ (extra_paper_fee | default(50)) | tojson | safe }},
+        "isRecaptchaEnabled": {{ (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha) | tojson | safe }}
+    }
+</script>
 <script>
-    // Submission counts per conference (from backend)
-    const userSubmissionCounts = {{ user_submission_counts | tojson | safe }};
-    const extraPaperFee = {{ extra_paper_fee | default (50) }};
+    // Submission counts and fee configuration (from backend)
+    const submitConfigElement = document.getElementById('paper-submit-config');
+    const submitConfig = submitConfigElement ? JSON.parse(submitConfigElement.textContent) : {};
+    const userSubmissionCounts = submitConfig.userSubmissionCounts || {};
+    const extraPaperFee = Number(submitConfig.extraPaperFee ?? 50);
+    const isRecaptchaEnabled = submitConfig.isRecaptchaEnabled !== false;
     const maxPapersPerConference = 2;
 
     // Paper Upload Management Functions
@@ -1034,20 +1044,20 @@
             submitButton.disabled = true;
 
             // Check if reCAPTCHA is completed (only if enabled)
-            {% if not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha %}
-            try {
-                if (typeof grecaptcha !== 'undefined') {
-                    const recaptchaResponse = grecaptcha.getResponse();
-                    if (!recaptchaResponse) {
-                        showError('Please complete the reCAPTCHA verification.');
-                        return;
+            if (isRecaptchaEnabled) {
+                try {
+                    if (typeof grecaptcha !== 'undefined') {
+                        const recaptchaResponse = grecaptcha.getResponse();
+                        if (!recaptchaResponse) {
+                            showError('Please complete the reCAPTCHA verification.');
+                            return;
+                        }
                     }
+                } catch (error) {
+                    console.warn('reCAPTCHA validation error:', error);
+                    // Continue with form submission if reCAPTCHA fails
                 }
-            } catch (error) {
-                console.warn('reCAPTCHA validation error:', error);
-                // Continue with form submission if reCAPTCHA fails
             }
-            {% endif %}
 
             // Check file size and validate papers
             const paper2Container = document.getElementById('paper-2-container');
