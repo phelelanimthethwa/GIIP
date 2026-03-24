@@ -85,23 +85,23 @@ GIIR Organising Committee
 WELCOME_EMAIL = """
 Dear {full_name},
 
-Welcome to GIIR Conference 2024! Thank you for creating your account.
+Welcome to Global Conferences! Thank you for creating your account.
 
 Your account has been successfully created with the following details:
 Email: {email}
 
 You can now:
-- Register for the conference
+- Register for conferences
 - Submit papers
 - Access conference materials
 - Stay updated with conference announcements
 
 To get started, visit our website and log in with your email address.
 
-If you have any questions, please don't hesitate to contact us.
+If you have any questions, please don't hesitate to contact us at admin@globalconferences.co.za.
 
 Thanks & regards,
-GIIR Organising Committee
+Global Conferences Admin
 """
 
 PASSWORD_RESET_EMAIL = """
