@@ -3,16 +3,10 @@
 {% block title %}Email Templates - Admin{% endblock %}
 
 {% block content %}
-<div class="admin-dashboard">
+<div class="admin-dashboard email-templates-admin">
     <div class="dashboard-header">
         <div class="header-content">
             <h1><i class="fas fa-envelope-open-text"></i> Email Templates</h1>
-            <p>Manage email templates for conference communications</p>
-        </div>
-        <div class="quick-actions">
-            <button class="btn btn-primary" onclick="openNewTemplateModal()">
-                <i class="fas fa-plus"></i> New Template
-            </button>
         </div>
     </div>
 
@@ -28,466 +22,339 @@
     {% endwith %}
 
     <div class="content-section">
+        <h2 class="section-heading"><i class="fas fa-paper-plane"></i> System emails (actually sent)</h2>
         <div class="templates-grid">
-            <!-- Registration Approval Template -->
-            <div class="template-card">
+            {% for mail in system_emails %}
+            <div class="template-card" data-email-id="{{ mail.id }}">
                 <div class="template-header">
-                    <h3>Registration Approval</h3>
+                    <h3>{{ mail.name }}</h3>
                     <div class="template-actions">
-                        <button class="btn-icon" onclick="editTemplate('registration_approval')" title="Edit Template">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon preview" onclick="previewTemplate('registration_approval')" title="Preview">
+                        <button type="button" class="btn-icon preview" onclick="previewSystemEmail({{ loop.index0 }})" title="Preview">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 </div>
                 <div class="template-content">
-                    <p class="description">Sent when a registration is approved</p>
+                    <p class="description">{{ mail.description }}</p>
+                    <p class="trigger-line"><i class="fas fa-bolt"></i> {{ mail.trigger }}</p>
+                    <p class="subject-line"><strong>Subject:</strong> {{ mail.subject }}</p>
                     <div class="template-tags">
-                        <span class="tag">{{full_name}}</span>
-                        <span class="tag">{{registration_type}}</span>
-                        <span class="tag">{{amount_paid}}</span>
-                        <span class="tag">{{conference_dates}}</span>
-                        <span class="tag">{{support_email}}</span>
+                        {% for ph in mail.placeholders %}
+                        <span class="tag">{ {{ ph }} }</span>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
-
-            <!-- Registration Rejection Template -->
-            <div class="template-card">
-                <div class="template-header">
-                    <h3>Registration Rejection</h3>
-                    <div class="template-actions">
-                        <button class="btn-icon" onclick="editTemplate('registration_rejection')" title="Edit Template">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon preview" onclick="previewTemplate('registration_rejection')" title="Preview">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="template-content">
-                    <p class="description">Sent when a registration is rejected</p>
-                    <div class="template-tags">
-                        <span class="tag">{{full_name}}</span>
-                        <span class="tag">{{rejection_reason}}</span>
-                        <span class="tag">{{support_email}}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Registration Confirmation Template -->
-            <div class="template-card">
-                <div class="template-header">
-                    <h3>Registration Confirmation</h3>
-                    <div class="template-actions">
-                        <button class="btn-icon" onclick="editTemplate('registration_confirmation')" title="Edit Template">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon preview" onclick="previewTemplate('registration_confirmation')" title="Preview">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="template-content">
-                    <p class="description">Sent immediately after registration submission</p>
-                    <div class="template-tags">
-                        <span class="tag">{{full_name}}</span>
-                        <span class="tag">{{registration_type}}</span>
-                        <span class="tag">{{amount_due}}</span>
-                        <span class="tag">{{payment_instructions}}</span>
-                    </div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
     </div>
-</div>
 
-<!-- Template Editor Modal -->
-<div id="templateModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="modalTitle">Edit Template</h2>
-            <button class="close-modal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="templateForm">
-                <div class="form-group">
-                    <label for="template_name">Template Name</label>
-                    <input type="text" id="template_name" name="template_name" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="subject">Email Subject</label>
-                    <input type="text" id="subject" name="subject" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="content">Email Content</label>
-                    <div class="editor-toolbar">
-                        <button type="button" class="toolbar-btn" onclick="insertVariable('full_name')" title="Insert Full Name">
-                            <i class="fas fa-user"></i> Name
-                        </button>
-                        <button type="button" class="toolbar-btn" onclick="insertVariable('registration_type')" title="Insert Registration Type">
-                            <i class="fas fa-ticket-alt"></i> Type
-                        </button>
-                        <button type="button" class="toolbar-btn" onclick="insertVariable('amount_paid')" title="Insert Amount Paid">
-                            <i class="fas fa-dollar-sign"></i> Amount
-                        </button>
-                        <button type="button" class="toolbar-btn" onclick="insertVariable('conference_dates')" title="Insert Conference Dates">
-                            <i class="fas fa-calendar"></i> Dates
-                        </button>
-                        <button type="button" class="toolbar-btn" onclick="insertVariable('payment_instructions')" title="Insert Payment Instructions">
-                            <i class="fas fa-info-circle"></i> Instructions
-                        </button>
-                    </div>
-                    <textarea id="content" name="content" class="form-control rich-editor" rows="12" required></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
-                        <i class="fas fa-times"></i> Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save Template
-                    </button>
-                </div>
-            </form>
+    {% if templates %}
+    <div class="content-section firebase-section">
+        <h2 class="section-heading"><i class="fas fa-database"></i> Custom records in Firebase (<code>email_templates</code>)</h2>
+        <p class="section-note">These entries are stored in the database. They are <strong>not</strong> wired into <code>EmailService</code> unless other code calls <code>render_email_template</code> for them.</p>
+        <div class="firebase-list">
+            {% for tid, t in templates.items() %}
+            <div class="firebase-row">
+                <strong>{{ t.get('name', tid) }}</strong>
+                <span class="muted">{{ t.get('category', '') }}</span>
+                <span class="muted">{{ t.get('subject', '')[:60] }}{% if t.get('subject', '')|length > 60 %}…{% endif %}</span>
+            </div>
+            {% endfor %}
         </div>
     </div>
+    {% endif %}
+
 </div>
 
 <!-- Preview Modal -->
-<div id="previewModal" class="modal">
-    <div class="modal-content">
+<div id="previewModal" class="modal email-preview-modal">
+    <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h2>Template Preview</h2>
-            <button class="close-modal">&times;</button>
+            <h2 id="previewModalTitle">Preview</h2>
+            <button type="button" class="close-modal" onclick="closePreviewModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="preview-header">
-                <div class="preview-subject"></div>
+            <p id="previewMeta" class="preview-meta"></p>
+            <div id="previewTabs" class="preview-tabs" style="display:none;">
+                <button type="button" class="tab-btn active" data-tab="text">Plain text</button>
+                <button type="button" class="tab-btn" data-tab="html" id="tabBtnHtml" style="display:none;">HTML</button>
+                <button type="button" class="tab-btn" data-tab="pdf" id="tabBtnPdf" style="display:none;">PDF letter</button>
             </div>
-            <div class="preview-content"></div>
+            <div id="previewPanelText" class="preview-panel">
+                <pre id="previewText" class="preview-pre"></pre>
+            </div>
+            <div id="previewPanelHtml" class="preview-panel" style="display:none;">
+                <iframe id="previewIframe" class="preview-iframe" title="HTML preview"></iframe>
+            </div>
+            <div id="previewPanelPdf" class="preview-panel" style="display:none;">
+                <p class="pdf-preview-hint" style="margin:0 0 10px;font-size:0.9rem;color:#64748b;">
+                    Official attachment from <code>send_acceptance_letter_email</code> — same generator as production.
+                    <a id="pdfOpenNewTab" href="#" target="_blank" rel="noopener">Open in new tab</a> if the preview does not load inline.
+                </p>
+                <iframe id="previewPdfIframe" class="preview-iframe preview-pdf-frame" title="Acceptance letter PDF preview"></iframe>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
-/* Template Grid */
+.section-heading {
+    font-size: 1.15rem;
+    margin: 1.5rem 1rem 0.75rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.section-note {
+    margin: 0 1rem 1rem;
+    color: #64748b;
+    font-size: 0.95rem;
+    max-width: 900px;
+    line-height: 1.55;
+}
 .templates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-    padding: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.25rem;
+    padding: 0 1rem 1.5rem;
 }
-
 .template-card {
     background: white;
     border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border: 1px solid #e2e8f0;
+    transition: box-shadow 0.2s;
 }
-
 .template-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
 }
-
 .template-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.template-header h3 {
-    margin: 0;
-    color: #333;
-    font-size: 1.2rem;
-}
-
-.template-actions {
-    display: flex;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
     gap: 0.5rem;
 }
-
-.template-content {
-    color: #555;
+.template-header h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.05rem;
+    line-height: 1.35;
 }
-
-.description {
-    margin: 0 0 1rem;
-    color: #666;
+.template-actions { display: flex; gap: 0.35rem; }
+.btn-icon {
+    background: #f1f5f9;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #475569;
 }
-
-/* Template Tags */
+.btn-icon:hover { background: #e2e8f0; color: #0f172a; }
+.btn-icon.preview { color: #4338ca; }
+.description { margin: 0 0 0.5rem; color: #475569; font-size: 0.9rem; }
+.trigger-line {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-family: ui-monospace, monospace;
+}
+.subject-line {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: #334155;
+}
 .template-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 1rem;
+    gap: 0.35rem;
 }
-
 .tag {
-    background: #f0f9ff;
-    color: #0369a1;
-    padding: 0.25rem 0.75rem;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    font-family: monospace;
+    background: #eef2ff;
+    color: #3730a3;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
 }
-
-/* Editor Toolbar */
-.editor-toolbar {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    padding: 0.5rem;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-bottom: none;
-    border-radius: 4px 4px 0 0;
+.firebase-list {
+    margin: 0 1rem 2rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
 }
-
-.toolbar-btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    background: white;
-    color: #333;
-    cursor: pointer;
+.firebase-row {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: baseline;
+}
+.firebase-row:last-child { border-bottom: none; }
+.muted { color: #94a3b8; font-size: 0.85rem; }
+.email-preview-modal.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.45);
     align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
-}
-
-.toolbar-btn:hover {
-    background: #e9ecef;
-}
-
-.toolbar-btn i {
-    color: #666;
-}
-
-/* Preview Modal */
-.preview-header {
-    background: #f8f9fa;
+    justify-content: center;
     padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
 }
-
-.preview-subject {
+.email-preview-modal.modal.open {
+    display: flex;
+}
+.modal-lg .modal-content { max-width: 820px; width: 95%; max-height: 90vh; overflow: auto; }
+.preview-meta { color: #64748b; font-size: 0.9rem; margin-bottom: 1rem; }
+.preview-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.tab-btn {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+.tab-btn.active {
+    background: #4338ca;
+    color: #fff;
+    border-color: #4338ca;
+}
+.preview-pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.85rem;
+    margin: 0;
+    max-height: 60vh;
+    overflow: auto;
+}
+.preview-iframe {
+    width: 100%;
+    min-height: 420px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+}
+.preview-pdf-frame {
+    min-height: 72vh;
+}
+.pdf-preview-hint a {
+    color: #4338ca;
     font-weight: 600;
-    color: #333;
 }
-
-.preview-content {
-    padding: 1rem;
-    background: white;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-}
-
-/* Rich Editor */
-.rich-editor {
-    min-height: 200px;
-    font-family: inherit;
-    line-height: 1.6;
-}
-
 @media (max-width: 768px) {
-    .templates-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .editor-toolbar {
-        flex-wrap: wrap;
-    }
+    .templates-grid { grid-template-columns: 1fr; }
 }
 </style>
 
+<script id="systemEmailsData" type="application/json">{{ system_emails | tojson }}</script>
 <script>
-// Default templates
-const defaultTemplates = {
-    registration_approval: {
-        name: 'Registration Approval',
-        subject: 'GIIR Conference 2024 - Registration Acceptance',
-        content: `<img src="https://yourdomain.com/static/images/giirlogo.jpg" alt="GIIR Logo" style="max-width:180px; margin-bottom:20px; display:block;">
+(function() {
+    const SYSTEM_EMAILS = JSON.parse(document.getElementById('systemEmailsData').textContent);
 
-International Conference on Innovative Research (GIIR-2024)
-
-Dear {{full_name}},
-
-CONGRATULATIONS!!
-
-We are pleased to inform you that your registration for the GIIR International Conference 2024 has been successfully approved and confirmed. The conference will be organized by the GLOBAL INSTITUTE ON INNOVATIVE RESEARCH (GIIR).
-
-Registration Details:
-- Registration Type: {{registration_type}}
-- Amount Paid: {{amount_paid}}
-- Conference Dates: {{conference_dates}}
-
-Your registration includes:
-• Conference programme access
-• Presentation time slot (if applicable)
-• Conference proceedings
-• Certificate of participation
-• Networking opportunities
-• Access to all conference sessions
-
-Important Note:
-Please be advised that in case of any unforeseen circumstances, such as a pandemic or travel limitations, the conference may be held via virtual medium. Participants will be notified well in advance of any such changes.
-
-Additional Information:
-- Conference proceedings will be published with ISBN (International Standard Book Number)
-- Detailed schedule and venue information will be sent closer to the event date
-- Virtual access details will be provided (if applicable)
-
-For any inquiries, please do not hesitate to contact our support team at {{support_email}}.
-
-We look forward to your participation in this exciting event.
-
-Thanks & regards,
-GIIR Organising Committee
-
-Note: This is an automated confirmation. Please save this email for your records.`,
-    },
-    registration_rejection: {
-        name: 'Registration Rejection',
-        subject: 'Conference Registration Status Update',
-        content: `Dear {{full_name}},
-
-We regret to inform you that your conference application could not be approved at this time.
-
-Reason: {{rejection_reason}}
-
-If you believe this is an error or would like to discuss this further, please contact our support team at {{support_email}}.
-
-Best regards,
-GIIR Organising Committee`
-    },
-    registration_confirmation: {
-        name: 'Registration Confirmation',
-        subject: 'Conference Registration Confirmation',
-        content: `Dear {{full_name}},
-
-Thank you for registering for our conference!
-
-Registration Details:
-- Type: {{registration_type}}
-- Amount Due: {{amount_due}}
-
-Payment Instructions:
-{{payment_instructions}}
-
-Please note that your registration will be confirmed once we receive and verify your payment.
-
-Thanks & regards,
-GIIR Organising Committee`
+    function setPreviewTab(tab, hasHtml, hasPdf) {
+        const tabs = document.getElementById('previewTabs');
+        const panelText = document.getElementById('previewPanelText');
+        const panelHtml = document.getElementById('previewPanelHtml');
+        const panelPdf = document.getElementById('previewPanelPdf');
+        tabs.querySelectorAll('.tab-btn').forEach(function(b) {
+            if (b.style.display === 'none') return;
+            b.classList.toggle('active', b.dataset.tab === tab);
+        });
+        panelText.style.display = tab === 'text' ? 'block' : 'none';
+        panelHtml.style.display = tab === 'html' && hasHtml ? 'block' : 'none';
+        panelPdf.style.display = tab === 'pdf' && hasPdf ? 'block' : 'none';
     }
-};
 
-let currentTemplate = null;
+    window.previewSystemEmail = function(index) {
+        const mail = SYSTEM_EMAILS[index];
+        if (!mail) return;
 
-function openNewTemplateModal() {
-    currentTemplate = null;
-    document.getElementById('modalTitle').textContent = 'New Template';
-    document.getElementById('templateForm').reset();
-    document.getElementById('templateModal').style.display = 'block';
-}
+        document.getElementById('previewModalTitle').textContent = mail.name;
+        document.getElementById('previewMeta').innerHTML =
+            '<strong>Subject:</strong> ' + escapeHtml(mail.subject) +
+            '<br><span style="color:#64748b;font-size:0.85rem;">' + escapeHtml(mail.trigger) + '</span>';
 
-function editTemplate(templateId) {
-    currentTemplate = templateId;
-    const template = defaultTemplates[templateId];
-    
-    document.getElementById('modalTitle').textContent = 'Edit Template';
-    document.getElementById('template_name').value = template.name;
-    document.getElementById('subject').value = template.subject;
-    document.getElementById('content').value = template.content;
-    
-    document.getElementById('templateModal').style.display = 'block';
-}
+        const hasHtml = !!(mail.html_body && mail.html_body.length > 0);
+        const hasPdf = !!mail.pdf_preview_url;
+        const tabs = document.getElementById('previewTabs');
+        const panelText = document.getElementById('previewPanelText');
+        const panelHtml = document.getElementById('previewPanelHtml');
+        const panelPdf = document.getElementById('previewPanelPdf');
+        const pre = document.getElementById('previewText');
+        const iframe = document.getElementById('previewIframe');
+        const tabBtnHtml = document.getElementById('tabBtnHtml');
+        const tabBtnPdf = document.getElementById('tabBtnPdf');
+        const pdfIframe = document.getElementById('previewPdfIframe');
+        const pdfLink = document.getElementById('pdfOpenNewTab');
 
-function previewTemplate(templateId) {
-    const template = defaultTemplates[templateId];
-    const previewModal = document.getElementById('previewModal');
-    
-    // Replace variables with sample data
-    const sampleData = {
-        full_name: 'John Doe',
-        registration_type: 'Regular Author',
-        amount_paid: 'R 5,000',
-        conference_dates: 'September 15-17, 2024',
-        rejection_reason: 'Payment verification failed',
-        support_email: 'admin@globalconferences.co.za',
-        amount_due: 'R 5,000',
-        payment_instructions: 'Please transfer the amount to:\nBank: Example Bank\nAccount: 1234567890\nReference: REG123'
+        pre.textContent = mail.text_body || '(no plain text)';
+        if (hasHtml) {
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(mail.html_body);
+            doc.close();
+        }
+
+        tabBtnHtml.style.display = hasHtml ? '' : 'none';
+        if (hasPdf) {
+            tabBtnPdf.style.display = '';
+            const u = mail.pdf_preview_url + (mail.pdf_preview_url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+            pdfIframe.src = u;
+            pdfLink.href = mail.pdf_preview_url;
+        } else {
+            tabBtnPdf.style.display = 'none';
+            pdfIframe.removeAttribute('src');
+            pdfLink.href = '#';
+        }
+
+        const showTabs = hasHtml || hasPdf;
+        tabs.style.display = showTabs ? 'flex' : 'none';
+        panelHtml.style.display = 'none';
+        panelPdf.style.display = 'none';
+        if (showTabs) {
+            setPreviewTab('text', hasHtml, hasPdf);
+        } else {
+            panelText.style.display = 'block';
+        }
+
+        tabs.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.onclick = function() {
+                const tab = btn.dataset.tab;
+                if (tab === 'html' && !hasHtml) return;
+                if (tab === 'pdf' && !hasPdf) return;
+                setPreviewTab(tab, hasHtml, hasPdf);
+            };
+        });
+
+        document.getElementById('previewModal').classList.add('open');
     };
-    
-    let previewContent = template.content;
-    for (const [key, value] of Object.entries(sampleData)) {
-        const regex = new RegExp('\\{\\{' + key + '\\}\\}', 'g');
-        previewContent = previewContent.replace(regex, value);
-    }
-    
-    document.querySelector('.preview-subject').textContent = template.subject;
-    document.querySelector('.preview-content').innerHTML = previewContent.replace(/\n/g, '<br>');
-    
-    previewModal.style.display = 'block';
-}
 
-function insertVariable(variable) {
-    const textarea = document.getElementById('content');
-    const value = '{{' + variable + '}}';
-    
-    if (textarea.selectionStart || textarea.selectionStart === 0) {
-        const startPos = textarea.selectionStart;
-        const endPos = textarea.selectionEnd;
-        textarea.value = textarea.value.substring(0, startPos) + value + textarea.value.substring(endPos);
-        textarea.selectionStart = textarea.selectionEnd = startPos + value.length;
-    } else {
-        textarea.value += value;
-    }
-    textarea.focus();
-}
-
-function closeModal() {
-    document.getElementById('templateModal').style.display = 'none';
-    document.getElementById('previewModal').style.display = 'none';
-}
-
-// Form submission
-document.getElementById('templateForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const templateData = {
-        name: document.getElementById('template_name').value,
-        subject: document.getElementById('subject').value,
-        content: document.getElementById('content').value
+    window.closePreviewModal = function() {
+        document.getElementById('previewModal').classList.remove('open');
     };
-    
-    // Save template
-    if (currentTemplate) {
-        defaultTemplates[currentTemplate] = templateData;
-    }
-    
-    closeModal();
-    // You would typically save to backend here
-    alert('Template saved successfully!');
-});
 
-// Close modals on click outside
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-        closeModal();
+    function escapeHtml(s) {
+        if (!s) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
     }
-}
 
-// Close modals on X click
-document.querySelectorAll('.close-modal').forEach(button => {
-    button.addEventListener('click', closeModal);
-});
+    document.getElementById('previewModal').addEventListener('click', function(e) {
+        if (e.target === this) closePreviewModal();
+    });
+})();
 </script>
-{% endblock %} 
+{% endblock %}

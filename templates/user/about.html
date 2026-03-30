@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}About - GIIR Conference 2024{% endblock %}
+{% block title %}About - Global Conferences{% endblock %}
 {% block meta_description %}{{ about_content.overview.description|default('Learn about GIIR, its mission, conference objectives, and global research community.')|striptags|truncate(160) }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>{{ about_content.overview.title|default('About GIIR Conference') }}</h1>
+    <h1>{{ about_content.overview.title|default('About Global Conferences') }}</h1>
     <p>Advancing Innovation Through Global Research Collaboration</p>
 </div>
 
@@ -14,7 +14,7 @@
         <h2>{{ about_content.overview.title|default('Conference Overview') }}</h2>
         <div class="overview-content">
             <div class="overview-text">
-                <p>{{ about_content.overview.description|default('The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world to share groundbreaking research, exchange ideas, and foster collaboration in emerging technologies and innovative research.') }}</p>
+                <p>{{ about_content.overview.description|default('Global Conferences brings together leading researchers, practitioners, and industry experts from around the world to share groundbreaking research, exchange ideas, and foster collaboration in emerging technologies and innovative research.') }}</p>
             </div>
             <div class="overview-stats">
                 <div class="stat-card">

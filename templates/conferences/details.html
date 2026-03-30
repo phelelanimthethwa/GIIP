@@ -8,7 +8,7 @@
     {
         "@context": "https://schema.org",
         "@type": "Event",
-        "name": {{ conference.basic_info.name|default('GIIR Conference')|tojson }},
+        "name": {{ conference.basic_info.name|default('Global Conferences')|tojson }},
         "description": {{ conference.basic_info.description|default(seo.default_description)|striptags|tojson }},
         "startDate": {{ conference.basic_info.start_date|default('')|tojson }},
         "endDate": {{ conference.basic_info.end_date|default(conference.basic_info.start_date)|tojson }},

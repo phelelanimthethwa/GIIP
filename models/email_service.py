@@ -1,6 +1,17 @@
 import resend
 from flask import current_app
-from models.email_templates import *
+from models.email_templates import (
+    REGISTRATION_CONFIRMATION,
+    PAPER_SUBMISSION_CONFIRMATION,
+    PAPER_STATUS_UPDATE,
+    WELCOME_EMAIL,
+    PASSWORD_RESET_EMAIL,
+    ANNOUNCEMENT_EMAIL_HTML,
+    ANNOUNCEMENT_EMAIL_TEXT,
+    ANNOUNCEMENT_TYPE_BADGES,
+    ADMIN_SUBMISSION_NOTIFICATION,
+    PAPER_ACCEPTANCE_EMAIL_HTML,
+)
 import time
 from typing import List, Dict, Optional
 
@@ -13,7 +24,7 @@ class EmailService:
     def _get_sender(self):
         """Get the default sender email"""
         domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
-        return current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIR Conference <noreply@{domain}>')
+        return current_app.config.get('MAIL_DEFAULT_SENDER', f'Global Conferences <noreply@{domain}>')
     
     def _configure_resend(self):
         """Configure Resend API key"""
@@ -115,7 +126,7 @@ class EmailService:
         """
         Send paper submission confirmation email
         """
-        conference_name = paper_data.get('conference_name', 'GIIR Conference 2024')
+        conference_name = paper_data.get('conference_name', 'Global Conferences')
         subject = f'Paper Submission Confirmation - {conference_name}'
         body = PAPER_SUBMISSION_CONFIRMATION.format(
             author_name=paper_data['authors'][0]['name'],
@@ -131,18 +142,42 @@ class EmailService:
         Send paper status update email
         """
         subject = f'Paper Submission {status.title()}'
+        comments_resolved = comments if comments else 'No additional comments provided.'
         body = PAPER_STATUS_UPDATE[status].format(
             title=paper_data['paper_title'],
             type=paper_data['presentation_type'].replace('_', ' ').title(),
-            comments=comments if comments else 'No additional comments provided.'
+            comments=comments_resolved
         )
-        return self.send_email(paper_data['user_email'], subject, body)
+        html = None
+        if status == 'accepted':
+            base = (current_app.config.get('CONFERENCE_URL') or self._get_conference_url() or '').strip().rstrip('/')
+            configured_logo = (current_app.config.get('EMAIL_LOGO_URL') or '').strip()
+            if configured_logo:
+                logo_url = configured_logo
+            elif base:
+                logo_url = f"{base}/static/images/placeholder-speaker1.jpg"
+            else:
+                logo_url = 'https://placehold.co/220x80/e2e8f0/334155?text=Conference'
+            if logo_url.startswith('/') and base:
+                logo_url = f"{base}{logo_url}"
+            conference_name = paper_data.get('conference_name', 'Global Conferences')
+            authors = paper_data.get('authors') or []
+            author_name = authors[0]['name'] if authors else paper_data.get('user_email', 'Author')
+            html = PAPER_ACCEPTANCE_EMAIL_HTML.format(
+                logo_url=logo_url,
+                conference_name=conference_name,
+                author_name=author_name,
+                title=paper_data['paper_title'],
+                type=paper_data['presentation_type'].replace('_', ' ').title(),
+                comments=comments_resolved,
+            )
+        return self.send_email(paper_data['user_email'], subject, body, html=html)
 
     def send_welcome_email(self, user_data):
         """
         Send welcome email to newly registered users
         """
-        subject = 'Welcome to GIIR Conference 2024'
+        subject = 'Welcome to Global Conferences'
         body = WELCOME_EMAIL.format(
             full_name=user_data['full_name'],
             email=user_data['email']
@@ -153,7 +188,7 @@ class EmailService:
         """
         Send password reset email
         """
-        subject = 'Password Reset - GIIR Conference'
+        subject = 'Password Reset - Global Conferences'
         body = PASSWORD_RESET_EMAIL.format(
             full_name=user_data['full_name'],
             reset_link=reset_link
@@ -240,7 +275,7 @@ class EmailService:
                 announcement_type=announcement_data.get('type', 'info').title()
             )
             
-            subject = f"[GIIR Conference] {announcement_data.get('title', 'Announcement')}"
+            subject = f"[Global Conferences] {announcement_data.get('title', 'Announcement')}"
             
             # Send emails in batches using Resend's batch API
             sent_count = 0
@@ -379,7 +414,7 @@ def send_email_resend(recipients, subject, body, html=None):
         
         resend.api_key = api_key
         domain = current_app.config.get('APP_DOMAIN', 'globalconferences.co.za')
-        sender = current_app.config.get('MAIL_DEFAULT_SENDER', f'GIIR Conference <noreply@{domain}>')
+        sender = current_app.config.get('MAIL_DEFAULT_SENDER', f'Global Conferences <noreply@{domain}>')
         
         # Ensure recipients is a list
         if isinstance(recipients, str):

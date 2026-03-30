@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ home_content.welcome.title|default('Welcome to GIIR') }} - Global Institute on Innovative Research{% endblock %}
+{% block title %}{{ home_content.welcome.title|default('Welcome to Global Conferences') }} - Global Institute on Innovative Research{% endblock %}
 {% block meta_description %}{{ home_content.welcome.message|default('Join GIIR for international research conferences, paper submissions, and global collaboration opportunities.')|striptags|truncate(160) }}{% endblock %}
 {% block structured_data %}
 <script type="application/ld+json">
@@ -46,11 +46,11 @@
         <!-- Hero Content Overlay -->
         <div class="hero-overlay">
             <div class="title-content">
-                <h1>{{ home_content.welcome.title|default('Welcome to GIIR') }}</h1>
+                <h1>{{ home_content.welcome.title|default('Welcome to Global Conferences') }}</h1>
                 <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
                     <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
                 </p>
-                <p class="conference-date">{{ home_content.welcome.conference_date|default('International Conference 2024') }}</p>
+                <p class="conference-date">{{ home_content.welcome.conference_date|default('Global Conferences') }}</p>
                 {% if home_content.hero.conference.show_countdown %}
                 <div class="countdown-container">
                     <div class="countdown-item">

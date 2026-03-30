@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 # Set up logging
 logger = logging.getLogger(__name__)
 from models.email_service import EmailService
+from models.email_templates import get_system_email_catalog
 import pytz
 from google.cloud import storage as gcs_storage
 
@@ -87,12 +88,19 @@ register_filters(app)
 # Initialize Firebase Admin SDK
 try:
     if os.environ.get('FIREBASE_CREDENTIALS'):
-        # In production, use credentials from environment variable
+        # JSON object as string (e.g. from a secret manager or .env — avoid committing it)
         cred_dict = json.loads(os.environ.get('FIREBASE_CREDENTIALS'))
         cred = credentials.Certificate(cred_dict)
-        print("Using Firebase credentials from environment variable")
+        print("Using Firebase credentials from FIREBASE_CREDENTIALS env var")
+    elif os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+        cred_path = os.environ['GOOGLE_APPLICATION_CREDENTIALS']
+        cred = credentials.Certificate(cred_path)
+        print(f"Using Firebase credentials from GOOGLE_APPLICATION_CREDENTIALS: {cred_path}")
+    elif os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH'):
+        cred_path = os.environ['FIREBASE_SERVICE_ACCOUNT_PATH']
+        cred = credentials.Certificate(cred_path)
+        print(f"Using Firebase credentials from FIREBASE_SERVICE_ACCOUNT_PATH: {cred_path}")
     else:
-        # In development, use service account file
         cred = credentials.Certificate('serviceAccountKey.json')
         print("Using Firebase credentials from serviceAccountKey.json")
     
@@ -301,7 +309,7 @@ DEFAULT_THEME = {
 # Default content for home page when Firebase data is unavailable
 default_content = {
     'welcome': {
-        'title': 'Welcome to GIIR',
+        'title': 'Welcome to Global Conferences',
         'subtitle': 'Global Institute on Innovative Research',
         'conference_date': 'International Conference 2026',
         'message': 'Join us for the premier conference in innovative research'
@@ -711,8 +719,8 @@ def about():
         about_ref = db.reference('about_content')
         about_content = about_ref.get() or {
             'overview': {
-                'title': 'About GIIR Conference',
-                'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                'title': 'About Global Conferences',
+                'description': 'Global Conferences brings together leading researchers, practitioners, and industry experts from around the world.',
                 'stats': {
                     'attendees': '500+',
                     'countries': '50+',
@@ -760,8 +768,8 @@ def about():
         flash(f'Error loading about content: {str(e)}', 'error')
         return render_template('user/about.html', about_content={
             'overview': {
-                'title': 'About GIIR Conference',
-                'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                'title': 'About Global Conferences',
+                'description': 'Global Conferences brings together leading researchers, practitioners, and industry experts from around the world.',
                 'stats': {
                     'attendees': '500+',
                     'countries': '50+',
@@ -782,7 +790,7 @@ def call_for_papers():
     if 'page_header' not in cfp_content:
         cfp_content['page_header'] = {
             'title': 'Call for Papers',
-            'subtitle': 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024'
+            'subtitle': 'Submit your research to be part of Global Conferences'
         }
         
     if 'cta' not in cfp_content:
@@ -1841,7 +1849,7 @@ def create_payment():
             'email': current_user.email,
             'phone': getattr(current_user, 'phone', ''),
             'total_amount': float(registration_data['total_amount']),
-            'conference_name': 'GIIR Conference Registration',
+            'conference_name': 'Global Conferences Registration',
             'registration_type': reg_type,
             'registration_period': period,
             'additional_items': {
@@ -3058,7 +3066,7 @@ The conference will be held on {{conference_dates}}. We will send you additional
 Thank you for registering for our conference. We look forward to your participation!
 
 Thanks & regards,
-GIIR Organising Committee'''
+Global Conferences'''
         },
         'registration_rejection': {
             'subject': 'Conference Registration Status Update',
@@ -3071,7 +3079,7 @@ Reason: {{rejection_reason}}
 If you believe this is an error or would like to discuss this further, please contact our support team at {{support_email}}.
 
 Best regards,
-GIIR Organising Committee'''
+Global Conferences'''
         }
     }
     
@@ -3201,7 +3209,7 @@ def save_registration_notes(registration_id):
 
 
 def send_approval_email(email, registration):
-    conference_name = registration.get('conference_name', 'GIIR Conference 2024')
+    conference_name = registration.get('conference_name', 'Global Conferences')
     conference_code = registration.get('conference_code', '')
     registration_type = registration.get('registration_type', '').replace('_', ' ').title()
     registration_period = registration.get('registration_period', '').replace('_', ' ').title()
@@ -3225,12 +3233,12 @@ Registration Details:
 Thank you for registering for {conference_name}.
 
 Thanks & regards,
-GIIR Organising Committee"""
+Global Conferences"""
 
     send_email(email, subject, body)
 
 def send_rejection_email(email, registration):
-    conference_name = registration.get('conference_name', 'GIIR Conference 2024')
+    conference_name = registration.get('conference_name', 'Global Conferences')
     conference_code = registration.get('conference_code', '')
 
     subject = f"{conference_name} - Registration Update"
@@ -3246,7 +3254,7 @@ Reason: {rejection_reason}
 If you believe this is an error or would like to discuss this further, please contact our support team at admin@globalconferences.co.za.
 
 Best regards,
-GIIR Organising Committee"""
+Global Conferences"""
 
     send_email(email, subject, body)
 
@@ -3273,7 +3281,7 @@ def update_submission_comments(submission_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def send_submission_status_email(email, paper_title, status, comments):
-    subject = 'Update on your GIIR Conference Paper Submission'
+    subject = 'Update on your Global Conferences Paper Submission'
     
     status_messages = {
         'accepted': 'We are pleased to inform you that your paper has been accepted.',
@@ -3293,7 +3301,7 @@ Reviewer Comments:
 {'Please submit your revised paper through the conference system.' if status == 'revision' else ''}
 
 Thanks & regards,
-GIIR Organising Committee
+Global Conferences
 """
     
     send_email(email, subject, body)
@@ -3331,7 +3339,7 @@ def admin_announcements():
         resend_configured = bool(app.config.get('RESEND_API_KEY'))
         
         # Get sender email
-        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
+        sender_email = app.config.get('MAIL_DEFAULT_SENDER', 'Global Conferences <noreply@globalconferences.co.za>')
         
         return render_template(
             'admin/announcements.html',
@@ -3355,7 +3363,7 @@ def admin_announcements():
             important_count=0,
             total_users=0,
             resend_configured=bool(app.config.get('RESEND_API_KEY')),
-            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
+            sender_email=app.config.get('MAIL_DEFAULT_SENDER', 'Global Conferences <noreply@globalconferences.co.za>')
         )
 
 def send_email(recipients, subject, body, attachments=None, html=None):
@@ -3375,7 +3383,7 @@ def send_email(recipients, subject, body, attachments=None, html=None):
         resend.api_key = api_key
         
         # Get sender email from config or Firebase
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'Global Conferences <noreply@globalconferences.co.za>')
         
         # Try to get custom sender from Firebase settings
         try:
@@ -4064,11 +4072,90 @@ def admin_email_templates():
             ))
         else:
             sorted_templates = {}
-            
-        return render_template('admin/email_templates.html', site_design=get_site_design(), templates=sorted_templates)
+
+        public_base = get_public_base_url()
+        logo_cfg = (app.config.get('EMAIL_LOGO_URL') or '').strip()
+        if logo_cfg.startswith('/') and public_base:
+            logo_cfg = f"{public_base.rstrip('/')}{logo_cfg}"
+        system_emails = get_system_email_catalog(public_base, logo_cfg)
+        _preview_pdf_url = url_for('admin_preview_acceptance_letter_pdf')
+        for _item in system_emails:
+            if _item.get('id') == 'paper_accepted':
+                _item['pdf_preview_url'] = _preview_pdf_url
+                break
+
+        return render_template(
+            'admin/email_templates.html',
+            site_design=get_site_design(),
+            templates=sorted_templates,
+            system_emails=system_emails,
+        )
     except Exception as e:
         flash(f'Error loading email templates: {str(e)}', 'error')
-        return render_template('admin/email_templates.html', site_design=get_site_design(), templates={})
+        _fallback_catalog = get_system_email_catalog('', '')
+        _preview_pdf_url = url_for('admin_preview_acceptance_letter_pdf')
+        for _item in _fallback_catalog:
+            if _item.get('id') == 'paper_accepted':
+                _item['pdf_preview_url'] = _preview_pdf_url
+                break
+        return render_template(
+            'admin/email_templates.html',
+            site_design=get_site_design(),
+            templates={},
+            system_emails=_fallback_catalog,
+        )
+
+
+@app.route('/admin/email-templates/preview/acceptance-letter.pdf')
+@login_required
+@admin_required
+def admin_preview_acceptance_letter_pdf():
+    """Sample acceptance letter PDF for admin email-templates preview (same generator as live emails)."""
+    try:
+        paper_data = {
+            'paper_title': 'Innovation Pathways in Global Research',
+            'paper_id': 'SUB-2026-0042',
+            'presentation_type': 'oral_presentation',
+            'updated_at': datetime.now().isoformat(),
+            'authors': [
+                {'name': 'Dr. Jane Researcher'},
+                {'name': 'Prof. A. Coauthor'},
+            ],
+            'conference_id': 'preview-sample-conf',
+        }
+        conference_data = {
+            'conference_id': 'preview-sample-conf',
+            'conference_code': 'GC2026',
+            'basic_info': {
+                'name': 'Global Conferences 2026',
+                'location': 'Cape Town, South Africa',
+                'start_date': '2026-09-15',
+                'end_date': '2026-09-17',
+            },
+        }
+        registration_data = {
+            'conference_code': 'GC2026',
+            'total_amount': 3500.0,
+        }
+        comments = (
+            'The committee congratulates you on a strong contribution. '
+            'Please upload your camera-ready version by the stated deadline.'
+        )
+        pdf_bytes = generate_acceptance_letter_pdf(
+            paper_data,
+            conference_data,
+            registration_data=registration_data,
+            comments=comments,
+        )
+        resp = make_response(pdf_bytes)
+        resp.headers['Content-Type'] = 'application/pdf'
+        resp.headers['Content-Disposition'] = 'inline; filename="sample-acceptance-letter.pdf"'
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
+    except Exception as e:
+        print(f'[admin] acceptance letter PDF preview: {e}')
+        return (f'Could not build sample PDF: {e}', 500, {'Content-Type': 'text/plain; charset=utf-8'})
+
 
 @app.route('/admin/email-templates', methods=['POST'])
 @login_required
@@ -4909,8 +4996,8 @@ def admin_about_content():
         # Define default structure
         default_content = {
             'overview': {
-                'title': 'About GIIR Conference',
-                'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                'title': 'About Global Conferences',
+                'description': 'Global Conferences brings together leading researchers, practitioners, and industry experts from around the world.',
                 'stats': {
                     'attendees': '500+',
                     'countries': '50+',
@@ -5006,8 +5093,8 @@ def admin_about_content():
         try:
             fallback_content = {
                 'overview': {
-                    'title': 'About GIIR Conference',
-                    'description': 'The Global Institute on Innovative Research (GIIR) Conference 2024 brings together leading researchers, practitioners, and industry experts from around the world.',
+                    'title': 'About Global Conferences',
+                    'description': 'Global Conferences brings together leading researchers, practitioners, and industry experts from around the world.',
                     'stats': {
                         'attendees': '500+',
                         'countries': '50+',
@@ -5811,16 +5898,16 @@ def test_email():
     """Test email endpoint using Resend"""
     try:
         test_recipient = 'thobanisgabuzam@gmail.com'
-        subject = 'Test Email from GIIR Conference'
+        subject = 'Test Email from Global Conferences'
         body = '''
         Dear Thobani,
         
-        This is a test email from the GIIR Conference system using Resend.
+        This is a test email from the Global Conferences system using Resend.
         
         If you received this email, it means the email configuration is working correctly.
         
         Thanks & regards,
-        GIIR Organising Committee
+        Global Conferences
         '''
         
         # Print debug information
@@ -6099,7 +6186,7 @@ def submit_paper():
                 email_service.send_submission_notification_to_admins(admin_emails, {
                     'paper_title': paper_data['paper_title'],
                     'paper_id': new_paper.key,
-                    'conference_name': 'GIIR Conference',
+                    'conference_name': 'Global Conferences',
                     'authors': authors,
                     'submitter_email': current_user.email,
                     'presentation_type': paper_data.get('presentation_type', '')
@@ -6116,10 +6203,10 @@ def submit_paper():
         return redirect(url_for('submit'))
 
 def send_submission_confirmation_email(email, paper_title, submission_id):
-    subject = 'GIIR Conference Paper Submission Confirmation'
+    subject = 'Global Conferences Paper Submission Confirmation'
     body = f"""Dear Author,
 
-Thank you for submitting your paper to the GIIR Conference 2024.
+Thank you for submitting your paper to Global Conferences.
 
 Submission Details:
 Title: {paper_title}
@@ -6128,7 +6215,7 @@ Submission ID: {submission_id}
 Your paper has been received and will be reviewed by our committee. You will be notified of any updates regarding your submission.
 
 Thanks & regards,
-GIIR Organising Committee
+Global Conferences
 """
     send_email(email, subject, body)
 
@@ -6138,7 +6225,7 @@ GIIR Organising Committee
 def get_email_settings():
     """Return email sender info for UI display - Resend handles actual sending"""
     try:
-        sender = app.config.get('MAIL_DEFAULT_SENDER', 'GIIR Conference <noreply@globalconferences.co.za>')
+        sender = app.config.get('MAIL_DEFAULT_SENDER', 'Global Conferences <noreply@globalconferences.co.za>')
         return jsonify({
             'success': True,
             'sender': sender
@@ -6692,7 +6779,7 @@ def send_paper_status_notification(email, paper_title, status, comments):
     if comments:
         body += "Reviewer Comments:\n"
         body += comments + "\n\n"
-    body += "Thanks & regards,\nGIIR Organising Committee"
+    body += "Thanks & regards,\nGlobal Conferences"
     
     try:
         send_email(email, subject, body)
@@ -6704,9 +6791,9 @@ def send_paper_status_notification(email, paper_title, status, comments):
 # Default content for home page
 default_content = {
     'welcome': {
-        'title': 'Welcome to GIIR',
+        'title': 'Welcome to Global Conferences',
         'subtitle': 'Global Institute on Innovative Research',
-        'conference_date': 'International Conference 2024',
+        'conference_date': 'Global Conferences',
         'message': 'Join us for the premier conference in innovative research'
     },
     'hero': {
@@ -6828,7 +6915,7 @@ def admin_call_for_papers_content():
             # Process page header
             page_header = {
                 'title': request.form.get('page_title', 'Call for Papers'),
-                'subtitle': request.form.get('page_subtitle', 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024')
+                'subtitle': request.form.get('page_subtitle', 'Submit your research to be part of Global Conferences')
             }
             
             # Process topics of interest
@@ -6914,7 +7001,7 @@ def admin_call_for_papers_content():
         if 'page_header' not in cfp_content:
             cfp_content['page_header'] = {
                 'title': 'Call for Papers',
-                'subtitle': 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024'
+                'subtitle': 'Submit your research to be part of Global Conferences'
             }
             
         if 'cta' not in cfp_content:
@@ -6965,7 +7052,7 @@ def admin_call_for_papers_content():
         default_cfp_content = {
             'page_header': {
                 'title': 'Call for Papers',
-                'subtitle': 'Submit your research to be part of the Global Institute on Innovative Research Conference 2024'
+                'subtitle': 'Submit your research to be part of Global Conferences'
             },
             'topics_intro': 'We invite high-quality original research papers in the following areas (but not limited to):',
             'topics': [],
@@ -9165,7 +9252,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     font_label = _load_letter_font(20, bold=True)
 
     conference_basic = (conference_data or {}).get('basic_info', {}) or {}
-    conference_name = conference_basic.get('name', 'GIIR Conference')
+    conference_name = conference_basic.get('name', 'Global Conferences')
     conference_id = (conference_data or {}).get('conference_id') or paper_data.get('conference_id') or ''
     location = conference_basic.get('location', 'Conference Venue')
     start_date = _parse_human_date(conference_basic.get('start_date') or conference_basic.get('date') or '')
@@ -9330,7 +9417,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
 
     footer = (
         "Kindly confirm your registration before the deadline.\n"
-        "GIIR Conference Admin"
+        "Global Conferences Admin"
     )
     _draw_wrapped_text(draw, footer, margin, y, font_small, text_dark, content_width, line_spacing=6)
 
@@ -9487,7 +9574,7 @@ Your acceptance letter is attached as a PDF - please keep it for your records.
 We look forward to welcoming you to {conference_name}!
 
 Warm regards,
-GIIR Conference Admin
+Global Conferences Admin
 globalconferences.co.za
 """.strip()
 
@@ -9503,7 +9590,7 @@ globalconferences.co.za
         # ── Logo via hosted URL (base64 bloats email past Gmail 102KB clip limit) ──
         _base_url = app.config.get('CONFERENCE_URL', 'https://globalconferences.co.za').rstrip('/')
         _logo_url = f"{_base_url}/static/images/giirlogo.jpg"
-        _logo_tag = f'<img src="{_logo_url}" alt="GIIR Logo" height="60" style="display:block;height:60px;width:auto;border:0;">'
+        _logo_tag = f'<img src="{_logo_url}" alt="Global Conferences" height="60" style="display:block;height:60px;width:auto;border:0;">'
 
         html = f"""
 <!DOCTYPE html>
@@ -9631,7 +9718,7 @@ globalconferences.co.za
         <!-- Footer -->
         <tr>
           <td style="background:#0f2f62;padding:28px 40px;border-radius:0 0 16px 16px;">
-            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;">GIIR Conference Admin</p>
+            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;">Global Conferences Admin</p>
             <p style="margin:0;font-size:12px;color:#93c5fd;">
               <a href="https://globalconferences.co.za" style="color:#93c5fd;text-decoration:none;">globalconferences.co.za</a>
               &nbsp;|&nbsp; noreply@globalconferences.co.za
@@ -10373,7 +10460,7 @@ def send_registration_confirmation_email(email_or_data, conference_name=None, re
         If you have any questions, please contact our support team at admin@globalconferences.co.za.
 
         Thanks & regards,
-        GIIR Organising Committee
+        Global Conferences
         """
 
         # Use existing send_email function
@@ -12517,7 +12604,7 @@ Your application (ID: {application_id}) has been received and is currently under
 We will contact you within 2-3 weeks regarding the status of your application. If you have any questions in the meantime, please don't hesitate to contact us.
 
 Thanks & regards,
-GIIR Organising Committee
+Global Conferences
 """
 
         # Use existing send_email function
@@ -12540,7 +12627,7 @@ Congratulations! We are pleased to inform you that your guest speaker applicatio
 You will receive further details about the conference schedule and logistics soon.
 
 Thanks & regards,
-GIIR Organising Committee
+Global Conferences
 """
 
         send_email([email], subject, body)
@@ -12562,7 +12649,7 @@ After careful review of your application, we regret to inform you that we are un
 {admin_notes if admin_notes else 'We encourage you to apply for future conferences and thank you for your interest.'}
 
 Thanks & regards,
-GIIR Organising Committee
+Global Conferences
 """
 
         send_email([email], subject, body)
