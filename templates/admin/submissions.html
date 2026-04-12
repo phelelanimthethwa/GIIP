@@ -567,10 +567,12 @@
                                     {% endif %}
                                     {% endif %}
                                     {% endif %}
-                                    {% if paper._conference_id and paper._registration_id %}
+                                    {% if paper._conference_id %}
                                     <button type="button" class="btn btn-outline-warning btn-sm"
                                         title="Move this participant's registration to the correct conference"
-                                        onclick="openSubmissionReassign('{{ paper._registration_id }}', '{{ paper._conference_id }}')">
+                                        data-registration-id="{{ paper.get('_registration_id', '')|e }}"
+                                        data-conference-id="{{ paper._conference_id|e }}"
+                                        onclick="openSubmissionReassign(this)">
                                         <i class="fas fa-exchange-alt"></i> Reassign conference
                                     </button>
                                     {% endif %}
@@ -615,6 +617,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div id="submissionReassignNoRegWarning" class="alert alert-warning d-none small mb-3" role="alert">
+                    <i class="fas fa-info-circle me-1"></i>
+                    No registration is linked to this author for this conference yet. They must register first, or you can assign them under
+                    <strong>Manage Registrations</strong> before reassigning.
+                </div>
                 <p class="text-muted small mb-3">
                     Use this when the author registered under the wrong conference. The registration is set to
                     <strong>pending</strong>, pricing is recalculated for the target conference, and you can approve or reject it as usual.
@@ -631,7 +638,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-warning" onclick="confirmSubmissionReassignConference()">Reassign</button>
+                <button type="button" class="btn btn-warning" id="submissionReassignConfirmBtn" onclick="confirmSubmissionReassignConference()">Reassign</button>
             </div>
         </div>
     </div>
@@ -733,7 +740,9 @@
         setTimeout(function () { toast.remove(); }, 3500);
     }
 
-    function openSubmissionReassign(registrationId, currentConferenceId) {
+    function openSubmissionReassign(triggerEl) {
+        const registrationId = (triggerEl && triggerEl.getAttribute('data-registration-id')) || '';
+        const currentConferenceId = (triggerEl && triggerEl.getAttribute('data-conference-id')) || '';
         document.getElementById('submissionReassignRegistrationId').value = registrationId;
         document.getElementById('submissionReassignCurrentConferenceId').value = currentConferenceId || '';
         const sel = document.getElementById('submissionReassignConferenceSelect');
@@ -741,6 +750,16 @@
         for (let i = 0; i < sel.options.length; i++) {
             const opt = sel.options[i];
             opt.disabled = Boolean(opt.value && opt.value === currentConferenceId);
+        }
+        const hasReg = Boolean(registrationId && registrationId.trim());
+        const warnEl = document.getElementById('submissionReassignNoRegWarning');
+        const confirmBtn = document.getElementById('submissionReassignConfirmBtn');
+        if (warnEl) {
+            warnEl.classList.toggle('d-none', hasReg);
+        }
+        if (confirmBtn) {
+            confirmBtn.disabled = !hasReg;
+            confirmBtn.title = hasReg ? '' : 'No registration to reassign yet';
         }
         const modalEl = document.getElementById('submissionReassignModal');
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -767,6 +786,11 @@
             variant: 'warning'
         });
         if (!confirmed) {
+            return;
+        }
+
+        if (!registrationId || !registrationId.trim()) {
+            alert('No registration is linked to this author for this conference yet. They must register first, or assign them in Manage Registrations.');
             return;
         }
 
