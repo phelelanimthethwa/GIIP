@@ -244,6 +244,7 @@
                                     <th>Email</th>
                                     <th>Institution</th>
                                     <th>Type</th>
+                                    <th style="min-width: 140px;">Paper submissions</th>
                                     <th>Status</th>
                                     <th>Registered</th>
                                     <th>Actions</th>
@@ -251,11 +252,32 @@
                             </thead>
                             <tbody>
                                 {% for reg_id, reg in registrations.items() %}
+                                {% set pcount = reg.get('_author_submission_count', 0) %}
+                                {% set author_papers = reg.get('_author_papers', []) %}
                                 <tr>
                                     <td>{{ reg.full_name|default('N/A') }}</td>
                                     <td>{{ reg.email|default('N/A') }}</td>
                                     <td>{{ reg.institution|default('N/A') }}</td>
                                     <td>{{ reg.registration_type|replace('_', ' ')|title|default('N/A') }}</td>
+                                    <td class="align-top">
+                                        {% if pcount %}
+                                        <div class="mb-1">
+                                            <span class="badge bg-primary">{{ pcount }} submission{{ 's' if pcount != 1 else '' }}</span>
+                                        </div>
+                                        <div class="paper-submission-rows">
+                                            {% for p in author_papers %}
+                                            <div class="paper-submission-row mb-2">
+                                                <div class="d-flex flex-wrap align-items-baseline gap-2">
+                                                    <span class="paper-id-chip flex-shrink-0" title="Paper ID — click to copy" role="button" tabindex="0" data-paper-id="{{ p.paper_id|e }}">{{ p.paper_id }}</span>
+                                                    <span class="paper-title-text">{{ p.paper_title }}</span>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted small">—</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <span class="badge 
                                             {% if reg.payment_status == 'approved' %}bg-success
@@ -482,9 +504,55 @@
     background: #f6c23e;
     color: white;
 }
+
+.paper-submission-rows {
+    max-width: min(520px, 100%);
+}
+.paper-submission-row {
+    border-left: 3px solid #90caf9;
+    padding-left: 0.5rem;
+}
+.paper-id-chip {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.72rem;
+    background: #e3f2fd;
+    color: #0d47a1;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #90caf9;
+    cursor: pointer;
+    max-width: 100%;
+    word-break: break-all;
+}
+.paper-id-chip:hover {
+    background: #bbdefb;
+}
+.paper-id-chip.copied {
+    background: #c8e6c9;
+    border-color: #66bb6a;
+    color: #1b5e20;
+}
+.paper-title-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: #2c3e50;
+    flex: 1;
+    min-width: 0;
+}
 </style>
 
 <script>
+document.addEventListener('click', function (e) {
+    const chip = e.target.closest('.paper-id-chip[data-paper-id]');
+    if (!chip) return;
+    const id = chip.getAttribute('data-paper-id');
+    if (!id || !navigator.clipboard) return;
+    navigator.clipboard.writeText(id).then(function () {
+        chip.classList.add('copied');
+        setTimeout(function () { chip.classList.remove('copied'); }, 800);
+    });
+});
+
 function copyCode(code) {
     navigator.clipboard.writeText(code).then(function() {
         // Show success message

@@ -314,6 +314,26 @@ Thanks & regards,
 Global Conferences
 """
 
+REGISTRATION_REASSIGNMENT = """
+Dear {full_name},
+
+Your conference registration has been reassigned by our administration team (for example, if it was initially linked to the wrong conference).
+
+Previous conference: {old_conference_name}
+You are now registered for: {new_conference_name}
+Conference code: {conference_code}
+
+Your registration is pending review for this conference. You will be notified separately when it is approved or rejected, according to our usual process.
+
+Open your registration for this conference:
+{registration_portal_url}
+
+If you have questions, contact us at {support_email}.
+
+Thanks & regards,
+Global Conferences
+"""
+
 # Type badge colors/text for announcements
 ANNOUNCEMENT_TYPE_BADGES = {
     'important': '⚠️ Important',
@@ -357,6 +377,11 @@ def _sample_context(public_base_url: str, logo_url: str) -> dict:
         'announcement_type_plain': 'Info',
         'author_names': 'Dr. Jane Researcher, Prof. A. Coauthor',
         'submitter_email': 'jane.researcher@university.edu',
+        'old_conference_name': 'Regional Conference 2025',
+        'new_conference_name': 'Global Conferences 2026',
+        'conference_code': 'GC2026-ABC',
+        'registration_portal_url': f'{base}/conferences/sample-conf-id/register',
+        'support_email': 'admin@globalconferences.co.za',
     }
 
 
@@ -407,6 +432,18 @@ def get_system_email_catalog(public_base_url: str, logo_url: str) -> list:
         'Conference Registration Confirmation',
         body_fmt=REGISTRATION_CONFIRMATION,
         extras=['full_name', 'registration_type', 'currency_symbol', 'total_amount', 'workshop', 'banquet'],
+    )
+    add(
+        'registration_reassignment',
+        'Registration moved to another conference',
+        'Sent when an admin reassigns a participant to the correct conference.',
+        '`send_registration_reassignment_email()` / POST `/admin/registrations/.../reassign-conference`',
+        f"Your registration has been moved to {s['new_conference_name']}",
+        body_fmt=REGISTRATION_REASSIGNMENT,
+        extras=[
+            'full_name', 'email', 'old_conference_name', 'new_conference_name', 'conference_code',
+            'registration_portal_url', 'support_email',
+        ],
     )
     add(
         'paper_submission_confirmation',

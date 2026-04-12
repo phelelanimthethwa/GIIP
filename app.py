@@ -3080,6 +3080,26 @@ If you believe this is an error or would like to discuss this further, please co
 
 Best regards,
 Global Conferences'''
+        },
+        'registration_reassignment': {
+            'subject': 'Your registration has been moved to {{new_conference_name}}',
+            'content': '''Dear {{full_name}},
+
+Your conference registration has been reassigned by our administration team (for example, if it was initially linked to the wrong conference).
+
+Previous conference: {{old_conference_name}}
+You are now registered for: {{new_conference_name}}
+Conference code: {{conference_code}}
+
+Your registration is pending review for this conference. You will be notified separately when it is approved or rejected, according to our usual process.
+
+Open your registration for this conference:
+{{registration_portal_url}}
+
+If you have questions, contact us at {{support_email}}.
+
+Thanks & regards,
+Global Conferences'''
         }
     }
     
@@ -3111,6 +3131,46 @@ def send_registration_email(registration, template_name, **kwargs):
         return send_email(registration.get('email'), template['subject'], content)
     except Exception as e:
         print(f"Error sending email: {e}")
+        return False
+
+def send_registration_reassignment_email(registration, old_conference_name, new_conference, new_conference_id):
+    """Notify the participant that their registration was moved to another conference (Resend)."""
+    try:
+        template = get_email_template('registration_reassignment')
+        if not template:
+            raise ValueError("Email template 'registration_reassignment' not found")
+
+        to_email = (registration.get('email') or '').strip()
+        if not to_email:
+            print("[EMAIL] registration reassignment: no email on registration record")
+            return False
+
+        registration_portal_url = url_for(
+            'conference_registration',
+            conference_id=new_conference_id,
+            _external=True
+        )
+
+        template_vars = {
+            'full_name': registration.get('full_name', '') or to_email.split('@')[0],
+            'email': to_email,
+            'old_conference_name': old_conference_name or 'your previous conference',
+            'new_conference_name': (new_conference.get('basic_info') or {}).get('name', 'Conference'),
+            'conference_code': new_conference.get('conference_code', '') or '',
+            'support_email': 'admin@globalconferences.co.za',
+            'registration_portal_url': registration_portal_url,
+        }
+
+        content = template['content']
+        subject = template.get('subject', 'Your registration has been updated')
+        for key, value in template_vars.items():
+            token = '{{' + key + '}}'
+            content = content.replace(token, str(value))
+            subject = subject.replace(token, str(value))
+
+        return send_email(to_email, subject, content)
+    except Exception as e:
+        print(f"Error sending registration reassignment email: {e}")
         return False
 
 @app.route('/admin/registrations/<registration_id>/status', methods=['POST'])
@@ -3162,6 +3222,141 @@ def update_registration_status(registration_id):
         
     except Exception as e:
         print(f"Error updating registration status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/registrations/<registration_id>/reassign-conference', methods=['POST'])
+@login_required
+@admin_required
+def reassign_registration_conference(registration_id):
+    """Move a registration to another conference; reset admin review to pending and resync pricing."""
+    try:
+        payload = request.get_json(silent=True) or {}
+        new_conference_id = (payload.get('conference_id') or '').strip()
+
+        if not new_conference_id:
+            return jsonify({'success': False, 'error': 'conference_id is required'}), 400
+
+        registration_ref = db.reference(f'registrations/{registration_id}')
+        registration = registration_ref.get()
+
+        if not registration:
+            return jsonify({'success': False, 'error': 'Registration not found'}), 404
+
+        old_conference_id = registration.get('conference_id')
+        if not old_conference_id:
+            return jsonify({
+                'success': False,
+                'error': 'This registration is not linked to a conference. Use Assign to conference instead.'
+            }), 400
+
+        new_conference = get_conference_data(new_conference_id)
+        if not new_conference:
+            return jsonify({'success': False, 'error': 'Target conference not found'}), 404
+
+        user_id = registration.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Registration has no user_id'}), 400
+
+        if new_conference_id == old_conference_id:
+            return jsonify({
+                'success': True,
+                'noop': True,
+                'message': 'Registration is already assigned to this conference.',
+                'conference_id': new_conference_id,
+                'conference_name': (new_conference.get('basic_info') or {}).get('name', ''),
+                'email_sent': False,
+            }), 200
+
+        moved_paper_ids = move_paper_submissions_for_registration_reassign(
+            old_conference_id,
+            new_conference_id,
+            registration_id,
+            user_id,
+            registration,
+            new_conference,
+            current_user.email,
+        )
+
+        now_iso = datetime.now().isoformat()
+        workflow_updates = compute_registration_workflow_for_conference(
+            user_id, new_conference_id, registration
+        )
+
+        base_updates = {
+            'conference_id': new_conference_id,
+            'conference_name': new_conference['basic_info']['name'],
+            'conference_code': new_conference.get('conference_code', ''),
+            'payment_status': 'pending',
+            'rejection_reason': None,
+            'reassigned_at': now_iso,
+            'reassigned_by': current_user.email,
+            'previous_conference_id': old_conference_id,
+            'assigned_at': now_iso,
+            'assigned_by': current_user.email,
+            'updated_at': now_iso,
+            'updated_by': current_user.email,
+            **workflow_updates,
+        }
+
+        registration_ref.update(base_updates)
+
+        merged = registration_ref.get() or {}
+        fees = get_registration_fees() or {}
+        merged = sync_conference_registration_pricing(
+            registration_id=registration_id,
+            registration_data=merged,
+            user_id=user_id,
+            conference_id=new_conference_id,
+            fees=fees
+        ) or merged
+
+        final_reg = registration_ref.get() or merged
+
+        old_conf_reg = db.reference(f'conferences/{old_conference_id}/registrations/{registration_id}')
+        if old_conf_reg.get():
+            old_conf_reg.delete()
+
+        db.reference(f'conferences/{new_conference_id}/registrations/{registration_id}').set(final_reg)
+
+        try:
+            user_reg_ref = db.reference(f'user_registrations/{user_id}')
+            user_reg_entries = user_reg_ref.get() or {}
+            for entry_key, entry in user_reg_entries.items():
+                if entry and entry.get('registration_id') == registration_id:
+                    user_reg_ref.child(entry_key).update({
+                        'conference_id': new_conference_id,
+                        'conference_name': new_conference['basic_info']['name'],
+                        'status': 'pending',
+                    })
+        except Exception as sync_err:
+            print(f"Warning: could not sync user_registrations index: {sync_err}")
+
+        old_conference_name = registration.get('conference_name') or ''
+        if not old_conference_name.strip() and old_conference_id:
+            old_conf = get_conference_data(old_conference_id)
+            if old_conf:
+                old_conference_name = (old_conf.get('basic_info') or {}).get('name', '') or old_conference_id
+
+        email_sent = send_registration_reassignment_email(
+            {**registration, **final_reg},
+            old_conference_name or old_conference_id,
+            new_conference,
+            new_conference_id
+        )
+
+        return jsonify({
+            'success': True,
+            'conference_id': new_conference_id,
+            'conference_name': new_conference['basic_info']['name'],
+            'payment_status': final_reg.get('payment_status'),
+            'email_sent': email_sent,
+            'papers_moved': moved_paper_ids,
+        })
+
+    except Exception as e:
+        print(f"Error reassigning registration conference: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/registrations/<registration_id>/payment-proof')
@@ -5681,7 +5876,7 @@ def admin_submissions():
             if (paper.get('status') or '').lower() == 'accepted':
                 user_conference_counts[uc_key]['has_accepted'] = True
 
-        # Inject counts into each paper
+        # Inject counts and linked registration id (for admin reassignment from submissions list)
         for key, paper in sorted_papers.items():
             user_id = paper.get('user_id') or paper.get('submitted_by') or ''
             conf_id = paper.get('_conference_id', '')
@@ -5689,10 +5884,16 @@ def admin_submissions():
             info = user_conference_counts.get(uc_key, {'count': 1, 'has_accepted': False})
             paper['_user_submission_count'] = info['count']
             paper['_user_has_accepted'] = info['has_accepted']
+            reg_id = (paper.get('registration_id') or '').strip()
+            if not reg_id and user_id and conf_id:
+                rid, _ = get_user_conference_registration(user_id, conf_id)
+                reg_id = (rid or '').strip()
+            paper['_registration_id'] = reg_id
         
         return render_template(
             'admin/submissions.html',
             submissions=sorted_papers,
+            conferences=get_all_conferences(),
             site_design=get_site_design()
         )
     except Exception as e:
@@ -5701,6 +5902,7 @@ def admin_submissions():
         return render_template(
             'admin/submissions.html',
             submissions={},
+            conferences=get_all_conferences(),
             site_design=get_site_design()
         )
 
@@ -8761,6 +8963,163 @@ def get_latest_accepted_conference_submission(user_id, conference_id):
         print(f"Error getting latest accepted conference submission: {e}")
         return None, None
 
+def move_paper_submissions_for_registration_reassign(
+    old_conference_id,
+    new_conference_id,
+    registration_id,
+    user_id,
+    registration,
+    new_conference,
+    admin_email,
+):
+    """Move conference paper_submissions rows linked to this registration from old conference to new.
+
+    Without this, only the registration record moves; admin submissions still list the paper under the
+    wrong conference and workflow/pricing see no submissions in the target conference.
+    """
+    moved_ids = []
+    try:
+        if (
+            not old_conference_id
+            or not new_conference_id
+            or old_conference_id == new_conference_id
+            or not user_id
+        ):
+            return moved_ids
+
+        old_papers = (
+            db.reference(f'conferences/{old_conference_id}/paper_submissions').get() or {}
+        )
+        new_name = (new_conference.get('basic_info') or {}).get('name', 'Conference')
+        linked_ids = set()
+        for key in ('paper_submission_id', 'paper_id'):
+            val = registration.get(key)
+            if val is not None and str(val).strip():
+                linked_ids.add(str(val).strip())
+
+        for paper_id, paper in old_papers.items():
+            if not paper:
+                continue
+            if paper.get('user_id') != user_id:
+                continue
+
+            pr = (paper.get('registration_id') or '').strip()
+            match_reg = pr == registration_id
+            match_id = paper_id in linked_ids
+            if not match_reg and not match_id:
+                continue
+
+            new_path = db.reference(f'conferences/{new_conference_id}/paper_submissions/{paper_id}')
+            if new_path.get():
+                print(
+                    f"[reassign] Target already has paper {paper_id}; not overwriting. "
+                    'Manual cleanup may be needed.'
+                )
+                continue
+
+            now_iso = datetime.now().isoformat()
+            new_paper = dict(paper)
+            new_paper['conference_id'] = new_conference_id
+            new_paper['conference_name'] = new_name
+            new_paper['registration_id'] = registration_id
+            new_paper['updated_at'] = now_iso
+            new_paper['reassigned_from_conference_id'] = old_conference_id
+            new_paper['reassigned_at'] = now_iso
+            new_paper['reassigned_by'] = admin_email
+
+            new_path.set(new_paper)
+            db.reference(f'conferences/{old_conference_id}/paper_submissions/{paper_id}').delete()
+            moved_ids.append(paper_id)
+
+            user_submissions_ref = db.reference(f'user_paper_submissions/{user_id}')
+            indexed = user_submissions_ref.get() or {}
+            for idx_id, sub in indexed.items():
+                if (
+                    sub
+                    and sub.get('paper_id') == paper_id
+                    and sub.get('conference_id') == old_conference_id
+                ):
+                    user_submissions_ref.child(idx_id).update({
+                        'conference_id': new_conference_id,
+                        'conference_name': new_name,
+                        'updated_at': now_iso,
+                    })
+            upsert_user_conference_submission_index(
+                user_id,
+                new_conference_id,
+                paper_id,
+                {
+                    'conference_id': new_conference_id,
+                    'paper_id': paper_id,
+                    'registration_id': registration_id,
+                    'conference_name': new_name,
+                    'paper_title': new_paper.get('paper_title', 'Untitled'),
+                    'status': (new_paper.get('status') or 'pending'),
+                    'is_deleted': False,
+                    'submitted_at': new_paper.get('submitted_at', now_iso),
+                    'updated_at': now_iso,
+                },
+            )
+            print(
+                f"[reassign] Moved paper {paper_id} from conference {old_conference_id} "
+                f"to {new_conference_id} (registration {registration_id})"
+            )
+    except Exception as e:
+        print(f"Error moving paper submissions for registration reassign: {e}")
+        import traceback
+        traceback.print_exc()
+    return moved_ids
+
+def compute_registration_workflow_for_conference(user_id, conference_id, registration_data):
+    """Recompute paper / payment-unlock fields for a user after a registration is moved to another conference."""
+    if not user_id or not conference_id:
+        return {}
+
+    accepted_submission_id, accepted_submission = get_latest_accepted_conference_submission(
+        user_id, conference_id
+    )
+    has_accepted_submission = bool(accepted_submission_id and accepted_submission)
+    reg_type = registration_data.get('registration_type') or 'regular_author'
+    is_delegate_type = reg_type in ['physical_delegate', 'listener']
+    payment_unlocked = has_accepted_submission or is_delegate_type
+
+    latest_submission_id, latest_submission = get_latest_user_conference_submission(
+        user_id, conference_id
+    )
+
+    if has_accepted_submission:
+        paper_status = 'accepted'
+    elif latest_submission:
+        paper_status = (latest_submission.get('status') or 'pending').lower()
+    else:
+        paper_status = 'not_submitted'
+
+    if payment_unlocked:
+        workflow_status = 'paper_accepted_payment_unlocked'
+    elif latest_submission:
+        workflow_status = 'paper_submitted_payment_locked'
+    else:
+        workflow_status = 'registered'
+
+    out = {
+        'payment_unlocked': payment_unlocked,
+        'paper_status': paper_status,
+        'workflow_status': workflow_status,
+    }
+    if payment_unlocked:
+        out['payment_unlocked_at'] = datetime.now().isoformat()
+    else:
+        out['payment_unlocked_at'] = None
+
+    if latest_submission_id:
+        out['paper_submission_id'] = latest_submission_id
+        out['paper_id'] = latest_submission_id
+    else:
+        out['paper_submission_id'] = None
+        out['paper_id'] = None
+
+    return out
+
 def _select_registration_period_for_fees(fees):
     """Select an available registration period for fee lookup."""
     if not fees:
@@ -11364,6 +11723,35 @@ def admin_conference_details(conference_id):
                 reg_data.setdefault('payment_status', 'pending')
                 reg_data.setdefault('created_at', '')
                 conference_registrations[reg_id] = reg_data
+
+        # Map each user to their papers in this conference: id + title (for admin table)
+        papers_ref = db.reference(f'conferences/{conference_id}/paper_submissions')
+        all_papers = papers_ref.get() or {}
+        user_papers = {}
+        for paper_id, paper in all_papers.items():
+            if not paper:
+                continue
+            if paper.get('is_deleted') or (paper.get('status') or '').lower() == 'withdrawn':
+                continue
+            uid = paper.get('user_id') or paper.get('submitted_by') or ''
+            if not uid:
+                continue
+            title = (paper.get('paper_title') or paper.get('title') or '').strip() or 'Untitled'
+            user_papers.setdefault(uid, []).append({
+                'paper_id': paper_id,
+                'paper_title': title,
+            })
+        for uid in user_papers:
+            user_papers[uid].sort(key=lambda x: x.get('paper_id') or '')
+
+        for _reg_id, reg_data in conference_registrations.items():
+            uid = (reg_data.get('user_id') or '').strip()
+            if uid and uid in user_papers:
+                reg_data['_author_papers'] = user_papers[uid]
+                reg_data['_author_submission_count'] = len(user_papers[uid])
+            else:
+                reg_data['_author_papers'] = []
+                reg_data['_author_submission_count'] = 0
         
         return render_template('admin/conference_details.html',
                              conference=conference,

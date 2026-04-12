@@ -113,7 +113,7 @@
                     <tbody>
                         {% for registration in registrations %}
                         <tr data-date="{{ registration.submission_date }}" 
-                            data-conference-id="{{ registration.conference_info.id if registration.conference_info else '' }}"
+                            data-conference-id="{{ registration.conference_id or (registration.conference_info.id if registration.conference_info else '') }}"
                             data-status="{{ registration.payment_status | lower }}">
                             <td>{{ registration.submission_date | datetime }}</td>
                             <td>{{ registration.full_name }}</td>
@@ -244,6 +244,13 @@
                                             title="View Full Details">
                                         <i class="fas fa-info-circle"></i> View Details
                                     </button>
+                                    {% if registration.conference_id or registration.conference_info %}
+                                    <button type="button" class="btn btn-sm btn-outline-warning mb-1 w-100"
+                                            onclick="reassignConference('{{ registration._id }}', '{{ registration.conference_id or (registration.conference_info.id if registration.conference_info else '') }}')"
+                                            title="Move this registration to a different conference">
+                                        <i class="fas fa-exchange-alt"></i> Reassign conference
+                                    </button>
+                                    {% endif %}
                                     {% if not registration.conference_info %}
                                     <button type="button" class="btn btn-sm btn-primary mb-1 w-100" 
                                             onclick="assignToConference('{{ registration._id }}')"
@@ -1001,8 +1008,16 @@ function formatRegistrationDetails(data) {
     });
 
     // Update registration status
-    function updateStatus(registrationId, newStatus) {
-        if (!confirm(`Are you sure you want to ${newStatus === 'approved' ? 'approve' : newStatus === 'rejected' ? 'reject' : 'mark as pending'} this registration?`)) {
+    async function updateStatus(registrationId, newStatus) {
+        const actionLabel = newStatus === 'approved' ? 'approve' : newStatus === 'rejected' ? 'reject' : 'mark as pending';
+        const ok = await window.adminConfirm({
+            title: 'Update registration status',
+            message: 'Are you sure you want to ' + actionLabel + ' this registration?',
+            confirmText: newStatus === 'approved' ? 'Approve' : newStatus === 'rejected' ? 'Reject' : 'Mark pending',
+            cancelText: 'Cancel',
+            variant: newStatus === 'approved' ? 'success' : newStatus === 'rejected' ? 'danger' : 'primary'
+        });
+        if (!ok) {
             return;
         }
 
@@ -1124,8 +1139,139 @@ function assignToConference(registrationId) {
     modal.show();
 }
 
+// Reassign to a different conference (wrong conference selected by participant)
+function reassignConference(registrationId, currentConferenceId) {
+    const modalHtml = `
+        <div class="modal fade" id="reassignConferenceModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Reassign to another conference</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">
+                            Use this when a participant registered under the wrong conference.
+                            Their registration will be set to <strong>pending</strong>, pricing will be recalculated for the
+                            new conference, and you can approve or reject it as usual.
+                        </p>
+                        <label for="reassignConferenceSelect" class="form-label">Target conference</label>
+                        <select class="form-select" id="reassignConferenceSelect">
+                            <option value="">Choose a conference...</option>
+                            {% for conference_id, conference in conferences.items() %}
+                            <option value="{{ conference_id }}">{{ conference.basic_info.name }} ({{ conference.basic_info.year }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-warning" onclick="confirmReassignConference('${registrationId}', '${currentConferenceId || ''}')">Reassign</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById('reassignConferenceModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const sel = document.getElementById('reassignConferenceSelect');
+    if (sel && currentConferenceId) {
+        for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === currentConferenceId) {
+                sel.options[i].disabled = true;
+                break;
+            }
+        }
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('reassignConferenceModal'));
+    modal.show();
+}
+
+async function confirmReassignConference(registrationId, currentConferenceId) {
+    const conferenceId = document.getElementById('reassignConferenceSelect').value;
+    if (!conferenceId) {
+        alert('Please select a conference.');
+        return;
+    }
+    if (currentConferenceId && conferenceId === currentConferenceId) {
+        alert('Choose a different conference than the current one.');
+        return;
+    }
+    const confirmed = await window.adminConfirm({
+        title: 'Reassign registration',
+        message: 'Reassign this registration to the selected conference? It will require review again (pending).',
+        confirmText: 'Reassign',
+        cancelText: 'Cancel',
+        variant: 'warning'
+    });
+    if (!confirmed) {
+        return;
+    }
+
+    const sel = document.getElementById('reassignConferenceSelect');
+    const targetName = sel && sel.options[sel.selectedIndex]
+        ? sel.options[sel.selectedIndex].text.trim()
+        : 'the selected conference';
+
+    if (typeof window.showAdminReassignLoader === 'function') {
+        window.showAdminReassignLoader(
+            'Reassigning to ' + targetName + '…',
+            'Moving registration and related papers. This may take a few seconds.'
+        );
+    }
+
+    const reassModal = document.getElementById('reassignConferenceModal');
+    if (reassModal && typeof bootstrap !== 'undefined') {
+        const inst = bootstrap.Modal.getInstance(reassModal);
+        if (inst) {
+            inst.hide();
+        }
+    }
+
+    fetch(`/admin/registrations/${registrationId}/reassign-conference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conference_id: conferenceId })
+    })
+        .then(response => response.json().catch(() => ({})).then(data => ({ ok: response.ok, status: response.status, data })))
+        .then(result => {
+            const data = result.data || {};
+            if (data.success) {
+                if (data.noop) {
+                    showToast(data.message || 'Already assigned to this conference.', 'success');
+                    return;
+                }
+                let msg = 'Registration reassigned. Status is now pending for review.';
+                if (data.papers_moved && data.papers_moved.length) {
+                    msg += ' Paper submission(s) moved to the new conference.';
+                }
+                if (data.email_sent === false) {
+                    msg += ' Warning: notification email was not sent (check Resend configuration and logs).';
+                }
+                showToast(msg, 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast(data.error || `Could not reassign registration (HTTP ${result.status || '?'})`, 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('Error reassigning registration', 'error');
+        })
+        .finally(() => {
+            if (typeof window.hideAdminReassignLoader === 'function') {
+                window.hideAdminReassignLoader();
+            }
+        });
+}
+
 // Confirm assignment
-function confirmAssignment(registrationId) {
+async function confirmAssignment(registrationId) {
     const conferenceId = document.getElementById('conferenceSelect').value;
     
     if (!conferenceId) {
@@ -1133,21 +1279,28 @@ function confirmAssignment(registrationId) {
         return;
     }
     
-    if (confirm('Are you sure you want to assign this registration to the selected conference?')) {
-        // Create form to submit assignment
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/conferences/${conferenceId}/assign-registrations`;
-        
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'selected_registrations';
-        input.value = registrationId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
+    const ok = await window.adminConfirm({
+        title: 'Assign registration',
+        message: 'Assign this registration to the selected conference?',
+        confirmText: 'Assign',
+        cancelText: 'Cancel',
+        variant: 'primary'
+    });
+    if (!ok) {
+        return;
     }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/conferences/${conferenceId}/assign-registrations`;
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'selected_registrations';
+    input.value = registrationId;
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 {% endblock %} 

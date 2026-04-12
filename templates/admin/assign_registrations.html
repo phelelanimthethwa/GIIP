@@ -281,22 +281,27 @@ function toggleAllAvailable(checkbox) {
 }
 
 // Unassign a registration
-function unassignRegistration(regId, regName) {
-    if (confirm(`Are you sure you want to unassign "${regName}" from this conference?`)) {
-        // Create a form to submit the unassign request
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/conferences/{{ conference_id }}/unassign-registration`;
-        
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'registration_id';
-        input.value = regId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
+async function unassignRegistration(regId, regName) {
+    const ok = await window.adminConfirm({
+        title: 'Unassign registration',
+        message: 'Unassign "' + regName + '" from this conference?',
+        confirmText: 'Unassign',
+        cancelText: 'Cancel',
+        variant: 'danger'
+    });
+    if (!ok) {
+        return;
     }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/conferences/{{ conference_id }}/unassign-registration`;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'registration_id';
+    input.value = regId;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
 }
 
 // Add event listeners
@@ -310,25 +315,33 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Form submission
-document.getElementById('assignRegistrationsForm').addEventListener('submit', function(e) {
+document.getElementById('assignRegistrationsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
     const selectedCount = document.querySelectorAll('input[name="selected_registrations"]:checked').length;
-    
-    if (selectedCount === 0) {
-        e.preventDefault();
-        alert('Please select at least one registration to assign.');
-        return false;
-    }
-    
-    if (!confirm(`Are you sure you want to assign ${selectedCount} registration(s) to this conference?`)) {
-        e.preventDefault();
-        return false;
-    }
-    
-    // Show loading state
+    const form = document.getElementById('assignRegistrationsForm');
     const submitBtn = document.getElementById('assignBtn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assigning...';
-    submitBtn.disabled = true;
+
+    if (selectedCount === 0) {
+        alert('Please select at least one registration to assign.');
+        return;
+    }
+
+    const ok = await window.adminConfirm({
+        title: 'Assign registrations',
+        message: 'Assign ' + selectedCount + ' registration(s) to this conference?',
+        confirmText: 'Assign',
+        cancelText: 'Cancel',
+        variant: 'primary'
+    });
+    if (!ok) {
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Assigning...';
+        submitBtn.disabled = true;
+    }
+    form.submit();
 });
 </script>
 {% endblock %}
