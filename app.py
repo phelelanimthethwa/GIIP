@@ -7728,6 +7728,54 @@ def conference_proceedings():
 # MULTI-CONFERENCE SUPPORT ROUTES
 # =============================================================================
 
+DEFAULT_CONFERENCE_PROGRAMME = """Tentative GIIR Conference Programme
+
+The Definite GIIR Programme Schedule will be emailed to all delegates after the last date of registration.
+
+9:00 AM - 9:30 AM
+
+Registration at Desk
+
+9:30 AM - 10:00 AM
+
+Inaugural Session Keynote / Guest Speech by Speaker(s)
+
+10:00 AM- 10:15 AM
+
+Breakfast & Tea Break
+
+10:15 AM - 1:00 PM
+
+Technical Session-1
+
+1:00 PM - 2:00 PM
+
+Lunch
+
+2:00 PM - 4:00 PM
+
+Technical Session-2
+
+4:00 PM - 4:30 PM
+
+Certificate Distribution & Award Ceremony
+
+4:30 PM - 4:45 PM
+
+Closing Ceremony"""
+
+
+def resolve_conference_programme(conference):
+    """Return custom programme text from Firebase, or the global default."""
+    if not conference:
+        return DEFAULT_CONFERENCE_PROGRAMME
+    raw = conference.get('programme')
+    if raw is None:
+        return DEFAULT_CONFERENCE_PROGRAMME
+    text = str(raw).strip()
+    return text if text else DEFAULT_CONFERENCE_PROGRAMME
+
+
 def get_conference_data(conference_id):
     """Get conference data from Firebase"""
     try:
@@ -10385,12 +10433,15 @@ def conference_details(conference_id):
                 if latest_submission_id and latest_submission:
                     user_submission_status = latest_submission.get('status')
 
-        return render_template('conferences/details.html',
-                             conference=conference,
-                             conference_id=conference_id,
-                             user_can_register=user_can_register,
-                             user_submission_status=(user_submission_status or '').lower(),
-                             site_design=get_site_design())
+        return render_template(
+            'conferences/details.html',
+            conference=conference,
+            conference_id=conference_id,
+            user_can_register=user_can_register,
+            user_submission_status=(user_submission_status or '').lower(),
+            conference_programme=resolve_conference_programme(conference),
+            site_design=get_site_design(),
+        )
     except Exception as e:
         print(f"Error loading conference details: {e}")
         flash('Error loading conference details.', 'error')
@@ -11828,11 +11879,17 @@ def admin_conference_details(conference_id):
                 reg_data['_author_papers'] = []
                 reg_data['_author_submission_count'] = 0
         
-        return render_template('admin/conference_details.html',
-                             conference=conference,
-                             conference_id=conference_id,
-                             registrations=conference_registrations,
-                             site_design=get_site_design())
+        return render_template(
+            'admin/conference_details.html',
+            conference=conference,
+            conference_id=conference_id,
+            registrations=conference_registrations,
+            conference_programme_display=resolve_conference_programme(conference),
+            conference_programme_is_custom=bool(
+                str(conference.get('programme') or '').strip()
+            ),
+            site_design=get_site_design(),
+        )
     except Exception as e:
         print(f"Error loading conference details: {e}")
         flash('Error loading conference details.', 'error')
@@ -11945,7 +12002,14 @@ def edit_conference(conference_id):
             # Update basic info
             basic_info_ref = db.reference(f'conferences/{conference_id}/basic_info')
             basic_info_ref.update(basic_info)
-            
+
+            programme_ref = db.reference(f'conferences/{conference_id}/programme')
+            programme_val = (request.form.get('programme') or '').strip()
+            if programme_val:
+                programme_ref.set(programme_val)
+            else:
+                programme_ref.delete()
+
             # Update settings if provided
             if request.form.get('update_settings') == 'on':
                 settings_data = {

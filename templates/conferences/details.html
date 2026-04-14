@@ -198,6 +198,13 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Conference programme (tentative schedule) -->
+            <div class="detail-card conference-programme-card">
+                <h2><i class="fas fa-calendar-day"></i> Conference programme</h2>
+                <p class="programme-intro text-muted small">Tentative schedule (subject to change).</p>
+                <div class="conference-programme-body">{{ conference_programme|e }}</div>
+            </div>
         </div>
         
         <!-- Sidebar -->
@@ -438,6 +445,17 @@
 .content-text {
     line-height: 1.7;
     color: #555;
+}
+
+.conference-programme-body {
+    white-space: pre-line;
+    line-height: 1.75;
+    color: #444;
+    font-size: 0.98rem;
+}
+
+.conference-programme-card .programme-intro {
+    margin-bottom: 1rem;
 }
 
 .features-grid {
