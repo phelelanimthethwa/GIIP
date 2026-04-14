@@ -263,6 +263,7 @@ SITEMAP_PUBLIC_ENDPOINTS = [
     ('call_for_papers', 'weekly', '0.8'),
     ('paper_submission', 'weekly', '0.7'),
     ('author_guidelines', 'monthly', '0.7'),
+    ('peer_review_process', 'monthly', '0.7'),
     ('venue', 'monthly', '0.7'),
     ('guest_speakers', 'weekly', '0.7'),
     ('video_conference', 'monthly', '0.6'),
@@ -1157,6 +1158,13 @@ def author_guidelines():
     except Exception:
         flash('Error loading author guidelines.', 'error')
         return redirect(url_for('home'))
+
+
+@app.route('/peer-review-process')
+def peer_review_process():
+    """Static page describing GIIR peer review workflow."""
+    return render_template('user/peer_review_process.html', site_design=get_site_design())
+
 
 @app.route('/venue')
 def venue():
@@ -13183,6 +13191,14 @@ Global Conferences
 
     except Exception as e:
         print(f"Error sending guest speaker rejection email: {e}")
+
+# Ensure peer-review route is registered (guards against stale dev reloaders or partial imports).
+if 'peer_review_process' not in app.view_functions:
+    app.add_url_rule(
+        '/peer-review-process',
+        endpoint='peer_review_process',
+        view_func=peer_review_process,
+    )
 
 if __name__ == '__main__':
     # Create admin user on startup
