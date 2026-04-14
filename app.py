@@ -5918,10 +5918,7 @@ def update_paper_status(paper_id):
         
         if new_status not in ['accepted', 'rejected', 'revision']:
             return jsonify({'success': False, 'error': 'Invalid status'}), 400
-            
-        if not comments.strip() and new_status in ['rejected', 'revision']:
-            return jsonify({'success': False, 'error': 'Comments are required for rejection or revision'}), 400
-        
+
         # Update paper status in Firebase (conference-scoped or legacy global)
         paper_path = f'conferences/{conference_id}/paper_submissions/{paper_id}' if conference_id else f'papers/{paper_id}'
         paper_ref = db.reference(paper_path)
@@ -6059,6 +6056,83 @@ def update_paper_status(paper_id):
     except Exception as e:
         print(f"Error updating paper status: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/papers/<paper_id>/resend-decision-email', methods=['POST'])
+@login_required
+@admin_required
+def admin_resend_paper_decision_email(paper_id):
+    """Resend acceptance letter (accepted + conference) or status email (rejected/revision) without changing DB."""
+    try:
+        data = request.get_json(silent=True) or {}
+        conference_id = (data.get('conference_id') or request.args.get('conference_id') or '').strip()
+        paper_path = (
+            f'conferences/{conference_id}/paper_submissions/{paper_id}'
+            if conference_id
+            else f'papers/{paper_id}'
+        )
+        paper_ref = db.reference(paper_path)
+        paper = paper_ref.get()
+        if not paper:
+            return jsonify({'success': False, 'error': 'Paper not found'}), 404
+
+        updated_paper = dict(paper)
+        updated_paper['paper_id'] = paper_id
+        if conference_id:
+            updated_paper['conference_id'] = conference_id
+
+        status = (updated_paper.get('status') or 'pending').lower()
+        comments = (updated_paper.get('review_comments') or '').strip()
+
+        if status == 'pending':
+            return jsonify({
+                'success': False,
+                'error': 'This submission is still under review; resend is only available after a decision.',
+            }), 400
+
+        email_sent = False
+        if status == 'accepted':
+            if conference_id:
+                conference_data = get_conference_data(conference_id) or {}
+                conference_data['conference_id'] = conference_id
+                linked_registration_id = (updated_paper.get('registration_id') or '').strip()
+                ensured_registration = None
+                if linked_registration_id:
+                    ensured_registration = db.reference(
+                        f'registrations/{linked_registration_id}'
+                    ).get()
+                email_sent = send_acceptance_letter_email(
+                    paper_data=updated_paper,
+                    conference_data=conference_data,
+                    registration_data=ensured_registration,
+                    comments=comments,
+                )
+                if not email_sent:
+                    email_sent = email_service.send_paper_status_update(
+                        updated_paper, 'accepted', comments
+                    )
+            else:
+                email_sent = email_service.send_paper_status_update(
+                    updated_paper, 'accepted', comments
+                )
+        elif status in ('rejected', 'revision'):
+            if not comments:
+                comments = (
+                    'Paper rejected by admin.'
+                    if status == 'rejected'
+                    else 'Revision requested by admin.'
+                )
+            email_sent = email_service.send_paper_status_update(
+                updated_paper, status, comments
+            )
+        else:
+            return jsonify({'success': False, 'error': 'Unsupported status for resend.'}), 400
+
+        return jsonify({'success': True, 'email_sent': bool(email_sent)})
+    except Exception as e:
+        print(f"Error resending decision email: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/admin/papers/<paper_id>/comments', methods=['POST'])
 @login_required
@@ -9787,11 +9861,12 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
 
     # ── Overlay a clickable hyperlink annotation using ReportLab ──────────────
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate
-        from reportlab.lib.utils import ImageReader
-        from reportlab.pdfgen import canvas as rl_canvas
-        import pypdf
+        # Optional deps (see requirements.txt); analyzer may not see venv/stubs.
+        from reportlab.lib.pagesizes import A4  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        from reportlab.platypus import SimpleDocTemplate  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        from reportlab.lib.utils import ImageReader  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        from reportlab.pdfgen import canvas as rl_canvas  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        import pypdf  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
 
         # Build a transparent ReportLab overlay PDF with just the link annotation
         overlay_buf = io.BytesIO()
