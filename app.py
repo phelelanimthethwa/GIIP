@@ -6045,6 +6045,15 @@ def update_paper_status(paper_id):
 
                 if not acceptance_sent:
                     email_service.send_paper_status_update(updated_paper, new_status, comments)
+            elif new_status == 'rejected':
+                conference_data = get_conference_data(conference_id) if conference_id else None
+                rejection_sent = send_rejection_letter_email(
+                    paper_data=updated_paper,
+                    conference_data=conference_data,
+                    comments=comments
+                )
+                if not rejection_sent:
+                    email_service.send_paper_status_update(updated_paper, new_status, comments)
             else:
                 email_service.send_paper_status_update(updated_paper, new_status, comments)
         except Exception as e:
@@ -9575,6 +9584,38 @@ def _draw_wrapped_text(draw, text, x, y, font, fill, max_width, line_spacing=6):
     return y
 
 
+def _load_letter_stamp(target_width=220):
+    """Load the official GIIR stamp from Firebase Storage for PDF letters."""
+    try:
+        bucket = storage.bucket('giir-66ae6.firebasestorage.app')
+        blob = bucket.blob('stamp/GIIR_STAMP.png')
+        if not blob.exists():
+            return None
+
+        stamp_bytes = blob.download_as_bytes()
+        stamp = Image.open(io.BytesIO(stamp_bytes)).convert('RGBA')
+        if target_width and stamp.width > 0:
+            aspect_ratio = stamp.height / stamp.width
+            target_height = max(1, int(target_width * aspect_ratio))
+            stamp = stamp.resize((target_width, target_height), Image.LANCZOS)
+        return stamp
+    except Exception as stamp_err:
+        print(f"[PDF] Could not load GIIR stamp: {stamp_err}")
+        return None
+
+
+def _draw_letter_stamp(image, width, height, margin, stamp_target_width=220):
+    """Place the GIIR stamp near the bottom-right of the letter."""
+    stamp = _load_letter_stamp(target_width=stamp_target_width)
+    if not stamp:
+        return False
+
+    stamp_x = width - margin - stamp.width
+    stamp_y = height - margin - stamp.height
+    image.paste(stamp, (stamp_x, stamp_y), stamp)
+    return True
+
+
 def _get_acceptance_letter_bank_details():
     """International bank transfer details used in acceptance communications."""
     return [
@@ -9779,6 +9820,7 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
         "Global Conferences Admin"
     )
     _draw_wrapped_text(draw, footer, margin, y, font_small, text_dark, content_width, line_spacing=6)
+    _draw_letter_stamp(image, width, height, margin, stamp_target_width=220)
 
     # ── Save as PDF via Pillow (image layer) ──────────────────────────────────
     img_pdf_buffer = io.BytesIO()
@@ -9832,6 +9874,150 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
     except Exception as _pdf_link_err:
         print(f"[PDF] ReportLab/pypdf not available, returning image-only PDF: {_pdf_link_err}")
         return img_pdf_bytes
+
+
+def generate_rejection_letter_pdf(paper_data, conference_data=None, comments=''):
+    """Generate a branded rejection letter PDF as bytes."""
+    width, height = 1240, 1754
+    image = Image.new('RGB', (width, height), '#ffffff')
+    draw = ImageDraw.Draw(image)
+
+    navy = '#123e7a'
+    deep_blue = '#0f2f62'
+    red = '#d01616'
+    text_dark = '#10243f'
+    text_muted = '#334e68'
+    panel_bg = '#f8fafc'
+    panel_border = '#d6dde7'
+
+    font_title = _load_letter_font(44, bold=True)
+    font_h2 = _load_letter_font(28, bold=True)
+    font_body = _load_letter_font(22, bold=False)
+    font_body_bold = _load_letter_font(22, bold=True)
+    font_small = _load_letter_font(18, bold=False)
+    font_label = _load_letter_font(20, bold=True)
+
+    conference_basic = (conference_data or {}).get('basic_info', {}) or {}
+    conference_name = (
+        conference_basic.get('name')
+        or paper_data.get('conference_name')
+        or 'Global Conferences'
+    )
+    location = conference_basic.get('location', '')
+    start_date = _parse_human_date(conference_basic.get('start_date') or conference_basic.get('date') or '')
+    end_date = _parse_human_date(conference_basic.get('end_date') or '')
+
+    authors = paper_data.get('authors') or []
+    primary_author = authors[0].get('name') if authors else 'Author'
+    co_authors = ', '.join(a.get('name') for a in authors[1:] if a.get('name')) if len(authors) > 1 else 'None'
+
+    paper_title = paper_data.get('paper_title', 'Untitled Paper')
+    paper_id = paper_data.get('paper_id') or 'N/A'
+    decision_date = _parse_human_date(paper_data.get('updated_at') or datetime.now().isoformat())
+    presentation_type = (paper_data.get('presentation_type') or 'Oral').replace('_', ' ').title()
+
+    y = 70
+    margin = 70
+    content_width = width - (margin * 2)
+
+    logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'giirlogo.jpg')
+    logo_h = 110
+    text_x = margin
+    try:
+        logo_img = Image.open(logo_path).convert('RGBA')
+        aspect = logo_img.width / logo_img.height
+        logo_w = int(logo_h * aspect)
+        logo_img = logo_img.resize((logo_w, logo_h), Image.LANCZOS)
+        image.paste(logo_img, (margin, y), logo_img)
+        text_x = margin + logo_w + 20
+    except Exception as _logo_err:
+        print(f"[PDF] Could not load GIIR logo: {_logo_err}")
+        draw.text((margin, y), "GIIR", font=font_title, fill=red)
+        text_x = margin + 150
+
+    org_text = "Global Institute on Innovative Research"
+    org_bbox = draw.textbbox((0, 0), org_text, font=font_h2)
+    org_h = org_bbox[3] - org_bbox[1]
+    org_y = y + max(0, (logo_h - org_h) // 2)
+    draw.text((text_x, org_y), org_text, font=font_h2, fill=navy)
+
+    y += logo_h + 16
+    y = _draw_wrapped_text(draw, conference_name, margin, y, font_h2, deep_blue, content_width, line_spacing=6)
+    y += 10
+
+    date_line = location
+    if start_date and end_date:
+        date_line = f"{location} | {start_date} - {end_date}" if location else f"{start_date} - {end_date}"
+    elif start_date:
+        date_line = f"{location} | {start_date}" if location else start_date
+    if date_line:
+        draw.text((margin, y), date_line, font=font_small, fill=text_muted)
+        y += 52
+    else:
+        y += 28
+
+    draw.rectangle([margin, y, width - margin, y + 48], fill=deep_blue)
+    draw.text((margin + 20, y + 10), "PAPER REJECTION LETTER", font=font_h2, fill='#ffffff')
+    y += 72
+
+    draw.text((margin, y), f"Dear {primary_author},", font=font_body_bold, fill=text_dark)
+    y += 44
+    intro = (
+        f"Thank you for submitting your paper to {conference_name}. "
+        "After review by the committee, we regret to inform you that the submission was not accepted for presentation."
+    )
+    y = _draw_wrapped_text(draw, intro, margin, y, font_body, text_dark, content_width, line_spacing=8)
+    y += 18
+
+    def detail_row(label, value, current_y):
+        label_width = 240
+        row_h = 46
+        draw.rectangle([margin, current_y, margin + label_width, current_y + row_h], fill=red)
+        draw.text((margin + 10, current_y + 10), label, font=font_label, fill='#ffffff')
+        draw.rectangle([margin + label_width, current_y, width - margin, current_y + row_h], outline=panel_border, width=2)
+        draw.text((margin + label_width + 12, current_y + 10), str(value), font=font_body_bold, fill=text_dark)
+        return current_y + row_h + 8
+
+    y = detail_row("Paper Title:", paper_title, y)
+    y = detail_row("Author(s):", primary_author, y)
+    y = detail_row("Co-author(s):", co_authors, y)
+    y = detail_row("Paper ID:", paper_id, y)
+    y = detail_row("Presentation Type:", presentation_type, y)
+    y = detail_row("Decision Date:", decision_date, y)
+    y += 18
+
+    draw.text((margin, y), "Review Outcome", font=font_body_bold, fill=navy)
+    y += 36
+    outcome_top = y
+    outcome_height = 120
+    draw.rectangle([margin, outcome_top, width - margin, outcome_top + outcome_height], fill=panel_bg, outline=panel_border, width=2)
+    outcome_text = (
+        "This decision reflects the outcome of the current review round. "
+        "We appreciate the time and effort invested in your submission."
+    )
+    _draw_wrapped_text(draw, outcome_text, margin + 18, outcome_top + 16, font_body, text_dark, content_width - 36, line_spacing=8)
+    y = outcome_top + outcome_height + 24
+
+    draw.text((margin, y), "Reviewer Comments", font=font_body_bold, fill=navy)
+    y += 36
+    comments_top = y
+    comments_height = 300
+    draw.rectangle([margin, comments_top, width - margin, comments_top + comments_height], fill=panel_bg, outline=panel_border, width=2)
+    comments_text = comments or 'No additional comments were provided.'
+    _draw_wrapped_text(draw, comments_text, margin + 18, comments_top + 16, font_body, text_muted, content_width - 36, line_spacing=8)
+    y = comments_top + comments_height + 26
+
+    closing = (
+        "We encourage you to consider the reviewer feedback for future submissions.\n"
+        "Thank you again for your interest in Global Conferences.\n\n"
+        "Global Conferences Admin"
+    )
+    _draw_wrapped_text(draw, closing, margin, y, font_small, text_dark, content_width, line_spacing=6)
+    _draw_letter_stamp(image, width, height, margin, stamp_target_width=220)
+
+    pdf_buffer = io.BytesIO()
+    image.save(pdf_buffer, format='PDF', resolution=150.0)
+    return pdf_buffer.getvalue()
 
 def send_acceptance_letter_email(paper_data, conference_data, registration_data=None, comments=''):
     """Send acceptance email with PDF attachment via Resend.
@@ -10113,6 +10299,173 @@ globalconferences.co.za
         return result
     except Exception as e:
         print(f"[ACCEPTANCE EMAIL] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def _resolve_paper_recipient_email(paper_data):
+    """Resolve the recipient email for paper decision letters."""
+    recipient = paper_data.get('user_email')
+    if recipient:
+        return recipient
+
+    user_id = paper_data.get('user_id')
+    if not user_id:
+        return None
+
+    try:
+        user_profile = db.reference(f'users/{user_id}').get() or {}
+        return user_profile.get('email')
+    except Exception:
+        return None
+
+
+def send_rejection_letter_email(paper_data, conference_data=None, comments=''):
+    """Send rejection email with PDF attachment via Resend."""
+    try:
+        recipient = _resolve_paper_recipient_email(paper_data)
+        if not recipient:
+            print('[REJECTION EMAIL] No recipient email found — skipping send.')
+            return False
+
+        conference_basic = (conference_data or {}).get('basic_info', {}) or {}
+        conference_name = (
+            conference_basic.get('name')
+            or paper_data.get('conference_name')
+            or 'Global Conferences'
+        )
+        paper_title = paper_data.get('paper_title', 'Untitled Paper')
+        paper_id = paper_data.get('paper_id', 'paper')
+        presentation_type = (paper_data.get('presentation_type') or 'Oral').replace('_', ' ').title()
+        authors = paper_data.get('authors') or [{}]
+        primary_author_name = authors[0].get('name', 'Author')
+        comments_resolved = comments if comments else 'No additional comments provided.'
+
+        pdf_bytes = generate_rejection_letter_pdf(
+            paper_data=paper_data,
+            conference_data=conference_data,
+            comments=comments_resolved
+        )
+
+        subject = f"Rejection Letter - {conference_name}"
+        body = f"""
+Dear {primary_author_name},
+
+Thank you for submitting your paper to {conference_name}.
+
+After review by the committee, we regret to inform you that your submission was not accepted for presentation.
+
+Submission Details
+------------------
+Paper Title      : {paper_title}
+Paper ID         : {paper_id}
+Presentation Type: {presentation_type}
+Conference       : {conference_name}
+
+Reviewer Comments
+-----------------
+{comments_resolved}
+
+Your official rejection letter is attached as a PDF for your records.
+
+Warm regards,
+Global Conferences Admin
+globalconferences.co.za
+""".strip()
+
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Paper Rejected - {conference_name}</title></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f4f8;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f2f62 0%,#123e7a 60%,#1a56a8 100%);padding:32px 40px;">
+            <p style="margin:0;font-size:12px;color:#93c5fd;letter-spacing:1px;text-transform:uppercase;">Global Institute on Innovative Research</p>
+            <h1 style="margin:12px 0 0;font-size:26px;line-height:1.3;color:#ffffff;">Paper Review Decision</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#d01616;padding:14px 40px;">
+            <p style="margin:0;font-size:15px;font-weight:700;color:#ffffff;">Paper submission not accepted</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px 0;">
+            <p style="margin:0 0 20px;font-size:16px;color:#10243f;line-height:1.6;">Dear <strong>{primary_author_name}</strong>,</p>
+            <p style="margin:0 0 20px;font-size:15px;color:#334e68;line-height:1.7;">
+              Thank you for submitting your paper to <strong>{conference_name}</strong>. After review by the committee,
+              we regret to inform you that this submission was not accepted for presentation.
+            </p>
+            <p style="margin:0 0 28px;font-size:15px;color:#334e68;line-height:1.7;">
+              Your official rejection letter is attached as a PDF for your records.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 40px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+              <tr style="background:#f8fafc;">
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Paper Title</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{paper_title}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">Paper ID</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;border-bottom:1px solid #f1f5f9;">{paper_id}</td>
+              </tr>
+              <tr style="background:#f8fafc;">
+                <td style="padding:8px 12px;color:#64748b;font-size:13px;">Presentation Type</td>
+                <td style="padding:8px 12px;font-weight:600;font-size:13px;">{presentation_type}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 40px 32px;">
+            <div style="padding:16px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#0f2f62;">Reviewer Comments</p>
+              <p style="margin:0;font-size:13px;color:#334e68;line-height:1.7;white-space:pre-wrap;">{comments_resolved}</p>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#0f2f62;padding:28px 40px;border-radius:0 0 16px 16px;">
+            <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#ffffff;">Global Conferences Admin</p>
+            <p style="margin:0;font-size:12px;color:#93c5fd;">
+              <a href="https://globalconferences.co.za" style="color:#93c5fd;text-decoration:none;">globalconferences.co.za</a>
+              &nbsp;|&nbsp; noreply@globalconferences.co.za
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+""".strip()
+
+        attachment_name = f"Rejection_Letter_{secure_filename(str(paper_id))}.pdf"
+        print(f"[REJECTION EMAIL] Sending rejection letter to {recipient} for paper {paper_id}")
+        result = send_email(
+            recipients=[recipient],
+            subject=subject,
+            body=body,
+            attachments=[{
+                'path': attachment_name,
+                'data': pdf_bytes
+            }],
+            html=html
+        )
+        if result:
+            print(f"[REJECTION EMAIL] ✓ Sent successfully to {recipient}")
+        else:
+            print(f"[REJECTION EMAIL] ✗ Failed to send to {recipient}")
+        return result
+    except Exception as e:
+        print(f"[REJECTION EMAIL] Error: {e}")
         import traceback
         traceback.print_exc()
         return False
