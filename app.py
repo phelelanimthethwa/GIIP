@@ -263,6 +263,7 @@ SITEMAP_PUBLIC_ENDPOINTS = [
     ('call_for_papers', 'weekly', '0.8'),
     ('paper_submission', 'weekly', '0.7'),
     ('author_guidelines', 'monthly', '0.7'),
+    ('peer_review_process', 'monthly', '0.7'),
     ('venue', 'monthly', '0.7'),
     ('guest_speakers', 'weekly', '0.7'),
     ('video_conference', 'monthly', '0.6'),
@@ -1157,6 +1158,13 @@ def author_guidelines():
     except Exception:
         flash('Error loading author guidelines.', 'error')
         return redirect(url_for('home'))
+
+
+@app.route('/peer-review-process')
+def peer_review_process():
+    """Static page describing GIIR peer review workflow."""
+    return render_template('user/peer_review_process.html', site_design=get_site_design())
+
 
 @app.route('/venue')
 def venue():
@@ -5918,10 +5926,7 @@ def update_paper_status(paper_id):
         
         if new_status not in ['accepted', 'rejected', 'revision']:
             return jsonify({'success': False, 'error': 'Invalid status'}), 400
-            
-        if not comments.strip() and new_status in ['rejected', 'revision']:
-            return jsonify({'success': False, 'error': 'Comments are required for rejection or revision'}), 400
-        
+
         # Update paper status in Firebase (conference-scoped or legacy global)
         paper_path = f'conferences/{conference_id}/paper_submissions/{paper_id}' if conference_id else f'papers/{paper_id}'
         paper_ref = db.reference(paper_path)
@@ -6068,6 +6073,83 @@ def update_paper_status(paper_id):
     except Exception as e:
         print(f"Error updating paper status: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/papers/<paper_id>/resend-decision-email', methods=['POST'])
+@login_required
+@admin_required
+def admin_resend_paper_decision_email(paper_id):
+    """Resend acceptance letter (accepted + conference) or status email (rejected/revision) without changing DB."""
+    try:
+        data = request.get_json(silent=True) or {}
+        conference_id = (data.get('conference_id') or request.args.get('conference_id') or '').strip()
+        paper_path = (
+            f'conferences/{conference_id}/paper_submissions/{paper_id}'
+            if conference_id
+            else f'papers/{paper_id}'
+        )
+        paper_ref = db.reference(paper_path)
+        paper = paper_ref.get()
+        if not paper:
+            return jsonify({'success': False, 'error': 'Paper not found'}), 404
+
+        updated_paper = dict(paper)
+        updated_paper['paper_id'] = paper_id
+        if conference_id:
+            updated_paper['conference_id'] = conference_id
+
+        status = (updated_paper.get('status') or 'pending').lower()
+        comments = (updated_paper.get('review_comments') or '').strip()
+
+        if status == 'pending':
+            return jsonify({
+                'success': False,
+                'error': 'This submission is still under review; resend is only available after a decision.',
+            }), 400
+
+        email_sent = False
+        if status == 'accepted':
+            if conference_id:
+                conference_data = get_conference_data(conference_id) or {}
+                conference_data['conference_id'] = conference_id
+                linked_registration_id = (updated_paper.get('registration_id') or '').strip()
+                ensured_registration = None
+                if linked_registration_id:
+                    ensured_registration = db.reference(
+                        f'registrations/{linked_registration_id}'
+                    ).get()
+                email_sent = send_acceptance_letter_email(
+                    paper_data=updated_paper,
+                    conference_data=conference_data,
+                    registration_data=ensured_registration,
+                    comments=comments,
+                )
+                if not email_sent:
+                    email_sent = email_service.send_paper_status_update(
+                        updated_paper, 'accepted', comments
+                    )
+            else:
+                email_sent = email_service.send_paper_status_update(
+                    updated_paper, 'accepted', comments
+                )
+        elif status in ('rejected', 'revision'):
+            if not comments:
+                comments = (
+                    'Paper rejected by admin.'
+                    if status == 'rejected'
+                    else 'Revision requested by admin.'
+                )
+            email_sent = email_service.send_paper_status_update(
+                updated_paper, status, comments
+            )
+        else:
+            return jsonify({'success': False, 'error': 'Unsupported status for resend.'}), 400
+
+        return jsonify({'success': True, 'email_sent': bool(email_sent)})
+    except Exception as e:
+        print(f"Error resending decision email: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/admin/papers/<paper_id>/comments', methods=['POST'])
 @login_required
@@ -7662,6 +7744,54 @@ def conference_proceedings():
 # =============================================================================
 # MULTI-CONFERENCE SUPPORT ROUTES
 # =============================================================================
+
+DEFAULT_CONFERENCE_PROGRAMME = """Tentative GIIR Conference Programme
+
+The Definite GIIR Programme Schedule will be emailed to all delegates after the last date of registration.
+
+9:00 AM - 9:30 AM
+
+Registration at Desk
+
+9:30 AM - 10:00 AM
+
+Inaugural Session Keynote / Guest Speech by Speaker(s)
+
+10:00 AM- 10:15 AM
+
+Breakfast & Tea Break
+
+10:15 AM - 1:00 PM
+
+Technical Session-1
+
+1:00 PM - 2:00 PM
+
+Lunch
+
+2:00 PM - 4:00 PM
+
+Technical Session-2
+
+4:00 PM - 4:30 PM
+
+Certificate Distribution & Award Ceremony
+
+4:30 PM - 4:45 PM
+
+Closing Ceremony"""
+
+
+def resolve_conference_programme(conference):
+    """Return custom programme text from Firebase, or the global default."""
+    if not conference:
+        return DEFAULT_CONFERENCE_PROGRAMME
+    raw = conference.get('programme')
+    if raw is None:
+        return DEFAULT_CONFERENCE_PROGRAMME
+    text = str(raw).strip()
+    return text if text else DEFAULT_CONFERENCE_PROGRAMME
+
 
 def get_conference_data(conference_id):
     """Get conference data from Firebase"""
@@ -9829,11 +9959,12 @@ def generate_acceptance_letter_pdf(paper_data, conference_data, registration_dat
 
     # ── Overlay a clickable hyperlink annotation using ReportLab ──────────────
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import SimpleDocTemplate
-        from reportlab.lib.utils import ImageReader
-        from reportlab.pdfgen import canvas as rl_canvas
-        import pypdf
+        # Optional deps (see requirements.txt); analyzer may not see venv/stubs.
+        from reportlab.lib.pagesizes import A4  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        from reportlab.platypus import SimpleDocTemplate  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        from reportlab.lib.utils import ImageReader  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        from reportlab.pdfgen import canvas as rl_canvas  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
+        import pypdf  # pyright: ignore[reportMissingImports, reportMissingModuleSource]
 
         # Build a transparent ReportLab overlay PDF with just the link annotation
         overlay_buf = io.BytesIO()
@@ -10663,12 +10794,15 @@ def conference_details(conference_id):
                 if latest_submission_id and latest_submission:
                     user_submission_status = latest_submission.get('status')
 
-        return render_template('conferences/details.html',
-                             conference=conference,
-                             conference_id=conference_id,
-                             user_can_register=user_can_register,
-                             user_submission_status=(user_submission_status or '').lower(),
-                             site_design=get_site_design())
+        return render_template(
+            'conferences/details.html',
+            conference=conference,
+            conference_id=conference_id,
+            user_can_register=user_can_register,
+            user_submission_status=(user_submission_status or '').lower(),
+            conference_programme=resolve_conference_programme(conference),
+            site_design=get_site_design(),
+        )
     except Exception as e:
         print(f"Error loading conference details: {e}")
         flash('Error loading conference details.', 'error')
@@ -12106,11 +12240,17 @@ def admin_conference_details(conference_id):
                 reg_data['_author_papers'] = []
                 reg_data['_author_submission_count'] = 0
         
-        return render_template('admin/conference_details.html',
-                             conference=conference,
-                             conference_id=conference_id,
-                             registrations=conference_registrations,
-                             site_design=get_site_design())
+        return render_template(
+            'admin/conference_details.html',
+            conference=conference,
+            conference_id=conference_id,
+            registrations=conference_registrations,
+            conference_programme_display=resolve_conference_programme(conference),
+            conference_programme_is_custom=bool(
+                str(conference.get('programme') or '').strip()
+            ),
+            site_design=get_site_design(),
+        )
     except Exception as e:
         print(f"Error loading conference details: {e}")
         flash('Error loading conference details.', 'error')
@@ -12223,7 +12363,14 @@ def edit_conference(conference_id):
             # Update basic info
             basic_info_ref = db.reference(f'conferences/{conference_id}/basic_info')
             basic_info_ref.update(basic_info)
-            
+
+            programme_ref = db.reference(f'conferences/{conference_id}/programme')
+            programme_val = (request.form.get('programme') or '').strip()
+            if programme_val:
+                programme_ref.set(programme_val)
+            else:
+                programme_ref.delete()
+
             # Update settings if provided
             if request.form.get('update_settings') == 'on':
                 settings_data = {
@@ -13397,6 +13544,14 @@ Global Conferences
 
     except Exception as e:
         print(f"Error sending guest speaker rejection email: {e}")
+
+# Ensure peer-review route is registered (guards against stale dev reloaders or partial imports).
+if 'peer_review_process' not in app.view_functions:
+    app.add_url_rule(
+        '/peer-review-process',
+        endpoint='peer_review_process',
+        view_func=peer_review_process,
+    )
 
 if __name__ == '__main__':
     # Create admin user on startup

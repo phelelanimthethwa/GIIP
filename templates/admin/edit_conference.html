@@ -107,6 +107,15 @@
                             <textarea class="form-control" id="conferenceDescription" name="description" rows="3">{{ conference.basic_info.description|default('') }}</textarea>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="conferenceProgramme" class="form-label">Conference programme</label>
+                            <textarea class="form-control font-monospace small" id="conferenceProgramme" name="programme" rows="14" placeholder="Leave empty to use the default GIIR tentative programme on the public conference page.">{{ conference.programme|default('') }}</textarea>
+                            <div class="form-text">
+                                Shown under <strong>Conference programme</strong> on the public conference details page.
+                                Clear this field and save to restore the default schedule.
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">

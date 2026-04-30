@@ -414,7 +414,8 @@
                     <tbody>
                         {% if submissions %}
                         {% for paper_id, paper in submissions.items() %}
-                        <tr class="submission-row" data-status="{{ paper.status|default('pending') }}">
+                        <tr class="submission-row" data-status="{{ paper.status|default('pending') }}"
+                            data-submission-key="{{ paper_id|e }}">
                             <td>
                                 <div class="paper-title">{{ paper.paper_title }}</div>
                                 {% if paper._conference_name %}
@@ -586,6 +587,23 @@
                                         <i class="fas fa-times"></i> Reject
                                     </button>
                                     {% endif %}
+                                    {% if status in ['accepted', 'rejected', 'revision'] %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        title="Change decision and notify the author"
+                                        onclick="openChangeStatusModal('{{ paper_id|e }}', '{{ paper._paper_id|e }}', '{{ paper._conference_id|e }}', '{{ status|e }}')">
+                                        <i class="fas fa-edit"></i> Change status
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info btn-sm"
+                                        title="{% if status == 'accepted' %}Resend acceptance letter (PDF) by email{% elif status == 'rejected' %}Resend rejection email{% else %}Resend revision request email{% endif %}"
+                                        onclick="resendDecisionEmail('{{ paper._paper_id|e }}', '{{ paper._conference_id|e }}', '{{ status|e }}')">
+                                        <i class="fas fa-envelope"></i>
+                                        {% if status == 'accepted' %}
+                                        Resend letter
+                                        {% else %}
+                                        Resend email
+                                        {% endif %}
+                                    </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -643,6 +661,37 @@
         </div>
     </div>
 </div>
+
+<!-- Change submission status (after a decision exists) -->
+<div class="modal fade" id="changeSubmissionStatusModal" tabindex="-1" aria-labelledby="changeSubmissionStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changeSubmissionStatusModalLabel">Change submission status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    The author will receive the same notification email as when you first set this status (acceptance letter with PDF when accepted and a conference is linked).
+                </p>
+                <label for="changeStatusSelect" class="form-label">New status</label>
+                <select class="form-select mb-3" id="changeStatusSelect">
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="revision">Revision required</option>
+                </select>
+                <label for="changeStatusComments" class="form-label">Comments to author <span class="text-muted fw-normal">(optional)</span></label>
+                <textarea class="form-control" id="changeStatusComments" rows="4" placeholder="Optional notes included in the email to the author"></textarea>
+                <input type="hidden" id="changeStatusPaperId" value="">
+                <input type="hidden" id="changeStatusConferenceId" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="changeStatusSubmitBtn" onclick="submitChangeStatusFromModal()">Save &amp; notify</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 
 {% block scripts %}
@@ -685,6 +734,117 @@
                 { targets: 3, type: "date" }
             ]
         });
+    }
+
+    function openChangeStatusModal(submissionKey, paperId, conferenceId, currentStatus) {
+        document.getElementById('changeStatusPaperId').value = paperId || '';
+        document.getElementById('changeStatusConferenceId').value = conferenceId || '';
+        const sel = document.getElementById('changeStatusSelect');
+        const allowed = ['accepted', 'rejected', 'revision'];
+        const cur = (currentStatus || 'pending').toLowerCase();
+        sel.value = allowed.indexOf(cur) >= 0 ? cur : 'accepted';
+        const meta = (submissionsData && submissionKey) ? submissionsData[submissionKey] : null;
+        const ta = document.getElementById('changeStatusComments');
+        ta.value = (meta && meta.review_comments) ? meta.review_comments : '';
+        const modalEl = document.getElementById('changeSubmissionStatusModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    async function submitChangeStatusFromModal() {
+        const paperId = document.getElementById('changeStatusPaperId').value;
+        const conferenceId = document.getElementById('changeStatusConferenceId').value;
+        const status = document.getElementById('changeStatusSelect').value;
+        const comments = document.getElementById('changeStatusComments').value.trim();
+        const ok = await window.adminConfirm({
+            title: 'Update submission status',
+            message: 'Save this status and send the notification email to the author?',
+            confirmText: 'Save & notify',
+            cancelText: 'Cancel',
+            variant: status === 'accepted' ? 'success' : status === 'rejected' ? 'danger' : 'primary'
+        });
+        if (!ok) {
+            return;
+        }
+        const requestData = { status: status, comments: comments };
+        if (conferenceId) {
+            requestData.conference_id = conferenceId;
+        }
+        const btn = document.getElementById('changeStatusSubmitBtn');
+        if (btn) {
+            btn.disabled = true;
+        }
+        fetch('/admin/papers/' + encodeURIComponent(paperId) + '/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        })
+            .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+            .then(function (result) {
+                if (result.data && result.data.success) {
+                    const modalEl = document.getElementById('changeSubmissionStatusModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const inst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                        inst.hide();
+                    }
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.data && result.data.error ? result.data.error : 'Unknown error'));
+                }
+            })
+            .catch(function (err) {
+                console.error(err);
+                alert('Error updating status.');
+            })
+            .finally(function () {
+                if (btn) {
+                    btn.disabled = false;
+                }
+            });
+    }
+
+    async function resendDecisionEmail(paperId, conferenceId, currentStatus) {
+        const st = (currentStatus || '').toLowerCase();
+        const title = st === 'accepted' ? 'Resend acceptance letter' : 'Resend decision email';
+        const message = st === 'accepted'
+            ? 'Send the acceptance letter (with PDF attachment) again to the author?'
+            : 'Send the ' + (st === 'rejected' ? 'rejection' : 'revision request') + ' email again using the saved comments?';
+        const ok = await window.adminConfirm({
+            title: title,
+            message: message,
+            confirmText: 'Send',
+            cancelText: 'Cancel',
+            variant: 'info'
+        });
+        if (!ok) {
+            return;
+        }
+        const body = {};
+        if (conferenceId) {
+            body.conference_id = conferenceId;
+        }
+        fetch('/admin/papers/' + encodeURIComponent(paperId) + '/resend-decision-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+            .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+            .then(function (result) {
+                const d = result.data || {};
+                if (d.success) {
+                    if (d.email_sent) {
+                        showSubmissionToast('Email sent.', 'success');
+                    } else {
+                        showSubmissionToast('Request completed but the mailer reported failure. Check logs and Resend.', 'error');
+                    }
+                } else {
+                    alert(d.error || 'Request failed');
+                }
+            })
+            .catch(function (err) {
+                console.error(err);
+                alert('Error sending email.');
+            });
     }
 
     async function updateStatus(id, status, conferenceId = '') {

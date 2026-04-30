@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}The Peer Review Process for GIIR - Global Conferences{% endblock %}
+{% block meta_description %}How GIIR handles paper submission, editorial checks, reviewer invitations, and decisions—from first upload to acceptance or revision.{% endblock %}
+
+{% block content %}
+<div class="peer-review-page container py-4 py-md-5">
+    <h1 class="page-title mb-4">The Peer Review Process for GIIR</h1>
+
+    <ol class="peer-review-steps list-unstyled">
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">1. Submission of paper</h2>
+            <p class="mb-0">The corresponding or submitting author submits the paper to GIIR using the Paper online submission system.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">2. Editorial Office assessment</h2>
+            <p class="mb-0">The Editorial Office checks that the paper adheres to the requirements described in the GIIR Author Guidelines. The quality of the paper is not assessed at this point.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">3. Appraisal by the Editor</h2>
+            <p class="mb-0">The GIIR Editor assesses the paper, considering its scope, originality, and merits. S/he may reject the paper at this stage.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">4. Invitation to reviewers</h2>
+            <p class="mb-0">The editor invites potential reviewers, sending additional invitations as needed.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">5. Response to invitations</h2>
+            <p class="mb-0">Potential reviewers assess the invitation based on their expertise, conflicts of interest, and availability, then accept or decline. If declining, they may suggest alternative reviewers.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">6. The review is conducted</h2>
+            <p class="mb-0">The reviewer dedicates time to read the paper multiple times. The first read forms an initial impression; if major issues are found, they may reject the paper at this stage. Otherwise, they take detailed notes during subsequent readings to prepare a point-by-point review, which is submitted along with their recommendation (revise, accept, or reject).</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">7. GIIR evaluates the reviews</h2>
+            <p class="mb-0">The editor considers all the returned reviews before making a decision. If the reviews differ widely, the editor may invite an additional reviewer for another opinion before deciding.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">8. The decision is communicated</h2>
+            <p class="mb-0">The editor sends a decision email to the author, including any relevant reviewer comments. Comments will be anonymous if the GIIR follows a single-anonymous or double-anonymous peer review model.</p>
+        </li>
+        <li class="peer-review-step mb-4">
+            <h2 class="h5 text-primary">9. Next steps</h2>
+            <p>If accepted, the paper is sent to production. If the article is rejected or sent back for either major or minor revision, the handling editor should include constructive comments from reviewers to help the author improve the article. At this point, reviewers should also be sent an email letting them know the outcome of their review. If the paper was sent back for revision, the reviewers should expect to receive a new version, unless they have opted out of further participation. However, where only minor changes were requested, this follow-up review might be done by the editor.</p>
+        </li>
+    </ol>
+</div>
+
+<style>
+.peer-review-page {
+    max-width: 860px;
+}
+.peer-review-page .page-title {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 700;
+    color: var(--primary-color);
+}
+.peer-review-step p {
+    line-height: 1.7;
+    color: var(--text-color);
+}
+</style>
+{% endblock %}
