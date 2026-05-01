@@ -9716,22 +9716,63 @@ def _draw_wrapped_text(draw, text, x, y, font, fill, max_width, line_spacing=6):
 
 def _load_letter_stamp(target_width=220):
     """Load the official GIIR stamp from Firebase Storage for PDF letters."""
-    try:
-        bucket = storage.bucket('giir-66ae6.firebasestorage.app')
-        blob = bucket.blob('stamp/GIIR_STAMP.png')
-        if not blob.exists():
-            return None
+    bucket_candidates = []
+    configured_bucket = ((app.config.get('FIREBASE_CONFIG') or {}).get('storageBucket') or '').strip()
+    env_bucket = (os.environ.get('FIREBASE_STORAGE_BUCKET') or '').strip()
+    project_id = (
+        (os.environ.get('FIREBASE_PROJECT_ID') or '').strip()
+        or ((app.config.get('FIREBASE_CONFIG') or {}).get('projectId') or '').strip()
+    )
 
-        stamp_bytes = blob.download_as_bytes()
-        stamp = Image.open(io.BytesIO(stamp_bytes)).convert('RGBA')
-        if target_width and stamp.width > 0:
-            aspect_ratio = stamp.height / stamp.width
-            target_height = max(1, int(target_width * aspect_ratio))
-            stamp = stamp.resize((target_width, target_height), Image.LANCZOS)
-        return stamp
-    except Exception as stamp_err:
-        print(f"[PDF] Could not load GIIR stamp: {stamp_err}")
-        return None
+    if configured_bucket:
+        bucket_candidates.append(configured_bucket)
+    if env_bucket and env_bucket not in bucket_candidates:
+        bucket_candidates.append(env_bucket)
+    if project_id:
+        for derived in (f"{project_id}.firebasestorage.app", f"{project_id}.appspot.com"):
+            if derived not in bucket_candidates:
+                bucket_candidates.append(derived)
+    if 'giir-66ae6.firebasestorage.app' not in bucket_candidates:
+        bucket_candidates.append('giir-66ae6.firebasestorage.app')
+
+    stamp_paths = []
+    env_stamp_path = (os.environ.get('LETTER_STAMP_PATH') or '').strip()
+    if env_stamp_path:
+        stamp_paths.append(env_stamp_path)
+    for path in ('stamp/GIIR_STAMP.png', 'stamp/giir_stamp.png', 'stamps/GIIR_STAMP.png'):
+        if path not in stamp_paths:
+            stamp_paths.append(path)
+
+    attempted = []
+    for bucket_name in bucket_candidates:
+        for stamp_path in stamp_paths:
+            attempted.append(f"{bucket_name}/{stamp_path}")
+            try:
+                bucket = storage.bucket(bucket_name)
+                blob = bucket.blob(stamp_path)
+                if not blob.exists():
+                    continue
+
+                stamp_bytes = blob.download_as_bytes()
+                if not stamp_bytes:
+                    print(f"[PDF] Empty stamp file at {bucket_name}/{stamp_path}")
+                    continue
+
+                stamp = Image.open(io.BytesIO(stamp_bytes))
+                stamp.load()
+                stamp = stamp.convert('RGBA')
+                if target_width and stamp.width > 0:
+                    aspect_ratio = stamp.height / stamp.width
+                    target_height = max(1, int(target_width * aspect_ratio))
+                    stamp = stamp.resize((target_width, target_height), Image.LANCZOS)
+
+                print(f"[PDF] Loaded GIIR stamp from {bucket_name}/{stamp_path}")
+                return stamp
+            except Exception as stamp_err:
+                print(f"[PDF] Stamp load failed for {bucket_name}/{stamp_path}: {stamp_err}")
+
+    print(f"[PDF] Could not load GIIR stamp. Tried: {', '.join(attempted)}")
+    return None
 
 
 def _draw_letter_stamp(image, width, height, margin, stamp_target_width=220):
