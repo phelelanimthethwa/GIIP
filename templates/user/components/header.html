@@ -29,20 +29,19 @@
                         <li><a href="{{ url_for('about') }}" class="dropdown-item">
                             <i class="fas fa-university"></i> About Conference
                         </a></li>
+                        <li><a href="{{ url_for('schedule') }}" class="dropdown-item">
+                            <i class="fas fa-calendar-alt"></i> Conference Schedule
+                        </a></li>
                         <li><a href="{{ url_for('guest_speakers') }}" class="dropdown-item">
                             <i class="fas fa-microphone"></i> Guest Speakers
                         </a></li>
                         <li><a href="{{ url_for('guest_speaker_application') }}" class="dropdown-item">
                             <i class="fas fa-microphone-alt"></i> Apply as Guest Speaker
                         </a></li>
+                        <li><a href="{{ url_for('video_conference') }}" class="dropdown-item">
+                            <i class="fas fa-video"></i> Video Conference
+                        </a></li>
                     </ul>
-                </li>
-
-                <!-- Call for Papers - Standalone -->
-                <li class="nav-item">
-                    <a href="{{ url_for('call_for_papers') }}" class="nav-link">
-                        <i class="fas fa-file-signature"></i> Call for Papers
-                    </a>
                 </li>
 
                 <!-- Papers Dropdown -->
@@ -51,6 +50,9 @@
                         <i class="fas fa-file-alt"></i> Papers
                     </a>
                     <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('call_for_papers') }}" class="dropdown-item">
+                            <i class="fas fa-file-signature"></i> Call for Papers
+                        </a></li>
                         <li><a href="{{ url_for('paper_submission') }}" class="dropdown-item">
                             <i class="fas fa-upload"></i> Submit Paper
                         </a></li>
@@ -62,6 +64,9 @@
                         </a></li>
                         <li><a href="{{ url_for('conference_proceedings') }}" class="dropdown-item">
                             <i class="fas fa-download"></i> Templates & Proceedings
+                        </a></li>
+                        <li><a href="{{ url_for('downloads') }}" class="dropdown-item">
+                            <i class="fas fa-file-download"></i> Downloads
                         </a></li>
                     </ul>
                 </li>

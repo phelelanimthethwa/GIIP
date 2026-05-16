@@ -7329,7 +7329,7 @@ def admin_call_for_papers_content():
         # Ensure plagiarism policy section exists
         if 'plagiarism_policy' not in cfp_content:
             cfp_content['plagiarism_policy'] = {
-                'enabled': False,
+                'enabled': True,
                 'title': 'Plagiarism Policy & Publication Ethics',
                 'content': 'The 9th International Academic Conference on Education follows strict anti-plagiarism policies and, as such, checks every submission for plagiarism using Turnitin. All articles submitted to the conference first undergo a plagiarism check before being sent to our scientific committee for review. The submission will be automatically rejected at any time if found plagiarized. If you\'d like to find out more information about the Turnitin software, click on the following link:',
                 'turnitin_url': 'https://www.turnitin.com/'
@@ -7352,7 +7352,7 @@ def admin_call_for_papers_content():
             'important_dates': [],
             'submission_guidelines': [],
             'plagiarism_policy': {
-                'enabled': False,
+                'enabled': True,
                 'title': 'Plagiarism Policy & Publication Ethics',
                 'content': 'The 9th International Academic Conference on Education follows strict anti-plagiarism policies and, as such, checks every submission for plagiarism using Turnitin. All articles submitted to the conference first undergo a plagiarism check before being sent to our scientific committee for review. The submission will be automatically rejected at any time if found plagiarized. If you\'d like to find out more information about the Turnitin software, click on the following link:',
                 'turnitin_url': 'https://www.turnitin.com/'
