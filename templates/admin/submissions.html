@@ -398,6 +398,14 @@
     {% endwith %}
 
     <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white border-bottom">
+            <h6 class="m-0 font-weight-bold text-primary">All Submissions</h6>
+            {% if submissions %}
+            <a href="{{ url_for('download_all_submissions') }}" class="btn btn-success btn-sm">
+                <i class="fas fa-file-archive"></i> Download All Attachments (.zip)
+            </a>
+            {% endif %}
+        </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table" id="submissionsTable">

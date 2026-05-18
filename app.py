@@ -5914,6 +5914,129 @@ def admin_submissions():
             site_design=get_site_design()
         )
 
+@app.route('/admin/submissions/download-all')
+@login_required
+@admin_required
+def download_all_submissions():
+    try:
+        import zipfile
+        
+        all_submissions = {}
+
+        # 1. Legacy/global paper submissions
+        papers = db.reference('papers').get() or {}
+        for paper_id, paper in papers.items():
+            if not paper:
+                continue
+            all_submissions[f'global::{paper_id}'] = {
+                'paper': paper,
+                'paper_id': paper_id,
+                'conference_id': ''
+            }
+
+        # 2. Conference-scoped submissions
+        conferences = get_all_conferences()
+        for conference_id, conference in conferences.items():
+            if not conference:
+                continue
+            conference_papers = conference.get('paper_submissions', {}) or {}
+            for paper_id, paper in conference_papers.items():
+                if not paper or paper.get('is_deleted') or (paper.get('status') or '').lower() == 'withdrawn':
+                    continue
+                all_submissions[f'{conference_id}::{paper_id}'] = {
+                    'paper': paper,
+                    'paper_id': paper_id,
+                    'conference_id': conference_id
+                }
+
+        if not all_submissions:
+            flash('No submissions found to download.', 'error')
+            return redirect(url_for('admin_submissions'))
+
+        # 3. Create ZIP archive in-memory
+        zip_buffer = io.BytesIO()
+        added_filenames = set()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for key, data in all_submissions.items():
+                paper = data['paper']
+                paper_id = data['paper_id']
+                file_base64 = paper.get('file_data')
+                
+                if not file_base64:
+                    continue
+
+                try:
+                    file_bytes = base64.b64decode(file_base64)
+                except Exception as e:
+                    print(f"Error decoding file for paper {paper_id}: {str(e)}")
+                    continue
+
+                # Get author name
+                author_name = "unknown"
+                authors = paper.get('authors')
+                if authors:
+                    if isinstance(authors, list) and len(authors) > 0 and isinstance(authors[0], dict):
+                        author_name = authors[0].get('name', 'unknown')
+                    elif isinstance(authors, dict):
+                        first_author = next(iter(authors.values()), {})
+                        if isinstance(first_author, dict):
+                            author_name = first_author.get('name', 'unknown')
+                elif paper.get('user_email'):
+                    author_name = paper.get('user_email').split('@')[0]
+
+                paper_title = paper.get('paper_title', 'untitled')
+
+                # Sanitize components for safe file name in ZIP
+                safe_author = secure_filename(author_name) or 'unknown'
+                safe_title = secure_filename(paper_title) or 'untitled'
+                safe_paper_id = secure_filename(paper_id)
+
+                original_filename = paper.get('file_name', 'paper.pdf')
+                _, ext = os.path.splitext(original_filename)
+                if not ext or len(ext) > 10:
+                    ext = '.pdf'
+
+                zip_filename = f"{safe_author}_{safe_title}_{safe_paper_id}{ext}"
+                if len(zip_filename) > 120:
+                    name_part = f"{safe_author[:30]}_{safe_title[:50]}_{safe_paper_id}"
+                    zip_filename = f"{name_part}{ext}"
+
+                # Ensure unique filename within the archive
+                counter = 1
+                base_zip_filename = zip_filename
+                while zip_filename in added_filenames:
+                    name_part, ext_part = os.path.splitext(base_zip_filename)
+                    zip_filename = f"{name_part}_{counter}{ext_part}"
+                    counter += 1
+
+                added_filenames.add(zip_filename)
+                zip_file.writestr(zip_filename, file_bytes)
+
+        if not added_filenames:
+            flash('No attachments found with valid file data.', 'error')
+            return redirect(url_for('admin_submissions'))
+
+        zip_buffer.seek(0)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        download_name = f"GIIP_submissions_{timestamp}.zip"
+
+        response = send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=download_name,
+            max_age=0
+        )
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        return response
+
+    except Exception as e:
+        print(f"Error bulk downloading papers: {str(e)}")
+        flash(f'Error bulk downloading papers: {str(e)}', 'error')
+        return redirect(url_for('admin_submissions'))
+
 @app.route('/admin/papers/<paper_id>/status', methods=['POST'])
 @login_required
 @admin_required
