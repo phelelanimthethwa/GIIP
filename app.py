@@ -6037,6 +6037,168 @@ def download_all_submissions():
         flash(f'Error bulk downloading papers: {str(e)}', 'error')
         return redirect(url_for('admin_submissions'))
 
+@app.route('/admin/papers/<paper_id>/delete-attachment', methods=['POST'])
+@login_required
+@admin_required
+def delete_paper_attachment(paper_id):
+    try:
+        data = request.get_json(silent=True) or {}
+        conference_id = (data.get('conference_id') or request.args.get('conference_id') or '').strip()
+        
+        # Determine paper path in Firebase (conference-scoped or legacy global)
+        paper_path = f'conferences/{conference_id}/paper_submissions/{paper_id}' if conference_id else f'papers/{paper_id}'
+        paper_ref = db.reference(paper_path)
+        paper = paper_ref.get()
+        
+        if not paper:
+            return jsonify({'success': False, 'error': 'Paper not found'}), 404
+            
+        # Update paper to remove file_data
+        updates = {
+            'file_data': None,
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Also clean up file_data inside historical entries in file_history if they exist
+        file_history = paper.get('file_history')
+        if file_history:
+            if isinstance(file_history, list):
+                updated_history = []
+                for entry in file_history:
+                    if isinstance(entry, dict):
+                        entry_copy = dict(entry)
+                        entry_copy['file_data'] = None
+                        updated_history.append(entry_copy)
+                    else:
+                        updated_history.append(entry)
+                updates['file_history'] = updated_history
+            elif isinstance(file_history, dict):
+                updated_history = {}
+                for k, entry in file_history.items():
+                    if isinstance(entry, dict):
+                        entry_copy = dict(entry)
+                        entry_copy['file_data'] = None
+                        updated_history[k] = entry_copy
+                    else:
+                        updated_history[k] = entry
+                updates['file_history'] = updated_history
+                
+        paper_ref.update(updates)
+        
+        # Also sync to user submissions index if conference-scoped
+        if conference_id and paper.get('user_id'):
+            user_submissions_ref = db.reference(f'user_paper_submissions/{paper.get("user_id")}')
+            user_submissions = user_submissions_ref.get() or {}
+            for submission_id, submission in user_submissions.items():
+                if (
+                    submission
+                    and submission.get('conference_id') == conference_id
+                    and submission.get('paper_id') == paper_id
+                ):
+                    user_submissions_ref.child(submission_id).update({
+                        'file_data': None,
+                        'updated_at': datetime.now().isoformat()
+                    })
+                    
+        return jsonify({'success': True, 'message': 'Attachment successfully deleted.'})
+        
+    except Exception as e:
+        print(f"Error deleting paper attachment: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/submissions/delete-all-attachments', methods=['POST'])
+@login_required
+@admin_required
+def delete_all_attachments():
+    try:
+        all_papers_refs = []  # List of tuples: (ref, user_id, paper_id, conference_id)
+        
+        # Legacy/global paper submissions
+        papers = db.reference('papers').get() or {}
+        for paper_id, paper in papers.items():
+            if not paper:
+                continue
+            ref = db.reference(f'papers/{paper_id}')
+            all_papers_refs.append((ref, paper.get('user_id'), paper_id, ''))
+
+        # Conference-scoped submissions
+        conferences = get_all_conferences()
+        for conference_id, conference in conferences.items():
+            if not conference:
+                continue
+            conference_papers = conference.get('paper_submissions', {}) or {}
+            for paper_id, paper in conference_papers.items():
+                if not paper or paper.get('is_deleted') or (paper.get('status') or '').lower() == 'withdrawn':
+                    continue
+                ref = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}')
+                all_papers_refs.append((ref, paper.get('user_id'), paper_id, conference_id))
+
+        if not all_papers_refs:
+            return jsonify({'success': False, 'error': 'No submissions found to clean.'}), 404
+
+        count = 0
+        for ref, user_id, paper_id, conference_id in all_papers_refs:
+            paper = ref.get()
+            if not paper or not paper.get('file_data'):
+                continue
+                
+            updates = {
+                'file_data': None,
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            # Clean history
+            file_history = paper.get('file_history')
+            if file_history:
+                if isinstance(file_history, list):
+                    updated_history = []
+                    for entry in file_history:
+                        if isinstance(entry, dict):
+                            entry_copy = dict(entry)
+                            entry_copy['file_data'] = None
+                            updated_history.append(entry_copy)
+                        else:
+                            updated_history.append(entry)
+                    updates['file_history'] = updated_history
+                elif isinstance(file_history, dict):
+                    updated_history = {}
+                    for k, entry in file_history.items():
+                        if isinstance(entry, dict):
+                            entry_copy = dict(entry)
+                            entry_copy['file_data'] = None
+                            updated_history[k] = entry_copy
+                        else:
+                            updated_history[k] = entry
+                    updates['file_history'] = updated_history
+            
+            ref.update(updates)
+            
+            # Update user submissions index
+            if conference_id and user_id:
+                user_subs_ref = db.reference(f'user_paper_submissions/{user_id}')
+                user_submissions = user_subs_ref.get() or {}
+                for sub_key, submission in user_submissions.items():
+                    if (
+                        submission
+                        and submission.get('conference_id') == conference_id
+                        and submission.get('paper_id') == paper_id
+                    ):
+                        user_subs_ref.child(sub_key).update({
+                            'file_data': None,
+                            'updated_at': datetime.now().isoformat()
+                        })
+            count += 1
+            
+        return jsonify({
+            'success': True,
+            'message': f'Successfully deleted attachments from {count} submission(s) to free database space.'
+        })
+        
+    except Exception as e:
+        print(f"Error bulk deleting attachments: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/admin/papers/<paper_id>/status', methods=['POST'])
 @login_required
 @admin_required

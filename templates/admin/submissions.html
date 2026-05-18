@@ -401,9 +401,14 @@
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white border-bottom">
             <h6 class="m-0 font-weight-bold text-primary">All Submissions</h6>
             {% if submissions %}
-            <a href="{{ url_for('download_all_submissions') }}" class="btn btn-success btn-sm">
-                <i class="fas fa-file-archive"></i> Download All Attachments (.zip)
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('download_all_submissions') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-archive"></i> Download All Attachments (.zip)
+                </a>
+                <button type="button" onclick="deleteAllAttachments()" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash-alt"></i> Delete All Attachments
+                </button>
+            </div>
             {% endif %}
         </div>
         <div class="card-body">
@@ -575,6 +580,11 @@
                                     </a>
                                     {% endif %}
                                     {% endif %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        title="Permanently delete attachment from database"
+                                        onclick="deleteAttachment('{{ paper._paper_id|e }}', '{{ paper._conference_id|e }}')">
+                                        <i class="fas fa-trash-alt"></i> Delete file
+                                    </button>
                                     {% endif %}
                                     {% if paper._conference_id %}
                                     <button type="button" class="btn btn-outline-warning btn-sm"
@@ -1043,6 +1053,90 @@
             element.classList.remove('downloading');
             icon.className = 'fas fa-download';
         }, 3000);
+    }
+
+    async function deleteAttachment(paperId, conferenceId = '') {
+        const ok = await window.adminConfirm({
+            title: 'Delete paper attachment',
+            message: 'Are you sure you want to permanently delete this paper attachment from the database? This action is irreversible and the file will be permanently lost.',
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            variant: 'danger'
+        });
+        if (!ok) {
+            return;
+        }
+
+        const requestData = {};
+        if (conferenceId) {
+            requestData.conference_id = conferenceId;
+        }
+
+        fetch(`/admin/papers/${paperId}/delete-attachment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSubmissionToast(data.message || 'Attachment deleted.', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting attachment. Please try again.');
+            });
+    }
+
+    async function deleteAllAttachments() {
+        const ok = await window.adminConfirm({
+            title: 'Delete ALL paper attachments',
+            message: 'WARNING: Are you sure you want to permanently delete ALL attachments from ALL paper submissions in the database to reclaim database space? This action is irreversible and ALL files will be permanently lost.',
+            confirmText: 'Delete All',
+            cancelText: 'Cancel',
+            variant: 'danger'
+        });
+        if (!ok) {
+            return;
+        }
+        
+        if (typeof window.showAdminReassignLoader === 'function') {
+            window.showAdminReassignLoader(
+                'Deleting all attachments…',
+                'Clearing file data from all database submissions. Please wait.'
+            );
+        }
+
+        fetch('/admin/submissions/delete-all-attachments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSubmissionToast(data.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting all attachments. Please try again.');
+            })
+            .finally(() => {
+                if (typeof window.hideAdminReassignLoader === 'function') {
+                    window.hideAdminReassignLoader();
+                }
+            });
     }
 
     // Initialize when document is ready (jQuery loaded above)
