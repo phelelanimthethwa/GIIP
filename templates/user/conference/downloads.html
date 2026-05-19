@@ -14,7 +14,13 @@
             <div class="downloads-grid">
                 {% for category, items in downloads.items() %}
                 <div class="category-section">
-                    <h2><i class="fas fa-folder-open"></i> {{ category }}</h2>
+                    <h2><i class="fas fa-folder-open"></i> 
+                        {% if category == 'manuscript_templates' %}
+                            Templates
+                        {% else %}
+                            {{ category.replace('_', ' ').title() }}
+                        {% endif %}
+                    </h2>
                     <div class="files-grid">
                         {% for item in items %}
                         <div class="file-card">
