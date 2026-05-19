@@ -2277,13 +2277,28 @@ def admin_dashboard():
         except Exception as yoco_err:
             print(f"Note: Could not fetch Yoco payments: {yoco_err}")
         
-        # Get all submissions
-        submissions_ref = db.reference('submissions')
-        submissions = submissions_ref.get() or {}
+        # Get all submissions (both legacy/global papers and conference-scoped ones)
+        submissions = {}
+        
+        # 1. Legacy/global paper submissions
+        papers = db.reference('papers').get() or {}
+        for paper_id, paper in papers.items():
+            if paper:
+                submissions[f'global::{paper_id}'] = paper
+                
+        # 2. Conference-scoped submissions
+        for conf_id, conf_data in conferences.items():
+            if conf_data:
+                conf_papers = conf_data.get('paper_submissions', {}) or {}
+                for paper_id, paper in conf_papers.items():
+                    if paper:
+                        submissions[f'{conf_id}::{paper_id}'] = paper
         
         # Calculate accepted submissions
-        accepted_submissions = sum(1 for sub in submissions.values() 
-                                  if sub and sub.get('status', '').lower() in ['accepted', 'approved']) if submissions else 0
+        accepted_submissions = sum(
+            1 for sub in submissions.values() 
+            if sub and sub.get('status', '').lower() in ['accepted', 'approved']
+        )
         
         # Calculate stats
         stats = {
@@ -2292,9 +2307,9 @@ def admin_dashboard():
             'active_conferences': sum(1 for conf in conferences.values() 
                                     if conf and conf.get('basic_info', {}).get('status') == 'active'),
             'total_registrations': total_registrations,
-            'total_submissions': len(submissions) if submissions else 0,
+            'total_submissions': len(submissions),
             'pending_registrations': pending_registrations,
-            'pending_submissions': sum(1 for sub in submissions.values() if sub and sub.get('status') == 'pending') if submissions else 0,
+            'pending_submissions': sum(1 for sub in submissions.values() if sub and sub.get('status', '').lower() == 'pending'),
             'accepted_submissions': accepted_submissions,
             'total_admins': sum(1 for user in users.values() if user and user.get('is_admin')),
             'total_regular_users': sum(1 for user in users.values() if user and not user.get('is_admin')),
