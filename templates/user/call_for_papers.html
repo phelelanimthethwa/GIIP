@@ -95,7 +95,7 @@
             <a href="{{ url_for('paper_submission') }}" class="btn btn-primary">
                 <i class="fas fa-upload"></i> {{ cfp_content.cta.submit_button_text|default('Submit Your Paper') }}
             </a>
-            <a href="{{ cfp_content.cta.template_url|default('#') }}" class="btn btn-secondary">
+            <a href="{{ url_for('downloads') }}" class="btn btn-secondary">
                 <i class="fas fa-download"></i> {{ cfp_content.cta.template_button_text|default('Download Template') }}
             </a>
         </div>
