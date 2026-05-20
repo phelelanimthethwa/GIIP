@@ -12444,6 +12444,174 @@ def download_conference_submission(conference_id, paper_id):
         flash('Could not download submission file.', 'error')
         return redirect(url_for('conference_registration', conference_id=conference_id))
 
+@app.route('/conferences/<conference_id>/submissions/<paper_id>/submit-full-paper', methods=['GET', 'POST'])
+@login_required
+def submit_full_paper(conference_id, paper_id):
+    """Submit or update a full paper for an accepted abstract."""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            flash('Conference not found.', 'error')
+            return redirect(url_for('conference_discover'))
+
+        # Get the abstract submission
+        paper = get_conference_submission_for_user(current_user.id, conference_id, paper_id)
+        if not paper:
+            flash('Submission not found.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        # Check if abstract is accepted
+        if (paper.get('status') or '').lower() != 'accepted':
+            flash('Only accepted abstracts can have full papers submitted.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        # Check if registration is paid
+        registration_id = paper.get('registration_id')
+        registration = db.reference(f'registrations/{registration_id}').get() if registration_id else {}
+        payment_status = ((registration or {}).get('payment_status') or '').lower()
+        
+        if payment_status != 'paid':
+            flash('You must complete payment to submit your full paper.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        if request.method == 'GET':
+            return render_template(
+                'conferences/full_paper_submission.html',
+                conference=conference,
+                conference_id=conference_id,
+                paper_id=paper_id,
+                paper=paper,
+                site_design=get_site_design()
+            )
+
+        # POST request - process full paper upload
+        if 'full_paper_file' not in request.files:
+            return jsonify({'success': False, 'message': 'No file provided'}), 400
+
+        file = request.files['full_paper_file']
+        if not file or not file.filename:
+            return jsonify({'success': False, 'message': 'Please select a file'}), 400
+
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({'success': False, 'message': 'Only PDF files are allowed'}), 400
+
+        file_data = file.read()
+        max_size = 10 * 1024 * 1024  # 10MB
+        if len(file_data) > max_size:
+            return jsonify({'success': False, 'message': 'File size must be less than 10MB'}), 400
+
+        now_iso = datetime.now().isoformat()
+
+        # Upload to Firebase Storage
+        try:
+            bucket = storage.bucket()
+            storage_path = f"full_papers/{conference_id}/{paper_id}/{secure_filename(file.filename)}"
+            blob = bucket.blob(storage_path)
+            blob.upload_from_string(file_data, content_type=file.content_type)
+            blob.make_public()
+            
+            # Update database with full paper details
+            paper_ref = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}')
+            paper_ref.update({
+                'full_paper_url': blob.public_url,
+                'full_paper_storage_path': storage_path,
+                'full_paper_name': secure_filename(file.filename),
+                'full_paper_size': len(file_data),
+                'full_paper_submitted_at': now_iso
+            })
+
+            # Send confirmation email
+            try:
+                conference_name = conference.get('basic_info', {}).get('name', 'Conference')
+                email_service.send_full_paper_confirmation({
+                    'authors': paper.get('authors', []),
+                    'paper_title': paper['paper_title'],
+                    'paper_id': paper_id,
+                    'user_email': current_user.email,
+                    'conference_name': conference_name,
+                    'full_paper_submitted_at': now_iso
+                })
+            except Exception as e:
+                print(f"Error sending full paper confirmation email: {str(e)}")
+
+            # Notify admin emails of full paper submission
+            try:
+                admin_emails = get_submission_notification_emails()
+                if admin_emails:
+                    email_service.send_full_paper_submission_notification_to_admins(admin_emails, {
+                        'paper_title': paper['paper_title'],
+                        'paper_id': paper_id,
+                        'conference_name': conference_name,
+                        'authors': paper.get('authors', []),
+                        'submitter_email': current_user.email
+                    })
+            except Exception as e:
+                print(f"Error sending full paper submission notification to admins: {str(e)}")
+
+            return jsonify({
+                'success': True,
+                'message': 'Full paper submitted successfully',
+                'redirect_url': url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id)
+            }), 200
+
+        except Exception as storage_err:
+            print(f"Error uploading full paper to Firebase Storage: {str(storage_err)}")
+            return jsonify({'success': False, 'message': f'Failed to upload file: {str(storage_err)}'}), 500
+
+    except Exception as e:
+        print(f"Error processing full paper submission: {e}")
+        return jsonify({'success': False, 'message': 'Error processing submission'}), 500
+
+@app.route('/conferences/<conference_id>/submissions/<paper_id>/download-full-paper')
+@login_required
+def download_full_paper(conference_id, paper_id):
+    """Download the full paper PDF."""
+    try:
+        paper = get_conference_submission_for_user(
+            current_user.id,
+            conference_id,
+            paper_id,
+            include_deleted=True
+        )
+        if not paper:
+            flash('Submission not found.', 'error')
+            return redirect(url_for('conference_registration', conference_id=conference_id))
+
+        file_bytes = None
+        file_storage_path = paper.get('full_paper_storage_path')
+        
+        if not file_storage_path:
+            flash('Full paper not found.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        try:
+            bucket = storage.bucket()
+            blob = bucket.blob(file_storage_path)
+            file_bytes = blob.download_as_bytes()
+        except Exception as storage_err:
+            print(f"Error downloading full paper from Firebase Storage: {storage_err}")
+            flash('Could not download file from storage.', 'error')
+            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+
+        file_obj = io.BytesIO(file_bytes)
+        original_filename = paper.get('full_paper_name', 'full_paper.pdf')
+        safe_filename = secure_filename(original_filename)
+
+        response = send_file(
+            file_obj,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=safe_filename,
+            max_age=0
+        )
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        return response
+    except Exception as e:
+        print(f"Error downloading full paper: {e}")
+        flash('Could not download full paper.', 'error')
+        return redirect(url_for('conference_registration', conference_id=conference_id))
+
 @app.route('/admin/conferences')
 @login_required
 @admin_required

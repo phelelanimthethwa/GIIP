@@ -15,14 +15,14 @@ Thanks & regards,
 Global Conferences
 """
 
-PAPER_SUBMISSION_CONFIRMATION = """
+ABSTRACT_SUBMISSION_CONFIRMATION = """
 Dear {author_name},
 
-Thank you for submitting your paper to {conference_name}.
+Thank you for submitting your abstract to {conference_name}.
 
 Submission Details:
 - Conference: {conference_name}
-- Paper Title: {paper_title}
+- Abstract Title: {paper_title}
 - Presentation Type: {presentation_type}
 - Submission ID: {paper_id}
 
@@ -32,13 +32,16 @@ Thanks & regards,
 Global Conferences
 """
 
-# HTML acceptance letter (multipart email alongside plain-text PAPER_STATUS_UPDATE['accepted'])
-PAPER_ACCEPTANCE_EMAIL_HTML = """<!DOCTYPE html>
+# Backwards compatibility alias
+PAPER_SUBMISSION_CONFIRMATION = ABSTRACT_SUBMISSION_CONFIRMATION
+
+# HTML acceptance letter for abstract (multipart email alongside plain-text ABSTRACT_STATUS_UPDATE['accepted'])
+ABSTRACT_ACCEPTANCE_EMAIL_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paper accepted</title>
+    <title>Abstract accepted</title>
 </head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f1f5f9;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f1f5f9;">
@@ -59,11 +62,11 @@ PAPER_ACCEPTANCE_EMAIL_HTML = """<!DOCTYPE html>
                     <tr>
                         <td style="padding:32px 40px;color:#334155;font-size:16px;line-height:1.75;">
                             <p style="margin:0 0 16px;">Dear {author_name},</p>
-                            <p style="margin:0 0 16px;"><strong>Congratulations!</strong> We are pleased to inform you that your submission has been <strong>accepted</strong> for presentation at <strong>{conference_name}</strong>.</p>
+                            <p style="margin:0 0 16px;"><strong>Congratulations!</strong> We are pleased to inform you that your abstract submission has been <strong>accepted</strong> for presentation at <strong>{conference_name}</strong>.</p>
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:24px 0;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
                                 <tr>
                                     <td style="padding:20px 24px;">
-                                        <p style="margin:0 0 8px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Paper title</p>
+                                        <p style="margin:0 0 8px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Abstract title</p>
                                         <p style="margin:0 0 16px;color:#0f172a;font-size:17px;font-weight:600;">{title}</p>
                                         <p style="margin:0 0 8px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Presentation format</p>
                                         <p style="margin:0;color:#0f172a;">{type}</p>
@@ -72,13 +75,13 @@ PAPER_ACCEPTANCE_EMAIL_HTML = """<!DOCTYPE html>
                             </table>
                             <p style="margin:0 0 12px;color:#475569;font-size:15px;"><strong>From the committee</strong></p>
                             <p style="margin:0;color:#475569;font-size:15px;white-space:pre-wrap;">{comments}</p>
-                            <p style="margin:28px 0 0;color:#64748b;font-size:14px;">Please prepare your presentation according to the conference guidelines. Further instructions may follow by email.</p>
+                            <p style="margin:28px 0 0;color:#64748b;font-size:14px;">Your next step will be to submit the full paper once your registration is confirmed. Further instructions will be sent by email.</p>
                             <p style="margin:24px 0 0;color:#0f172a;">With kind regards,<br/><strong>Global Conferences</strong></p>
                         </td>
                     </tr>
                     <tr>
                         <td style="background-color:#0f172a;padding:24px 40px;">
-                            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">This message was sent regarding your paper submission. If you have questions, reply to the conference secretariat.</p>
+                            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">This message was sent regarding your abstract submission. If you have questions, reply to the conference secretariat.</p>
                         </td>
                     </tr>
                 </table>
@@ -88,26 +91,29 @@ PAPER_ACCEPTANCE_EMAIL_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
-PAPER_STATUS_UPDATE = {
-    'accepted': """
-Congratulations! Your paper has been accepted for presentation at Global Conferences.
+# Backwards compatibility alias
+PAPER_ACCEPTANCE_EMAIL_HTML = ABSTRACT_ACCEPTANCE_EMAIL_HTML
 
-Paper Details:
+ABSTRACT_STATUS_UPDATE = {
+    'accepted': """
+Congratulations! Your abstract has been accepted for presentation at Global Conferences.
+
+Abstract Details:
 Title: {title}
 Presentation Type: {type}
 
-Please prepare your presentation according to the conference guidelines.
+Your next step is to complete the payment for your registration. Once payment is confirmed, you will be able to submit your full paper.
 {comments}
 
 Thanks & regards,
 Global Conferences
 """,
     'rejected': """
-Thank you for submitting your paper to Global Conferences.
+Thank you for submitting your abstract to Global Conferences.
 
-We regret to inform you that your paper was not accepted for presentation.
+We regret to inform you that your abstract was not accepted for presentation.
 
-Paper Details:
+Abstract Details:
 Title: {title}
 Presentation Type: {type}
 
@@ -120,11 +126,11 @@ Thanks & regards,
 Global Conferences
 """,
     'revision': """
-Thank you for submitting your paper to Global Conferences.
+Thank you for submitting your abstract to Global Conferences.
 
-Your paper requires revisions before it can be accepted.
+Your abstract requires revisions before it can be accepted.
 
-Paper Details:
+Abstract Details:
 Title: {title}
 Presentation Type: {type}
 
@@ -137,6 +143,9 @@ Thanks & regards,
 Global Conferences
 """
 }
+
+# Backwards compatibility alias
+PAPER_STATUS_UPDATE = ABSTRACT_STATUS_UPDATE
 
 WELCOME_EMAIL = """
 Dear {full_name},
@@ -309,6 +318,42 @@ Details:
 - Presentation Type: {presentation_type}
 
 Please log in to the admin dashboard to review this submission.
+
+Thanks & regards,
+Global Conferences
+"""
+
+# Full Paper submission confirmation
+FULL_PAPER_SUBMISSION_CONFIRMATION = """
+Dear {author_name},
+
+Thank you for submitting your full paper to {conference_name}.
+
+Submission Details:
+- Conference: {conference_name}
+- Abstract Title: {paper_title}
+- Submission ID: {paper_id}
+- Submitted: {submitted_at}
+
+Your full paper has been received and is now part of your conference proceedings.
+
+Thanks & regards,
+Global Conferences
+"""
+
+# Admin notification when full paper is submitted
+ADMIN_FULL_PAPER_SUBMISSION_NOTIFICATION = """
+Full Paper Submitted
+
+A full paper has been submitted for {conference_name}.
+
+Details:
+- Abstract Title: {paper_title}
+- Submission ID: {paper_id}
+- Author(s): {author_names}
+- Submitter Email: {submitter_email}
+
+Both the abstract and full paper are now available in the admin dashboard.
 
 Thanks & regards,
 Global Conferences

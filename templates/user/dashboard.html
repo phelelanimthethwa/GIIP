@@ -350,12 +350,12 @@
                         <div class="section-header">
                             <h2 class="section-title">
                                 <i class="fas fa-file-alt me-2"></i>
-                                My Paper Submissions
+                                My Abstract & Paper Submissions
                             </h2>
                             {% if submissions %}
                             <a href="{{ url_for('paper_submission') }}" class="btn btn-primary submit-another-btn">
                                 <i class="fas fa-plus-circle"></i>
-                                Submit Another Paper
+                                Submit Another Abstract
                             </a>
                             {% endif %}
                         </div>
@@ -377,6 +377,16 @@
                                 </div>
                                 <div class="submission-body">
                                     <h3 class="submission-title">{{ submission.paper_title or 'Untitled Paper' }}</h3>
+                                    
+                                    <!-- Abstract Status Badge -->
+                                    <div class="submission-meta">
+                                        {% set abstract_status = (submission.status or 'pending')|lower %}
+                                        <span class="meta-badge abstract-status-badge status-{{ abstract_status }}">
+                                            <i class="fas fa-{{ 'check-circle' if abstract_status in ['accepted', 'approved'] else 'clock' if abstract_status == 'pending' else 'times-circle' }}"></i>
+                                            Abstract: {{ 'Accepted' if abstract_status in ['accepted', 'approved'] else 'Rejected' if abstract_status == 'rejected' else 'Revision Needed' if abstract_status == 'revision' else 'Pending'|title }}
+                                        </span>
+                                    </div>
+                                    
                                     <div class="submission-meta">
                                         {% if submission.research_area %}
                                         <span class="meta-badge">
@@ -413,6 +423,52 @@
                                 </div>
                                 <div class="submission-footer">
                                     {% set submission_status = (submission.status or 'pending')|lower %}
+                                    
+                                    <!-- Full Paper Status Display -->
+                                    <div class="full-paper-status-section">
+                                        {% if submission_status == 'accepted' %}
+                                            {% set registration_id = submission.get('registration_id') %}
+                                            {% if registration_id and registration_id in registrations %}
+                                                {% set registration = registrations[registration_id] %}
+                                                {% set payment_status = (registration.get('payment_status') or '')|lower %}
+                                                {% set has_full_paper = submission.get('full_paper_submitted_at') %}
+                                                
+                                                {% if payment_status == 'paid' %}
+                                                    <!-- Payment is made - show full paper options -->
+                                                    {% if has_full_paper %}
+                                                        <div class="full-paper-status submitted">
+                                                            <i class="fas fa-check-circle"></i>
+                                                            <span>Full Paper: Submitted</span>
+                                                            <small>{{ submission.full_paper_submitted_at[:10] if submission.full_paper_submitted_at|length > 10 else submission.full_paper_submitted_at }}</small>
+                                                        </div>
+                                                    {% else %}
+                                                        <div class="full-paper-status pending">
+                                                            <i class="fas fa-hourglass-half"></i>
+                                                            <span>Full Paper: Pending Upload</span>
+                                                        </div>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <!-- Payment not made - locked -->
+                                                    <div class="full-paper-status locked">
+                                                        <i class="fas fa-lock"></i>
+                                                        <span>Full Paper: Locked (Awaiting Payment)</span>
+                                                    </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="full-paper-status locked">
+                                                    <i class="fas fa-lock"></i>
+                                                    <span>Full Paper: Locked (No Registration Found)</span>
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <!-- Abstract not accepted - locked -->
+                                            <div class="full-paper-status locked">
+                                                <i class="fas fa-lock"></i>
+                                                <span>Full Paper: Locked (Awaiting Acceptance)</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
                                     {% if submission.conference_id and submission.paper_id %}
                                     <div class="submission-footer-actions">
                                         <a href="{{ url_for('conference_submission_details', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
@@ -433,8 +489,38 @@
                                             <i class="fas fa-download"></i>
                                             PDF
                                         </a>
-                                        {% if submission_status not in ['accepted', 'withdrawn'] and not
-                                        submission.is_deleted %}
+                                        
+                                        <!-- Full Paper Upload Buttons -->
+                                        {% if submission_status == 'accepted' %}
+                                            {% set registration_id = submission.get('registration_id') %}
+                                            {% if registration_id and registration_id in registrations %}
+                                                {% set registration = registrations[registration_id] %}
+                                                {% set payment_status = (registration.get('payment_status') or '')|lower %}
+                                                {% set has_full_paper = submission.get('full_paper_submitted_at') %}
+                                                
+                                                {% if payment_status == 'paid' %}
+                                                    {% if has_full_paper %}
+                                                        <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
+                                                            class="submission-link submission-update">
+                                                            <i class="fas fa-edit"></i>
+                                                            Update Paper
+                                                        </a>
+                                                        <a href="{{ url_for('download_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
+                                                            class="submission-link submission-download">
+                                                            <i class="fas fa-cloud-download-alt"></i>
+                                                            Download Paper
+                                                        </a>
+                                                    {% else %}
+                                                        <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
+                                                            class="submission-link submission-upload">
+                                                            <i class="fas fa-file-upload"></i>
+                                                            Upload Paper
+                                                        </a>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+                                        
                                         <form method="POST"
                                             action="{{ url_for('withdraw_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
                                             onsubmit="return confirm('Withdraw this submission?');">
@@ -460,10 +546,10 @@
                                     <i class="fas fa-file-alt"></i>
                                 </div>
                                 <h3>No Submissions Yet</h3>
-                                <p>You haven't submitted any papers yet. Start by submitting your research paper!</p>
+                                <p>You haven't submitted any abstracts yet. Start by submitting your research abstract!</p>
                                 <a href="{{ url_for('call_for_papers') }}" class="btn-empty-action">
                                     <i class="fas fa-file-upload"></i>
-                                    Submit Paper
+                                    Submit Abstract
                                 </a>
                             </div>
                             {% endif %}
@@ -1932,6 +2018,126 @@
         padding: 0;
         cursor: pointer;
         color: #b91c1c;
+    }
+
+    /* ========== Full Paper Status ========== */
+    .full-paper-status-section {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .full-paper-status {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .full-paper-status i {
+        font-size: 1.1rem;
+    }
+
+    .full-paper-status small {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: normal;
+        margin-top: 0.25rem;
+    }
+
+    .full-paper-status.submitted {
+        background: #d1fae5;
+        color: #065f46;
+        border-left: 4px solid #34d399;
+    }
+
+    .full-paper-status.pending {
+        background: #fef3c7;
+        color: #78350f;
+        border-left: 4px solid #fbbf24;
+    }
+
+    .full-paper-status.locked {
+        background: #fee2e2;
+        color: #7f1d1d;
+        border-left: 4px solid #f87171;
+    }
+
+    .submission-link.submission-upload {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .submission-link.submission-upload:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+
+    .submission-link.submission-update {
+        background: #fbbf24;
+        color: #78350f;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .submission-link.submission-update:hover {
+        background: #f59e0b;
+        color: #78350f;
+        text-decoration: none;
+    }
+
+    .submission-link.submission-download {
+        background: #34d399;
+        color: #065f46;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+    }
+
+    .submission-link.submission-download:hover {
+        background: #10b981;
+        color: #065f46;
+        text-decoration: none;
+    }
+
+    /* ========== Abstract Status Badge ========== */
+    .meta-badge.abstract-status-badge {
+        background: #ffffff;
+        border: 2px solid #e5e7eb;
+        font-weight: 600;
+    }
+
+    .meta-badge.abstract-status-badge.status-accepted {
+        border-color: #34d399;
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .meta-badge.abstract-status-badge.status-pending {
+        border-color: #fbbf24;
+        background: #fef3c7;
+        color: #78350f;
+    }
+
+    .meta-badge.abstract-status-badge.status-rejected {
+        border-color: #f87171;
+        background: #fee2e2;
+        color: #7f1d1d;
+    }
+
+    .meta-badge.abstract-status-badge.status-revision {
+        border-color: #fde68a;
+        background: #fef08a;
+        color: #92400e;
     }
 
     /* ========== Registration Card Filtering ========== */

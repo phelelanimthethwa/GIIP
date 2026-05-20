@@ -1,0 +1,675 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Full Paper - {{ conference.basic_info.name }}{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 2rem 1rem;
+    }
+
+    .container-wrapper {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 2rem;
+    }
+
+    .header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header p {
+        font-size: 1.1rem;
+        opacity: 0.95;
+    }
+
+    .main-content {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    @media (min-width: 768px) {
+        .main-content {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    /* Abstract Preview Card */
+    .abstract-preview {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 2rem;
+        overflow: hidden;
+    }
+
+    .abstract-preview-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .abstract-preview-header i {
+        color: #667eea;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+
+    .abstract-preview-header h2 {
+        font-size: 1.3rem;
+        color: #0f172a;
+    }
+
+    .abstract-field {
+        margin-bottom: 1.5rem;
+    }
+
+    .abstract-field-label {
+        font-size: 0.875rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .abstract-field-value {
+        color: #0f172a;
+        font-size: 1rem;
+        line-height: 1.6;
+        padding: 0.75rem 1rem;
+        background: #f8fafc;
+        border-radius: 6px;
+        border-left: 3px solid #667eea;
+    }
+
+    .abstract-field-value.title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .abstract-field-value.type {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border-left: none;
+    }
+
+    .authors-list {
+        margin-top: 1rem;
+    }
+
+    .author-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: #f0f4ff;
+        color: #667eea;
+        border-radius: 6px;
+        margin: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Upload Form Card */
+    .upload-form {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .form-header i {
+        color: #667eea;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+
+    .form-header h2 {
+        font-size: 1.3rem;
+        color: #0f172a;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .form-group small {
+        color: #64748b;
+        display: block;
+        margin-top: 0.25rem;
+    }
+
+    .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .file-input-wrapper input[type="file"] {
+        position: absolute;
+        left: -9999px;
+    }
+
+    .file-input-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 2rem;
+        border: 2px dashed #cbd5e1;
+        border-radius: 8px;
+        background: #f8fafc;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        color: #475569;
+    }
+
+    .file-input-label:hover {
+        border-color: #667eea;
+        background: #f0f4ff;
+        color: #667eea;
+    }
+
+    .file-input-label i {
+        font-size: 1.5rem;
+    }
+
+    .file-selected {
+        display: none;
+        padding: 1rem;
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+        color: #166534;
+        margin-top: 1rem;
+    }
+
+    .file-selected.show {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .file-selected i {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .file-info {
+        flex: 1;
+    }
+
+    .file-info .filename {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .file-info .filesize {
+        font-size: 0.875rem;
+        opacity: 0.85;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: space-between;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        flex: 1;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #0f172a;
+        flex: 1;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        background: #cbd5e1;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .status-badge.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-badge.submitted {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .form-footer {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .success-message {
+        display: none;
+        padding: 1rem;
+        background: #d1fae5;
+        border: 1px solid #6ee7b7;
+        border-radius: 8px;
+        color: #065f46;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #10b981;
+    }
+
+    .success-message.show {
+        display: block;
+    }
+
+    .error-message {
+        display: none;
+        padding: 1rem;
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        border-radius: 8px;
+        color: #7f1d1d;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #ef4444;
+    }
+
+    .error-message.show {
+        display: block;
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .loading-spinner.show {
+        display: block;
+    }
+
+    .spinner {
+        border: 3px solid #e2e8f0;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .header h1 {
+            font-size: 1.75rem;
+        }
+
+        .header p {
+            font-size: 1rem;
+        }
+
+        .abstract-preview,
+        .upload-form {
+            padding: 1.5rem;
+        }
+
+        .main-content {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-wrapper">
+    <div class="header">
+        <h1><i class="fas fa-file-pdf"></i> Submit Full Paper</h1>
+        <p>{{ conference.basic_info.name }}</p>
+    </div>
+
+    <div class="main-content">
+        <!-- Abstract Preview Section -->
+        <div class="abstract-preview">
+            <div class="abstract-preview-header">
+                <i class="fas fa-file-alt"></i>
+                <h2>Your Abstract</h2>
+            </div>
+
+            {% if paper %}
+                <div class="status-badge submitted">
+                    <i class="fas fa-check-circle"></i> Abstract Accepted
+                </div>
+
+                <div class="abstract-field">
+                    <div class="abstract-field-label">Abstract Title</div>
+                    <div class="abstract-field-value title">{{ paper.paper_title }}</div>
+                </div>
+
+                <div class="abstract-field">
+                    <div class="abstract-field-label">Presentation Type</div>
+                    <div class="abstract-field-value type">{{ paper.presentation_type|replace('_', ' ')|title }}</div>
+                </div>
+
+                <div class="abstract-field">
+                    <div class="abstract-field-label">Abstract Text</div>
+                    <div class="abstract-field-value">{{ paper.paper_abstract }}</div>
+                </div>
+
+                <div class="abstract-field">
+                    <div class="abstract-field-label">Authors</div>
+                    <div class="authors-list">
+                        {% for author in paper.authors %}
+                            <span class="author-badge">
+                                <i class="fas fa-user-circle"></i> {{ author.name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% if paper.file_url %}
+                <div class="abstract-field">
+                    <div class="abstract-field-label">Abstract File</div>
+                    <a href="{{ paper.file_url }}" class="btn btn-secondary" style="width: 100%; justify-content: center;">
+                        <i class="fas fa-download"></i> Download Abstract
+                    </a>
+                </div>
+                {% endif %}
+            {% else %}
+                <p style="color: #64748b;">Abstract information not available.</p>
+            {% endif %}
+        </div>
+
+        <!-- Full Paper Upload Form -->
+        <div class="upload-form">
+            <div class="form-header">
+                <i class="fas fa-upload"></i>
+                <h2>Upload Full Paper</h2>
+            </div>
+
+            <div class="success-message" id="successMessage">
+                <i class="fas fa-check-circle"></i>
+                <strong>Success!</strong> Your full paper has been submitted successfully.
+            </div>
+
+            <div class="error-message" id="errorMessage">
+                <i class="fas fa-exclamation-circle"></i>
+                <strong>Error:</strong> <span id="errorText"></span>
+            </div>
+
+            <form id="fullPaperForm" method="POST" enctype="multipart/form-data" class="form-content">
+                <div class="form-group">
+                    <label for="full_paper_file">
+                        <i class="fas fa-file-pdf"></i> Full Paper (PDF only) *
+                    </label>
+                    <small>Upload your complete paper manuscript</small>
+                    
+                    <div class="file-input-wrapper">
+                        <input type="file" id="full_paper_file" name="full_paper_file" accept=".pdf" required>
+                        <label for="full_paper_file" class="file-input-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span id="uploadText">Click to browse or drag and drop your PDF here</span>
+                        </label>
+                    </div>
+
+                    <div class="file-selected" id="fileSelected">
+                        <i class="fas fa-file-pdf"></i>
+                        <div class="file-info">
+                            <div class="filename" id="fileName"></div>
+                            <div class="filesize" id="fileSize"></div>
+                        </div>
+                    </div>
+
+                    <small style="display: block; margin-top: 1rem;">
+                        <strong>Requirements:</strong>
+                        <ul style="margin: 0.5rem 0 0 1.5rem;">
+                            <li>File format: PDF only</li>
+                            <li>Maximum size: 10MB</li>
+                            <li>Complete manuscript with all sections</li>
+                        </ul>
+                    </small>
+                </div>
+
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Uploading your paper...</p>
+                </div>
+
+                <div class="form-actions" id="formActions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="fas fa-paper-plane"></i> <span id="submitText">Submit Full Paper</span>
+                    </button>
+                    <a href="{{ url_for('conference_details', conference_id=conference_id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+            </form>
+
+            <div class="form-footer">
+                <i class="fas fa-info-circle"></i> 
+                By submitting, you confirm that this is your original work and complies with the conference's author guidelines.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const fileInput = document.getElementById('full_paper_file');
+    const uploadLabel = document.querySelector('.file-input-label');
+    const fileSelected = document.getElementById('fileSelected');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const form = document.getElementById('fullPaperForm');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const errorText = document.getElementById('errorText');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const formActions = document.getElementById('formActions');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+
+    // Handle drag and drop
+    uploadLabel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadLabel.style.borderColor = '#667eea';
+        uploadLabel.style.background = '#f0f4ff';
+    });
+
+    uploadLabel.addEventListener('dragleave', () => {
+        uploadLabel.style.borderColor = '#cbd5e1';
+        uploadLabel.style.background = '#f8fafc';
+    });
+
+    uploadLabel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadLabel.style.borderColor = '#cbd5e1';
+        uploadLabel.style.background = '#f8fafc';
+        
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            updateFileDisplay();
+        }
+    });
+
+    // Handle file selection
+    fileInput.addEventListener('change', updateFileDisplay);
+
+    function updateFileDisplay() {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            
+            // Validate file type
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showError('Please select a PDF file');
+                fileInput.value = '';
+                fileSelected.classList.remove('show');
+                return;
+            }
+
+            // Validate file size (10MB)
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showError('File size must be less than 10MB');
+                fileInput.value = '';
+                fileSelected.classList.remove('show');
+                return;
+            }
+
+            fileName.textContent = file.name;
+            fileSize.textContent = (file.size / 1024).toFixed(2) + ' KB';
+            fileSelected.classList.add('show');
+            hideError();
+        } else {
+            fileSelected.classList.remove('show');
+        }
+    }
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!fileInput.files.length) {
+            showError('Please select a file');
+            return;
+        }
+
+        // Show loading state
+        loadingSpinner.classList.add('show');
+        submitBtn.disabled = true;
+        formActions.style.opacity = '0.5';
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                successMessage.classList.add('show');
+                submitText.textContent = 'Submitted Successfully!';
+                submitBtn.disabled = true;
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = data.redirect_url || '{{ url_for("conference_details", conference_id=conference_id) }}';
+                }, 2000);
+            } else {
+                showError(data.message || 'An error occurred while uploading your paper');
+                formActions.style.opacity = '1';
+                submitBtn.disabled = false;
+            }
+        } catch (error) {
+            showError('Network error: ' + error.message);
+            formActions.style.opacity = '1';
+            submitBtn.disabled = false;
+        } finally {
+            loadingSpinner.classList.remove('show');
+        }
+    });
+
+    function showError(message) {
+        errorText.textContent = message;
+        errorMessage.classList.add('show');
+        successMessage.classList.remove('show');
+    }
+
+    function hideError() {
+        errorMessage.classList.remove('show');
+    }
+</script>
+{% endblock %}

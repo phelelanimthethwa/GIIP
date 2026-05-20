@@ -364,6 +364,60 @@
         font-weight: 700;
         white-space: nowrap;
     }
+
+    /* File Status Badge Styles - Abstract & Full Paper */
+    .file-status-badge {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .file-info i {
+        font-size: 1rem;
+    }
+
+    .file-info.submitted {
+        background: #d1fae5;
+        color: #065f46;
+        border: 1px solid #34d399;
+    }
+
+    .file-info.pending {
+        background: #fef3c7;
+        color: #78350f;
+        border: 1px solid #fbbf24;
+    }
+
+    .file-info.missing {
+        background: #fee2e2;
+        color: #7f1d1d;
+        border: 1px solid #f87171;
+    }
+
+    .file-label {
+        font-weight: 600;
+    }
+
+    .file-date {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    .file-size {
+        font-size: 0.8rem;
+        opacity: 0.7;
+    }
 </style>
 {% endblock styles %}
 
@@ -420,6 +474,8 @@
                             <th>Author</th>
                             <th>Research Area</th>
                             <th>Submission Date</th>
+                            <th>Abstract</th>
+                            <th>Full Paper</th>
                             <th>Status</th>
                             <th class="text-right">Actions</th>
                         </tr>
@@ -482,6 +538,71 @@
                                 <div class="submission-date">
                                     <i class="fas fa-calendar-alt"></i>
                                     {{ paper.submitted_at|datetime }}
+                                </div>
+                            </td>
+                            <!-- Abstract File Column (NEW) -->
+                            <td>
+                                <div class="file-status-badge">
+                                    {% if paper.file_data %}
+                                    <div class="file-info submitted">
+                                        <i class="fas fa-file-pdf"></i>
+                                        <span class="file-label">Submitted</span>
+                                        {% if paper.file_size %}
+                                        <span class="file-size">({{ "%.1f"|format(paper.file_size / 1024 / 1024) }} MB)</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if paper._conference_id %}
+                                    <a href="{{ url_for('download_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
+                                        class="btn btn-sm btn-primary"
+                                        title="Download abstract PDF">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    {% else %}
+                                    <a href="{{ url_for('download_paper', paper_id=paper._paper_id) }}"
+                                        class="btn btn-sm btn-primary"
+                                        title="Download abstract PDF">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    {% endif %}
+                                    {% else %}
+                                    <div class="file-info missing">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        <span class="file-label">Not Found</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <!-- Full Paper File Column (NEW) -->
+                            <td>
+                                <div class="file-status-badge">
+                                    {% if paper.get('full_paper_submitted_at') %}
+                                    <div class="file-info submitted">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span class="file-label">Submitted</span>
+                                        <span class="file-date">{{ paper.full_paper_submitted_at[:10] }}</span>
+                                        {% if paper.get('full_paper_size') %}
+                                        <span class="file-size">({{ "%.1f"|format(paper.full_paper_size / 1024 / 1024) }} MB)</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if paper._conference_id %}
+                                    <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
+                                        class="btn btn-sm btn-success"
+                                        title="Download full paper PDF">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    {% else %}
+                                    <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id) }}"
+                                        class="btn btn-sm btn-success"
+                                        title="Download full paper PDF">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    {% endif %}
+                                    {% else %}
+                                    <div class="file-info pending">
+                                        <i class="fas fa-hourglass-half"></i>
+                                        <span class="file-label">Pending</span>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </td>
                             <td>

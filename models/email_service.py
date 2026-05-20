@@ -11,6 +11,11 @@ from models.email_templates import (
     ANNOUNCEMENT_TYPE_BADGES,
     ADMIN_SUBMISSION_NOTIFICATION,
     PAPER_ACCEPTANCE_EMAIL_HTML,
+    ABSTRACT_SUBMISSION_CONFIRMATION,
+    ABSTRACT_STATUS_UPDATE,
+    ABSTRACT_ACCEPTANCE_EMAIL_HTML,
+    FULL_PAPER_SUBMISSION_CONFIRMATION,
+    ADMIN_FULL_PAPER_SUBMISSION_NOTIFICATION,
 )
 import time
 from typing import List, Dict, Optional
@@ -396,6 +401,48 @@ class EmailService:
                 'sent_count': 0,
                 'failed_count': 0
             }
+
+    def send_full_paper_confirmation(self, paper_data):
+        """
+        Send full paper submission confirmation email
+        """
+        conference_name = paper_data.get('conference_name', 'Global Conferences')
+        subject = f'Full Paper Submission Confirmation - {conference_name}'
+        body = FULL_PAPER_SUBMISSION_CONFIRMATION.format(
+            author_name=paper_data['authors'][0]['name'] if paper_data.get('authors') else paper_data.get('user_email', 'Author'),
+            paper_title=paper_data['paper_title'],
+            paper_id=paper_data['paper_id'],
+            conference_name=conference_name,
+            submitted_at=paper_data.get('full_paper_submitted_at', '')
+        )
+        return self.send_email(paper_data['user_email'], subject, body)
+
+    def send_full_paper_submission_notification_to_admins(self, recipients: List[str], submission_data: Dict) -> bool:
+        """
+        Send email notification to admin recipients when a full paper is submitted.
+
+        Args:
+            recipients: List of email addresses to notify
+            submission_data: Dict with paper_title, paper_id, conference_name, authors, submitter_email
+
+        Returns:
+            True if sent to at least one recipient, False otherwise
+        """
+        if not recipients:
+            return False
+        author_names = ', '.join(
+            a.get('name', a.get('email', 'Unknown'))
+            for a in submission_data.get('authors', [])
+        ) or 'Unknown'
+        body = ADMIN_FULL_PAPER_SUBMISSION_NOTIFICATION.format(
+            conference_name=submission_data.get('conference_name', 'Conference'),
+            paper_title=submission_data.get('paper_title', 'Untitled'),
+            paper_id=submission_data.get('paper_id', ''),
+            author_names=author_names,
+            submitter_email=submission_data.get('submitter_email', '')
+        )
+        subject = f"Full Paper Submitted - {submission_data.get('paper_title', 'Untitled')} [{submission_data.get('conference_name', 'Conference')}]"
+        return self.send_email(recipients, subject, body)
 
 
 # Standalone function for direct use
