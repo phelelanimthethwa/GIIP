@@ -978,9 +978,8 @@ def paper_submission():
                     flash(f'You can only submit a maximum of 2 papers per conference. You are trying to submit {papers_submitted + 1} paper(s).', 'error')
                     return redirect(url_for('paper_submission'))
 
-                # Read and encode file data
+                # Read file data
                 file_data = file.read()
-                file_base64 = base64.b64encode(file_data).decode('utf-8')
 
                 # Create paper data
                 paper_data = {
@@ -998,7 +997,7 @@ def paper_submission():
                     'review_comments': '',
                     'reviewed_by': '',
                     'updated_at': datetime.now().isoformat(),
-                    'file_data': file_base64,
+                    'file_data': None,
                     'file_name': secure_filename(file.filename),
                     'file_type': file.content_type,
                     'file_size': len(file_data),
@@ -1013,6 +1012,27 @@ def paper_submission():
                 
                 new_paper = papers_ref.push(paper_data)
                 paper_id = new_paper.key
+
+                # Upload to Firebase Storage
+                try:
+                    bucket = storage.bucket()
+                    folder = f"papers/{selected_conference_id}/{paper_id}" if selected_conference_id else f"papers/global/{paper_id}"
+                    safe_filename = secure_filename(file.filename)
+                    storage_path = f"{folder}/{safe_filename}"
+                    
+                    blob = bucket.blob(storage_path)
+                    blob.upload_from_string(file_data, content_type=file.content_type)
+                    blob.make_public()
+                    
+                    # Update database with storage details
+                    new_paper.update({
+                        'file_storage_path': storage_path,
+                        'file_url': blob.public_url
+                    })
+                except Exception as storage_err:
+                    print(f"Error uploading paper to Firebase Storage: {str(storage_err)}")
+                    new_paper.delete()
+                    raise Exception(f"Failed to upload paper file to storage: {str(storage_err)}")
 
                 # Store in user's submissions
                 if selected_conference_id:
@@ -5973,19 +5993,29 @@ def download_all_submissions():
         added_filenames = set()
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            bucket = storage.bucket()
             for key, data in all_submissions.items():
                 paper = data['paper']
                 paper_id = data['paper_id']
-                file_base64 = paper.get('file_data')
+                file_bytes = None
                 
-                if not file_base64:
-                    continue
-
-                try:
-                    file_bytes = base64.b64decode(file_base64)
-                except Exception as e:
-                    print(f"Error decoding file for paper {paper_id}: {str(e)}")
-                    continue
+                file_storage_path = paper.get('file_storage_path')
+                if file_storage_path:
+                    try:
+                        blob = bucket.blob(file_storage_path)
+                        file_bytes = blob.download_as_bytes()
+                    except Exception as storage_err:
+                        print(f"Error downloading paper {paper_id} from Firebase Storage: {storage_err}")
+                        continue
+                else:
+                    file_base64 = paper.get('file_data')
+                    if not file_base64:
+                        continue
+                    try:
+                        file_bytes = base64.b64decode(file_base64)
+                    except Exception as e:
+                        print(f"Error decoding file for paper {paper_id}: {str(e)}")
+                        continue
 
                 # Get author name
                 author_name = "unknown"
@@ -6068,13 +6098,25 @@ def delete_paper_attachment(paper_id):
         if not paper:
             return jsonify({'success': False, 'error': 'Paper not found'}), 404
             
-        # Update paper to remove file_data
+        # Delete from Firebase Storage if present
+        bucket = storage.bucket()
+        if paper.get('file_storage_path'):
+            try:
+                blob = bucket.blob(paper['file_storage_path'])
+                if blob.exists():
+                    blob.delete()
+            except Exception as e:
+                print(f"Error deleting main storage file: {e}")
+
+        # Update paper to remove file fields
         updates = {
             'file_data': None,
+            'file_storage_path': None,
+            'file_url': None,
             'updated_at': datetime.now().isoformat()
         }
         
-        # Also clean up file_data inside historical entries in file_history if they exist
+        # Also clean up file_data/file_storage_path inside historical entries in file_history if they exist
         file_history = paper.get('file_history')
         if file_history:
             if isinstance(file_history, list):
@@ -6083,6 +6125,15 @@ def delete_paper_attachment(paper_id):
                     if isinstance(entry, dict):
                         entry_copy = dict(entry)
                         entry_copy['file_data'] = None
+                        if entry_copy.get('file_storage_path'):
+                            try:
+                                blob = bucket.blob(entry_copy['file_storage_path'])
+                                if blob.exists():
+                                    blob.delete()
+                            except Exception as e:
+                                print(f"Error deleting history storage file: {e}")
+                            entry_copy['file_storage_path'] = None
+                            entry_copy['file_url'] = None
                         updated_history.append(entry_copy)
                     else:
                         updated_history.append(entry)
@@ -6093,6 +6144,15 @@ def delete_paper_attachment(paper_id):
                     if isinstance(entry, dict):
                         entry_copy = dict(entry)
                         entry_copy['file_data'] = None
+                        if entry_copy.get('file_storage_path'):
+                            try:
+                                blob = bucket.blob(entry_copy['file_storage_path'])
+                                if blob.exists():
+                                    blob.delete()
+                            except Exception as e:
+                                print(f"Error deleting history storage file: {e}")
+                            entry_copy['file_storage_path'] = None
+                            entry_copy['file_url'] = None
                         updated_history[k] = entry_copy
                     else:
                         updated_history[k] = entry
@@ -6112,6 +6172,8 @@ def delete_paper_attachment(paper_id):
                 ):
                     user_submissions_ref.child(submission_id).update({
                         'file_data': None,
+                        'file_storage_path': None,
+                        'file_url': None,
                         'updated_at': datetime.now().isoformat()
                     })
                     
@@ -6153,13 +6215,25 @@ def delete_all_attachments():
             return jsonify({'success': False, 'error': 'No submissions found to clean.'}), 404
 
         count = 0
+        bucket = storage.bucket()
         for ref, user_id, paper_id, conference_id in all_papers_refs:
             paper = ref.get()
-            if not paper or not paper.get('file_data'):
+            if not paper or (not paper.get('file_data') and not paper.get('file_storage_path')):
                 continue
                 
+            # Delete from Firebase Storage if present
+            if paper.get('file_storage_path'):
+                try:
+                    blob = bucket.blob(paper['file_storage_path'])
+                    if blob.exists():
+                        blob.delete()
+                except Exception as e:
+                    print(f"Error deleting storage file in bulk: {e}")
+
             updates = {
                 'file_data': None,
+                'file_storage_path': None,
+                'file_url': None,
                 'updated_at': datetime.now().isoformat()
             }
             
@@ -6172,6 +6246,15 @@ def delete_all_attachments():
                         if isinstance(entry, dict):
                             entry_copy = dict(entry)
                             entry_copy['file_data'] = None
+                            if entry_copy.get('file_storage_path'):
+                                try:
+                                    blob = bucket.blob(entry_copy['file_storage_path'])
+                                    if blob.exists():
+                                        blob.delete()
+                                except Exception as e:
+                                    print(f"Error deleting history storage file in bulk: {e}")
+                                entry_copy['file_storage_path'] = None
+                                entry_copy['file_url'] = None
                             updated_history.append(entry_copy)
                         else:
                             updated_history.append(entry)
@@ -6182,6 +6265,15 @@ def delete_all_attachments():
                         if isinstance(entry, dict):
                             entry_copy = dict(entry)
                             entry_copy['file_data'] = None
+                            if entry_copy.get('file_storage_path'):
+                                try:
+                                    blob = bucket.blob(entry_copy['file_storage_path'])
+                                    if blob.exists():
+                                        blob.delete()
+                                except Exception as e:
+                                    print(f"Error deleting history storage file in bulk: {e}")
+                                entry_copy['file_storage_path'] = None
+                                entry_copy['file_url'] = None
                             updated_history[k] = entry_copy
                         else:
                             updated_history[k] = entry
@@ -6201,6 +6293,8 @@ def delete_all_attachments():
                     ):
                         user_subs_ref.child(sub_key).update({
                             'file_data': None,
+                            'file_storage_path': None,
+                            'file_url': None,
                             'updated_at': datetime.now().isoformat()
                         })
             count += 1
@@ -6726,9 +6820,8 @@ def submit_paper():
             flash('Invalid file type. Allowed types: PDF, DOC, DOCX', 'error')
             return redirect(url_for('submit'))
         
-        # Convert file to base64 for storage in Realtime Database
+        # Read file data
         file_data = paper_file.read()
-        file_base64 = base64.b64encode(file_data).decode('utf-8')
         
         # Create paper submission data
         paper_data = {
@@ -6738,7 +6831,7 @@ def submit_paper():
             'presentation_type': data.get('presentation_type'),
             'keywords': [k.strip() for k in data.get('keywords', '').split(',') if k.strip()],
             'authors': authors,
-            'file_data': file_base64,
+            'file_data': None,
             'file_name': secure_filename(paper_file.filename),
             'file_type': paper_file.content_type,
             'file_size': len(file_data),
@@ -6757,9 +6850,28 @@ def submit_paper():
         # Save to Firebase Realtime Database
         papers_ref = db.reference('papers')
         new_paper = papers_ref.push(paper_data)
+        paper_id = new_paper.key
+        
+        # Upload to Firebase Storage
+        try:
+            bucket = storage.bucket()
+            storage_path = f"papers/global/{paper_id}/{secure_filename(paper_file.filename)}"
+            blob = bucket.blob(storage_path)
+            blob.upload_from_string(file_data, content_type=paper_file.content_type)
+            blob.make_public()
+            
+            # Update database with storage details
+            new_paper.update({
+                'file_storage_path': storage_path,
+                'file_url': blob.public_url
+            })
+        except Exception as storage_err:
+            print(f"Error uploading paper to Firebase Storage: {str(storage_err)}")
+            new_paper.delete()
+            raise Exception(f"Failed to upload paper file to storage: {str(storage_err)}")
         
         # Add reference to user's papers
-        user_papers_ref = db.reference(f'users/{current_user.id}/papers/{new_paper.key}')
+        user_papers_ref = db.reference(f'users/{current_user.id}/papers/{paper_id}')
         user_papers_ref.set(True)
         
         # Send confirmation email
@@ -7217,21 +7329,29 @@ def download_paper(paper_id):
             flash('Paper not found.', 'error')
             return redirect(url_for('admin_submissions'))
             
-        # Get file data from Firebase
-        file_data = paper.get('file_data')
-        if not file_data:
-            flash('Paper file not found.', 'error')
-            return redirect(url_for('admin_submissions'))
-            
-        try:
-            # Decode base64 data
-            file_bytes = base64.b64decode(file_data)
-        except Exception as e:
-            print(f"Error decoding file data: {str(e)}")
-            flash('Error processing file data.', 'error')
-            return redirect(url_for('admin_submissions'))
-        
-        # Create file-like object
+        file_bytes = None
+        file_storage_path = paper.get('file_storage_path')
+        if file_storage_path:
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(file_storage_path)
+                file_bytes = blob.download_as_bytes()
+            except Exception as storage_err:
+                print(f"Error downloading paper from Firebase Storage: {storage_err}")
+                flash('Could not download file from storage.', 'error')
+                return redirect(url_for('admin_submissions'))
+        else:
+            file_data = paper.get('file_data')
+            if not file_data:
+                flash('Paper file not found.', 'error')
+                return redirect(url_for('admin_submissions'))
+            try:
+                file_bytes = base64.b64decode(file_data)
+            except Exception as e:
+                print(f"Error decoding base64 file data: {e}")
+                flash('Error processing file data.', 'error')
+                return redirect(url_for('admin_submissions'))
+
         file_obj = io.BytesIO(file_bytes)
         
         # Generate a clean filename
@@ -7305,8 +7425,12 @@ def download_paper_version(paper_id, version):
             file_history = list(file_history.values())
 
         # version 0 = current file, version 1..N = historical versions
+        file_bytes = None
+        file_storage_path = None
+        
         if version == 0:
             # Download current file
+            file_storage_path = paper.get('file_storage_path')
             file_data = paper.get('file_data')
             file_name = paper.get('file_name', 'paper.pdf')
             file_type = paper.get('file_type', 'application/pdf')
@@ -7317,20 +7441,30 @@ def download_paper_version(paper_id, version):
                 flash('File version not found.', 'error')
                 return redirect(url_for('admin_submissions'))
             history_entry = file_history[idx]
+            file_storage_path = history_entry.get('file_storage_path')
             file_data = history_entry.get('file_data')
             file_name = history_entry.get('file_name', 'paper.pdf')
             file_type = history_entry.get('file_type', 'application/pdf')
 
-        if not file_data:
-            flash('Paper file not found for this version.', 'error')
-            return redirect(url_for('admin_submissions'))
-
-        try:
-            file_bytes = base64.b64decode(file_data)
-        except Exception as e:
-            print(f"Error decoding file data: {str(e)}")
-            flash('Error processing file data.', 'error')
-            return redirect(url_for('admin_submissions'))
+        if file_storage_path:
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(file_storage_path)
+                file_bytes = blob.download_as_bytes()
+            except Exception as storage_err:
+                print(f"Error downloading paper version from Firebase Storage: {storage_err}")
+                flash('Could not download file version from storage.', 'error')
+                return redirect(url_for('admin_submissions'))
+        else:
+            if not file_data:
+                flash('Paper file not found for this version.', 'error')
+                return redirect(url_for('admin_submissions'))
+            try:
+                file_bytes = base64.b64decode(file_data)
+            except Exception as e:
+                print(f"Error decoding file data: {str(e)}")
+                flash('Error processing file data.', 'error')
+                return redirect(url_for('admin_submissions'))
 
         file_obj = io.BytesIO(file_bytes)
         safe_filename_str = secure_filename(file_name)
@@ -11802,13 +11936,12 @@ def conference_paper_submission(conference_id):
                                      form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                      site_design=get_site_design())
 
-            # Read and encode file data
+            # Read file data
             file_data = file.read()
-            file_base64 = base64.b64encode(file_data).decode('utf-8')
 
-            # Add file data to paper_data
+            # Add file details to paper_data (without base64 content)
             paper_data.update({
-                'file_data': file_base64,
+                'file_data': None,
                 'file_name': secure_filename(file.filename),
                 'file_type': file.content_type,
                 'file_size': len(file_data)
@@ -11818,6 +11951,24 @@ def conference_paper_submission(conference_id):
             papers_ref = db.reference(f'conferences/{conference_id}/paper_submissions')
             new_paper = papers_ref.push(paper_data)
             paper_id = new_paper.key
+
+            # Upload to Firebase Storage
+            try:
+                bucket = storage.bucket()
+                storage_path = f"papers/{conference_id}/{paper_id}/{secure_filename(file.filename)}"
+                blob = bucket.blob(storage_path)
+                blob.upload_from_string(file_data, content_type=file.content_type)
+                blob.make_public()
+                
+                # Update database with storage details
+                new_paper.update({
+                    'file_storage_path': storage_path,
+                    'file_url': blob.public_url
+                })
+            except Exception as storage_err:
+                print(f"Error uploading paper to Firebase Storage: {str(storage_err)}")
+                new_paper.delete()
+                raise Exception(f"Failed to upload paper file to storage: {str(storage_err)}")
 
             # Store in user's submissions index for easy access
             upsert_user_conference_submission_index(current_user.id, conference_id, paper_id, {
@@ -12073,9 +12224,11 @@ def edit_conference_submission(conference_id, paper_id):
             file_history = paper.get('file_history', []) or []
             if isinstance(file_history, dict):
                 file_history = list(file_history.values())
-            if paper.get('file_data'):
+            if paper.get('file_data') or paper.get('file_storage_path'):
                 file_history.append({
-                    'file_data': paper['file_data'],
+                    'file_data': paper.get('file_data'),
+                    'file_storage_path': paper.get('file_storage_path'),
+                    'file_url': paper.get('file_url'),
                     'file_name': paper.get('file_name', 'paper.pdf'),
                     'file_type': paper.get('file_type', 'application/pdf'),
                     'file_size': paper.get('file_size', 0),
@@ -12084,13 +12237,37 @@ def edit_conference_submission(conference_id, paper_id):
                 })
 
             file_bytes = new_file.read()
-            file_update = {
-                'file_data': base64.b64encode(file_bytes).decode('utf-8'),
-                'file_name': secure_filename(new_file.filename),
-                'file_type': new_file.content_type,
-                'file_size': len(file_bytes),
-                'file_history': file_history
-            }
+            
+            # Upload the revision file to Storage
+            try:
+                bucket = storage.bucket()
+                storage_path = f"papers/{conference_id}/{paper_id}/{secure_filename(new_file.filename)}"
+                blob = bucket.blob(storage_path)
+                blob.upload_from_string(file_bytes, content_type=new_file.content_type)
+                blob.make_public()
+                
+                file_update = {
+                    'file_data': None,
+                    'file_storage_path': storage_path,
+                    'file_url': blob.public_url,
+                    'file_name': secure_filename(new_file.filename),
+                    'file_type': new_file.content_type,
+                    'file_size': len(file_bytes),
+                    'file_history': file_history
+                }
+            except Exception as storage_err:
+                print(f"Error uploading revision to Firebase Storage: {str(storage_err)}")
+                flash(f"Failed to upload revision to storage: {str(storage_err)}", 'error')
+                return render_template(
+                    'conferences/paper_submission.html',
+                    conference=conference,
+                    conference_id=conference_id,
+                    paper=draft_paper,
+                    paper_id=paper_id,
+                    is_edit=True,
+                    form_action=url_for('edit_conference_submission', conference_id=conference_id, paper_id=paper_id),
+                    site_design=get_site_design()
+                )
 
         update_data = {
             'paper_title': updated_paper['paper_title'],
@@ -12220,12 +12397,29 @@ def download_conference_submission(conference_id, paper_id):
             flash('Submission not found.', 'error')
             return redirect(url_for('conference_registration', conference_id=conference_id))
 
-        file_data = paper.get('file_data')
-        if not file_data:
-            flash('Paper file not found.', 'error')
-            return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+        file_bytes = None
+        file_storage_path = paper.get('file_storage_path')
+        if file_storage_path:
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(file_storage_path)
+                file_bytes = blob.download_as_bytes()
+            except Exception as storage_err:
+                print(f"Error downloading file from Firebase Storage: {storage_err}")
+                flash('Could not download file from storage.', 'error')
+                return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+        else:
+            file_data = paper.get('file_data')
+            if not file_data:
+                flash('Paper file not found.', 'error')
+                return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
+            try:
+                file_bytes = base64.b64decode(file_data)
+            except Exception as e:
+                print(f"Error decoding base64 file data: {e}")
+                flash('Error processing file data.', 'error')
+                return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
 
-        file_bytes = base64.b64decode(file_data)
         file_obj = io.BytesIO(file_bytes)
         original_filename = paper.get('file_name', 'paper.pdf')
         safe_filename = secure_filename(original_filename)
