@@ -4770,6 +4770,60 @@ def admin_home_content():
                 # Process downloads
                 update_data['downloads'] = process_downloads_data(request)
 
+                # Process final conference programme
+                programme_data = {
+                    'title': request.form.get('programme[title]', 'Final Conference Programme'),
+                    'file_url': request.form.get('programme[existing_file]', ''),
+                    'file_size': request.form.get('programme[existing_size]', ''),
+                    'updated_at': request.form.get('programme[existing_updated_at]', ''),
+                    'visible': 'programme[visible]' in request.form
+                }
+
+                # Check if program was deleted
+                if request.form.get('delete_programme') == 'true':
+                    programme_data['file_url'] = ''
+                    programme_data['file_size'] = ''
+                    programme_data['updated_at'] = ''
+
+                # Check for new programme file upload
+                if 'programme_file' in request.files:
+                    file = request.files['programme_file']
+                    if file and file.filename:
+                        if file.filename.lower().endswith('.pdf'):
+                            try:
+                                filename = secure_filename(file.filename)
+                                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                                firebase_filename = f"programme/{timestamp}_{filename}"
+                                
+                                bucket = storage.bucket()
+                                blob = bucket.blob(firebase_filename)
+                                
+                                # Read & upload file
+                                file.seek(0)
+                                file_data = file.read()
+                                file_size_bytes = len(file_data)
+                                if file_size_bytes < 1024 * 1024:
+                                    file_size_formatted = f"{file_size_bytes / 1024:.1f} KB"
+                                else:
+                                    file_size_formatted = f"{file_size_bytes / (1024 * 1024):.1f} MB"
+                                
+                                blob.upload_from_string(file_data, content_type='application/pdf')
+                                blob.make_public()
+                                
+                                programme_data.update({
+                                    'file_url': blob.public_url,
+                                    'file_size': file_size_formatted,
+                                    'updated_at': datetime.now().isoformat(),
+                                    'firebase_path': firebase_filename
+                                })
+                            except Exception as storage_err:
+                                print(f"Error uploading programme to Storage: {str(storage_err)}")
+                                raise Exception(f"Failed to upload programme: {str(storage_err)}")
+                        else:
+                            raise Exception("Only PDF files are allowed for the Conference Programme.")
+                
+                update_data['programme'] = programme_data
+
                 # Save the updated content
                 content_ref.set(update_data)
                 
@@ -4916,6 +4970,18 @@ def admin_home_content():
             if not home_content['vmo'].get('objectives'):
                 home_content['vmo']['objectives'] = default_content['vmo']['objectives']
         
+        # Ensure programme section exists before rendering
+        if 'programme' not in home_content or not home_content['programme']:
+            home_content['programme'] = {
+                'title': 'Final Conference Programme',
+                'file_url': '',
+                'file_size': '',
+                'updated_at': '',
+                'visible': True
+            }
+        else:
+            home_content['programme'].setdefault('visible', True)
+
         if 'associates' not in home_content:
             home_content['associates'] = []
         if 'downloads' not in home_content:
@@ -4979,6 +5045,7 @@ def admin_home_content():
             'welcome': {'title': '', 'subtitle': '', 'conference_date': '', 'message': '', 'subtitle_marquee': False},
             'hero': {'images': [], 'conference': {'name': '', 'date': '', 'time': '', 'city': '', 'highlights': '', 'show_countdown': False}},
             'vmo': {'vision': '', 'mission': '', 'objectives': ''},
+            'programme': {'title': 'Final Conference Programme', 'file_url': '', 'file_size': '', 'updated_at': '', 'visible': False},
             'associates': [],
             'downloads': [],
             'footer': {'contact_email': '', 'contact_phone': '', 'address': '', 'copyright': '', 'social_media': {'facebook': '', 'twitter': '', 'linkedin': ''}}

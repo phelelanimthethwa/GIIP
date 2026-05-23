@@ -735,6 +735,57 @@
                 </div>
             </div>
 
+            <!-- Final Conference Programme Section -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-file-pdf"></i> Final Conference Programme</h2>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="programmeTitle" class="form-label">Programme Title</label>
+                        <input type="text" class="form-control" id="programmeTitle" name="programme[title]" 
+                               value="{{ home_content.programme.title|default('Final Conference Programme') }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="programmeVisible" name="programme[visible]" 
+                                   {% if home_content.programme.visible %}checked{% endif %}>
+                            <label class="form-check-label" for="programmeVisible">Show Programme on Home Page</label>
+                        </div>
+                        <small class="form-text text-muted">Toggle whether this programme is visible to public users on the homepage.</small>
+                    </div>
+                    
+                    {% if home_content.programme and home_content.programme.file_url %}
+                    <div class="current-file mb-3" id="currentProgrammeFile">
+                        <input type="hidden" name="programme[existing_file]" value="{{ home_content.programme.file_url }}">
+                        <input type="hidden" name="programme[existing_size]" value="{{ home_content.programme.file_size }}">
+                        <input type="hidden" name="programme[existing_updated_at]" value="{{ home_content.programme.updated_at }}">
+                        <span class="text-success">
+                            <i class="fas fa-file-pdf"></i> Current file: 
+                            <a href="{{ home_content.programme.file_url }}" target="_blank" class="text-decoration-none">
+                                {{ home_content.programme.file_url.split('/')[-1] }}
+                            </a>
+                        </span>
+                        <small class="text-muted d-block">(Size: {{ home_content.programme.file_size|default('Unknown') }}, Uploaded: {{ home_content.programme.updated_at }})</small>
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="deleteProgrammeBtn">
+                            <i class="fas fa-trash-alt"></i> Remove Current Programme
+                        </button>
+                    </div>
+                    {% else %}
+                    <input type="hidden" name="programme[existing_file]" value="">
+                    <input type="hidden" name="programme[existing_size]" value="">
+                    <input type="hidden" name="programme[existing_updated_at]" value="">
+                    {% endif %}
+                    
+                    <input type="hidden" id="deleteProgrammeInput" name="delete_programme" value="false">
+                    
+                    <div class="file-upload">
+                        <label for="programmeFile" class="form-label">Upload Programme File (PDF only)</label>
+                        <input type="file" class="form-control" id="programmeFile" name="programme_file" accept=".pdf">
+                        <small class="text-muted">Accepted formats: PDF only (Maximum size 10MB)</small>
+                    </div>
+                </div>
+            </div>
+
             <!-- Associates Section -->
             <div class="admin-card mb-4">
                 <h2><i class="fas fa-handshake"></i> Associate Logos</h2>
@@ -861,6 +912,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewGrid = document.getElementById('previewGrid');
     let selectedFiles = [];
     let heroFiles = new Map(); // Store processed hero images
+
+    // Handle programme deletion
+    const deleteProgrammeBtn = document.getElementById('deleteProgrammeBtn');
+    const deleteProgrammeInput = document.getElementById('deleteProgrammeInput');
+    const currentProgrammeFile = document.getElementById('currentProgrammeFile');
+    const programmeFile = document.getElementById('programmeFile');
+    
+    if (deleteProgrammeBtn) {
+        deleteProgrammeBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to remove the current conference programme?')) {
+                deleteProgrammeInput.value = 'true';
+                currentProgrammeFile.style.display = 'none';
+                showToast('Programme marked for removal. Save changes to apply.', 'info');
+            }
+        });
+    }
+    
+    if (programmeFile) {
+        programmeFile.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                if (deleteProgrammeInput) deleteProgrammeInput.value = 'false';
+            }
+        });
+    }
 
     // Connect save button to form submission
     saveButton.addEventListener('click', function() {

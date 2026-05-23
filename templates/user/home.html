@@ -271,6 +271,37 @@
 </div>
 -->
 
+<!-- Final Conference Programme Section -->
+{% if home_content.programme and home_content.programme.file_url and home_content.programme.visible %}
+<section class="programme-section">
+    <div class="container">
+        <div class="programme-card" data-aos="fade-up">
+            <div class="programme-icon">
+                <i class="fas fa-file-pdf"></i>
+            </div>
+            <div class="programme-details">
+                <h2 class="programme-title">{{ home_content.programme.title|default('Final Conference Programme') }}</h2>
+                <p class="programme-desc">The official programme for the conference is now available. Download the schedule to plan your sessions, keynotes, and presentation times.</p>
+                <div class="programme-meta">
+                    <span class="meta-item"><i class="fas fa-file-alt"></i> PDF Format</span>
+                    {% if home_content.programme.file_size %}
+                    <span class="meta-item"><i class="fas fa-hdd"></i> Size: {{ home_content.programme.file_size }}</span>
+                    {% endif %}
+                    {% if home_content.programme.updated_at %}
+                    <span class="meta-item"><i class="fas fa-clock"></i> Updated: {{ home_content.programme.updated_at[:10] }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="programme-actions">
+                <a href="{{ home_content.programme.file_url }}" class="btn btn-primary btn-lg download-programme-btn" target="_blank" download>
+                    <i class="fas fa-download"></i> Download Programme
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Associates Section -->
 {% if home_content.associates and home_content.associates|length > 0 %}
 <section class="associates-section">
@@ -1601,6 +1632,123 @@ html {
     100% {
         transform: scale(1);
         opacity: 0.9;
+    }
+}
+
+/* Final Conference Programme Section */
+.programme-section {
+    padding: 3rem 2rem;
+    background: var(--background-color);
+}
+
+.programme-card {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    padding: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.1);
+    transition: all 0.3s ease;
+}
+
+.programme-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(var(--primary-color-rgb), 0.08);
+    border-color: rgba(var(--primary-color-rgb), 0.25);
+}
+
+.programme-icon {
+    font-size: 3.5rem;
+    color: #dc3545; /* Red color for PDF icon */
+    background: rgba(220, 53, 69, 0.1);
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.programme-card:hover .programme-icon {
+    transform: scale(1.1);
+    background: rgba(220, 53, 69, 0.15);
+}
+
+.programme-details {
+    flex-grow: 1;
+}
+
+.programme-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.programme-desc {
+    font-size: 1.05rem;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.programme-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.programme-meta .meta-item {
+    font-size: 0.9rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.programme-actions {
+    flex-shrink: 0;
+}
+
+.download-programme-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .programme-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+        padding: 2rem;
+    }
+    
+    .programme-icon {
+        margin: 0 auto;
+    }
+    
+    .programme-meta {
+        justify-content: center;
+    }
+    
+    .programme-actions {
+        width: 100%;
+    }
+    
+    .download-programme-btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 </style>
