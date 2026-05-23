@@ -2,42 +2,29 @@
 
 {% block title %}Submit Full Paper - {{ conference.basic_info.name }}{% endblock %}
 
-{% block styles %}
+{% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        padding: 2rem 1rem;
-    }
-
     .container-wrapper {
-        max-width: 900px;
-        margin: 0 auto;
+        max-width: 980px;
+        margin: 1.5rem auto 2rem;
+        padding: 0 1rem;
     }
 
     .header {
-        text-align: center;
-        color: white;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 
     .header h1 {
-        font-size: 2.5rem;
+        font-size: 1.8rem;
         font-weight: 700;
-        margin-bottom: 0.5rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: #111827;
+        margin-bottom: 0.25rem;
     }
 
     .header p {
-        font-size: 1.1rem;
-        opacity: 0.95;
+        font-size: 1rem;
+        color: #4b5563;
     }
 
     .main-content {
@@ -53,12 +40,18 @@
     }
 
     /* Abstract Preview Card */
-    .abstract-preview {
+    .abstract-preview,
+    .upload-form {
         background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
         padding: 2rem;
-        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .upload-form {
+        display: flex;
+        flex-direction: column;
     }
 
     .abstract-preview-header {
@@ -70,7 +63,7 @@
     }
 
     .abstract-preview-header i {
-        color: #667eea;
+        color: var(--primary-color, #111827);
         font-size: 1.5rem;
         margin-right: 1rem;
     }
@@ -100,7 +93,7 @@
         padding: 0.75rem 1rem;
         background: #f8fafc;
         border-radius: 6px;
-        border-left: 3px solid #667eea;
+        border-left: 3px solid var(--primary-color, #111827);
     }
 
     .abstract-field-value.title {
@@ -112,7 +105,7 @@
     .abstract-field-value.type {
         display: inline-block;
         padding: 0.5rem 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
         color: white;
         border-radius: 20px;
         font-size: 0.875rem;
@@ -128,21 +121,11 @@
         display: inline-block;
         padding: 0.5rem 1rem;
         background: #f0f4ff;
-        color: #667eea;
+        color: var(--primary-color, #111827);
         border-radius: 6px;
         margin: 0.25rem;
         font-size: 0.875rem;
         font-weight: 500;
-    }
-
-    /* Upload Form Card */
-    .upload-form {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
     }
 
     .form-header {
@@ -154,7 +137,7 @@
     }
 
     .form-header i {
-        color: #667eea;
+        color: var(--primary-color, #111827);
         font-size: 1.5rem;
         margin-right: 1rem;
     }
@@ -208,9 +191,9 @@
     }
 
     .file-input-label:hover {
-        border-color: #667eea;
+        border-color: var(--primary-color, #111827);
         background: #f0f4ff;
-        color: #667eea;
+        color: var(--primary-color, #111827);
     }
 
     .file-input-label i {
@@ -279,24 +262,24 @@
     }
 
     .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--primary-color, #111827);
         color: white;
         flex: 1;
     }
 
     .btn-primary:hover:not(:disabled) {
+        background: var(--secondary-color, #1f2937);
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
 
     .btn-secondary {
-        background: #e2e8f0;
-        color: #0f172a;
+        background: #f3f4f6;
+        color: #111827;
         flex: 1;
     }
 
     .btn-secondary:hover:not(:disabled) {
-        background: #cbd5e1;
+        background: #e5e7eb;
     }
 
     .status-badge {
@@ -368,7 +351,7 @@
 
     .spinner {
         border: 3px solid #e2e8f0;
-        border-top: 3px solid #667eea;
+        border-top: 3px solid var(--primary-color, #111827);
         border-radius: 50%;
         width: 40px;
         height: 40px;
@@ -383,7 +366,7 @@
 
     @media (max-width: 768px) {
         .header h1 {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
         }
 
         .header p {
@@ -409,9 +392,6 @@
         }
     }
 </style>
-{% endblock %}
-
-{% block content %}
 <div class="container-wrapper">
     <div class="header">
         <h1><i class="fas fa-file-pdf"></i> Submit Full Paper</h1>

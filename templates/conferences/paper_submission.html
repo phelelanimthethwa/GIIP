@@ -2,7 +2,7 @@
 
 {% block title %}Submit Abstract - {{ conference.basic_info.name }}{% endblock %}
 
-{% block styles %}
+{% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <style>
 .submission-form {
@@ -102,9 +102,6 @@
     }
 }
 </style>
-{% endblock %}
-
-{% block content %}
 <div class="conference-header">
     <h1>
         <i class="fas fa-file-alt"></i>
@@ -328,7 +325,7 @@
 }
 </style>
 <script>
-let authorCount = {{ (paper.authors|length) if paper and paper.authors else 1 }};
+let authorCount = parseInt('{{ (paper.authors|length) if paper and paper.authors else 1 }}', 10);
 let isProcessing = false; // Prevent race conditions
 
 function addCoAuthor() {
