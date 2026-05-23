@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Publications - Global Conferences{% endblock %}
+{% block meta_description %}Browse published research papers from GIIR conferences. Access conference proceedings and peer-reviewed publications.{% endblock %}
+
+{% block content %}
+<div class="pub-page">
+
+    <!-- ═══════════════════════ HERO ═══════════════════════ -->
+    <div class="pub-hero">
+        <div class="pub-hero-bg"></div>
+        <div class="pub-hero-particles">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="pub-hero-inner">
+            <div class="pub-hero-icon">
+                <i class="fas fa-book-reader"></i>
+            </div>
+            <h1 class="pub-hero-title">Publications</h1>
+            <p class="pub-hero-subtitle">Peer-reviewed research from GIIR international conferences</p>
+            <div class="pub-hero-divider"></div>
+            <div class="pub-hero-stats">
+                <div class="pub-stat">
+                    <span class="pub-stat-num">{{ publications|length }}</span>
+                    <span class="pub-stat-label">Collections</span>
+                </div>
+                <div class="pub-stat-sep"></div>
+                <div class="pub-stat">
+                    <i class="fas fa-external-link-alt"></i>
+                    <span class="pub-stat-label">Open Access</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════ CONTENT ═══════════════════════ -->
+    <div class="pub-container">
+
+        {% if publications %}
+        <!-- Search / Filter bar -->
+        <div class="pub-filter-bar">
+            <div class="pub-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="pubSearch" placeholder="Search by conference name, title or year…" class="pub-search-input">
+            </div>
+        </div>
+
+        <!-- Cards grid -->
+        <div class="pub-grid" id="pubGrid">
+            {% for pub in publications %}
+            <div class="pub-card" data-search="{{ (pub.conference_name ~ ' ' ~ pub.title ~ ' ' ~ pub.year)|lower }}">
+                <div class="pub-card-accent"></div>
+
+                <div class="pub-card-header">
+                    <div class="pub-card-icon">
+                        <i class="fas fa-journal-whills"></i>
+                    </div>
+                    <div class="pub-card-meta">
+                        {% if pub.year %}
+                        <span class="pub-year-badge">{{ pub.year }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="pub-card-body">
+                    <h2 class="pub-card-conference">{{ pub.conference_name }}</h2>
+                    {% if pub.title %}
+                    <h3 class="pub-card-title">{{ pub.title }}</h3>
+                    {% endif %}
+                    {% if pub.description %}
+                    <p class="pub-card-desc">{{ pub.description }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="pub-card-footer">
+                    <div class="pub-card-url-preview">
+                        <i class="fas fa-link"></i>
+                        <span>{{ pub.external_url | truncate(45, True, '…') }}</span>
+                    </div>
+                    <a href="{{ pub.external_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="pub-view-btn"
+                       id="pub-view-{{ loop.index }}">
+                        <span>View Publications</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- No-search-results state -->
+        <div class="pub-no-results" id="pubNoResults" style="display:none;">
+            <i class="fas fa-search"></i>
+            <p>No publications match your search.</p>
+        </div>
+
+        {% else %}
+        <!-- Empty state -->
+        <div class="pub-empty">
+            <div class="pub-empty-icon">
+                <i class="fas fa-book-open"></i>
+            </div>
+            <h2>No Publications Yet</h2>
+            <p>Published conference papers will appear here once they become available. Please check back soon.</p>
+            <a href="{{ url_for('home') }}" class="pub-btn-home">
+                <i class="fas fa-home"></i> Back to Home
+            </a>
+        </div>
+        {% endif %}
+
+    </div><!-- /pub-container -->
+</div><!-- /pub-page -->
+
+<!-- ═══════════════════════ STYLES ═══════════════════════ -->
+<style>
+:root {
+    --pc: {{ site_design.primary_color if site_design else '#007bff' }};
+    --sc: {{ site_design.secondary_color if site_design else '#6c757d' }};
+    --ac: {{ site_design.accent_color if site_design else '#28a745' }};
+    --tc: {{ site_design.text_color if site_design else '#333' }};
+    --bg: {{ site_design.background_color if site_design else '#ffffff' }};
+    --hbg: {{ site_design.header_background if site_design else '#f8f9fa' }};
+    --htc: {{ site_design.hero_text_color if site_design else '#ffffff' }};
+}
+
+/* ── Page wrapper ── */
+.pub-page { min-height: 100vh; background: #f5f7fb; }
+
+/* ── Hero ── */
+.pub-hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--pc) 0%, color-mix(in srgb, var(--pc) 60%, var(--ac)) 100%);
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    color: var(--htc);
+}
+.pub-hero-bg {
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.pub-hero-particles {
+    position: absolute; inset: 0; pointer-events: none;
+}
+.pub-hero-particles span {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    animation: float-particle 6s ease-in-out infinite;
+}
+.pub-hero-particles span:nth-child(1) { left:10%; top:20%; animation-delay:0s; }
+.pub-hero-particles span:nth-child(2) { left:30%; top:70%; animation-delay:1s; width:10px; height:10px; }
+.pub-hero-particles span:nth-child(3) { left:60%; top:15%; animation-delay:2s; width:4px; height:4px; }
+.pub-hero-particles span:nth-child(4) { left:80%; top:60%; animation-delay:3s; width:8px; height:8px; }
+.pub-hero-particles span:nth-child(5) { left:50%; top:50%; animation-delay:1.5s; width:5px; height:5px; }
+@keyframes float-particle {
+    0%,100% { transform: translateY(0) scale(1); opacity: 0.3; }
+    50%      { transform: translateY(-20px) scale(1.2); opacity: 0.6; }
+}
+
+.pub-hero-inner { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+.pub-hero-icon {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem; margin: 0 auto 1.5rem;
+    animation: hero-bob 3s ease-in-out infinite;
+}
+@keyframes hero-bob {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+.pub-hero-title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800; margin-bottom: 0.75rem;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    animation: slide-down 0.8s ease-out;
+}
+.pub-hero-subtitle {
+    font-size: 1.15rem; opacity: 0.9; margin-bottom: 1.5rem;
+    animation: slide-up 0.8s ease-out 0.2s both;
+}
+.pub-hero-divider {
+    width: 60px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.7); margin: 0 auto 2rem;
+    animation: expand-w 0.8s ease-out 0.5s both;
+}
+@keyframes expand-w { from { width: 0; } to { width: 60px; } }
+
+.pub-hero-stats {
+    display: inline-flex; align-items: center; gap: 1.5rem;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50px; padding: 0.75rem 2rem;
+}
+.pub-stat { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.pub-stat-num { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+.pub-stat-label { font-size: 0.78rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
+.pub-stat .fas { font-size: 1.3rem; }
+.pub-stat-sep { width: 1px; height: 40px; background: rgba(255,255,255,0.3); }
+
+/* ── Container ── */
+.pub-container { max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+/* ── Filter bar ── */
+.pub-filter-bar { margin-bottom: 2.5rem; }
+.pub-search-wrap {
+    position: relative; max-width: 480px; margin: 0 auto;
+}
+.pub-search-wrap .fas {
+    position: absolute; left: 1rem; top: 50%;
+    transform: translateY(-50%); color: var(--sc); pointer-events: none;
+}
+.pub-search-input {
+    width: 100%; padding: 0.85rem 1.25rem 0.85rem 2.75rem;
+    border: 2px solid #e2e8f0; border-radius: 50px;
+    font-size: 0.95rem; background: #fff;
+    transition: all 0.3s ease; outline: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+}
+.pub-search-input:focus {
+    border-color: var(--pc);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 3px color-mix(in srgb, var(--pc) 15%, transparent);
+}
+
+/* ── Grid ── */
+.pub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 2rem;
+}
+
+/* ── Card ── */
+.pub-card {
+    position: relative;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.06);
+    display: flex; flex-direction: column;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1),
+                box-shadow 0.35s ease;
+    animation: card-in 0.5s ease-out both;
+}
+.pub-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.14);
+}
+@keyframes card-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.pub-card:nth-child(1) { animation-delay: 0.05s; }
+.pub-card:nth-child(2) { animation-delay: 0.1s; }
+.pub-card:nth-child(3) { animation-delay: 0.15s; }
+.pub-card:nth-child(4) { animation-delay: 0.2s; }
+.pub-card:nth-child(n+5) { animation-delay: 0.25s; }
+
+.pub-card-accent {
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--pc), var(--ac));
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.4s ease;
+}
+.pub-card:hover .pub-card-accent { transform: scaleX(1); }
+
+.pub-card-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.75rem 1.75rem 0;
+}
+.pub-card-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--pc), var(--ac));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.5rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    flex-shrink: 0;
+}
+.pub-year-badge {
+    background: linear-gradient(135deg, var(--ac), var(--pc));
+    color: #fff; font-weight: 700; font-size: 0.8rem;
+    padding: 0.3rem 0.8rem; border-radius: 20px;
+    letter-spacing: 0.04em;
+}
+
+.pub-card-body {
+    padding: 1.25rem 1.75rem 1rem; flex: 1;
+}
+.pub-card-conference {
+    font-size: 1.15rem; font-weight: 700;
+    color: var(--tc); margin-bottom: 0.4rem; line-height: 1.3;
+}
+.pub-card-title {
+    font-size: 0.92rem; font-weight: 600;
+    color: var(--pc); margin-bottom: 0.6rem;
+}
+.pub-card-desc {
+    font-size: 0.88rem; color: var(--sc); line-height: 1.6; margin: 0;
+    display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.pub-card-footer {
+    padding: 1rem 1.75rem 1.75rem;
+    border-top: 1px solid #f0f3f8;
+    display: flex; flex-direction: column; gap: 0.75rem;
+}
+.pub-card-url-preview {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.78rem; color: #94a3b8;
+    overflow: hidden;
+}
+.pub-card-url-preview .fas { flex-shrink: 0; }
+.pub-card-url-preview span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pub-view-btn {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.5rem; border-radius: 50px;
+    background: linear-gradient(135deg, var(--pc), color-mix(in srgb, var(--pc) 70%, var(--ac)));
+    color: #fff; font-weight: 600; font-size: 0.92rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+.pub-view-btn .fas { transition: transform 0.3s ease; }
+.pub-view-btn:hover {
+    color: #fff; text-decoration: none;
+    transform: translateX(3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.22);
+}
+.pub-view-btn:hover .fas { transform: translateX(4px); }
+
+/* ── No results ── */
+.pub-no-results {
+    text-align: center; padding: 4rem 2rem;
+    color: var(--sc);
+}
+.pub-no-results .fas { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+
+/* ── Empty state ── */
+.pub-empty {
+    text-align: center; padding: 5rem 2rem;
+    background: #fff; border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+.pub-empty-icon {
+    width: 110px; height: 110px; border-radius: 50%;
+    background: linear-gradient(135deg, #f0f4ff, #e8f5e9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; color: var(--pc);
+    margin: 0 auto 2rem;
+}
+.pub-empty h2 { color: var(--tc); font-weight: 700; margin-bottom: 1rem; }
+.pub-empty p { color: var(--sc); max-width: 400px; margin: 0 auto 2rem; line-height: 1.7; }
+.pub-btn-home {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.85rem 2rem; border-radius: 50px; font-weight: 600;
+    background: linear-gradient(135deg, var(--pc), var(--ac));
+    color: #fff; text-decoration: none;
+    transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.pub-btn-home:hover {
+    color: #fff; text-decoration: none;
+    transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* ── Animations ── */
+@keyframes slide-down {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .pub-hero { padding: 3.5rem 1rem 3rem; }
+    .pub-grid { grid-template-columns: 1fr; }
+    .pub-hero-stats { padding: 0.6rem 1.25rem; gap: 1rem; }
+    .pub-stat-num { font-size: 1.4rem; }
+}
+</style>
+
+<!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
+<script>
+(function () {
+    const searchInput = document.getElementById('pubSearch');
+    const grid = document.getElementById('pubGrid');
+    const noResults = document.getElementById('pubNoResults');
+    if (!searchInput || !grid) return;
+
+    searchInput.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        const cards = grid.querySelectorAll('.pub-card');
+        let visible = 0;
+        cards.forEach(function (card) {
+            const text = card.dataset.search || '';
+            const show = !q || text.includes(q);
+            card.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+    });
+})();
+</script>
+{% endblock %}

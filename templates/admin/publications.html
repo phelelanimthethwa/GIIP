@@ -1,0 +1,432 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Publications - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1><i class="fas fa-book-reader"></i> Publications</h1>
+            <p>Manage published paper collections linked to your conferences</p>
+        </div>
+        <div class="quick-actions">
+            <a href="{{ url_for('publications') }}" target="_blank" class="btn btn-secondary">
+                <i class="fas fa-external-link-alt"></i> Preview Public Page
+            </a>
+            <a href="{{ url_for('admin_publications_create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Publication
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Visibility toggle banner ── -->
+    <div class="vis-banner {% if publications_page_visible %}vis-on{% else %}vis-off{% endif %}" id="visBanner">
+        <div class="vis-banner-left">
+            <div class="vis-icon-wrap">
+                <i class="fas {% if publications_page_visible %}fa-eye{% else %}fa-eye-slash{% endif %}" id="visIcon"></i>
+            </div>
+            <div class="vis-text">
+                <strong id="visLabel">
+                    Publications page is currently
+                    <span class="vis-state-word">{% if publications_page_visible %}visible{% else %}hidden{% endif %}</span>
+                    to users
+                </strong>
+                <span id="visSubtitle">
+                    {% if publications_page_visible %}
+                        Users can see and browse the publications page.
+                    {% else %}
+                        The publications page returns a 404 for all visitors. The nav link is also hidden.
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="vis-banner-right">
+            <span class="vis-toggle-label" id="visToggleLabel">
+                {% if publications_page_visible %}Hide from users{% else %}Show to users{% endif %}
+            </span>
+            <button class="vis-toggle-btn {% if publications_page_visible %}active{% endif %}"
+                    id="visToggleBtn"
+                    title="Toggle publications page visibility"
+                    aria-pressed="{{ 'true' if publications_page_visible else 'false' }}">
+                <span class="vis-toggle-track">
+                    <span class="vis-toggle-thumb"></span>
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="pub-stats-row">
+        <div class="pub-stat-pill">
+            <i class="fas fa-layer-group"></i>
+            <strong>{{ publications|length }}</strong> Total Publications
+        </div>
+        <div class="pub-stat-pill">
+            <i class="fas fa-calendar"></i>
+            <strong>{{ publications|map(attribute='conference_name')|unique|list|length }}</strong> Conferences
+        </div>
+    </div>
+
+    <!-- Table card -->
+    <div class="admin-card pub-table-card">
+        {% if publications %}
+        <div class="pub-search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="adminPubSearch" placeholder="Search publications…" class="pub-admin-search">
+        </div>
+
+        <div class="table-responsive">
+            <table class="dashboard-table pub-table" id="pubTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Conference</th>
+                        <th>Title / Label</th>
+                        <th>Year</th>
+                        <th>External URL</th>
+                        <th>Added</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pub in publications %}
+                    <tr class="pub-row" data-search="{{ (pub.conference_name ~ ' ' ~ pub.title ~ ' ' ~ pub.year)|lower }}">
+                        <td class="row-num">{{ loop.index }}</td>
+                        <td>
+                            <div class="pub-conf-cell">
+                                <div class="pub-conf-icon"><i class="fas fa-calendar-check"></i></div>
+                                <span>{{ pub.conference_name }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if pub.title %}
+                            <span class="pub-title-text">{{ pub.title }}</span>
+                            {% else %}
+                            <span class="text-muted fst-italic" style="font-size:0.85rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if pub.year %}
+                            <span class="pub-year-chip">{{ pub.year }}</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="pub-url-cell">
+                            <a href="{{ pub.external_url }}" target="_blank" rel="noopener noreferrer"
+                               class="pub-url-link" title="{{ pub.external_url }}">
+                                <i class="fas fa-external-link-alt"></i>
+                                {{ pub.external_url | truncate(50, True, '…') }}
+                            </a>
+                        </td>
+                        <td class="pub-date">
+                            {% if pub.created_at %}
+                            {{ pub.created_at[:10] }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="pub-actions">
+                            <a href="{{ url_for('admin_publications_edit', pub_id=pub.id) }}"
+                               class="btn btn-sm btn-outline-primary pub-action-btn" title="Edit">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <form action="{{ url_for('admin_publications_delete', pub_id=pub.id) }}"
+                                  method="POST" style="display:inline;"
+                                  onsubmit="return adminConfirmDelete(event, '{{ pub.conference_name }}')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger pub-action-btn" title="Delete">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pub-no-rows" id="pubNoRows" style="display:none;">
+            <i class="fas fa-search"></i>
+            <p>No publications match your search.</p>
+        </div>
+
+        {% else %}
+        <div class="pub-empty-admin">
+            <div class="pub-empty-icon-wrap">
+                <i class="fas fa-book-open"></i>
+            </div>
+            <h3>No Publications Yet</h3>
+            <p>Create your first publication to link a conference to an external papers collection.</p>
+            <a href="{{ url_for('admin_publications_create') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add First Publication
+            </a>
+        </div>
+        {% endif %}
+    </div><!-- /admin-card -->
+</div><!-- /admin-dashboard -->
+
+<style>
+.admin-dashboard { padding: 1.5rem; }
+.dashboard-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+}
+.header-content h1 {
+    margin: 0; display: flex; align-items: center; gap: 0.5rem;
+    color: var(--primary-color); font-size: 1.6rem;
+}
+.header-content p { margin: 0.3rem 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+.quick-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+/* ── Visibility banner ── */
+.vis-banner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+    border-radius: 14px; padding: 1.1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1.5px solid;
+    transition: background 0.35s ease, border-color 0.35s ease;
+}
+.vis-banner.vis-on {
+    background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+    border-color: #86efac;
+}
+.vis-banner.vis-off {
+    background: linear-gradient(135deg, #fef9f0, #fff7ed);
+    border-color: #fcd34d;
+}
+
+.vis-banner-left { display: flex; align-items: center; gap: 1rem; }
+.vis-icon-wrap {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; transition: background 0.35s ease, color 0.35s ease;
+}
+.vis-banner.vis-on .vis-icon-wrap  { background: #dcfce7; color: #16a34a; }
+.vis-banner.vis-off .vis-icon-wrap { background: #fef3c7; color: #d97706; }
+
+.vis-text { display: flex; flex-direction: column; gap: 0.15rem; }
+.vis-text strong { font-size: 0.95rem; color: #1f2937; }
+.vis-state-word { font-weight: 800; }
+.vis-banner.vis-on  .vis-state-word { color: #16a34a; }
+.vis-banner.vis-off .vis-state-word { color: #d97706; }
+#visSubtitle { font-size: 0.8rem; color: #6b7280; }
+
+.vis-banner-right { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.vis-toggle-label { font-size: 0.82rem; font-weight: 600; color: #374151; white-space: nowrap; }
+
+/* Toggle switch */
+.vis-toggle-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 0; display: flex; align-items: center;
+    position: relative;
+}
+.vis-toggle-track {
+    display: block; width: 52px; height: 28px; border-radius: 14px;
+    background: #d1d5db;
+    position: relative; transition: background 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+.vis-toggle-btn.active .vis-toggle-track { background: #22c55e; }
+.vis-toggle-thumb {
+    position: absolute; top: 3px; left: 3px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.vis-toggle-btn.active .vis-toggle-thumb { transform: translateX(24px); }
+
+/* Saving state */
+.vis-toggle-btn.saving .vis-toggle-track { opacity: 0.6; }
+.vis-toggle-btn.saving { cursor: wait; }
+
+/* Stats row */
+.pub-stats-row {
+    display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem;
+}
+.pub-stat-pill {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 50px; padding: 0.5rem 1.25rem;
+    font-size: 0.875rem; color: #374151;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.pub-stat-pill .fas { color: var(--primary-color); }
+.pub-stat-pill strong { font-weight: 700; }
+
+/* Card */
+.admin-card {
+    background: #fff; border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.06);
+}
+.pub-table-card { padding-bottom: 2rem; }
+
+/* Search */
+.pub-search-wrap {
+    position: relative; max-width: 380px; margin-bottom: 1.5rem;
+}
+.pub-search-wrap .fas {
+    position: absolute; left: 0.9rem; top: 50%;
+    transform: translateY(-50%); color: #9ca3af; pointer-events: none;
+}
+.pub-admin-search {
+    width: 100%; padding: 0.65rem 1rem 0.65rem 2.5rem;
+    border: 1.5px solid #e5e7eb; border-radius: 8px;
+    font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+}
+.pub-admin-search:focus { border-color: var(--primary-color); }
+
+/* Table */
+.dashboard-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.dashboard-table th {
+    text-align: left; padding: 0.75rem 1rem;
+    font-weight: 600; font-size: 0.8rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #6b7280;
+    border-bottom: 2px solid #f3f4f6; background: #fafafa;
+}
+.dashboard-table td {
+    padding: 0.85rem 1rem; border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle; font-size: 0.9rem;
+}
+.pub-row:hover td { background: #f9fafb; }
+.row-num { color: #9ca3af; font-size: 0.8rem; width: 36px; }
+
+.pub-conf-cell { display: flex; align-items: center; gap: 0.6rem; }
+.pub-conf-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--primary-color), #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 0.75rem; flex-shrink: 0;
+}
+.pub-title-text { font-weight: 500; color: #1f2937; }
+.pub-year-chip {
+    background: #eff6ff; color: #1d4ed8;
+    font-weight: 700; font-size: 0.78rem;
+    padding: 0.2rem 0.65rem; border-radius: 20px;
+}
+.pub-url-cell { max-width: 280px; }
+.pub-url-link {
+    display: flex; align-items: center; gap: 0.4rem;
+    color: #4f46e5; font-size: 0.82rem; word-break: break-all;
+    text-decoration: none; transition: color 0.2s;
+}
+.pub-url-link:hover { color: var(--primary-color); text-decoration: underline; }
+.pub-url-link .fas { flex-shrink: 0; font-size: 0.7rem; }
+.pub-date { color: #9ca3af; font-size: 0.82rem; white-space: nowrap; }
+.pub-actions { text-align: right; white-space: nowrap; }
+.pub-action-btn {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.8rem; padding: 0.3rem 0.7rem; margin-left: 0.3rem;
+    border-radius: 6px; transition: all 0.2s;
+}
+.pub-no-rows { text-align: center; padding: 3rem 2rem; color: #9ca3af; }
+.pub-no-rows .fas { font-size: 2rem; margin-bottom: 0.75rem; display: block; }
+.pub-empty-admin { text-align: center; padding: 4rem 2rem; }
+.pub-empty-icon-wrap {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: linear-gradient(135deg, #eff6ff, #ecfdf5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem; color: var(--primary-color); margin: 0 auto 1.5rem;
+}
+.pub-empty-admin h3 { color: #1f2937; font-weight: 700; margin-bottom: 0.6rem; }
+.pub-empty-admin p { color: #6b7280; margin-bottom: 1.5rem; }
+
+@media (max-width: 768px) {
+    .dashboard-header { flex-direction: column; align-items: flex-start; }
+    .pub-url-cell { display: none; }
+    .pub-date { display: none; }
+    .vis-banner { flex-direction: column; align-items: flex-start; }
+}
+</style>
+
+<script>
+// ── Table search ──
+(function () {
+    const input = document.getElementById('adminPubSearch');
+    const noRows = document.getElementById('pubNoRows');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        const rows = document.querySelectorAll('#pubTable .pub-row');
+        let visible = 0;
+        rows.forEach(function (row) {
+            const match = !q || (row.dataset.search || '').includes(q);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        if (noRows) noRows.style.display = visible === 0 ? 'block' : 'none';
+    });
+})();
+
+// ── Delete confirmation ──
+async function adminConfirmDelete(e, name) {
+    e.preventDefault();
+    const form = e.target;
+    const confirmed = await adminConfirm({
+        title: 'Delete Publication',
+        message: 'Are you sure you want to delete the publication for "' + name + '"?\n\nThis action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        variant: 'danger'
+    });
+    if (confirmed) form.submit();
+}
+
+// ── Visibility toggle ──
+(function () {
+    const btn    = document.getElementById('visToggleBtn');
+    const banner = document.getElementById('visBanner');
+    const icon   = document.getElementById('visIcon');
+    const label  = document.getElementById('visToggleLabel');
+    const stateWord = banner.querySelector('.vis-state-word');
+    const subtitle  = document.getElementById('visSubtitle');
+    if (!btn) return;
+
+    let currentlyVisible = btn.classList.contains('active');
+
+    btn.addEventListener('click', async function () {
+        if (btn.classList.contains('saving')) return;
+
+        const newVisible = !currentlyVisible;
+        btn.classList.add('saving');
+
+        try {
+            const resp = await fetch('{{ url_for("admin_publications_settings") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ visible: newVisible })
+            });
+            const data = await resp.json();
+
+            if (data.success) {
+                currentlyVisible = newVisible;
+
+                // Update toggle appearance
+                btn.classList.toggle('active', newVisible);
+                btn.setAttribute('aria-pressed', newVisible ? 'true' : 'false');
+
+                // Update banner class
+                banner.classList.toggle('vis-on',  newVisible);
+                banner.classList.toggle('vis-off', !newVisible);
+
+                // Update icon
+                icon.className = 'fas ' + (newVisible ? 'fa-eye' : 'fa-eye-slash');
+
+                // Update text
+                stateWord.textContent = newVisible ? 'visible' : 'hidden';
+                label.textContent     = newVisible ? 'Hide from users' : 'Show to users';
+                subtitle.textContent  = newVisible
+                    ? 'Users can see and browse the publications page.'
+                    : 'The publications page returns a 404 for all visitors. The nav link is also hidden.';
+            } else {
+                alert('Failed to update visibility: ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+        } finally {
+            btn.classList.remove('saving');
+        }
+    });
+})();
+</script>
+{% endblock %}

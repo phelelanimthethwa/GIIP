@@ -272,6 +272,7 @@ SITEMAP_PUBLIC_ENDPOINTS = [
     ('downloads', 'weekly', '0.7'),
     ('conference_proceedings', 'weekly', '0.7'),
     ('galleries', 'weekly', '0.7'),
+    ('publications', 'weekly', '0.8'),
     ('contact', 'monthly', '0.6'),
     ('guest_speaker_application', 'monthly', '0.5'),
 ]
@@ -8138,6 +8139,16 @@ def inject_has_speakers():
         }
 
 @app.context_processor
+def inject_publications_visibility():
+    """Expose publications page visibility flag to every template."""
+    try:
+        visible = db.reference('publications_settings/visible').get()
+        # Default to True when the key hasn't been set yet
+        return dict(publications_page_visible=visible if visible is not None else True)
+    except Exception:
+        return dict(publications_page_visible=True)
+
+@app.context_processor
 def inject_admin_menu():
     admin_menu = [
         {'text': 'Dashboard', 'url': 'admin_dashboard', 'icon': 'tachometer-alt'},
@@ -8161,8 +8172,9 @@ def inject_admin_menu():
         {'text': 'Announcements', 'url': 'admin_announcements', 'icon': 'bullhorn'},
         {'text': 'Email Templates', 'url': 'admin_email_templates', 'icon': 'envelope-open-text'},
         {'text': 'Downloads', 'url': 'admin_downloads', 'icon': 'download'},
-                {'text': 'Conference Proceedings', 'url': 'admin_conference_proceedings', 'icon': 'book-open'},
-                {'text': 'Conference Galleries', 'url': 'admin_conference_galleries', 'icon': 'images'},
+        {'text': 'Conference Proceedings', 'url': 'admin_conference_proceedings', 'icon': 'book-open'},
+        {'text': 'Conference Galleries', 'url': 'admin_conference_galleries', 'icon': 'images'},
+        {'text': 'Publications', 'url': 'admin_publications', 'icon': 'book-reader'},
     ]
     return dict(admin_menu=admin_menu)
 
@@ -14361,6 +14373,227 @@ if 'peer_review_process' not in app.view_functions:
         endpoint='peer_review_process',
         view_func=peer_review_process,
     )
+
+# ─────────────────────────── PUBLICATIONS ───────────────────────────
+
+def _get_publications_list():
+    """Return publications as a flat list with 'id' injected, sorted newest first."""
+    try:
+        pubs = db.reference('publications').get() or {}
+        result = []
+        for pub_id, pub in pubs.items():
+            if pub:
+                pub['id'] = pub_id
+                result.append(pub)
+        result.sort(key=lambda p: p.get('created_at', ''), reverse=True)
+        return result
+    except Exception as e:
+        print(f'Error fetching publications: {e}')
+        return []
+
+
+@app.route('/publications')
+def publications():
+    """Public-facing publications listing page."""
+    try:
+        # Respect admin visibility toggle (default visible)
+        visible = db.reference('publications_settings/visible').get()
+        if visible is False:
+            from flask import abort
+            abort(404)
+        pubs = _get_publications_list()
+        site_design = get_site_design()
+        return render_template('user/publications.html',
+                               publications=pubs,
+                               site_design=site_design)
+    except Exception as e:
+        print(f'Error loading publications page: {e}')
+        flash('Unable to load publications at this time.', 'error')
+        return render_template('user/publications.html',
+                               publications=[],
+                               site_design=get_site_design())
+
+
+def _require_admin(fn):
+    """Simple decorator that blocks non-admin users with a flash + redirect."""
+    from functools import wraps
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            flash('Admin access required.', 'danger')
+            return redirect(url_for('login'))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+@app.route('/admin/publications', methods=['GET'])
+@login_required
+@_require_admin
+def admin_publications():
+    """Admin: list all publications."""
+    pubs = _get_publications_list()
+    return render_template('admin/publications.html', publications=pubs)
+
+
+@app.route('/admin/publications/create', methods=['GET', 'POST'])
+@login_required
+@_require_admin
+def admin_publications_create():
+    """Admin: create a new publication."""
+    conferences = get_all_conferences() or {}
+
+    if request.method == 'POST':
+        conference_id  = request.form.get('conference_id', '').strip()
+        title          = request.form.get('title', '').strip()
+        description    = request.form.get('description', '').strip()
+        external_url   = request.form.get('external_url', '').strip()
+        year           = request.form.get('year', '').strip()
+
+        # Validation
+        if not conference_id:
+            flash('Please select a conference.', 'danger')
+            return render_template('admin/publications_form.html', pub=None, conferences=conferences)
+        if not external_url:
+            flash('External URL is required.', 'danger')
+            return render_template('admin/publications_form.html', pub=None, conferences=conferences)
+
+        # Resolve conference name
+        conf_data = conferences.get(conference_id, {})
+        conf_name = conf_data.get('basic_info', {}).get('name', conference_id)
+
+        # Auto-fill year from conference if not provided
+        if not year:
+            year = str(conf_data.get('basic_info', {}).get('year', ''))
+
+        now_iso = datetime.utcnow().isoformat()
+        pub_data = {
+            'conference_id':   conference_id,
+            'conference_name': conf_name,
+            'title':           title,
+            'description':     description,
+            'external_url':    external_url,
+            'year':            year,
+            'created_at':      now_iso,
+            'updated_at':      now_iso,
+        }
+
+        try:
+            db.reference('publications').push(pub_data)
+            flash('Publication created successfully.', 'success')
+            return redirect(url_for('admin_publications'))
+        except Exception as e:
+            print(f'Error creating publication: {e}')
+            flash(f'Error saving publication: {str(e)}', 'danger')
+
+    return render_template('admin/publications_form.html', pub=None, conferences=conferences)
+
+
+@app.route('/admin/publications/<pub_id>/edit', methods=['GET', 'POST'])
+@login_required
+@_require_admin
+def admin_publications_edit(pub_id):
+    """Admin: edit an existing publication."""
+    conferences = get_all_conferences() or {}
+
+    try:
+        pub_ref  = db.reference(f'publications/{pub_id}')
+        pub_data = pub_ref.get()
+    except Exception as e:
+        flash(f'Publication not found: {e}', 'danger')
+        return redirect(url_for('admin_publications'))
+
+    if not pub_data:
+        flash('Publication not found.', 'danger')
+        return redirect(url_for('admin_publications'))
+
+    pub_data['id'] = pub_id  # inject id for template
+
+    if request.method == 'POST':
+        conference_id  = request.form.get('conference_id', '').strip()
+        title          = request.form.get('title', '').strip()
+        description    = request.form.get('description', '').strip()
+        external_url   = request.form.get('external_url', '').strip()
+        year           = request.form.get('year', '').strip()
+
+        if not conference_id:
+            flash('Please select a conference.', 'danger')
+            return render_template('admin/publications_form.html', pub=pub_data, conferences=conferences)
+        if not external_url:
+            flash('External URL is required.', 'danger')
+            return render_template('admin/publications_form.html', pub=pub_data, conferences=conferences)
+
+        conf_data = conferences.get(conference_id, {})
+        conf_name = conf_data.get('basic_info', {}).get('name', conference_id)
+
+        if not year:
+            year = str(conf_data.get('basic_info', {}).get('year', ''))
+
+        updates = {
+            'conference_id':   conference_id,
+            'conference_name': conf_name,
+            'title':           title,
+            'description':     description,
+            'external_url':    external_url,
+            'year':            year,
+            'updated_at':      datetime.utcnow().isoformat(),
+        }
+
+        try:
+            pub_ref.update(updates)
+            flash('Publication updated successfully.', 'success')
+            return redirect(url_for('admin_publications'))
+        except Exception as e:
+            print(f'Error updating publication: {e}')
+            flash(f'Error updating publication: {str(e)}', 'danger')
+
+    return render_template('admin/publications_form.html', pub=pub_data, conferences=conferences)
+
+
+@app.route('/admin/publications/<pub_id>/delete', methods=['POST'])
+@login_required
+@_require_admin
+def admin_publications_delete(pub_id):
+    """Admin: delete a publication."""
+    try:
+        db.reference(f'publications/{pub_id}').delete()
+        flash('Publication deleted.', 'success')
+    except Exception as e:
+        print(f'Error deleting publication: {e}')
+        flash(f'Error deleting publication: {str(e)}', 'danger')
+    return redirect(url_for('admin_publications'))
+
+
+@app.route('/admin/publications/settings', methods=['POST'])
+@login_required
+@_require_admin
+def admin_publications_settings():
+    """Admin: toggle the public visibility of the publications page."""
+    try:
+        # Accept JSON (fetch) or form POST
+        if request.is_json:
+            data = request.get_json(force=True) or {}
+            visible = bool(data.get('visible', True))
+        else:
+            visible = request.form.get('visible', 'true').lower() == 'true'
+
+        db.reference('publications_settings').set({'visible': visible})
+
+        if request.is_json:
+            return jsonify({'success': True, 'visible': visible})
+
+        flash(
+            'Publications page is now ' + ('visible to users.' if visible else 'hidden from users.'),
+            'success'
+        )
+    except Exception as e:
+        print(f'Error updating publications settings: {e}')
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f'Error updating settings: {str(e)}', 'danger')
+
+    return redirect(url_for('admin_publications'))
+
+# ─────────────────────── END PUBLICATIONS ───────────────────────────
 
 if __name__ == '__main__':
     # Create admin user on startup

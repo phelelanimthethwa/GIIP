@@ -1,0 +1,314 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Edit' if pub else 'Add' }} Publication - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+
+    <!-- Breadcrumb header -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1>
+                <i class="fas fa-{{ 'edit' if pub else 'plus-circle' }}"></i>
+                {{ 'Edit' if pub else 'New' }} Publication
+            </h1>
+            <p>
+                {% if pub %}
+                    Update the details for this publication entry
+                {% else %}
+                    Link a conference to its external published papers collection
+                {% endif %}
+            </p>
+        </div>
+        <div class="quick-actions">
+            <a href="{{ url_for('admin_publications') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Publications
+            </a>
+        </div>
+    </div>
+
+    <!-- Form card -->
+    <div class="admin-card pub-form-card">
+        <form method="POST"
+              action="{{ url_for('admin_publications_edit', pub_id=pub.id) if pub else url_for('admin_publications_create') }}">
+
+            <!-- Conference selector -->
+            <div class="form-section">
+                <div class="form-section-label">
+                    <div class="form-section-icon"><i class="fas fa-calendar-check"></i></div>
+                    <div>
+                        <h3>Conference</h3>
+                        <p>Select the conference this publication belongs to</p>
+                    </div>
+                </div>
+                <div class="form-fields">
+                    <div class="field-group">
+                        <label for="conference_id" class="field-label required">Conference <span class="req">*</span></label>
+                        <select name="conference_id" id="conference_id" class="field-control" required
+                                onchange="onConferenceChange(this)">
+                            <option value="">— Select a conference —</option>
+                            {% for conf_id, conf in conferences.items() %}
+                            <option value="{{ conf_id }}"
+                                    data-name="{{ conf.basic_info.name }}"
+                                    data-year="{{ conf.basic_info.year | default('') }}"
+                                {% if pub and pub.conference_id == conf_id %}selected{% endif %}>
+                                {{ conf.basic_info.name }}
+                                {% if conf.basic_info.year %}({{ conf.basic_info.year }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <span class="field-hint">Only conferences already created in the system are listed</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Title & Year -->
+            <div class="form-section">
+                <div class="form-section-label">
+                    <div class="form-section-icon"><i class="fas fa-tag"></i></div>
+                    <div>
+                        <h3>Label &amp; Year</h3>
+                        <p>Optional display label shown to users (defaults to conference name)</p>
+                    </div>
+                </div>
+                <div class="form-fields">
+                    <div class="field-row">
+                        <div class="field-group flex-2">
+                            <label for="title" class="field-label">Display Title <span class="optional">(optional)</span></label>
+                            <input type="text" name="title" id="title" class="field-control"
+                                   placeholder="e.g. GIIR 2024 Published Proceedings"
+                                   value="{{ pub.title if pub else '' }}">
+                            <span class="field-hint">If blank, the conference name will be displayed</span>
+                        </div>
+                        <div class="field-group flex-1">
+                            <label for="year" class="field-label">Year <span class="optional">(optional)</span></label>
+                            <input type="text" name="year" id="year" class="field-control"
+                                   placeholder="e.g. 2024" maxlength="4"
+                                   value="{{ pub.year if pub else '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- Description -->
+            <div class="form-section">
+                <div class="form-section-label">
+                    <div class="form-section-icon"><i class="fas fa-align-left"></i></div>
+                    <div>
+                        <h3>Description</h3>
+                        <p>A short summary shown on the publications page</p>
+                    </div>
+                </div>
+                <div class="form-fields">
+                    <div class="field-group">
+                        <label for="description" class="field-label">Description <span class="optional">(optional)</span></label>
+                        <textarea name="description" id="description" class="field-control"
+                                  rows="3"
+                                  placeholder="e.g. Full collection of peer-reviewed papers presented at the GIIR 2024 International Conference">{{ pub.description if pub else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- External URL -->
+            <div class="form-section">
+                <div class="form-section-label">
+                    <div class="form-section-icon"><i class="fas fa-link"></i></div>
+                    <div>
+                        <h3>External URL</h3>
+                        <p>The link where users will be directed to access the published papers</p>
+                    </div>
+                </div>
+                <div class="form-fields">
+                    <div class="field-group">
+                        <label for="external_url" class="field-label required">
+                            Papers URL <span class="req">*</span>
+                        </label>
+                        <div class="url-input-wrap">
+                            <i class="fas fa-globe url-icon"></i>
+                            <input type="url" name="external_url" id="external_url" class="field-control url-input"
+                                   placeholder="https://doi.org/… or https://your-journal.com/…"
+                                   value="{{ pub.external_url if pub else '' }}"
+                                   required>
+                        </div>
+                        <span class="field-hint">Must be a full URL starting with https://</span>
+
+                        <!-- Live URL preview -->
+                        <div class="url-preview" id="urlPreview" style="display:none;">
+                            <i class="fas fa-external-link-alt"></i>
+                            <a href="#" id="urlPreviewLink" target="_blank" rel="noopener noreferrer">
+                                Preview link
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form footer -->
+            <div class="form-footer">
+                <a href="{{ url_for('admin_publications') }}" class="btn btn-light">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary pub-save-btn" id="saveBtn">
+                    <i class="fas fa-save"></i>
+                    {{ 'Save Changes' if pub else 'Create Publication' }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<style>
+.admin-dashboard { padding: 1.5rem; }
+.dashboard-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+}
+.header-content h1 {
+    margin: 0; display: flex; align-items: center; gap: 0.5rem;
+    color: var(--primary-color); font-size: 1.6rem;
+}
+.header-content p { margin: 0.3rem 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+.quick-actions { display: flex; gap: 0.75rem; }
+
+/* Card */
+.admin-card {
+    background: #fff; border-radius: 16px; padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.06);
+}
+.pub-form-card { max-width: 860px; }
+
+/* Form sections */
+.form-section {
+    display: grid; grid-template-columns: 240px 1fr;
+    gap: 2rem; align-items: flex-start;
+    padding: 1.5rem 0;
+}
+.form-section-label { padding-top: 0.25rem; }
+.form-section-label { display: flex; align-items: flex-start; gap: 0.8rem; }
+.form-section-icon {
+    width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary-color), #6366f1);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1rem;
+}
+.form-section-label h3 {
+    margin: 0 0 0.2rem; font-size: 0.95rem; font-weight: 700; color: #1f2937;
+}
+.form-section-label p { margin: 0; font-size: 0.82rem; color: #6b7280; line-height: 1.4; }
+.form-divider { border: none; border-top: 1px solid #f3f4f6; margin: 0; }
+
+/* Fields */
+.form-fields { display: flex; flex-direction: column; gap: 1rem; }
+.field-row { display: flex; gap: 1rem; }
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.field-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.field-label {
+    font-size: 0.875rem; font-weight: 600; color: #374151;
+}
+.req { color: #ef4444; }
+.optional { font-weight: 400; color: #9ca3af; font-size: 0.8rem; }
+.field-control {
+    padding: 0.65rem 0.9rem;
+    border: 1.5px solid #e5e7eb; border-radius: 8px;
+    font-size: 0.9rem; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    color: #1f2937;
+    background: #fafafa;
+}
+.field-control:focus {
+    border-color: var(--primary-color); background: #fff;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent);
+}
+select.field-control { cursor: pointer; }
+textarea.field-control { resize: vertical; min-height: 90px; }
+.field-hint { font-size: 0.78rem; color: #9ca3af; }
+
+/* URL input */
+.url-input-wrap { position: relative; }
+.url-icon {
+    position: absolute; left: 0.9rem; top: 50%;
+    transform: translateY(-50%); color: #9ca3af; pointer-events: none;
+}
+.url-input { padding-left: 2.5rem; }
+
+/* URL preview */
+.url-preview {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-top: 0.5rem; font-size: 0.82rem; color: #4f46e5;
+}
+.url-preview .fas { font-size: 0.7rem; }
+.url-preview a { color: #4f46e5; }
+
+/* Footer */
+.form-footer {
+    display: flex; justify-content: flex-end; gap: 0.75rem;
+    margin-top: 2rem; padding-top: 1.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+.pub-save-btn {
+    padding: 0.65rem 1.75rem; font-size: 0.95rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-section { grid-template-columns: 1fr; gap: 1rem; }
+    .field-row { flex-direction: column; }
+    .form-section-label { flex-direction: row; }
+}
+</style>
+
+<script>
+// Populate year from conference selection
+function onConferenceChange(select) {
+    const opt = select.options[select.selectedIndex];
+    const yearField = document.getElementById('year');
+    if (yearField && opt && opt.dataset.year) {
+        yearField.value = opt.dataset.year;
+    }
+}
+
+// Live URL preview
+(function () {
+    const urlInput = document.getElementById('external_url');
+    const preview = document.getElementById('urlPreview');
+    const previewLink = document.getElementById('urlPreviewLink');
+    if (!urlInput || !preview || !previewLink) return;
+
+    function update() {
+        const val = urlInput.value.trim();
+        if (val && (val.startsWith('http://') || val.startsWith('https://'))) {
+            previewLink.href = val;
+            previewLink.textContent = val.length > 60 ? val.substring(0, 57) + '…' : val;
+            preview.style.display = 'flex';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    urlInput.addEventListener('input', update);
+    update(); // run on load (edit mode)
+})();
+
+// Trigger year population on page load in edit mode (pre-selected conference)
+window.addEventListener('DOMContentLoaded', function () {
+    const sel = document.getElementById('conference_id');
+    if (sel && sel.value) {
+        // Only auto-fill year if year field is empty (new form)
+        const yearField = document.getElementById('year');
+        if (yearField && !yearField.value) {
+            onConferenceChange(sel);
+        }
+    }
+});
+</script>
+{% endblock %}

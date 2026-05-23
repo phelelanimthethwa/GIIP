@@ -68,6 +68,11 @@
                         <li><a href="{{ url_for('downloads') }}" class="dropdown-item">
                             <i class="fas fa-file-download"></i> Downloads
                         </a></li>
+                        {% if publications_page_visible %}
+                        <li><a href="{{ url_for('publications') }}" class="dropdown-item">
+                            <i class="fas fa-book-reader"></i> Publications
+                        </a></li>
+                        {% endif %}
                     </ul>
                 </li>
 
