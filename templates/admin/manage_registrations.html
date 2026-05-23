@@ -70,6 +70,8 @@
                 <option value="">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
+                <option value="paid">Paid</option>
+                <option value="waived">Waived</option>
                 <option value="rejected">Rejected</option>
             </select>
             <button class="btn btn-sm btn-outline-secondary" onclick="clearFilters()">
@@ -172,7 +174,7 @@
                             <td>R{{ registration.total_amount }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <span class="badge {% if registration.payment_status == 'approved' %}bg-success{% elif registration.payment_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    <span class="badge {% if registration.payment_status in ['approved', 'paid', 'waived'] %}bg-success{% elif registration.payment_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
                                         {{ registration.payment_status | title }}
                                     </span>
                                     <div class="dropdown ms-2">
@@ -181,6 +183,7 @@
                                         </button>
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="#" onclick="updateStatus('{{ registration._id }}', 'approved')">Approve</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="updateStatus('{{ registration._id }}', 'waived')">Waive Payment</a></li>
                                             <li><a class="dropdown-item" href="#" onclick="updateStatus('{{ registration._id }}', 'rejected')">Reject</a></li>
                                             <li><a class="dropdown-item" href="#" onclick="updateStatus('{{ registration._id }}', 'pending')">Mark Pending</a></li>
                                         </ul>
@@ -941,7 +944,9 @@ function formatRegistrationDetails(data) {
     font-weight: 500;
 }
 
-.status-badge.approved {
+.status-badge.approved,
+.status-badge.paid,
+.status-badge.waived {
     background: #1cc88a;
     color: white;
 }
@@ -1009,13 +1014,13 @@ function formatRegistrationDetails(data) {
 
     // Update registration status
     async function updateStatus(registrationId, newStatus) {
-        const actionLabel = newStatus === 'approved' ? 'approve' : newStatus === 'rejected' ? 'reject' : 'mark as pending';
+        const actionLabel = newStatus === 'approved' ? 'approve' : newStatus === 'waived' ? 'waive payment for' : newStatus === 'rejected' ? 'reject' : 'mark as pending';
         const ok = await window.adminConfirm({
             title: 'Update registration status',
             message: 'Are you sure you want to ' + actionLabel + ' this registration?',
-            confirmText: newStatus === 'approved' ? 'Approve' : newStatus === 'rejected' ? 'Reject' : 'Mark pending',
+            confirmText: newStatus === 'approved' ? 'Approve' : newStatus === 'waived' ? 'Waive Payment' : newStatus === 'rejected' ? 'Reject' : 'Mark pending',
             cancelText: 'Cancel',
-            variant: newStatus === 'approved' ? 'success' : newStatus === 'rejected' ? 'danger' : 'primary'
+            variant: newStatus === 'approved' || newStatus === 'waived' ? 'success' : newStatus === 'rejected' ? 'danger' : 'primary'
         });
         if (!ok) {
             return;

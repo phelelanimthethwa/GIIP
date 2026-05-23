@@ -341,16 +341,16 @@
     }
 </style>
 <div class="page-header">
-    <h1>{{ paper_settings.page.title if paper_settings and paper_settings.page else 'Submit Your Paper' }}</h1>
+    <h1>{{ paper_settings.page.title if paper_settings and paper_settings.page else 'Submit Your Abstract' }}</h1>
     {% if conferences|length > 1 %}
     <p>{{ paper_settings.page.description if paper_settings and paper_settings.page else 'Please select a conference and
-        fill out the form below to submit your paper' }}</p>
+        fill out the form below to submit your abstract' }}</p>
     {% elif conferences|length == 1 %}
     {% for conf_id, conf_data in conferences.items() %}
-    <p>Submit your paper to {{ conf_data.basic_info.name }}</p>
+    <p>Submit your abstract to {{ conf_data.basic_info.name }}</p>
     {% endfor %}
     {% else %}
-    <p>No conferences are currently accepting paper submissions</p>
+    <p>No conferences are currently accepting abstract submissions</p>
     {% endif %}
     
     <!-- Extra Paper Submission Notice -->
@@ -361,8 +361,8 @@
             <i class="fas fa-file-plus"></i>
         </div>
         <div class="notice-content">
-            <h3>Submit an Extra Paper</h3>
-            <p>You can submit up to 2 papers per conference. Select your conference below to submit another paper.</p>
+            <h3>Submit an Extra Abstract</h3>
+            <p>You can submit up to 2 abstracts per conference. Select your conference below to submit another abstract.</p>
         </div>
     </div>
     {% endif %}
@@ -387,7 +387,7 @@
                     {% endfor %}
                 </select>
                 <small class="form-text text-muted">
-                    Select the conference you want to submit your paper to. Each conference may have different
+                    Select the conference you want to submit your abstract to. Each conference may have different
                     requirements and deadlines.
                 </small>
             </div>
@@ -417,7 +417,7 @@
         <!-- Registration Type Selection -->
         <div class="form-section">
             <h3><i class="fas fa-id-card"></i> Registration Type</h3>
-            <p class="section-subtitle">Select your registration type. Payment will be processed after your paper is accepted.</p>
+            <p class="section-subtitle">Select your registration type. Payment will be processed after your abstract is accepted.</p>
             
             <div class="registration-type-options">
                 <div class="reg-type-card">
@@ -483,20 +483,20 @@
         </div>
 
         <div class="form-section">
-            <h3><i class="fas fa-upload"></i> Paper Upload</h3>
-            <p class="section-subtitle">You can upload up to 2 papers at the same time. Each paper needs complete details.</p>
+            <h3><i class="fas fa-upload"></i> Abstract Upload</h3>
+            <p class="section-subtitle">You can upload up to 2 abstracts at the same time. Each abstract needs complete details.</p>
             
             <!-- Paper 1 -->
             <div class="paper-upload-container">
-                <div class="paper-number-badge">Paper 1</div>
+                <div class="paper-number-badge">Abstract 1</div>
                 
                 <div class="paper-form-group">
-                    <label for="paper_title_1">Paper Title *</label>
+                    <label for="paper_title_1">Abstract Title *</label>
                     <input type="text" id="paper_title_1" name="papers[0][title]" class="form-control" required>
                 </div>
 
                 <div class="paper-form-group">
-                    <label for="paper_abstract_1">Abstract *</label>
+                    <label for="paper_abstract_1">Abstract Text *</label>
                     <textarea id="paper_abstract_1" name="papers[0][abstract]" class="form-control" rows="3" required></textarea>
                 </div>
 
@@ -551,7 +551,7 @@
                     {% set file_types = paper_settings.files.allowed_types if paper_settings and paper_settings.files else
                     ['pdf'] %}
                     {% set max_size = paper_settings.files.max_size_mb if paper_settings and paper_settings.files else 10 %}
-                    <label for="paper_file_1">Upload Paper File *
+                    <label for="paper_file_1">Upload Abstract File *
                         ({% if 'pdf' in file_types and 'doc' in file_types %}PDF or Word documents{% elif 'pdf' in
                         file_types %}PDF only{% elif 'doc' in file_types %}Word documents only{% else %}PDF only{% endif %})
                     </label>
@@ -564,15 +564,15 @@
 
             <!-- Paper 2 (Optional) -->
             <div id="paper-2-container" class="paper-upload-container optional-paper" style="display: none;">
-                <div class="paper-number-badge secondary">Paper 2 (Optional)</div>
+                <div class="paper-number-badge secondary">Abstract 2 (Optional)</div>
                 
                 <div class="paper-form-group">
-                    <label for="paper_title_2">Paper Title</label>
+                    <label for="paper_title_2">Abstract Title</label>
                     <input type="text" id="paper_title_2" name="papers[1][title]" class="form-control">
                 </div>
 
                 <div class="paper-form-group">
-                    <label for="paper_abstract_2">Abstract</label>
+                    <label for="paper_abstract_2">Abstract Text</label>
                     <textarea id="paper_abstract_2" name="papers[1][abstract]" class="form-control" rows="3"></textarea>
                 </div>
 
@@ -624,19 +624,19 @@
                 </div>
 
                 <div class="paper-form-group">
-                    <label for="paper_file_2">Upload Paper File</label>
+                    <label for="paper_file_2">Upload Abstract File</label>
                     <input type="file" id="paper_file_2" name="papers[1][file]" class="form-control"
                         accept="{% if 'pdf' in file_types %}.pdf{% endif %}{% if 'doc' in file_types %},.doc,.docx{% endif %}">
                     <small class="form-text text-muted">Maximum file size: {{ max_size }}MB</small>
                 </div>
 
                 <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSecondPaper()">
-                    <i class="fas fa-trash"></i> Remove Paper 2
+                    <i class="fas fa-trash"></i> Remove Abstract 2
                 </button>
             </div>
 
             <button type="button" class="btn btn-outline-primary" id="add-second-paper-btn" onclick="addSecondPaper()">
-                <i class="fas fa-plus"></i> Add Second Paper (Optional)
+                <i class="fas fa-plus"></i> Add Second Abstract (Optional)
             </button>
         </div>
 
@@ -645,7 +645,7 @@
         {% endif %}
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Submit Papers</button>
+            <button type="submit" class="btn btn-primary">Submit Abstracts</button>
             <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
@@ -654,7 +654,7 @@
     <div class="loading-overlay" style="display: none;">
         <div class="loading-content">
             <div class="spinner"></div>
-            <p>Submitting your paper...</p>
+            <p>Submitting your abstract...</p>
         </div>
     </div>
 </div>
@@ -804,20 +804,20 @@
             banner.classList.add('banner-error');
             bannerIcon.className = 'banner-icon fas fa-exclamation-circle';
             bannerText.innerHTML = `
-            <strong>Maximum Papers Reached</strong>
-            You have already submitted ${count} paper(s) to this conference. 
-            The maximum is ${maxPapersPerConference} papers per conference.
+            <strong>Maximum Abstracts Reached</strong>
+            You have already submitted ${count} abstract(s) to this conference. 
+            The maximum is ${maxPapersPerConference} abstracts per conference.
         `;
             if (submitButton) submitButton.disabled = true;
         } else if (count === 1) {
-            // One paper exists, second will incur fee
+            // One abstract exists, second will incur fee
             banner.classList.add('banner-warning');
             bannerIcon.className = 'banner-icon fas fa-exclamation-triangle';
             bannerText.innerHTML = `
-            <strong>Extra Paper Submission</strong>
-            You already have 1 paper submitted to this conference. 
-            Submitting a second paper will incur a <strong>$${extraPaperFee.toFixed(2)} extra paper fee</strong>. 
-            This fee is <strong>waived</strong> if at least one of your papers is accepted.
+            <strong>Extra Abstract Submission</strong>
+            You already have 1 abstract submitted to this conference. 
+            Submitting a second abstract will incur a <strong>$${extraPaperFee.toFixed(2)} extra abstract fee</strong>. 
+            This fee is <strong>waived</strong> if at least one of your abstracts is accepted.
         `;
             if (submitButton) submitButton.disabled = false;
         }
@@ -1066,13 +1066,13 @@
             // Validate paper 1 (always required)
             const paper1File = document.getElementById('paper_file_1');
             if (!paper1File.files[0]) {
-                showError('Please upload at least the first paper file.');
+                showError('Please upload at least the first abstract file.');
                 return;
             }
 
             const maxSize = 10 * 1024 * 1024; // 10MB in bytes
             if (paper1File.files[0].size > maxSize) {
-                showError('Paper 1 file size exceeds 10MB limit. Please choose a smaller file.');
+                showError('Abstract 1 file size exceeds 10MB limit. Please choose a smaller file.');
                 return;
             }
 
@@ -1087,7 +1087,7 @@
 
             for (let field of paper1Fields) {
                 if (!field.value.trim()) {
-                    showError('Please fill in all required fields for Paper 1.');
+                    showError('Please fill in all required fields for Abstract 1.');
                     return;
                 }
             }
@@ -1107,7 +1107,7 @@
                 const paper2File = document.getElementById('paper_file_2');
                 if (paper2File.files[0]) {
                     if (paper2File.files[0].size > maxSize) {
-                        showError('Paper 2 file size exceeds 10MB limit. Please choose a smaller file.');
+                        showError('Abstract 2 file size exceeds 10MB limit. Please choose a smaller file.');
                         return;
                     }
 
@@ -1122,7 +1122,7 @@
 
                     for (let field of paper2Fields) {
                         if (!field.value.trim()) {
-                            showError('Please fill in all required fields for Paper 2, or remove it.');
+                            showError('Please fill in all required fields for Abstract 2, or remove it.');
                             return;
                         }
                     }
@@ -1132,7 +1132,7 @@
                     if (paper2ResearchArea.value === 'other') {
                         const customResearchArea2 = document.getElementById('research_area_2_custom');
                         if (!customResearchArea2 || !customResearchArea2.value.trim()) {
-                            showError('Please specify your research area for Paper 2 in the text field.');
+                            showError('Please specify your research area for Abstract 2 in the text field.');
                             return;
                         }
                     }
@@ -1177,7 +1177,7 @@
             }
 
             // Final validation passed, show submitting state
-            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Submitting Papers...';
+            submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Submitting Abstracts...';
             document.querySelector('.loading-overlay').style.display = 'flex';
 
             // Submit the form
@@ -1226,7 +1226,7 @@
 
         // Reset submit button
         const submitButton = form.querySelector('button[type="submit"]');
-        submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Papers';
+        submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Abstracts';
         submitButton.disabled = false;
         isProcessing = false;
     }

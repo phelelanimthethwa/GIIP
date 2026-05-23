@@ -543,7 +543,7 @@
                             <!-- Abstract File Column (NEW) -->
                             <td>
                                 <div class="file-status-badge">
-                                    {% if paper.file_data %}
+                                    {% if paper.file_data or paper.file_storage_path or paper.file_url %}
                                     <div class="file-info submitted">
                                         <i class="fas fa-file-pdf"></i>
                                         <span class="file-label">Submitted</span>
@@ -621,7 +621,7 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
-                                    {% if paper.file_data %}
+                                    {% if paper.file_data or paper.file_storage_path or paper.file_url %}
                                     {% set file_history = paper.file_history if paper.file_history is defined and
                                     paper.file_history else [] %}
                                     {% if file_history is mapping %}

@@ -98,14 +98,14 @@
             </div>
         </div>
 
-        {% if existing_registration.payment_status == 'paid' %}
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i>
-            <div>
-                <h3>Payment Completed</h3>
-                <p>Your conference fee has been paid successfully.</p>
-            </div>
-        </div>
+        {% if existing_registration.payment_status in ['paid', 'waived'] %}
+<div class="alert alert-success">
+<i class="fas fa-check-circle"></i>
+<div>
+<h3>{% if existing_registration.payment_status == 'waived' %}Payment Waived{% else %}Payment Completed{% endif %}</h3>
+<p>{% if existing_registration.payment_status == 'waived' %}Your conference fee has been waived by the admin.{% else %}Your conference fee has been paid successfully.{% endif %}</p>
+</div>
+</div>
         {% elif can_pay %}
         <div class="alert alert-success">
             <i class="fas fa-unlock"></i>
@@ -155,7 +155,7 @@
                 <i class="fas fa-credit-card"></i>
                 Pay Conference Fee
             </button>
-            {% elif existing_registration.payment_status != 'paid' and latest_paper_status != 'pending' %}
+            {% elif existing_registration.payment_status not in ['paid', 'waived'] and latest_paper_status != 'pending' %}
             <a href="{{ url_for('conference_paper_submission', conference_id=conference_id) }}" class="btn btn-primary">
                 <i class="fas fa-file-upload"></i>
                 Submit Paper

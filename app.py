@@ -3248,10 +3248,18 @@ def update_registration_status(registration_id):
         
         registration_ref.update(update_data)
         
+        # Sync update to nested conference registrations index
+        conference_id = registration_data.get('conference_id')
+        if conference_id:
+            try:
+                db.reference(f'conferences/{conference_id}/registrations/{registration_id}').update(update_data)
+            except Exception as sync_err:
+                print(f"Warning: could not sync status to conference registrations: {sync_err}")
+        
         email_sent = False
         if send_email:
             # Send email notification with correct template name
-            template_name = 'registration_approval' if status == 'approved' else 'registration_rejection'
+            template_name = 'registration_approval' if status in ['approved', 'paid', 'waived'] else 'registration_rejection'
             email_sent = send_registration_email(
                 registration_data,
                 template_name,
@@ -6377,7 +6385,7 @@ def update_paper_status(paper_id):
                 if (
                     registration.get('user_id') == paper.get('user_id')
                     and registration.get('conference_id') == conference_id
-                    and (registration.get('payment_status') or '').lower() != 'paid'
+                    and (registration.get('payment_status') or '').lower() not in ['paid', 'waived']
                 ):
                     registration_update = {
                         'paper_submission_id': paper_id,
@@ -11984,7 +11992,7 @@ def conference_paper_submission(conference_id):
             })
 
             # Link paper state to conference registration workflow
-            if registration_id and ((existing_registration.get('payment_status') or '').lower() != 'paid'):
+            if registration_id and ((existing_registration.get('payment_status') or '').lower() not in ['paid', 'waived']):
                 db.reference(f'registrations/{registration_id}').update({
                     'paper_submission_id': paper_id,
                     'paper_status': 'pending',
@@ -12083,12 +12091,12 @@ def conference_submission_details(conference_id, paper_id):
         can_edit = (
             not paper.get('is_deleted')
             and status in ['pending', 'revision', 'rejected']
-            and payment_status != 'paid'
+            and payment_status not in ['paid', 'waived']
         )
         can_withdraw = (
             not paper.get('is_deleted')
             and status not in ['accepted', 'withdrawn']
-            and payment_status not in ['payment_initiated', 'paid']
+            and payment_status not in ['payment_initiated', 'paid', 'waived']
         )
 
         return render_template(
@@ -12470,7 +12478,7 @@ def submit_full_paper(conference_id, paper_id):
         registration = db.reference(f'registrations/{registration_id}').get() if registration_id else {}
         payment_status = ((registration or {}).get('payment_status') or '').lower()
         
-        if payment_status != 'paid':
+        if payment_status not in ['paid', 'waived']:
             flash('You must complete payment to submit your full paper.', 'error')
             return redirect(url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id))
 
@@ -12567,12 +12575,15 @@ def submit_full_paper(conference_id, paper_id):
 def download_full_paper(conference_id, paper_id):
     """Download the full paper PDF."""
     try:
-        paper = get_conference_submission_for_user(
-            current_user.id,
-            conference_id,
-            paper_id,
-            include_deleted=True
-        )
+        if current_user.is_admin:
+            paper = db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').get()
+        else:
+            paper = get_conference_submission_for_user(
+                current_user.id,
+                conference_id,
+                paper_id,
+                include_deleted=True
+            )
         if not paper:
             flash('Submission not found.', 'error')
             return redirect(url_for('conference_registration', conference_id=conference_id))
@@ -13417,12 +13428,40 @@ def dashboard():
                 return value.strip().lower() in ['1', 'true', 'yes', 'y', 'on']
             return False
 
-        for registration in user_registrations.values():
+        for reg_id, registration in user_registrations.items():
             registration['payment_unlocked'] = _is_truthy(registration.get('payment_unlocked'))
             registration['needs_type_confirmation'] = (
                 _is_truthy(registration.get('auto_created_from_paper', False))
                 and (registration.get('payment_status') or '').lower() not in ['paid', 'payment_initiated']
             )
+            
+            # Enrich registration with associated submission details
+            reg_id_str = str(reg_id)
+            reg_subs = []
+            for sub_key, sub in user_submissions.items():
+                sub_reg_id = sub.get('registration_id')
+                if sub_reg_id and str(sub_reg_id) == reg_id_str:
+                    reg_subs.append(sub)
+                elif not sub_reg_id and sub.get('conference_id') == registration.get('conference_id'):
+                    reg_subs.append(sub)
+            
+            # Sort submissions by submission date (newest first)
+            reg_subs = sorted(reg_subs, key=lambda s: s.get('submitted_at') or '', reverse=True)
+            registration['associated_submissions'] = reg_subs
+            
+            if reg_subs:
+                latest_sub = reg_subs[0]
+                registration['latest_submission'] = latest_sub
+                registration['has_submission'] = True
+                registration['submission_status'] = (latest_sub.get('status') or 'pending').lower()
+                registration['has_full_paper'] = bool(latest_sub.get('full_paper_submitted_at'))
+                registration['full_paper_submitted_at'] = latest_sub.get('full_paper_submitted_at')
+            else:
+                registration['has_submission'] = False
+                registration['submission_status'] = 'not_submitted'
+                registration['has_full_paper'] = False
+                registration['full_paper_submitted_at'] = None
+
 
         approved_count = sum(
             1

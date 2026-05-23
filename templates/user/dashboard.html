@@ -78,10 +78,10 @@
                         </span>
                     </a>
                     <a href="{{ url_for('call_for_papers') }}" class="side-link side-link-anchor"
-                        title="Submit New Paper">
+                        title="Submit New Abstract">
                         <span class="side-link-main">
                             <i class="fas fa-upload"></i>
-                            <span class="side-link-label">Submit New Paper</span>
+                            <span class="side-link-label">Submit New Abstract</span>
                         </span>
                     </a>
                     <a href="{{ url_for('profile') }}" class="side-link side-link-anchor" title="Edit Profile">
@@ -184,7 +184,7 @@
                             {% set paper_status = (reg.paper_status or 'not_submitted')|lower %}
                             {% set payment_unlocked = reg.payment_unlocked in [true, 1, '1', 'true', 'True', 'yes',
                             'on'] %}
-                            {% set is_paid = payment_status == 'paid' %}
+                            {% set is_paid = payment_status in ['paid', 'waived'] %}
                             {% set is_payment_started = payment_status == 'payment_initiated' %}
                             {% set is_ready_to_pay = payment_unlocked or payment_status == 'approved' %}
                             {% set needs_type_confirmation = reg.get('needs_type_confirmation') in [true, 1, '1', 'true', 'True', 'yes', 'on'] %}
@@ -203,9 +203,9 @@
                                         class="status-indicator status-{{ 'paid' if is_paid else ('pending' if is_payment_started else ('approved' if is_ready_to_pay else ('rejected' if paper_status == 'rejected' else 'pending'))) }}">
                                         <i
                                             class="fas fa-{{ 'check-circle' if is_paid else ('hourglass-half' if is_payment_started else ('unlock' if is_ready_to_pay else ('times-circle' if paper_status == 'rejected' else 'clock'))) }}"></i>
-                                        {{ 'Paid' if is_paid else ('Payment Started' if is_payment_started else
+                                        {{ 'Waived' if payment_status == 'waived' else ('Paid' if is_paid else ('Payment Started' if is_payment_started else
                                         ('Approved: Ready to Pay' if is_ready_to_pay else ('Paper Rejected' if
-                                        paper_status == 'rejected' else 'In Progress')) ) }}
+                                        paper_status == 'rejected' else 'In Progress')) )) }}
                                     </div>
                                 </div>
 
@@ -232,13 +232,24 @@
                                         <strong>{{ reg.registration_type|replace('_', ' ')|title }}</strong>
                                     </div>
                                     <div class="quick-status-item">
-                                        <span>Paper</span>
-                                        <strong>{{ paper_status|replace('_', ' ')|title }}</strong>
+                                        <span>Abstract</span>
+                                        <strong class="{% if reg.submission_status == 'accepted' %}text-status-accepted{% elif reg.submission_status in ['pending', 'revision'] %}text-status-pending{% elif reg.submission_status == 'rejected' %}text-status-rejected{% else %}text-status-none{% endif %}">
+                                            {{ reg.submission_status|replace('_', ' ')|title if reg.has_submission else 'Not Submitted' }}
+                                        </strong>
                                     </div>
                                     <div class="quick-status-item">
-                                        <span>Workflow</span>
-                                        <strong>{{ (reg.workflow_status or 'registered')|replace('_', ' ')|title
-                                            }}</strong>
+                                        <span>Full Paper</span>
+                                        <strong class="{% if reg.has_full_paper %}text-status-accepted{% elif reg.submission_status == 'accepted' and is_paid %}text-status-pending{% else %}text-status-locked{% endif %}">
+                                            {% if reg.has_full_paper %}
+                                                Submitted
+                                            {% elif reg.submission_status == 'accepted' and is_paid %}
+                                                Pending Upload
+                                            {% elif reg.submission_status == 'accepted' %}
+                                                Awaiting Payment
+                                            {% else %}
+                                                Locked
+                                            {% endif %}
+                                        </strong>
                                     </div>
                                     <div class="quick-status-item">
                                         <span>Total</span>
@@ -249,7 +260,7 @@
                                 {% if not is_paid and not is_payment_started and not is_ready_to_pay %}
                                 <p class="payment-lock-note">
                                     <i class="fas fa-lock"></i>
-                                    Payment unlocks after admin approves your paper.
+                                    Payment unlocks after admin approves your abstract.
                                 </p>
                                 {% endif %}
 
@@ -267,11 +278,55 @@
                                         Edit Selections
                                     </a>
                                     {% endif %}
+                                    
+                                    {% if not reg.has_submission %}
                                     <a href="{{ url_for('conference_paper_submission', conference_id=reg.conference_id) }}"
-                                        class="action-chip">
+                                        class="action-chip highlight-chip" style="background: #eff6ff; color: #1e40af; border-color: #bfdbfe;">
                                         <i class="fas fa-file-upload"></i>
-                                        Paper
+                                        Submit Abstract
                                     </a>
+                                    {% else %}
+                                        {% if reg.submission_status == 'revision' %}
+                                        <a href="{{ url_for('edit_conference_submission', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
+                                            class="action-chip warning-chip" style="background: #fffbeb; color: #92400e; border-color: #fde68a;">
+                                            <i class="fas fa-edit"></i>
+                                            Revise Abstract
+                                        </a>
+                                        {% elif reg.submission_status == 'accepted' %}
+                                            {% if is_paid %}
+                                                {% if reg.has_full_paper %}
+                                                <a href="{{ url_for('download_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
+                                                    class="action-chip success-chip" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">
+                                                    <i class="fas fa-download"></i>
+                                                    Download Paper
+                                                </a>
+                                                <a href="{{ url_for('submit_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
+                                                    class="action-chip" title="Update your full paper submission">
+                                                    <i class="fas fa-edit"></i>
+                                                    Update Paper
+                                                </a>
+                                                {% else %}
+                                                <a href="{{ url_for('submit_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
+                                                    class="action-chip success-chip highlight-chip" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0; font-weight: 700; border-width: 2px;">
+                                                    <i class="fas fa-file-upload"></i>
+                                                    Submit Full Paper
+                                                </a>
+                                                {% endif %}
+                                            {% else %}
+                                            <span class="action-chip muted-chip" title="Pay registration fee to unlock full paper upload">
+                                                <i class="fas fa-lock"></i>
+                                                Pay to Upload Paper
+                                            </span>
+                                            {% endif %}
+                                        {% else %}
+                                        <a href="{{ url_for('conference_submission_details', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
+                                            class="action-chip">
+                                            <i class="fas fa-eye"></i>
+                                            View Abstract
+                                        </a>
+                                        {% endif %}
+                                    {% endif %}
+                                    
                                     <a href="{{ url_for('conference_details', conference_id=reg.conference_id) }}"
                                         class="action-chip">
                                         <i class="fas fa-info-circle"></i>
@@ -308,7 +363,7 @@
                                     {% elif is_paid %}
                                     <span class="pay-state paid-state">
                                         <i class="fas fa-check-circle"></i>
-                                        Paid
+                                        {{ 'Waived' if payment_status == 'waived' else 'Paid' }}
                                     </span>
                                     {% else %}
                                     <span class="pay-state locked-state">
@@ -363,31 +418,112 @@
                             {% if submissions %}
                             {% for sub_id, submission in submissions.items() %}
                             <div class="submission-card" data-status="{{ submission.status|default('pending')|lower }}">
-                                <div class="submission-header">
+                                <div class="submission-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
                                     <div class="submission-icon">
-                                        <i class="fas fa-file-pdf"></i>
+                                        <i class="fas fa-file-invoice"></i>
                                     </div>
-                                    <div
-                                        class="submission-status status-{{ 'approved' if submission.status in ['accepted', 'approved'] else submission.status|default('pending')|lower }}">
-                                        <i
-                                            class="fas fa-{{ 'check-circle' if submission.status in ['accepted', 'approved'] else 'clock' if submission.status == 'pending' else 'times-circle' }}"></i>
-                                        {{ 'Accepted' if submission.status == 'accepted' else
-                                        submission.status|default('Pending')|title }}
+                                    <div class="submission-status" style="background: rgba(255, 255, 255, 0.15); color: #ffffff; border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                                        <i class="fas fa-route"></i>
+                                        Submission Tracker
                                     </div>
                                 </div>
                                 <div class="submission-body">
                                     <h3 class="submission-title">{{ submission.paper_title or 'Untitled Paper' }}</h3>
                                     
-                                    <!-- Abstract Status Badge -->
-                                    <div class="submission-meta">
-                                        {% set abstract_status = (submission.status or 'pending')|lower %}
-                                        <span class="meta-badge abstract-status-badge status-{{ abstract_status }}">
-                                            <i class="fas fa-{{ 'check-circle' if abstract_status in ['accepted', 'approved'] else 'clock' if abstract_status == 'pending' else 'times-circle' }}"></i>
-                                            Abstract: {{ 'Accepted' if abstract_status in ['accepted', 'approved'] else 'Rejected' if abstract_status == 'rejected' else 'Revision Needed' if abstract_status == 'revision' else 'Pending'|title }}
-                                        </span>
+                                    <!-- Visual Progress Timeline -->
+                                    {% set submission_status = (submission.status or 'pending')|lower %}
+                                    {% set is_approved = submission_status in ['accepted', 'approved'] %}
+                                    {% set is_pending = submission_status == 'pending' %}
+                                    {% set is_revision = submission_status == 'revision' %}
+                                    {% set is_rejected = submission_status == 'rejected' %}
+                                    
+                                    {% set is_paid = false %}
+                                    {% set has_reg = false %}
+                                    {% set registration_id = submission.get('registration_id') %}
+                                    {% if registration_id and registration_id in registrations %}
+                                        {% set has_reg = true %}
+                                        {% set registration = registrations[registration_id] %}
+                                        {% set is_paid = (registration.get('payment_status') or '')|lower in ['paid', 'waived'] %}
+                                    {% endif %}
+                                    {% set has_full_paper = submission.get('full_paper_submitted_at') %}
+
+                                    <div class="submission-timeline">
+                                        <div class="timeline-step completed">
+                                            <div class="step-circle">
+                                                <i class="fas fa-check"></i>
+                                            </div>
+                                            <div class="step-label">Abstract Submitted</div>
+                                        </div>
+                                        
+                                        <div class="timeline-step {% if is_approved %}completed{% elif is_revision %}warning{% elif is_rejected %}danger{% else %}active{% endif %}">
+                                            <div class="step-circle">
+                                                {% if is_approved %}
+                                                    <i class="fas fa-check"></i>
+                                                {% elif is_revision %}
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                {% elif is_rejected %}
+                                                    <i class="fas fa-times"></i>
+                                                {% else %}
+                                                    <i class="fas fa-spinner fa-spin"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="step-label">
+                                                {% if is_approved %}
+                                                    Abstract Approved
+                                                {% elif is_revision %}
+                                                    Revision Needed
+                                                {% elif is_rejected %}
+                                                    Abstract Rejected
+                                                {% else %}
+                                                    Under Review
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="timeline-step {% if is_paid %}completed{% elif is_approved %}active{% else %}disabled{% endif %}">
+                                            <div class="step-circle">
+                                                {% if is_paid %}
+                                                    <i class="fas fa-check"></i>
+                                                {% elif is_approved %}
+                                                    <i class="fas fa-credit-card"></i>
+                                                {% else %}
+                                                    <i class="fas fa-lock"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="step-label">
+                                                {% if is_paid %}
+                                                    Fee Paid
+                                                {% elif is_approved %}
+                                                    Payment Pending
+                                                {% else %}
+                                                    Payment Locked
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="timeline-step {% if has_full_paper %}completed{% elif is_paid %}active{% else %}disabled{% endif %}">
+                                            <div class="step-circle">
+                                                {% if has_full_paper %}
+                                                    <i class="fas fa-check"></i>
+                                                {% elif is_paid %}
+                                                    <i class="fas fa-file-upload"></i>
+                                                {% else %}
+                                                    <i class="fas fa-lock"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="step-label">
+                                                {% if has_full_paper %}
+                                                    Paper Uploaded
+                                                {% elif is_paid %}
+                                                    Submit Full Paper
+                                                {% else %}
+                                                    Paper Locked
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
                                     
-                                    <div class="submission-meta">
+                                    <div class="submission-meta" style="margin-top: 1rem;">
                                         {% if submission.research_area %}
                                         <span class="meta-badge">
                                             <i class="fas fa-microscope"></i>
@@ -433,7 +569,7 @@
                                                 {% set payment_status = (registration.get('payment_status') or '')|lower %}
                                                 {% set has_full_paper = submission.get('full_paper_submitted_at') %}
                                                 
-                                                {% if payment_status == 'paid' %}
+                                                {% if payment_status in ['paid', 'waived'] %}
                                                     <!-- Payment is made - show full paper options -->
                                                     {% if has_full_paper %}
                                                         <div class="full-paper-status submitted">
@@ -498,7 +634,7 @@
                                                 {% set payment_status = (registration.get('payment_status') or '')|lower %}
                                                 {% set has_full_paper = submission.get('full_paper_submitted_at') %}
                                                 
-                                                {% if payment_status == 'paid' %}
+                                                {% if payment_status in ['paid', 'waived'] %}
                                                     {% if has_full_paper %}
                                                         <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
                                                             class="submission-link submission-update">
@@ -2137,6 +2273,131 @@
         border-color: #fde68a;
         background: #fef08a;
         color: #92400e;
+    }
+
+    /* Status text colors for registrations tab */
+    .text-status-accepted { color: #059669 !important; }
+    .text-status-pending { color: #d97706 !important; }
+    .text-status-rejected { color: #dc2626 !important; }
+    .text-status-locked { color: #6b7280 !important; }
+    .text-status-none { color: #6b7280 !important; }
+
+    /* ========== Submission Timeline Tracker ========== */
+    .submission-timeline {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin: 1.5rem 0 1rem;
+        position: relative;
+        padding-bottom: 0.5rem;
+    }
+
+    .submission-timeline::before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 20px;
+        right: 20px;
+        height: 3px;
+        background: #e2e8f0;
+        z-index: 1;
+    }
+
+    .timeline-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex: 1;
+        position: relative;
+        z-index: 2;
+    }
+
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 3px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        color: #64748b;
+        transition: all 0.3s ease;
+        font-weight: bold;
+    }
+
+    .step-label {
+        margin-top: 0.5rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+        max-width: 80px;
+        line-height: 1.2;
+    }
+
+    /* Completed state */
+    .timeline-step.completed .step-circle {
+        background: #10b981;
+        border-color: #10b981;
+        color: #ffffff;
+    }
+
+    .timeline-step.completed .step-label {
+        color: #065f46;
+        font-weight: 700;
+    }
+
+    /* Active state */
+    .timeline-step.active .step-circle {
+        background: #ffffff;
+        border-color: #3b82f6;
+        color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    .timeline-step.active .step-label {
+        color: #1d4ed8;
+        font-weight: 700;
+    }
+
+    /* Warning state (e.g. revision) */
+    .timeline-step.warning .step-circle {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: #ffffff;
+        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
+    }
+
+    .timeline-step.warning .step-label {
+        color: #b45309;
+        font-weight: 700;
+    }
+
+    /* Danger state (e.g. rejected) */
+    .timeline-step.danger .step-circle {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: #ffffff;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+    }
+
+    .timeline-step.danger .step-label {
+        color: #b91c1c;
+        font-weight: 700;
+    }
+
+    /* Disabled/Locked state */
+    .timeline-step.disabled .step-circle {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+        color: #94a3b8;
+    }
+
+    .timeline-step.disabled .step-label {
+        color: #94a3b8;
+        opacity: 0.8;
     }
 
     /* ========== Registration Card Filtering ========== */
