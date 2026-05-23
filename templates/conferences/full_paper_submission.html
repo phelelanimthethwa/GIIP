@@ -482,11 +482,20 @@
                         </label>
                     </div>
 
-                    <div class="file-selected" id="fileSelected">
+                    <div class="file-selected {% if paper.full_paper_name %}show{% endif %}" id="fileSelected">
                         <i class="fas fa-file-pdf"></i>
                         <div class="file-info">
-                            <div class="filename" id="fileName"></div>
-                            <div class="filesize" id="fileSize"></div>
+                            <div class="filename" id="fileName">
+                                {{ paper.full_paper_name or '' }}
+                                {% if paper.full_paper_name %}
+                                <span class="badge bg-success text-white ms-2" style="font-size: 0.7rem; padding: 0.15rem 0.35rem; border-radius: 4px; background-color: var(--accent-color, #28a745);">Current</span>
+                                {% endif %}
+                            </div>
+                            <div class="filesize" id="fileSize">
+                                {% if paper.full_paper_size %}
+                                {{ "%.2f"|format(paper.full_paper_size / 1024) }} KB
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
@@ -626,7 +635,7 @@
                 
                 // Redirect after 2 seconds
                 setTimeout(() => {
-                    window.location.href = data.redirect_url || '{{ url_for("conference_details", conference_id=conference_id) }}';
+                    window.location.href = data.redirect_url || '{{ url_for("dashboard") }}';
                 }, 2000);
             } else {
                 showError(data.message || 'An error occurred while uploading your paper');

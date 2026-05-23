@@ -12559,7 +12559,7 @@ def submit_full_paper(conference_id, paper_id):
             return jsonify({
                 'success': True,
                 'message': 'Full paper submitted successfully',
-                'redirect_url': url_for('conference_submission_details', conference_id=conference_id, paper_id=paper_id)
+                'redirect_url': url_for('dashboard')
             }), 200
 
         except Exception as storage_err:
