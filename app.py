@@ -2211,7 +2211,9 @@ def payment_demo():
 def schedule():
     schedule_ref = db.reference('schedule')
     schedule = schedule_ref.get()
-    return render_template('user/conference/schedule.html', schedule=schedule, site_design=get_site_design())
+    programme_ref = db.reference('schedule_programme')
+    programme = programme_ref.get() or {}
+    return render_template('user/conference/schedule.html', schedule=schedule, programme=programme, site_design=get_site_design())
 
 def admin_required(f):
     @wraps(f)
@@ -4181,16 +4183,96 @@ def admin_schedule():
                     key=lambda x: x[1]['start_time']
                 ))
 
+        # Get schedule programme from Firebase
+        programme_ref = db.reference('schedule_programme')
+        programme = programme_ref.get() or {}
+        if not programme:
+            programme = {
+                'title': 'Conference Programme',
+                'file_url': '',
+                'file_size': '',
+                'updated_at': '',
+                'visible': True
+            }
+
         return render_template('admin/schedule.html', site_design=get_site_design(),
                              schedule=grouped_schedule,
                              schedule_days=SCHEDULE_DAYS,
-                             tracks=TRACKS)
+                             tracks=TRACKS,
+                             programme=programme)
     except Exception as e:
         flash(f'Error loading schedule: {str(e)}', 'error')
         return render_template('admin/schedule.html', site_design=get_site_design(),
                              schedule={},
                              schedule_days=SCHEDULE_DAYS,
-                             tracks=TRACKS)
+                             tracks=TRACKS,
+                             programme={'title': 'Conference Programme', 'file_url': '', 'file_size': '', 'updated_at': '', 'visible': False})
+
+@app.route('/admin/schedule/programme', methods=['POST'])
+@login_required
+@admin_required
+def admin_schedule_programme():
+    try:
+        programme_data = {
+            'title': request.form.get('programme[title]', 'Conference Programme'),
+            'file_url': request.form.get('programme[existing_file]', ''),
+            'file_size': request.form.get('programme[existing_size]', ''),
+            'updated_at': request.form.get('programme[existing_updated_at]', ''),
+            'visible': 'programme[visible]' in request.form
+        }
+
+        # Check if program was deleted
+        if request.form.get('delete_programme') == 'true':
+            programme_data['file_url'] = ''
+            programme_data['file_size'] = ''
+            programme_data['updated_at'] = ''
+
+        # Check for new programme file upload
+        if 'programme_file' in request.files:
+            file = request.files['programme_file']
+            if file and file.filename:
+                if file.filename.lower().endswith('.pdf'):
+                    try:
+                        filename = secure_filename(file.filename)
+                        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                        firebase_filename = f"programme/{timestamp}_{filename}"
+                        
+                        bucket = storage.bucket()
+                        blob = bucket.blob(firebase_filename)
+                        
+                        # Read & upload file
+                        file.seek(0)
+                        file_data = file.read()
+                        file_size_bytes = len(file_data)
+                        if file_size_bytes < 1024 * 1024:
+                            file_size_formatted = f"{file_size_bytes / 1024:.1f} KB"
+                        else:
+                            file_size_formatted = f"{file_size_bytes / (1024 * 1024):.1f} MB"
+                        
+                        blob.upload_from_string(file_data, content_type='application/pdf')
+                        blob.make_public()
+                        
+                        programme_data.update({
+                            'file_url': blob.public_url,
+                            'file_size': file_size_formatted,
+                            'updated_at': datetime.now().isoformat(),
+                            'firebase_path': firebase_filename
+                        })
+                    except Exception as storage_err:
+                        print(f"Error uploading programme to Storage: {str(storage_err)}")
+                        flash(f"Failed to upload programme: {str(storage_err)}", 'error')
+                        return redirect(url_for('admin_schedule'))
+                else:
+                    flash("Only PDF files are allowed for the Conference Programme.", 'error')
+                    return redirect(url_for('admin_schedule'))
+        
+        db.reference('schedule_programme').set(programme_data)
+        flash('Conference Programme updated successfully!', 'success')
+    except Exception as e:
+        print(f"Error updating schedule programme: {str(e)}")
+        flash('Error updating Conference Programme', 'error')
+        
+    return redirect(url_for('admin_schedule'))
 
 @app.route('/admin/schedule', methods=['POST'])
 @login_required
@@ -4771,59 +4853,9 @@ def admin_home_content():
                 # Process downloads
                 update_data['downloads'] = process_downloads_data(request)
 
-                # Process final conference programme
-                programme_data = {
-                    'title': request.form.get('programme[title]', 'Final Conference Programme'),
-                    'file_url': request.form.get('programme[existing_file]', ''),
-                    'file_size': request.form.get('programme[existing_size]', ''),
-                    'updated_at': request.form.get('programme[existing_updated_at]', ''),
-                    'visible': 'programme[visible]' in request.form
-                }
-
-                # Check if program was deleted
-                if request.form.get('delete_programme') == 'true':
-                    programme_data['file_url'] = ''
-                    programme_data['file_size'] = ''
-                    programme_data['updated_at'] = ''
-
-                # Check for new programme file upload
-                if 'programme_file' in request.files:
-                    file = request.files['programme_file']
-                    if file and file.filename:
-                        if file.filename.lower().endswith('.pdf'):
-                            try:
-                                filename = secure_filename(file.filename)
-                                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                                firebase_filename = f"programme/{timestamp}_{filename}"
-                                
-                                bucket = storage.bucket()
-                                blob = bucket.blob(firebase_filename)
-                                
-                                # Read & upload file
-                                file.seek(0)
-                                file_data = file.read()
-                                file_size_bytes = len(file_data)
-                                if file_size_bytes < 1024 * 1024:
-                                    file_size_formatted = f"{file_size_bytes / 1024:.1f} KB"
-                                else:
-                                    file_size_formatted = f"{file_size_bytes / (1024 * 1024):.1f} MB"
-                                
-                                blob.upload_from_string(file_data, content_type='application/pdf')
-                                blob.make_public()
-                                
-                                programme_data.update({
-                                    'file_url': blob.public_url,
-                                    'file_size': file_size_formatted,
-                                    'updated_at': datetime.now().isoformat(),
-                                    'firebase_path': firebase_filename
-                                })
-                            except Exception as storage_err:
-                                print(f"Error uploading programme to Storage: {str(storage_err)}")
-                                raise Exception(f"Failed to upload programme: {str(storage_err)}")
-                        else:
-                            raise Exception("Only PDF files are allowed for the Conference Programme.")
-                
-                update_data['programme'] = programme_data
+                # Retain existing programme data in home_content
+                if 'programme' in current_content:
+                    update_data['programme'] = current_content['programme']
 
                 # Save the updated content
                 content_ref.set(update_data)
@@ -8162,8 +8194,7 @@ def inject_admin_menu():
         {'text': 'Design Settings', 'url': 'admin_design', 'icon': 'palette'},
         {'text': 'Venue', 'url': 'admin_venue', 'icon': 'map-marker-alt'},
         {'text': 'Speakers', 'url': 'admin_speakers', 'icon': 'microphone'},
-        # DISABLED: Schedule feature not functioning properly (Issue #3)
-        # {'text': 'Schedule', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
+        {'text': 'Schedule', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
         {'text': 'Registration Fees', 'url': 'admin_registration_fees', 'icon': 'dollar-sign'},
         {'text': 'User Management', 'url': 'admin_users', 'icon': 'users'},
         {'text': 'Registrations', 'url': 'admin_registrations', 'icon': 'user-plus'},

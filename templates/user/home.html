@@ -271,36 +271,7 @@
 </div>
 -->
 
-<!-- Final Conference Programme Section -->
-{% if home_content.programme and home_content.programme.file_url and home_content.programme.visible %}
-<section class="programme-section">
-    <div class="container">
-        <div class="programme-card" data-aos="fade-up">
-            <div class="programme-icon">
-                <i class="fas fa-file-pdf"></i>
-            </div>
-            <div class="programme-details">
-                <h2 class="programme-title">{{ home_content.programme.title|default('Final Conference Programme') }}</h2>
-                <p class="programme-desc">The official programme for the conference is now available. Download the schedule to plan your sessions, keynotes, and presentation times.</p>
-                <div class="programme-meta">
-                    <span class="meta-item"><i class="fas fa-file-alt"></i> PDF Format</span>
-                    {% if home_content.programme.file_size %}
-                    <span class="meta-item"><i class="fas fa-hdd"></i> Size: {{ home_content.programme.file_size }}</span>
-                    {% endif %}
-                    {% if home_content.programme.updated_at %}
-                    <span class="meta-item"><i class="fas fa-clock"></i> Updated: {{ home_content.programme.updated_at[:10] }}</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="programme-actions">
-                <a href="{{ home_content.programme.file_url }}" class="btn btn-primary btn-lg download-programme-btn" target="_blank" download>
-                    <i class="fas fa-download"></i> Download Programme
-                </a>
-            </div>
-        </div>
-    </div>
-</section>
-{% endif %}
+
 
 <!-- Associates Section -->
 {% if home_content.associates and home_content.associates|length > 0 %}

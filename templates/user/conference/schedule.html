@@ -10,53 +10,66 @@
 
 <div class="content-section">
     <div class="schedule-container">
-        {% if schedule %}
-            {% for day in schedule %}
-            <div class="schedule-day">
-                <h2 class="day-header">{{ day.date }}</h2>
-                <div class="timeline">
-                    {% for session in day.sessions %}
-                    <div class="session-card">
-                        <div class="session-time">
-                            <i class="fas fa-clock"></i>
-                            {{ session.start_time }} - {{ session.end_time }}
-                        </div>
-                        <div class="session-content">
-                            <h3>{{ session.title }}</h3>
-                            {% if session.description %}
-                            <p>{{ session.description }}</p>
-                            {% endif %}
-                            {% if session.speakers %}
-                            <div class="speakers">
-                                <i class="fas fa-user-tie"></i>
-                                {% for speaker in session.speakers %}
-                                <span class="speaker">{{ speaker }}</span>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            {% if session.location %}
-                            <div class="location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                {{ session.location }}
-                            </div>
-                            {% endif %}
-                            {% if session.track %}
-                            <div class="track">
-                                <i class="fas fa-tag"></i>
-                                {{ session.track }}
-                            </div>
-                            {% endif %}
-                        </div>
+        <!-- Conference Programme PDF Section -->
+        {% if programme and programme.file_url and programme.visible %}
+        <section class="programme-section mb-5">
+            <div class="programme-card" data-aos="fade-up" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; border-radius: 16px; padding: 2.5rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15); position: relative; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%); pointer-events: none;"></div>
+                
+                <div class="programme-icon" style="font-size: 3.5rem; color: #ff4757; background: rgba(255, 255, 255, 0.1); width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                
+                <div class="programme-details" style="flex: 1;">
+                    <h2 class="programme-title" style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.8rem; color: #fff; letter-spacing: 0.5px; border: none; padding: 0;">{{ programme.title|default('Conference Programme') }}</h2>
+                    <p class="programme-desc" style="color: rgba(255,255,255,0.85); font-size: 1.05rem; margin-bottom: 1.2rem; max-width: 650px; line-height: 1.6;">The official programme for the conference is now available. Download the schedule to plan your sessions, keynotes, and presentation times.</p>
+                    <div class="programme-meta" style="display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.9rem; color: rgba(255,255,255,0.7);">
+                        <span class="meta-item"><i class="fas fa-file-alt" style="margin-right: 0.5rem; color: #ffd700;"></i> PDF Format</span>
+                        {% if programme.file_size %}
+                        <span class="meta-item"><i class="fas fa-hdd" style="margin-right: 0.5rem; color: #ffd700;"></i> Size: {{ programme.file_size }}</span>
+                        {% endif %}
+                        {% if programme.updated_at %}
+                        <span class="meta-item"><i class="fas fa-clock" style="margin-right: 0.5rem; color: #ffd700;"></i> Updated: {{ programme.updated_at[:10] }}</span>
+                        {% endif %}
                     </div>
-                    {% endfor %}
+                </div>
+                
+                <div class="programme-actions">
+                    <a href="{{ programme.file_url }}" class="btn btn-warning btn-lg download-programme-btn" target="_blank" download style="display: inline-flex; align-items: center; gap: 0.75rem; background: #ffd700; color: #1e3c72; border: none; font-weight: 700; padding: 1rem 2rem; border-radius: 12px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); text-decoration: none;">
+                        <i class="fas fa-download"></i> Download Programme
+                    </a>
                 </div>
             </div>
-            {% endfor %}
+        </section>
+
+        <!-- Inline styles for mobile responsiveness of program section -->
+        <style>
+        @media (max-width: 991px) {
+            .programme-card {
+                flex-direction: column !important;
+                text-align: center !important;
+                padding: 2rem !important;
+            }
+            .programme-icon {
+                margin: 0 auto !important;
+            }
+            .programme-meta {
+                justify-content: center !important;
+            }
+            .programme-actions {
+                width: 100% !important;
+            }
+            .download-programme-btn {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+        }
+        </style>
         {% else %}
-            <div class="no-schedule">
-                <i class="fas fa-calendar-times"></i>
-                <p>Conference schedule will be announced soon.</p>
-            </div>
+        <div class="no-schedule" style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 2rem;">
+            <i class="fas fa-file-pdf" style="font-size: 4rem; color: var(--primary-color); margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p style="color: var(--text-secondary); font-size: 1.2rem;">The conference programme will be announced and uploaded here soon.</p>
+        </div>
         {% endif %}
     </div>
 </div>
