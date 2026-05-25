@@ -1,13 +1,13 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}Manage Schedule - Admin{% endblock %}
+{% block title %}Manage Programme - Admin{% endblock %}
 
 {% block content %}
 <div class="admin-dashboard">
     <div class="dashboard-header">
         <div class="header-content">
-            <h1><i class="fas fa-calendar-alt"></i> Manage Schedule</h1>
-            <p>Manage the conference program PDF schedule</p>
+            <h1><i class="fas fa-calendar-alt"></i> Manage Programme</h1>
+            <p>Manage the conference program PDF</p>
         </div>
     </div>
 
@@ -39,9 +39,9 @@
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="programmeVisible" name="programme[visible]" 
                                {% if programme.visible %}checked{% endif %}>
-                        <label class="form-check-label" for="programmeVisible" style="font-size: 0.9rem; color: #495057;">Show Programme on Schedule Page</label>
+                        <label class="form-check-label" for="programmeVisible" style="font-size: 0.9rem; color: #495057;">Show Programme on Programme Page</label>
                     </div>
-                    <small class="form-text text-muted" style="font-size: 0.8rem; color: #6c757d;">Toggle whether this programme is visible to public users on the schedule page.</small>
+                    <small class="form-text text-muted" style="font-size: 0.8rem; color: #6c757d;">Toggle whether this programme is visible to public users on the programme page.</small>
                 </div>
                 
                 {% if programme and programme.file_url %}

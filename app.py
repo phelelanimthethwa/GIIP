@@ -8194,7 +8194,7 @@ def inject_admin_menu():
         {'text': 'Design Settings', 'url': 'admin_design', 'icon': 'palette'},
         {'text': 'Venue', 'url': 'admin_venue', 'icon': 'map-marker-alt'},
         {'text': 'Speakers', 'url': 'admin_speakers', 'icon': 'microphone'},
-        {'text': 'Schedule', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
+        {'text': 'Programme', 'url': 'admin_schedule', 'icon': 'calendar-alt'},
         {'text': 'Registration Fees', 'url': 'admin_registration_fees', 'icon': 'dollar-sign'},
         {'text': 'User Management', 'url': 'admin_users', 'icon': 'users'},
         {'text': 'Registrations', 'url': 'admin_registrations', 'icon': 'user-plus'},
