@@ -47,7 +47,11 @@
                                     {% endif %}
                                 </div>
                             </div>
+                            {% if item.id %}
+                            <a href="{{ url_for('download_template', download_id=item.id) }}" class="download-btn">
+                            {% else %}
                             <a href="{{ item.url }}" class="download-btn" download>
+                            {% endif %}
                                 <i class="fas fa-download"></i>
                                 Download
                             </a>

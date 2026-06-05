@@ -2779,6 +2779,18 @@ def admin_downloads():
                 # Save file locally
                 file.save(file_path)
                 
+                # Also upload to Firebase Storage for reliable cross-device access
+                firebase_url = ''
+                try:
+                    bucket = storage.bucket()
+                    blob = bucket.blob(f"downloads/{unique_filename}")
+                    blob.upload_from_filename(file_path, content_type=file.content_type if hasattr(file, 'content_type') else None)
+                    blob.make_public()
+                    firebase_url = blob.public_url
+                    print(f"Uploaded download to Firebase Storage: {firebase_url}")
+                except Exception as fb_err:
+                    print(f"Warning: could not upload download to Firebase Storage: {fb_err}")
+                
                 # Get file size
                 file_size = os.path.getsize(file_path)
                 file_size_str = f"{file_size/1024:.1f} KB" if file_size < 1024*1024 else f"{file_size/(1024*1024):.1f} MB"
@@ -2807,6 +2819,7 @@ def admin_downloads():
                         'format': format_type,
                         'file_size': file_size_str,
                         'file_url': f"/static/uploads/documents/{unique_filename}",
+                        'firebase_url': firebase_url,
                         'updated_at': datetime.now().isoformat(),
                         'uploaded_by': current_user.email
                     }
@@ -2820,6 +2833,7 @@ def admin_downloads():
                         'version': request.form.get('version', ''),
                         'external_url': request.form.get('external_url', ''),
                         'file_url': f"/static/uploads/documents/{unique_filename}",
+                        'firebase_url': firebase_url,
                         'file_type': filename.rsplit('.', 1)[1].lower(),
                         'file_size': file_size_str,
                         'uploaded_at': datetime.now().isoformat(),
@@ -5146,6 +5160,7 @@ def downloads():
                 
                 # Ensure all required fields are present
                 download_item = {
+                    'id': key,
                     'title': item.get('title', 'Untitled'),
                     'description': item.get('description', ''),
                     'type': item.get('type', 'file'),
@@ -8246,12 +8261,14 @@ def conference_proceedings():
                     
                     # Create download item with proper structure
                     download_item = {
+                        'id': key,
                         'title': item.get('title', 'Untitled'),
                         'description': item.get('description', 'Conference template for manuscript preparation'),
                         'file_type': file_type,
                         'format': display_category,
                         'size': item.get('file_size', ''),
                         'url': item.get('file_url', item.get('external_url', '#')),
+                        'external_url': item.get('external_url', ''),
                         'updated_at': item.get('updated_at', '')
                     }
                     downloads[display_category].append(download_item)
@@ -8292,6 +8309,109 @@ def conference_proceedings():
         print(f"Error loading conference proceedings: {e}")
         flash('Error loading conference proceedings.', 'error')
         return redirect(url_for('home'))
+
+
+@app.route('/download-template/<download_id>')
+def download_template(download_id):
+    """Proxy route that forces a file download for conference manuscript templates.
+    This is needed because the HTML `download` attribute does not work for
+    cross-origin URLs (e.g. external storage links).
+    """
+    try:
+        # Look up the download record in Firebase
+        download_ref = db.reference(f'downloads/{download_id}')
+        item = download_ref.get()
+
+        if not item:
+            flash('Download not found.', 'error')
+            return redirect(url_for('conference_proceedings'))
+
+        file_url = item.get('file_url', '')
+        external_url = item.get('external_url', '')
+        firebase_url = item.get('firebase_url', '')
+        title = item.get('title', 'template')
+        file_type = item.get('file_type', '')
+        original_filename = f"{secure_filename(title)}.{file_type}" if file_type else secure_filename(title)
+
+        import urllib.request
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(original_filename)
+        mime_type = mime_type or 'application/octet-stream'
+
+        # 1. Firebase Storage public URL — most reliable
+        if firebase_url and firebase_url.startswith('http'):
+            try:
+                req = urllib.request.Request(firebase_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    file_data = resp.read()
+                response = make_response(file_data)
+                response.headers['Content-Type'] = mime_type
+                response.headers['Content-Disposition'] = f'attachment; filename="{original_filename}"'
+                return response
+            except Exception as proxy_err:
+                print(f"Firebase proxy error for {download_id}: {proxy_err}")
+
+        # 2. Local static file — serve directly
+        if file_url and file_url.startswith('/static/'):
+            relative_path = file_url.lstrip('/')
+            abs_path = os.path.join(app.root_path, relative_path.replace('/', os.sep))
+            if os.path.exists(abs_path):
+                directory = os.path.dirname(abs_path)
+                fname = os.path.basename(abs_path)
+                return send_from_directory(
+                    directory,
+                    fname,
+                    as_attachment=True,
+                    download_name=original_filename
+                )
+
+        # 3. External URL (e.g. old Firebase Storage link stored in file_url or external_url)
+        for candidate in [file_url, external_url]:
+            if candidate and candidate.startswith('http'):
+                try:
+                    req = urllib.request.Request(candidate, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        file_data = resp.read()
+                    response = make_response(file_data)
+                    response.headers['Content-Type'] = mime_type
+                    response.headers['Content-Disposition'] = f'attachment; filename="{original_filename}"'
+                    return response
+                except Exception as proxy_err:
+                    print(f"Proxy download error for {download_id} ({candidate}): {proxy_err}")
+
+        # 4. Last resort: try Firebase Storage using the filename from file_url
+        #    Handles old records where local file is gone but file was uploaded to
+        #    Firebase Storage under downloads/<filename>
+        if file_url and file_url.startswith('/static/'):
+            stored_filename = os.path.basename(file_url)
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(f"downloads/{stored_filename}")
+                if blob.exists():
+                    blob.make_public()
+                    fb_url = blob.public_url
+                    # Cache the URL back into Firebase DB for next time
+                    download_ref = db.reference(f'downloads/{download_id}')
+                    download_ref.update({'firebase_url': fb_url})
+                    print(f"Auto-recovered firebase_url for {download_id}: {fb_url}")
+                    req = urllib.request.Request(fb_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        file_data = resp.read()
+                    response = make_response(file_data)
+                    response.headers['Content-Type'] = mime_type
+                    response.headers['Content-Disposition'] = f'attachment; filename="{original_filename}"'
+                    return response
+            except Exception as fb_err:
+                print(f"Firebase Storage fallback failed for {download_id}: {fb_err}")
+
+        flash('No file available for download.', 'warning')
+        return redirect(url_for('conference_proceedings'))
+
+    except Exception as e:
+        print(f"Error in download_template route: {e}")
+        flash('Error downloading file. Please try again.', 'error')
+        return redirect(url_for('conference_proceedings'))
+
 
 # =============================================================================
 # MULTI-CONFERENCE SUPPORT ROUTES

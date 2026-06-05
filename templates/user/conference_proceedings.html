@@ -99,18 +99,21 @@
                             </div>
                         </div>
                         <div class="template-actions">
-                            {% if template.url and template.url != '#' %}
-                                {% if template.format == 'Overleaf' %}
+                            {% if template.format == 'Overleaf' and template.url and template.url != '#' %}
                                 <a href="{{ template.url }}" class="btn btn-action btn-overleaf" target="_blank">
                                     <i class="fas fa-external-link-alt"></i>
                                     <span>Open in Overleaf</span>
                                 </a>
-                                {% else %}
+                            {% elif template.id %}
+                                <a href="{{ url_for('download_template', download_id=template.id) }}" class="btn btn-action btn-download">
+                                    <i class="fas fa-download"></i>
+                                    <span>Download</span>
+                                </a>
+                            {% elif template.url and template.url != '#' %}
                                 <a href="{{ template.url }}" class="btn btn-action btn-download" download>
                                     <i class="fas fa-download"></i>
                                     <span>Download</span>
                                 </a>
-                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
