@@ -78,22 +78,22 @@
                     </span>
                     {% endif %}
                 </div>
-                <div class="conference-year">{{ conference.basic_info.year }}</div>
+                <div class="conference-year"><strong style="color: #2563eb;">{{ conference.basic_info.year }}</strong></div>
             </div>
 
             <div class="conference-content">
                 <div class="conference-details">
                     <div class="detail-item">
                         <i class="fas fa-calendar-alt"></i>
-                        <span>{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</span>
+                        <strong style="color: #2563eb;">{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</strong>
                     </div>
                     <div class="detail-item">
                         <i class="fas fa-map-marker-alt"></i>
-                        <span>{{ conference.basic_info.location or 'Location TBD' }}</span>
+                        <strong style="color: #2563eb;">{{ conference.basic_info.location or 'Location TBD' }}</strong>
                     </div>
                     <div class="detail-item">
                         <i class="fas fa-clock"></i>
-                        <span>{{ conference.basic_info.timezone }}</span>
+                        <strong style="color: #2563eb;">{{ conference.basic_info.timezone }}</strong>
                     </div>
                     {% if conference.basic_info.website %}
                     <div class="detail-item">
@@ -328,7 +328,7 @@
 }
 
 .conference-year {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--primary-color);
 }
@@ -361,6 +361,10 @@
     gap: 0.75rem;
     margin-bottom: 0.75rem;
     color: #555;
+}
+
+.detail-item strong {
+    font-size: 1.1rem;
 }
 
 .detail-item i {
