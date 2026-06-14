@@ -34,13 +34,29 @@
                 <button class="filter-btn" data-status="upcoming">Upcoming</button>
                 <button class="filter-btn" data-status="past">Past Events</button>
             </div>
+            <div class="filter-dropdowns">
+                <select id="yearFilter" class="filter-select">
+                    <option value="all">All Years</option>
+                    {% for year in conferences.values() | map(attribute='basic_info.year') | reject('none') | unique | sort(reverse=True) %}
+                    {% if year|trim %}
+                    <option value="{{ year }}">{{ year }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+                <select id="locationFilter" class="filter-select">
+                    <option value="all">All Locations</option>
+                    {% for location in conferences.values() | map(attribute='basic_info.location') | reject('none') | unique | sort %}
+                    <option value="{{ location }}">{{ location or 'Location TBD' }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </div>
 
     <!-- Conferences Grid -->
     <div class="conferences-grid" id="conferencesGrid">
         {% for conference_id, conference in conferences.items() %}
-        <div class="conference-card" data-status="{{ conference.basic_info.status }}" data-conference="{{ conference_id }}">
+        <div class="conference-card" data-status="{{ conference.basic_info.status }}" data-year="{{ conference.basic_info.year }}" data-location="{{ conference.basic_info.location }}" data-conference="{{ conference_id }}">
             <div class="conference-header">
                 <div class="conference-badge">
                     <span class="badge status-{{ conference.basic_info.status }}">
@@ -66,9 +82,6 @@
             </div>
 
             <div class="conference-content">
-                <h3 class="conference-title">{{ conference.basic_info.name }}</h3>
-                <p class="conference-description">{{ conference.basic_info.description }}</p>
-                
                 <div class="conference-details">
                     <div class="detail-item">
                         <i class="fas fa-calendar-alt"></i>
@@ -89,6 +102,9 @@
                     </div>
                     {% endif %}
                 </div>
+
+                <h3 class="conference-title">{{ conference.basic_info.name }}</h3>
+                <p class="conference-description">{{ conference.basic_info.description }}</p>
 
                 <div class="conference-features">
                     {% if conference.settings.registration_enabled %}
@@ -207,6 +223,7 @@
     justify-content: center;
     gap: 1rem;
     flex-wrap: wrap;
+    margin-bottom: 1.5rem;
 }
 
 .filter-btn {
@@ -223,6 +240,40 @@
     background: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
+}
+
+.filter-dropdowns {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 0.75rem 2.5rem 0.75rem 1.5rem;
+    border: 2px solid #e1e8ed;
+    background-color: white;
+    border-radius: 25px;
+    font-weight: 500;
+    font-size: 1rem;
+    color: #333;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem top 50%;
+    background-size: 0.65rem auto;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.filter-select:hover, .filter-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
 }
 
 .conferences-grid {
@@ -427,9 +478,19 @@
     
     .filter-buttons {
         gap: 0.5rem;
+        margin-bottom: 1rem;
     }
     
     .filter-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .filter-dropdowns {
+        gap: 0.5rem;
+    }
+    
+    .filter-select {
         padding: 0.5rem 1rem;
         font-size: 0.875rem;
     }
@@ -455,48 +516,55 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Search functionality
+    // Search and Filter functionality
     const searchInput = document.getElementById('conferenceSearch');
     const filterButtons = document.querySelectorAll('.filter-btn');
+    const yearFilter = document.getElementById('yearFilter');
+    const locationFilter = document.getElementById('locationFilter');
     const conferenceCards = document.querySelectorAll('.conference-card');
     const favoriteButtons = document.querySelectorAll('.favorite-btn');
 
-    // Search filter
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
+    let currentStatusFilter = 'all';
+
+    function applyFilters() {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const selectedYear = yearFilter ? yearFilter.value : 'all';
+        const selectedLocation = locationFilter ? locationFilter.value : 'all';
+
         conferenceCards.forEach(card => {
             const title = card.querySelector('.conference-title').textContent.toLowerCase();
             const description = card.querySelector('.conference-description').textContent.toLowerCase();
-            const location = card.querySelector('.detail-item span').textContent.toLowerCase();
-            
-            if (title.includes(searchTerm) || description.includes(searchTerm) || location.includes(searchTerm)) {
+            const cardLocation = card.dataset.location || '';
+            const cardYear = card.dataset.year || '';
+            const cardStatus = card.dataset.status || '';
+
+            const matchesSearch = title.includes(searchTerm) || description.includes(searchTerm) || cardLocation.toLowerCase().includes(searchTerm);
+            const matchesYear = selectedYear === 'all' || cardYear === selectedYear;
+            const matchesLocation = selectedLocation === 'all' || cardLocation === selectedLocation;
+            const matchesStatus = currentStatusFilter === 'all' || cardStatus === currentStatusFilter;
+
+            if (matchesSearch && matchesYear && matchesLocation && matchesStatus) {
                 card.style.display = 'block';
             } else {
                 card.style.display = 'none';
             }
         });
-    });
+    }
 
-    // Status filter
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            // Update active button
-            filterButtons.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            const status = this.dataset.status;
-            
-            conferenceCards.forEach(card => {
-                const cardStatus = card.dataset.status;
-                
-                if (status === 'all' || cardStatus === status) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
+    if (yearFilter) yearFilter.addEventListener('change', applyFilters);
+    if (locationFilter) locationFilter.addEventListener('change', applyFilters);
+
+    if (filterButtons) {
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentStatusFilter = this.dataset.status;
+                applyFilters();
             });
         });
-    });
+    }
 
     // Favorite functionality
     favoriteButtons.forEach(btn => {
