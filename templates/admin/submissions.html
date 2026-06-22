@@ -551,19 +551,26 @@
                                         <span class="file-size">({{ "%.1f"|format(paper.file_size / 1024 / 1024) }} MB)</span>
                                         {% endif %}
                                     </div>
-                                    {% if paper._conference_id %}
-                                    <a href="{{ url_for('download_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
-                                        class="btn btn-sm btn-primary"
-                                        title="Download abstract PDF">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                    {% else %}
-                                    <a href="{{ url_for('download_paper', paper_id=paper._paper_id) }}"
-                                        class="btn btn-sm btn-primary"
-                                        title="Download abstract PDF">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                    {% endif %}
+                                    <div class="d-flex gap-1">
+                                        {% if paper._conference_id %}
+                                        <a href="{{ url_for('download_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
+                                            class="btn btn-sm btn-primary"
+                                            title="Download abstract PDF">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('download_paper', paper_id=paper._paper_id) }}"
+                                            class="btn btn-sm btn-primary"
+                                            title="Download abstract PDF">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                            title="Delete abstract file"
+                                            onclick="deleteAttachment('{{ paper._paper_id|e }}', '{{ paper._conference_id|e }}')">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                     {% else %}
                                     <div class="file-info missing">
                                         <i class="fas fa-exclamation-circle"></i>
@@ -584,19 +591,26 @@
                                         <span class="file-size">({{ "%.1f"|format(paper.full_paper_size / 1024 / 1024) }} MB)</span>
                                         {% endif %}
                                     </div>
-                                    {% if paper._conference_id %}
-                                    <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
-                                        class="btn btn-sm btn-success"
-                                        title="Download full paper PDF">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                    {% else %}
-                                    <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id) }}"
-                                        class="btn btn-sm btn-success"
-                                        title="Download full paper PDF">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                    {% endif %}
+                                    <div class="d-flex gap-1">
+                                        {% if paper._conference_id %}
+                                        <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
+                                            class="btn btn-sm btn-success"
+                                            title="Download full paper PDF">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id) }}"
+                                            class="btn btn-sm btn-success"
+                                            title="Download full paper PDF">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                            title="Delete full paper file"
+                                            onclick="deleteAttachment('{{ paper._paper_id|e }}', '{{ paper._conference_id|e }}')">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                     {% else %}
                                     <div class="file-info pending">
                                         <i class="fas fa-hourglass-half"></i>
@@ -621,13 +635,7 @@
                             </td>
                             <td>
                                 <div class="action-buttons">
-                                    {% if paper.file_data or paper.file_storage_path or paper.file_url %}
-                                    <button type="button" class="btn btn-outline-danger btn-sm"
-                                        title="Permanently delete attachment from database"
-                                        onclick="deleteAttachment('{{ paper._paper_id|e }}', '{{ paper._conference_id|e }}')">
-                                        <i class="fas fa-trash-alt"></i> Delete file
-                                    </button>
-                                    {% endif %}
+
                                     {% if paper._conference_id %}
                                     <button type="button" class="btn btn-outline-warning btn-sm"
                                         title="Move this participant's registration to the correct conference"

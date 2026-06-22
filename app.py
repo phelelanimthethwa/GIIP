@@ -6231,11 +6231,25 @@ def delete_paper_attachment(paper_id):
             except Exception as e:
                 print(f"Error deleting main storage file: {e}")
 
-        # Update paper to remove file fields
+        # Delete full paper from Firebase Storage if present
+        if paper.get('full_paper_storage_path'):
+            try:
+                blob = bucket.blob(paper['full_paper_storage_path'])
+                if blob.exists():
+                    blob.delete()
+            except Exception as e:
+                print(f"Error deleting full paper storage file: {e}")
+
+        # Update paper to remove file fields (abstract + full paper)
         updates = {
             'file_data': None,
             'file_storage_path': None,
             'file_url': None,
+            'full_paper_url': None,
+            'full_paper_storage_path': None,
+            'full_paper_name': None,
+            'full_paper_size': None,
+            'full_paper_submitted_at': None,
             'updated_at': datetime.now().isoformat()
         }
         
@@ -6297,6 +6311,11 @@ def delete_paper_attachment(paper_id):
                         'file_data': None,
                         'file_storage_path': None,
                         'file_url': None,
+                        'full_paper_url': None,
+                        'full_paper_storage_path': None,
+                        'full_paper_name': None,
+                        'full_paper_size': None,
+                        'full_paper_submitted_at': None,
                         'updated_at': datetime.now().isoformat()
                     })
                     
@@ -6341,10 +6360,10 @@ def delete_all_attachments():
         bucket = storage.bucket()
         for ref, user_id, paper_id, conference_id in all_papers_refs:
             paper = ref.get()
-            if not paper or (not paper.get('file_data') and not paper.get('file_storage_path')):
+            if not paper or (not paper.get('file_data') and not paper.get('file_storage_path') and not paper.get('full_paper_storage_path')):
                 continue
                 
-            # Delete from Firebase Storage if present
+            # Delete abstract from Firebase Storage if present
             if paper.get('file_storage_path'):
                 try:
                     blob = bucket.blob(paper['file_storage_path'])
@@ -6353,10 +6372,24 @@ def delete_all_attachments():
                 except Exception as e:
                     print(f"Error deleting storage file in bulk: {e}")
 
+            # Delete full paper from Firebase Storage if present
+            if paper.get('full_paper_storage_path'):
+                try:
+                    blob = bucket.blob(paper['full_paper_storage_path'])
+                    if blob.exists():
+                        blob.delete()
+                except Exception as e:
+                    print(f"Error deleting full paper storage file in bulk: {e}")
+
             updates = {
                 'file_data': None,
                 'file_storage_path': None,
                 'file_url': None,
+                'full_paper_url': None,
+                'full_paper_storage_path': None,
+                'full_paper_name': None,
+                'full_paper_size': None,
+                'full_paper_submitted_at': None,
                 'updated_at': datetime.now().isoformat()
             }
             
@@ -6418,6 +6451,11 @@ def delete_all_attachments():
                             'file_data': None,
                             'file_storage_path': None,
                             'file_url': None,
+                            'full_paper_url': None,
+                            'full_paper_storage_path': None,
+                            'full_paper_name': None,
+                            'full_paper_size': None,
+                            'full_paper_submitted_at': None,
                             'updated_at': datetime.now().isoformat()
                         })
             count += 1
