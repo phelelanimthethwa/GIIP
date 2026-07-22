@@ -95,60 +95,76 @@
 
 {% block scripts %}
 <script>
-    $(document).ready(function() {
-        // Initialize DataTable
-        $('#speakersTable').DataTable({
-            order: [[1, 'asc']] // Sort by name (column 1) by default
-        });
-        
-        // Handle delete button click
-        $('.delete-speaker').on('click', function() {
-            const id = $(this).data('id');
-            const name = $(this).data('name');
-            
-            // Set speaker name in modal
-            $('#speakerName').text(name);
-            
-            // Set up the delete confirmation button
-            $('#confirmDelete').data('id', id);
-            
-            // Show the modal
-            $('#deleteModal').modal('show');
-        });
-        
-        // Handle delete confirmation
-        $('#confirmDelete').on('click', function() {
-            const id = $(this).data('id');
-            
-            // Send delete request
-            $.ajax({
-                url: `/admin/speakers/${id}/delete`,
-                method: 'POST',
-                success: function(response) {
-                    if (response.success) {
-                        // Hide modal
-                        $('#deleteModal').modal('hide');
-                        
-                        // Show success message
-                        toastr.success('Speaker deleted successfully');
-                        
-                        // Reload page after a short delay
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 1000);
-                    } else {
-                        toastr.error('Error deleting speaker: ' + response.error);
-                    }
-                },
-                error: function(xhr) {
-                    let errorMsg = 'Error deleting speaker';
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMsg += ': ' + xhr.responseJSON.error;
-                    }
-                    toastr.error(errorMsg);
-                }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize DataTable if jQuery and DataTable are available
+        if (typeof $ !== 'undefined' && $.fn.DataTable) {
+            $('#speakersTable').DataTable({
+                order: [[1, 'asc']]
             });
+        }
+
+        // Handle delete button click using event delegation
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.delete-speaker');
+            if (!btn) return;
+
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name') || 'this speaker';
+
+            if (typeof window.adminConfirm === 'function') {
+                window.adminConfirm({
+                    title: 'Delete Speaker',
+                    message: `Are you sure you want to delete ${name}? This action cannot be undone.`,
+                    variant: 'danger',
+                    confirmText: 'Delete'
+                }).then(confirmed => {
+                    if (confirmed) {
+                        performDelete(id);
+                    }
+                });
+            } else {
+                const modalEl = document.getElementById('deleteModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    document.getElementById('speakerName').textContent = name;
+                    document.getElementById('confirmDelete').setAttribute('data-id', id);
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                } else if (confirm(`Are you sure you want to delete ${name}?`)) {
+                    performDelete(id);
+                }
+            }
         });
+
+        // Backup handler for modal delete confirm button
+        const confirmBtn = document.getElementById('confirmDelete');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                if (id) performDelete(id);
+            });
+        }
+
+        function performDelete(id) {
+            fetch(`/admin/speakers/${id}/delete`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(response => {
+                if (response.success) {
+                    const modalEl = document.getElementById('deleteModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                    window.location.reload();
+                } else {
+                    alert('Error deleting speaker: ' + (response.error || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                alert('Error deleting speaker: ' + err.message);
+            });
+        }
     });
 </script>
 {% endblock %} 
