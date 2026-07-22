@@ -8093,15 +8093,17 @@ def edit_speaker(speaker_id):
                         if speaker.get('profile_image'):
                             try:
                                 old_image_url = speaker['profile_image']
-                                if 'firebasestorage.app' in old_image_url:
-                                    # Extract blob path from URL
+                                if 'firebasestorage.app' in old_image_url or 'storage.googleapis.com' in old_image_url:
                                     storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
                                     bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
                                     
-                                    # Extract the blob path from the URL
-                                    # URL format: https://firebasestorage.googleapis.com/v0/b/giir-66ae6.firebasestorage.app/o/speakers%2Ffilename?alt=media&token=...
+                                    old_filename = None
                                     if 'speakers%2F' in old_image_url:
                                         old_filename = old_image_url.split('speakers%2F')[1].split('?')[0]
+                                    elif '/speakers/' in old_image_url:
+                                        old_filename = old_image_url.split('/speakers/')[1].split('?')[0]
+
+                                    if old_filename:
                                         old_blob = bucket.blob(f'speakers/{old_filename}')
                                         if old_blob.exists():
                                             old_blob.delete()
@@ -8164,15 +8166,17 @@ def delete_speaker(speaker_id):
         if speaker.get('profile_image'):
             try:
                 image_url = speaker['profile_image']
-                if 'firebasestorage.app' in image_url:
-                    # Extract blob path from URL
+                if 'firebasestorage.app' in image_url or 'storage.googleapis.com' in image_url:
                     storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
                     bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
                     
-                    # Extract the blob path from the URL
-                    # URL format: https://firebasestorage.googleapis.com/v0/b/giir-66ae6.firebasestorage.app/o/speakers%2Ffilename?alt=media&token=...
+                    old_filename = None
                     if 'speakers%2F' in image_url:
                         old_filename = image_url.split('speakers%2F')[1].split('?')[0]
+                    elif '/speakers/' in image_url:
+                        old_filename = image_url.split('/speakers/')[1].split('?')[0]
+
+                    if old_filename:
                         old_blob = bucket.blob(f'speakers/{old_filename}')
                         if old_blob.exists():
                             old_blob.delete()
