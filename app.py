@@ -8094,8 +8094,7 @@ def edit_speaker(speaker_id):
                             try:
                                 old_image_url = speaker['profile_image']
                                 if 'firebasestorage.app' in old_image_url or 'storage.googleapis.com' in old_image_url:
-                                    storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-                                    bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+                                    bucket = get_firebase_storage_bucket()
                                     
                                     old_filename = None
                                     if 'speakers%2F' in old_image_url:
@@ -8167,8 +8166,7 @@ def delete_speaker(speaker_id):
             try:
                 image_url = speaker['profile_image']
                 if 'firebasestorage.app' in image_url or 'storage.googleapis.com' in image_url:
-                    storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-                    bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+                    bucket = get_firebase_storage_bucket()
                     
                     old_filename = None
                     if 'speakers%2F' in image_url:
@@ -13977,13 +13975,46 @@ def admin_paper_submission_settings():
 
 # Add these helper functions near the top of the file (after imports)
 
+def get_firebase_storage_bucket():
+    """
+    Get Firebase Storage bucket instance safely in both local and production environments.
+    Uses firebase_admin.storage credentials, with fallbacks for environment variables and service key file.
+    """
+    bucket_name = 'giir-66ae6.firebasestorage.app'
+    try:
+        b = storage.bucket(bucket_name)
+        if b:
+            return b
+    except Exception as e:
+        print(f"storage.bucket() default lookup note: {e}")
+
+    try:
+        if os.environ.get('FIREBASE_CREDENTIALS'):
+            cred_dict = json.loads(os.environ['FIREBASE_CREDENTIALS'])
+            client = gcs_storage.Client.from_service_account_info(cred_dict)
+            return client.bucket(bucket_name)
+        elif os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+            client = gcs_storage.Client.from_service_account_json(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+            return client.bucket(bucket_name)
+        elif os.environ.get('FIREBASE_SERVICE_ACCOUNT_PATH'):
+            client = gcs_storage.Client.from_service_account_json(os.environ['FIREBASE_SERVICE_ACCOUNT_PATH'])
+            return client.bucket(bucket_name)
+        elif os.path.exists('serviceAccountKey.json'):
+            client = gcs_storage.Client.from_service_account_json('serviceAccountKey.json')
+            return client.bucket(bucket_name)
+        else:
+            client = gcs_storage.Client()
+            return client.bucket(bucket_name)
+    except Exception as err:
+        print(f"Error getting Firebase Storage bucket: {err}")
+        raise
+
 def upload_guideline_file_and_get_url(file, filename):
     """Upload guideline files to Firebase Storage and return public URL"""
     try:
-        storage_client = gcs_storage.Client.from_service_account_json('serviceAccountKey.json')
-        bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+        bucket = get_firebase_storage_bucket()
         blob = bucket.blob(f'guidelines/{filename}')
-        blob.upload_from_file(file, content_type=file.mimetype)
+        blob.upload_from_file(file, content_type=file.mimetype if hasattr(file, 'mimetype') else getattr(file, 'content_type', 'application/pdf'))
         blob.make_public()
         return blob.public_url
     except Exception as e:
@@ -13993,8 +14024,7 @@ def upload_guideline_file_and_get_url(file, filename):
 def upload_speaker_image_to_firebase(file, filename):
     """Upload speaker image to Firebase Storage and return public URL"""
     try:
-        storage_client = gcs_storage.Client.from_service_account_json('serviceAccountKey.json')
-        bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+        bucket = get_firebase_storage_bucket()
         blob = bucket.blob(f'speakers/{filename}')
 
         # Compress image if needed
@@ -14296,11 +14326,11 @@ def guest_speaker_application():
                     unique_filename = f"cv_{timestamp}_{unique_id}{ext}"
 
                     # Upload to Firebase Storage
-                    storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-                    bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+                    bucket = get_firebase_storage_bucket()
 
                     blob = bucket.blob(f'guest_speaker_cvs/{unique_filename}')
-                    blob.upload_from_file(file, content_type=file.content_type)
+                    content_type = getattr(file, 'content_type', getattr(file, 'mimetype', 'application/pdf')) or 'application/pdf'
+                    blob.upload_from_file(file, content_type=content_type)
                     blob.make_public()
 
                     application_data['cv_url'] = blob.public_url
@@ -14530,29 +14560,39 @@ def delete_guest_speaker_application(application_id):
         # Delete profile image if exists
         if application.get('profile_image'):
             try:
-                if 'speakers%2F' in application['profile_image']:
-                    storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-                    bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
-                    filename = application['profile_image'].split('speakers%2F')[1].split('?')[0]
-                    blob = bucket.blob(f'speakers/{filename}')
-                    if blob.exists():
-                        blob.delete()
+                image_url = application['profile_image']
+                if 'firebasestorage.app' in image_url or 'storage.googleapis.com' in image_url:
+                    bucket = get_firebase_storage_bucket()
+                    filename = None
+                    if 'speakers%2F' in image_url:
+                        filename = image_url.split('speakers%2F')[1].split('?')[0]
+                    elif '/speakers/' in image_url:
+                        filename = image_url.split('/speakers/')[1].split('?')[0]
+
+                    if filename:
+                        blob = bucket.blob(f'speakers/{filename}')
+                        if blob.exists():
+                            blob.delete()
             except Exception as e:
                 print(f"Error deleting profile image: {str(e)}")
 
         # Delete CV file if exists
         if application.get('cv_url'):
             try:
-                storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
-                bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+                cv_url = application['cv_url']
+                if 'firebasestorage.app' in cv_url or 'storage.googleapis.com' in cv_url:
+                    bucket = get_firebase_storage_bucket()
+                    filename = None
+                    if 'guest_speaker_cvs%2F' in cv_url:
+                        filename = cv_url.split('guest_speaker_cvs%2F')[1].split('?')[0]
+                    elif '/guest_speaker_cvs/' in cv_url:
+                        filename = cv_url.split('/guest_speaker_cvs/')[1].split('?')[0]
 
-                # Extract filename from URL
-                if 'guest_speaker_cvs%2F' in application['cv_url']:
-                    filename = application['cv_url'].split('guest_speaker_cvs%2F')[1].split('?')[0]
-                    blob = bucket.blob(f'guest_speaker_cvs/{filename}')
-                    if blob.exists():
-                        blob.delete()
-                        print(f"Successfully deleted CV file: {filename}")
+                    if filename:
+                        blob = bucket.blob(f'guest_speaker_cvs/{filename}')
+                        if blob.exists():
+                            blob.delete()
+                            print(f"Successfully deleted CV file: {filename}")
             except Exception as e:
                 print(f"Error deleting CV file: {str(e)}")
 
