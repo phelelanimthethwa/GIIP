@@ -13997,12 +13997,14 @@ def upload_speaker_image_to_firebase(file, filename):
         img_data = compress_image(file, max_size_kb=500)
 
         # Upload the compressed image data
-        blob.upload_from_string(img_data, content_type=file.mimetype)
+        content_type = getattr(file, 'content_type', getattr(file, 'mimetype', 'image/jpeg')) or 'image/jpeg'
+        blob.upload_from_string(img_data, content_type=content_type)
         blob.make_public()
         return blob.public_url
     except Exception as e:
         print(f"Error uploading speaker image: {str(e)}")
         raise
+
 
 def get_conference_data(conference_id):
     """
@@ -14261,6 +14263,22 @@ def guest_speaker_application():
                 return render_template('user/guest_speaker_application.html',
                                      site_design=get_site_design())
 
+        # Handle Profile Image / Photo upload
+        if 'profile_image' in request.files:
+            photo_file = request.files['profile_image']
+            if photo_file and photo_file.filename and allowed_image_file(photo_file.filename):
+                try:
+                    original_filename = secure_filename(photo_file.filename)
+                    ext = os.path.splitext(original_filename)[1].lower()
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    unique_id = str(uuid.uuid4())[:8]
+                    unique_filename = f"speaker_{timestamp}_{unique_id}{ext}"
+
+                    public_url = upload_speaker_image_to_firebase(photo_file, unique_filename)
+                    application_data['profile_image'] = public_url
+                except Exception as e:
+                    print(f"Error uploading profile image: {str(e)}")
+
         # Handle CV/Resume upload
         if 'cv_file' in request.files:
             file = request.files['cv_file']
@@ -14406,6 +14424,10 @@ def update_guest_speaker_status(application_id):
                     'application_id': application_id
                 }
 
+                # Add profile image if available
+                if application.get('profile_image'):
+                    speaker_data['profile_image'] = application.get('profile_image')
+
                 # Add research interests if available
                 if application.get('research_interests'):
                     speaker_data['research_interests'] = application.get('research_interests')
@@ -14451,6 +14473,44 @@ def update_guest_speaker_status(application_id):
         print(f"Error updating guest speaker status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/admin/guest-speaker-applications/<application_id>/upload-photo', methods=['POST'])
+@login_required
+@admin_required
+def upload_guest_speaker_photo(application_id):
+    """Upload or update profile photo for a guest speaker application"""
+    try:
+        if 'profile_image' not in request.files:
+            return jsonify({'success': False, 'error': 'No image file uploaded'}), 400
+
+        file = request.files['profile_image']
+        if not file or not file.filename:
+            return jsonify({'success': False, 'error': 'No selected image file'}), 400
+
+        if not allowed_image_file(file.filename):
+            return jsonify({'success': False, 'error': 'Invalid image type. Please upload a JPG or PNG.'}), 400
+
+        original_filename = secure_filename(file.filename)
+        ext = os.path.splitext(original_filename)[1].lower()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        unique_filename = f"speaker_{timestamp}_{unique_id}{ext}"
+
+        # Upload image to Firebase Storage
+        public_url = upload_speaker_image_to_firebase(file, unique_filename)
+
+        # Update application in Firebase Realtime DB
+        application_ref = db.reference(f'guest_speaker_applications/{application_id}')
+        application_ref.update({
+            'profile_image': public_url,
+            'updated_at': datetime.now().isoformat()
+        })
+
+        return jsonify({'success': True, 'profile_image': public_url})
+
+    except Exception as e:
+        print(f"Error uploading guest speaker photo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/admin/guest-speaker-applications/<application_id>/delete', methods=['POST'])
 @login_required
 @admin_required
@@ -14462,6 +14522,19 @@ def delete_guest_speaker_application(application_id):
 
         if not application:
             return jsonify({'success': False, 'error': 'Application not found'}), 404
+
+        # Delete profile image if exists
+        if application.get('profile_image'):
+            try:
+                if 'speakers%2F' in application['profile_image']:
+                    storage_client = storage.Client.from_service_account_json('serviceAccountKey.json')
+                    bucket = storage_client.bucket('giir-66ae6.firebasestorage.app')
+                    filename = application['profile_image'].split('speakers%2F')[1].split('?')[0]
+                    blob = bucket.blob(f'speakers/{filename}')
+                    if blob.exists():
+                        blob.delete()
+            except Exception as e:
+                print(f"Error deleting profile image: {str(e)}")
 
         # Delete CV file if exists
         if application.get('cv_url'):
@@ -14789,4 +14862,6 @@ if __name__ == '__main__':
     with app.app_context():
         create_admin_user()
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=True, host='0.0.0.0', port=port)
+

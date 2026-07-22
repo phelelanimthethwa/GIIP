@@ -439,8 +439,12 @@
 }
 </style>
 
+<script type="application/json" id="applicationsData">
+{{ applications | tojson | safe }}
+</script>
+
 <script>
-let currentApplications = {{ applications | tojson }};
+let currentApplications = JSON.parse(document.getElementById('applicationsData').textContent || '{}');
 let filteredApplications = { ...currentApplications };
 
 // Initialize on page load
@@ -611,6 +615,23 @@ function viewApplication(applicationId) {
             const modalBody = document.getElementById('applicationDetails');
 
             modalBody.innerHTML = `
+                <div class="text-center mb-4 p-3 bg-light rounded">
+                    ${application.profile_image ? `
+                        <img src="${application.profile_image}" alt="${application.full_name}" class="rounded-circle img-thumbnail mb-2" style="width: 130px; height: 130px; object-fit: cover;">
+                    ` : `
+                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 130px; height: 130px;">
+                            <i class="fas fa-user fa-4x"></i>
+                        </div>
+                    `}
+                    <div>
+                        <label class="btn btn-sm btn-primary">
+                            <i class="fas fa-camera me-1"></i> ${application.profile_image ? 'Change Photo on Firebase' : 'Upload Speaker Photo'}
+                            <input type="file" id="modalPhotoInput" accept="image/*" style="display:none;" onchange="uploadSpeakerPhoto('${applicationId}')">
+                        </label>
+                        <div id="photoUploadStatus" class="small mt-1"></div>
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-md-6">
                         <h6><i class="fas fa-user me-2"></i>Personal Information</h6>
@@ -972,5 +993,37 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Upload or update photo for a guest speaker application
+function uploadSpeakerPhoto(applicationId) {
+    const input = document.getElementById('modalPhotoInput');
+    const statusDiv = document.getElementById('photoUploadStatus');
+    if (!input.files || !input.files[0]) return;
+
+    const formData = new FormData();
+    formData.append('profile_image', input.files[0]);
+
+    statusDiv.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Uploading photo to Firebase Storage...</span>';
+
+    fetch(`/admin/guest-speaker-applications/${applicationId}/upload-photo`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Photo saved to Firebase Storage!</span>';
+            if (currentApplications[applicationId]) {
+                currentApplications[applicationId].profile_image = data.profile_image;
+            }
+            setTimeout(() => viewApplication(applicationId), 1200);
+        } else {
+            statusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-circle"></i> ${data.error}</span>`;
+        }
+    })
+    .catch(err => {
+        statusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-exclamation-circle"></i> ${err.message}</span>`;
+    });
+}
 </script>
 {% endblock %}
