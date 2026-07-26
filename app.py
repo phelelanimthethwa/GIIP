@@ -1095,7 +1095,7 @@ def paper_submission():
                 
                 if not existing_registration:
                     # Create new registration with the selected type
-                    fees = get_registration_fees() or {}
+                    fees = get_registration_fees(selected_conference_id) or {}
                     current_period = get_current_registration_period()
                     
                     pricing = calculate_conference_registration_pricing(
@@ -1842,14 +1842,34 @@ def create_payment():
                     'error': f'Missing required field: {field}'
                 }), 400
         
-        # Get registration fees to validate
-        fees_ref = db.reference('registration_fees')
-        fees = fees_ref.get()
+        # Extract conference_id from request payload or session
+        conference_id = registration_data.get('conference_id')
+        pending_reg = session.get('pending_conference_registration', {}) or session.get('pending_registration', {})
+        if not conference_id and pending_reg:
+            conference_id = pending_reg.get('conference_id')
+
+        if not conference_id:
+            return jsonify({
+                'success': False,
+                'error': 'Conference ID is required for payment',
+                'code': 'CONFERENCE_MISMATCH'
+            }), 400
+
+        # Cross-conference validation: check matching pending registration
+        if pending_reg and pending_reg.get('conference_id') and pending_reg.get('conference_id') != conference_id:
+            return jsonify({
+                'success': False,
+                'error': 'Conference ID mismatch between payment request and registration',
+                'code': 'CONFERENCE_MISMATCH'
+            }), 400
+
+        # Get registration fees for this specific conference
+        fees = get_registration_fees(conference_id)
         
         if not fees:
             return jsonify({
                 'success': False,
-                'error': 'Registration fees not configured'
+                'error': 'Registration fees not configured for this conference'
             }), 500
         
         # Validate amount
@@ -2592,18 +2612,33 @@ def admin_venue():
                              venue_details=None)
 
 @app.route('/admin/registration-fees', methods=['GET', 'POST'])
+@app.route('/admin/conferences/<conference_id>/registration-fees', methods=['GET', 'POST'])
 @admin_required
-def admin_registration_fees():
+def admin_registration_fees(conference_id=None):
+    # If no conference_id supplied in URL, try to pick active/first conference or redirect to conference manager
+    all_conferences = get_all_conferences()
+    if not conference_id:
+        if all_conferences:
+            # Pick active or first conference
+            active_conf = next((cid for cid, cdata in all_conferences.items() if cdata and cdata.get('basic_info', {}).get('status') == 'active'), None)
+            conference_id = active_conf or list(all_conferences.keys())[0]
+        else:
+            flash('No conferences found. Please create a conference first.', 'warning')
+            return redirect(url_for('admin_conferences'))
+
+    conference_data = get_conference_data(conference_id)
+    if not conference_data:
+        flash(f'Conference {conference_id} not found.', 'danger')
+        return redirect(url_for('admin_conferences'))
+
     if request.method == 'POST':
         try:
-            # Debug: Print all form data
-            print("Form data received:", request.form)
+            print(f"Form data received for conference {conference_id}:", request.form)
             
             # Get currency settings
-            currency_code = request.form.get('currency_code')
+            currency_code = request.form.get('currency_code', 'ZAR')
             custom_currency_symbol = request.form.get('custom_currency_symbol') if currency_code == 'custom' else None
             
-            # Set up the currency structure
             currency = {
                 'code': currency_code,
                 'symbol': custom_currency_symbol if currency_code == 'custom' else {
@@ -2612,26 +2647,35 @@ def admin_registration_fees():
                     'EUR': '€',
                     'GBP': '£',
                     'AUD': 'A$'
-                }.get(currency_code)
+                }.get(currency_code, 'R')
             }
             
-            # Convert form data to float where needed
             def get_float(key, default=0):
                 value = request.form.get(key)
                 try:
                     return float(value) if value and value.strip() else default
                 except (ValueError, TypeError):
-                    print(f"Error converting {key} to float. Value: {value}")
                     return default
             
-            # Convert form data to int where needed
             def get_int(key, default=0):
                 value = request.form.get(key)
                 try:
                     return int(value) if value and value.strip() else default
                 except (ValueError, TypeError):
-                    print(f"Error converting {key} to int. Value: {value}")
                     return default
+            
+            payment_details = {
+                'bank_name': request.form.get('bank_name', '').strip(),
+                'account_name': request.form.get('account_name', '').strip(),
+                'account_number': request.form.get('account_number', '').strip(),
+                'account_type': request.form.get('account_type', '').strip(),
+                'branch_code': request.form.get('branch_code', '').strip(),
+                'swift_code': request.form.get('swift_code', '').strip(),
+                'bank_address': request.form.get('bank_address', '').strip(),
+                'reference_format': request.form.get('reference_format', '').strip(),
+                'finance_email': request.form.get('finance_email', '').strip(),
+                'special_instructions': request.form.get('special_instructions', '').strip()
+            }
             
             registration_fees = {
                 'currency': currency,
@@ -2647,7 +2691,6 @@ def admin_registration_fees():
                         'student_author': get_float('early_bird_student'),
                         'regular_author': get_float('early_bird_regular'),
                         'physical_delegate': get_float('early_bird_physical'),
-                        'listener': get_float('early_bird_listener'),
                         'listener': get_float('early_bird_listener')
                     },
                     'benefits': [b for b in request.form.getlist('early_bird_benefits[]') if b and b.strip()]
@@ -2659,7 +2702,7 @@ def admin_registration_fees():
                         'regular_author': get_float('early_regular'),
                         'physical_delegate': get_float('early_physical'),
                         'listener': get_float('early_listener'),
-                        'listener': get_float('early_listener')
+                        'virtual': get_float('early_virtual')
                     },
                     'benefits': [b for b in request.form.getlist('early_benefits[]') if b and b.strip()]
                 },
@@ -2679,7 +2722,6 @@ def admin_registration_fees():
                         'student_author': get_float('late_student'),
                         'regular_author': get_float('late_regular'),
                         'physical_delegate': get_float('late_physical'),
-                        'listener': get_float('late_listener'),
                         'listener': get_float('late_listener')
                     },
                     'benefits': [b for b in request.form.getlist('late_benefits[]') if b and b.strip()]
@@ -2701,56 +2743,51 @@ def admin_registration_fees():
                         'description': request.form.get('banquet_description', '').strip(),
                         'virtual_eligible': request.form.get('banquet_virtual_eligible') == 'on'
                     }
-                }
+                },
+                'payment_details': payment_details
             }
             
-            # Debug: Print the structured data
-            print("Structured data to save:", registration_fees)
+            # Save to conference specific node in Firebase
+            db.reference(f'conferences/{conference_id}/registration_fees').set(registration_fees)
             
-            # Update registration fees in Firebase
-            print("Attempting to save to Firebase...")
-            try:
-                db.reference('registration_fees').set(registration_fees)
-                print("Successfully saved to Firebase!")
-                flash('Registration fees updated successfully', 'success')
-            except Exception as firebase_error:
-                print(f"Firebase error: {firebase_error}")
-                flash(f'Firebase error: {str(firebase_error)}', 'danger')
-            
-            return redirect(url_for('admin_registration_fees'))
+            # Also update global_settings/payment_details if global defaults aren't set yet
+            if any(payment_details.values()):
+                db.reference('global_settings/payment_details').set(payment_details)
+                
+            flash(f'Registration fees for "{conference_data.get("basic_info", {}).get("name", conference_id)}" updated successfully', 'success')
+            return redirect(url_for('admin_registration_fees', conference_id=conference_id))
             
         except Exception as e:
             import traceback
-            print("Error saving registration fees:")
-            print(traceback.format_exc())  # Print full stack trace
+            traceback.print_exc()
             flash(f'Error updating registration fees: {str(e)}', 'danger')
-            return redirect(url_for('admin_registration_fees'))
+            return redirect(url_for('admin_registration_fees', conference_id=conference_id))
     
     try:
-        # Test Firebase connection first
-        print("Testing Firebase connection...")
-        test_ref = db.reference('test_connection')
-        test_ref.set({'test': 'connection_ok', 'timestamp': str(datetime.now())})
-        print("Firebase connection test successful!")
+        # Load fees for this conference; if empty, pre-fill from global defaults / root node
+        conf_fees_ref = db.reference(f'conferences/{conference_id}/registration_fees')
+        current_fees = conf_fees_ref.get()
         
-        # Get current fees settings
-        fees_ref = db.reference('registration_fees')
-        current_fees = fees_ref.get() or {}
-        
-        # Debug: Print current fees
-        print("Current fees loaded:", current_fees)
+        if not current_fees:
+            # Pre-fill with sensible defaults or root fees
+            current_fees = get_registration_fees(conference_id=None)
         
         return render_template('admin/admin_registration_fees.html', 
                              site_design=get_site_design(), 
-                             fees=current_fees)
+                             fees=current_fees,
+                             conference=conference_data,
+                             conference_id=conference_id,
+                             all_conferences=all_conferences)
     except Exception as e:
         import traceback
-        print("Error loading registration fees:")
-        print(traceback.format_exc())  # Print full stack trace
+        traceback.print_exc()
         flash(f'Error loading registration fees: {str(e)}', 'danger')
         return render_template('admin/admin_registration_fees.html', 
                              site_design=get_site_design(), 
-                             fees={})
+                             fees={},
+                             conference=conference_data,
+                             conference_id=conference_id,
+                             all_conferences=all_conferences)
 
 @app.route('/admin/downloads', methods=['GET', 'POST'])
 @login_required
@@ -5477,91 +5514,109 @@ def admin_about_content():
         except:
             return redirect(url_for('admin_dashboard'))
 
-def get_registration_fees():
+def get_registration_fees(conference_id=None):
     """
     Helper function to fetch registration fees from Firebase.
-    Returns a dictionary containing all registration fee information.
-    If no fees are set, returns a default structure.
+    Returns a dictionary containing registration fee information for the specified conference.
+    If conference_id is None, logs a deprecation warning and falls back to root registration_fees.
     """
     try:
-        # Get registration fees from Firebase
-        fees_ref = db.reference('registration_fees')
-        fees = fees_ref.get()
-        
-        if not fees:
-            # Return default structure if no fees are set
-            return {
-                'currency': {
-                    'code': 'ZAR',
-                    'symbol': 'R'
+        if not conference_id:
+            logger.warning("DEPRECATION WARNING: get_registration_fees called without conference_id. Falling back to root node.")
+            fees_ref = db.reference('registration_fees')
+            fees = fees_ref.get()
+            if fees:
+                return fees
+        else:
+            fees_ref = db.reference(f'conferences/{conference_id}/registration_fees')
+            fees = fees_ref.get()
+            if fees:
+                return fees
+
+        # Fallback to root registration_fees if conference-specific fees not found
+        if conference_id:
+            root_fees = db.reference('registration_fees').get()
+            if root_fees:
+                return root_fees
+
+        # Return default structure if no fees exist anywhere
+        global_payment = db.reference('global_settings/payment_details').get() or {}
+        return {
+            'currency': {
+                'code': 'ZAR',
+                'symbol': 'R'
+            },
+            'early_bird': {
+                'enabled': False,
+                'deadline': '',
+                'seats': {
+                    'total': 100,
+                    'remaining': 100,
+                    'show_remaining': True
                 },
-                'early_bird': {
+                'fees': {
+                    'student_author': 0,
+                    'regular_author': 0,
+                    'physical_delegate': 0,
+                    'listener': 0
+                },
+                'benefits': []
+            },
+            'early': {
+                'deadline': '',
+                'fees': {
+                    'student_author': 0,
+                    'regular_author': 0,
+                    'physical_delegate': 0,
+                    'listener': 0
+                },
+                'benefits': []
+            },
+            'regular': {
+                'deadline': '',
+                'fees': {
+                    'student_author': 0,
+                    'regular_author': 0,
+                    'physical_delegate': 0,
+                    'listener': 0
+                },
+                'benefits': []
+            },
+            'late': {
+                'deadline': '',
+                'fees': {
+                    'student_author': 0,
+                    'regular_author': 0,
+                    'physical_delegate': 0,
+                    'listener': 0
+                },
+                'benefits': []
+            },
+            'additional_items': {
+                'extra_paper': {
                     'enabled': False,
-                    'deadline': '',
-                    'seats': {
-                        'total': 100,
-                        'remaining': 100,
-                        'show_remaining': True
-                    },
-                    'fees': {
-                        'student_author': 0,
-                        'regular_author': 0,
-                        'physical_delegate': 0,
-                        'listener': 0
-                    },
-                    'benefits': []
+                    'fee': 0,
+                    'description': 'Submit an additional paper',
+                    'virtual_eligible': True
                 },
-                'early': {
-                    'deadline': '',
-                    'fees': {
-                        'student_author': 0,
-                        'regular_author': 0,
-                        'physical_delegate': 0,
-                        'listener': 0
-                    },
-                    'benefits': []
+                'workshop': {
+                    'enabled': False,
+                    'fee': 0,
+                    'description': 'Attend the conference workshop',
+                    'virtual_eligible': True
                 },
-                'regular': {
-                    'deadline': '',
-                    'fees': {
-                        'student_author': 0,
-                        'regular_author': 0,
-                        'physical_delegate': 0,
-                        'listener': 0
-                    },
-                    'benefits': []
-                },
-                'late': {
-                    'deadline': '',
-                    'fees': {
-                        'student_author': 0,
-                        'regular_author': 0,
-                        'physical_delegate': 0,
-                        'listener': 0
-                    },
-                    'benefits': []
-                },
-                'additional_items': {
-                    'extra_paper': {
-                        'enabled': False,
-                        'fee': 0,
-                        'description': 'Submit an additional paper',
-                        'virtual_eligible': True
-                    },
-                    'workshop': {
-                        'enabled': False,
-                        'fee': 0,
-                        'description': 'Attend the conference workshop',
-                        'virtual_eligible': True
-                    },
-                    'banquet': {
-                        'enabled': False,
-                        'fee': 0,
-                        'description': 'Join the conference banquet',
-                        'virtual_eligible': False
-                    }
+                'banquet': {
+                    'enabled': False,
+                    'fee': 0,
+                    'description': 'Join the conference banquet',
+                    'virtual_eligible': False
                 }
-            }
+            },
+            'payment_details': global_payment
+        }
+    except Exception as e:
+        print(f"Error in get_registration_fees: {e}")
+        return {}
         
         # Ensure the fees structure is correct
         if 'currency' not in fees:
@@ -10114,7 +10169,7 @@ def sync_conference_registration_pricing(registration_id, registration_data, use
         if payment_status == 'paid':
             return registration_data
 
-        fees = fees or get_registration_fees() or {}
+        fees = fees or get_registration_fees(conference_id) or {}
         registration_period = (
             registration_data.get('registration_period')
             or _select_registration_period_for_fees(fees)
@@ -10175,7 +10230,7 @@ def ensure_conference_registration_for_accepted_paper(user_id, conference_id, pa
             return None, None, False
 
         now_iso = datetime.now().isoformat()
-        fees = get_registration_fees() or {}
+        fees = get_registration_fees(conference_id) or {}
         registration_period = _select_registration_period_for_fees(fees)
         default_registration_type = _select_default_registration_type(fees, registration_period)
         default_pricing = calculate_conference_registration_pricing(
@@ -11639,7 +11694,7 @@ def conference_registration(conference_id):
             pass  # Allow access to the form for all types
 
         if request.method == 'GET':
-            fees = get_registration_fees()
+            fees = get_registration_fees(conference_id)
             current_period = get_current_registration_period()
             form_registration_period = (
                 (existing_registration or {}).get('registration_period')
@@ -11728,7 +11783,7 @@ def conference_registration(conference_id):
                     'error': 'Payment has already started for this registration. Please complete payment first.'
                 }), 400
 
-            fees = get_registration_fees()
+            fees = get_registration_fees(conference_id)
             if not fees:
                 return jsonify({
                     'success': False,

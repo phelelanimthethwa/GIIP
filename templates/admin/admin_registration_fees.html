@@ -5,1106 +5,696 @@
 {% block head %}
 <!-- Add Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<!-- Add custom CSS -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_registration.css') }}">
 <style>
-    :root {
-        --primary-color: #1a73e8;
-        --primary-color-dark: #1557b0;
-        --primary-color-rgb: 26, 115, 232;
-        --border-color: #e0e0e0;
-        --background-color: #f8f9fa;
-        --text-color: #333;
-        --error-color: #dc3545;
-        --success-color: #28a745;
-    }
-
-    .admin-section {
-        padding: 2rem;
-    }
-
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-
-    .bento-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .bento-item {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
-    }
-
-    .form-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-section.nested {
-        margin-left: 1rem;
-        padding-left: 1rem;
-        border-left: 3px solid var(--border-color);
-    }
-
-    .form-row {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .form-group {
-        flex: 1;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: var(--text-color);
+    /* Underline Tab Styles */
+    .tier-tab-link {
+        all: unset;
+        cursor: pointer;
+        padding: 8px 16px;
+        font-size: 0.9rem;
         font-weight: 500;
-    }
-
-    .input-group {
-        display: flex;
+        color: #475569 !important;
+        border-bottom: 2px solid transparent;
+        display: inline-flex;
         align-items: center;
+        transition: all 0.15s ease;
+    }
+    .tier-tab-link:hover {
+        color: #0284c7 !important;
+    }
+    .tier-tab-link.active {
+        color: #0284c7 !important;
+        border-bottom: 2px solid #0284c7 !important;
+        font-weight: 600;
     }
 
-    .input-group .currency-symbol {
-        background: var(--background-color);
-        padding: 0.5rem;
-        border: 1px solid var(--border-color);
-        border-right: none;
-        border-radius: 4px 0 0 4px;
-        color: var(--text-color);
-    }
-
-    .input-group input {
-        border-radius: 0 4px 4px 0;
-    }
-
-    .switch-container {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 24px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
+    /* Sticky Action Header */
+    .sticky-top-bar {
+        position: sticky;
         top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #ccc;
-        transition: .4s;
+        z-index: 1000;
+        background-color: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(8px);
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 16px;
+        margin-bottom: 1.25rem;
     }
 
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 16px;
-        width: 16px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: .4s;
-    }
-
-    .slider.round {
-        border-radius: 24px;
-    }
-
-    .slider.round:before {
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: var(--primary-color);
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(26px);
-    }
-
-    .benefits-list {
-        margin: 1rem 0;
-    }
-
-    .benefit-item {
+    .benefit-row {
         display: flex;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .btn-icon {
-        padding: 0.25rem 0.5rem;
-        border: none;
-        background: none;
-        color: var(--error-color);
-        cursor: pointer;
-        transition: color 0.2s;
-    }
-
-    .btn-icon:hover {
-        color: var(--error-color-dark);
-    }
-
-    .btn-secondary {
-        background: var(--background-color);
-        border: 1px solid var(--border-color);
-        color: var(--text-color);
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-secondary:hover {
-        background: #e9ecef;
-    }
-
-    .btn-submit {
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-    .btn-submit:hover {
-        background: var(--primary-color-dark);
-    }
-
-    .form-actions {
-        margin-top: 2rem;
-        text-align: right;
-    }
-
-    .alert {
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border-radius: 4px;
-    }
-
-    .alert-success {
-        background-color: #d4edda;
-        border-color: #c3e6cb;
-        color: #155724;
-    }
-
-    .alert-error {
-        background-color: #f8d7da;
-        border-color: #f5c6cb;
-        color: #721c24;
-    }
-
-    .is-invalid {
-        border-color: var(--error-color);
-    }
-
-    .invalid-feedback {
-        color: var(--error-color);
-        font-size: 0.875rem;
-        margin-top: 0.25rem;
+        gap: 8px;
+        margin-bottom: 8px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="admin-section">
-    <div class="section-header">
-    <h1>Manage Registration Fees</h1>
-        <div class="header-actions">
-            <button type="button" class="btn-secondary" onclick="resetForm()">
-                <i class="fas fa-undo"></i> Reset Changes
-            </button>
-            <a href="{{ url_for('registration') }}" class="btn-secondary" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Page
-            </a>
+<div class="container-fluid p-3" style="background-color: #f8fafc; min-height: 100vh;">
+
+    <!-- 1. Conference Context Bar (Sit alone at top - single solid light blue tinted block) -->
+    <div class="p-3 mb-3 rounded-3" style="background-color: #E6F1FB; border: 1px solid #85B7EB;">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="fw-semibold mb-0" style="color: #0C447C !important; font-size: 1.05rem;">
+                    {{ conference.basic_info.name if conference and conference.basic_info else 'Manage Registration Fees' }}
+                    {% if conference and conference.basic_info and conference.basic_info.year %}
+                    ({{ conference.basic_info.year }})
+                    {% endif %}
+                </div>
+                <div class="small" style="color: #475569;">
+                    Code: {{ conference.conference_code if conference else conference_id }} &bull; editing pricing for this conference
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                {% if all_conferences %}
+                <label for="switch_conference" class="mb-0 small text-muted text-nowrap"><i class="fas fa-exchange-alt me-1"></i> Switch:</label>
+                <select id="switch_conference" class="form-select form-select-sm" style="width: auto; background-color: #fff;" onchange="if(this.value) window.location.href='/admin/conferences/' + this.value + '/registration-fees'">
+                    {% for cid, cdata in all_conferences.items() %}
+                    <option value="{{ cid }}" {% if cid == conference_id %}selected{% endif %}>
+                        {{ cdata.basic_info.name if cdata and cdata.basic_info else cid }} ({{ cdata.basic_info.year|default('') }})
+                    </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+                <a href="{{ url_for('admin_conferences') }}" class="btn btn-sm btn-outline-secondary">
+                    All Conferences
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Action Header -->
+    <div class="sticky-top-bar shadow-sm">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-semibold text-dark small">
+                <i class="fas fa-sliders-h me-1 text-primary"></i> Registration Fees Configuration
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetForm()">
+                    <i class="fas fa-undo me-1"></i> Reset
+                </button>
+                <a href="{{ url_for('registration', conference_id=conference_id) }}" class="btn btn-sm btn-outline-info" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i> Public Page
+                </a>
+                <button type="submit" form="registrationForm" class="btn btn-sm btn-primary px-3 fw-semibold">
+                    <i class="fas fa-save me-1"></i> Save Registration Fees
+                </button>
+            </div>
         </div>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible">
+                <div class="alert alert-{{ category }} alert-dismissible fade show py-2 mb-3">
                     {{ message }}
-                    <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
+                    <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
                 </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('admin_registration_fees') }}" class="registration-fees-form" id="registrationForm">
-        <div class="bento-grid">
-            <!-- Add this after the section-header div in the form, before Early Bird Registration -->
-            <div class="bento-item bento-item-small">
-                <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-money-bill"></i> Currency Settings</h2>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="currency_code">Currency</label>
-                            <select id="currency_code" name="currency_code" class="form-control">
-                                <option value="ZAR" {% if fees and fees.currency and fees.currency.code == 'ZAR' %}selected{% endif %}>South African Rand (R)</option>
-                                <option value="USD" {% if fees and fees.currency and fees.currency.code == 'USD' %}selected{% endif %}>US Dollar ($)</option>
-                                <option value="EUR" {% if fees and fees.currency and fees.currency.code == 'EUR' %}selected{% endif %}>Euro (€)</option>
-                                <option value="GBP" {% if fees and fees.currency and fees.currency.code == 'GBP' %}selected{% endif %}>British Pound (£)</option>
-                                <option value="AUD" {% if fees and fees.currency and fees.currency.code == 'AUD' %}selected{% endif %}>Australian Dollar (A$)</option>
-                                <option value="custom" {% if fees and fees.currency and fees.currency.code == 'custom' %}selected{% endif %}>Custom Currency</option>
-                            </select>
-                        </div>
-                        <div class="form-group custom-currency-group" style="display: none;">
-                            <label for="custom_currency_symbol">Custom Currency Symbol</label>
-                            <input type="text" id="custom_currency_symbol" name="custom_currency_symbol" 
-                                   value="{{ fees.currency.custom_symbol if fees and fees.currency else '' }}"
-                                   placeholder="e.g., ¥">
-                        </div>
-                    </div>
+    <form method="POST" action="{{ url_for('admin_registration_fees', conference_id=conference_id) }}" id="registrationForm">
+
+        <!-- Card 1: Currency Settings -->
+        <div class="card mb-4 border rounded-3 p-3 shadow-none bg-white" style="border-color: #E2E8F0 !important;">
+            <div class="fw-semibold text-dark mb-3 small"><i class="fas fa-coins text-warning me-1"></i> Currency Settings</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="currency_code" class="form-label small text-muted mb-1">Currency Selection</label>
+                    <select id="currency_code" name="currency_code" class="form-select form-select-sm">
+                        <option value="ZAR" {% if fees and fees.currency and fees.currency.code == 'ZAR' %}selected{% endif %}>South African Rand (R)</option>
+                        <option value="USD" {% if fees and fees.currency and fees.currency.code == 'USD' %}selected{% endif %}>US Dollar ($)</option>
+                        <option value="EUR" {% if fees and fees.currency and fees.currency.code == 'EUR' %}selected{% endif %}>Euro (€)</option>
+                        <option value="GBP" {% if fees and fees.currency and fees.currency.code == 'GBP' %}selected{% endif %}>British Pound (£)</option>
+                        <option value="AUD" {% if fees and fees.currency and fees.currency.code == 'AUD' %}selected{% endif %}>Australian Dollar (A$)</option>
+                        <option value="custom" {% if fees and fees.currency and fees.currency.code == 'custom' %}selected{% endif %}>Custom Currency</option>
+                    </select>
+                </div>
+                <div class="col-md-6 custom-currency-group" style="display: none;">
+                    <label for="custom_currency_symbol" class="form-label small text-muted mb-1">Custom Currency Symbol</label>
+                    <input type="text" id="custom_currency_symbol" name="custom_currency_symbol" class="form-control form-control-sm"
+                           value="{{ fees.currency.custom_symbol if fees and fees.currency else '' }}" placeholder="e.g., ¥">
                 </div>
             </div>
+        </div>
 
-            <!-- Early Bird Registration -->
-            <div class="bento-item">
-                <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-star"></i> Early Bird Registration</h2>
-                        <div class="form-group switch-container">
-                            <label class="switch">
-                                <input type="checkbox" id="early_bird_enabled" name="early_bird_enabled" 
-                                       {% if fees and fees.early_bird and fees.early_bird.enabled %}checked{% endif %}>
-                                <span class="slider round"></span>
-                            </label>
-                            <label for="early_bird_enabled">Enable Early Bird Registration</label>
+        <!-- Card 2: Fee Tier Tabs -->
+        <div class="card mb-4 border rounded-3 p-3 shadow-none bg-white" style="border-color: #E2E8F0 !important;">
+            <div class="fw-semibold text-dark mb-2 small"><i class="fas fa-layer-group text-primary me-1"></i> Fee Tiers</div>
+
+            <!-- 2. Underline Style Tabs -->
+            <div class="d-flex gap-2 border-bottom mb-3" id="tierTabBar" style="border-bottom-color: #E2E8F0 !important;">
+                <button type="button" class="tier-tab-link active" data-target="#pane-early-bird">
+                    <i class="fas fa-star me-1 text-warning"></i> Early Bird
+                </button>
+                <button type="button" class="tier-tab-link" data-target="#pane-early">
+                    <i class="fas fa-calendar-check me-1 text-info"></i> Early
+                </button>
+                <button type="button" class="tier-tab-link" data-target="#pane-regular">
+                    <i class="fas fa-calendar me-1 text-primary"></i> Regular
+                </button>
+                <button type="button" class="tier-tab-link" data-target="#pane-late">
+                    <i class="fas fa-clock me-1 text-danger"></i> Late
+                </button>
+            </div>
+
+            <!-- Tab Content Panes -->
+            <div class="tab-content">
+
+                <!-- Tier 1: Early Bird -->
+                <div class="tier-pane active" id="pane-early-bird">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="early_bird_enabled" name="early_bird_enabled" 
+                                   {% if fees and fees.early_bird and fees.early_bird.enabled %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold small text-dark" for="early_bird_enabled">Enable Early Bird Tier</label>
                         </div>
                     </div>
-                    
+
                     <div id="early_bird_settings" {% if not fees or not fees.early_bird or not fees.early_bird.enabled %}style="display: none;"{% endif %}>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="early_bird_deadline">Deadline</label>
-                                <input type="date" id="early_bird_deadline" name="early_bird_deadline" 
-                                       value="{{ fees.early_bird.deadline if fees and fees.early_bird else '' }}">
-                            </div>
+                        <div class="mb-3">
+                            <label for="early_bird_deadline" class="form-label small text-muted mb-1">Deadline</label>
+                            <input type="date" id="early_bird_deadline" name="early_bird_deadline" class="form-control form-control-sm" style="max-width: 250px;"
+                                   value="{{ fees.early_bird.deadline if fees and fees.early_bird else '' }}">
                         </div>
 
-                        <!-- Seat Management -->
-                        <div class="form-section nested">
-                            <h3><i class="fas fa-chair"></i> Seat Management</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="early_bird_total_seats">Total Seats</label>
-                                    <input type="number" id="early_bird_total_seats" name="early_bird_total_seats" 
-                                           value="{{ fees.early_bird.seats.total if fees and fees.early_bird and fees.early_bird.seats else '100' }}" 
-                                           min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label for="early_bird_remaining_seats">Remaining Seats</label>
-                                    <input type="number" id="early_bird_remaining_seats" name="early_bird_remaining_seats" 
-                                           value="{{ fees.early_bird.seats.remaining if fees and fees.early_bird and fees.early_bird.seats else '100' }}" 
-                                           min="0">
-                                </div>
+                        <!-- 3. Seat Capacity Indicator -->
+                        {% set total = fees.early_bird.seats.total|default(100)|int %}
+                        {% set rem = fees.early_bird.seats.remaining|default(100)|int %}
+                        {% set pct = ((rem / total * 100)|round) if total > 0 else 100 %}
+                        <div class="p-3 bg-light border rounded-3 mb-3" style="border-color: #E2E8F0 !important;">
+                            <div class="d-flex justify-content-between align-items-center mb-1 small">
+                                <span class="text-muted">Seat capacity</span>
+                                <span class="fw-bold text-dark">{{ rem }} of {{ total }} available</span>
                             </div>
-                            <div class="form-group switch-container">
-                                <label class="switch">
-                                    <input type="checkbox" id="show_remaining_seats" name="show_remaining_seats" 
-                                           {% if fees and fees.early_bird and fees.early_bird.seats and fees.early_bird.seats.show_remaining %}checked{% endif %}>
-                                    <span class="slider round"></span>
-                                </label>
-                                <label for="show_remaining_seats">Show remaining seats on registration page</label>
+                            <div class="progress mb-2" style="height: 8px; border-radius: 9999px; background-color: #E2E8F0;">
+                                <div class="progress-bar" role="progressbar" style="{{ 'width: ' ~ pct ~ '%; background-color: #16a34a; border-radius: 9999px;' }}"></div>
                             </div>
-                        </div>
-
-                        <!-- Registration Fees -->
-                        <div class="form-section nested">
-                            <h3><i class="fas fa-money-bill"></i> Registration Fees</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="early_bird_student">Student Author</label>
-                                    <div class="input-group">
-                                        <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                        <input type="number" id="early_bird_student" name="early_bird_student" required
-                                               value="{{ fees.early_bird.fees.student_author if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
-                                               step="0.01" min="0">
-                                    </div>
+                            <!-- Editable seat inputs (secondary) -->
+                            <div class="row g-2 align-items-center pt-2 border-top" style="border-top-color: #E2E8F0 !important;">
+                                <div class="col-6">
+                                    <label for="early_bird_total_seats" class="small text-muted mb-1" style="font-size: 0.75rem;">Total Seats</label>
+                                    <input type="number" id="early_bird_total_seats" name="early_bird_total_seats" class="form-control form-control-sm" value="{{ total }}" min="1">
                                 </div>
-                                <div class="form-group">
-                                    <label for="early_bird_regular">Regular Author</label>
-                                    <div class="input-group">
-                                        <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                        <input type="number" id="early_bird_regular" name="early_bird_regular" required
-                                               value="{{ fees.early_bird.fees.regular_author if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
-                                               step="0.01" min="0">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="early_bird_physical">Physical Delegate</label>
-                                    <div class="input-group">
-                                        <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                        <input type="number" id="early_bird_physical" name="early_bird_physical" 
-                                               value="{{ fees.early_bird.fees.physical_delegate if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
-                                               step="0.01" min="0">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="early_bird_listener">Listener</label>
-                                    <div class="input-group">
-                                        <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                        <input type="number" id="early_bird_listener" name="early_bird_listener" 
-                                               value="{{ fees.early_bird.fees.listener if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
-                                               step="0.01" min="0">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="early_bird_listener">Listener</label>
-                                    <div class="input-group">
-                                        <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                        <input type="number" id="early_bird_listener" name="early_bird_listener" required
-                                               value="{{ fees.early_bird.fees.listener if fees and fees.early_bird and fees.early_bird.fees else '' }}" 
-                                               step="0.01" min="0">
-                                    </div>
+                                <div class="col-6">
+                                    <label for="early_bird_remaining_seats" class="small text-muted mb-1" style="font-size: 0.75rem;">Remaining Seats</label>
+                                    <input type="number" id="early_bird_remaining_seats" name="early_bird_remaining_seats" class="form-control form-control-sm" value="{{ rem }}" min="0">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Benefits -->
-                        <div class="form-section nested">
-                            <h3><i class="fas fa-gift"></i> Early Bird Benefits</h3>
-                            <div class="benefits-list" id="early_bird_benefits">
+                        <!-- 4. Fee Rate Grid (Strict 2-Column) -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label for="early_bird_student" class="form-label small text-muted mb-1">Student Author</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                    <input type="number" id="early_bird_student" name="early_bird_student" class="form-control"
+                                           value="{{ fees.early_bird.fees.student_author if fees and fees.early_bird and fees.early_bird.fees else '' }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label for="early_bird_regular" class="form-label small text-muted mb-1">Regular Author</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                    <input type="number" id="early_bird_regular" name="early_bird_regular" class="form-control"
+                                           value="{{ fees.early_bird.fees.regular_author if fees and fees.early_bird and fees.early_bird.fees else '' }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label for="early_bird_physical" class="form-label small text-muted mb-1">Physical Delegate</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                    <input type="number" id="early_bird_physical" name="early_bird_physical" class="form-control"
+                                           value="{{ fees.early_bird.fees.physical_delegate if fees and fees.early_bird and fees.early_bird.fees else '' }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label for="early_bird_listener" class="form-label small text-muted mb-1">Listener</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                    <input type="number" id="early_bird_listener" name="early_bird_listener" class="form-control"
+                                           value="{{ fees.early_bird.fees.listener if fees and fees.early_bird and fees.early_bird.fees else '' }}" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. Benefits List Section (0.5px top border, 12px padding) -->
+                        <div class="pt-3 mt-3 border-top" style="border-top-color: #E2E8F0 !important;">
+                            <div class="small text-muted fw-semibold mb-2"><i class="fas fa-gift me-1"></i> Early Bird Benefits</div>
+                            <div id="early_bird_benefits">
                                 {% if fees and fees.early_bird and fees.early_bird.benefits %}
                                     {% for benefit in fees.early_bird.benefits %}
-                                        <div class="benefit-item">
-                                            <input type="text" name="early_bird_benefits[]" value="{{ benefit }}" 
-                                                   class="form-control" placeholder="Enter a benefit">
-                                            <button type="button" class="btn-icon remove-benefit" onclick="removeBenefit(this)">
-                                                <i class="fas fa-times"></i>
-                                            </button>
+                                        <div class="benefit-row">
+                                            <input type="text" name="early_bird_benefits[]" value="{{ benefit }}" class="form-control form-control-sm" placeholder="Enter benefit">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
                                         </div>
                                     {% endfor %}
                                 {% endif %}
                             </div>
-                            <button type="button" class="btn-secondary" onclick="addBenefit('early_bird_benefits')">
-                                <i class="fas fa-plus"></i> Add Benefit
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addBenefit('early_bird_benefits')">
+                                <i class="fas fa-plus me-1"></i> Add Benefit
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Early Registration -->
-            <div class="bento-item bento-item-medium">
-            <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-calendar-alt"></i> Early Registration</h2>
-                    </div>
-                <div class="form-group">
-                    <label for="early_deadline">Deadline</label>
-                        <input type="date" id="early_deadline" name="early_deadline" 
+                <!-- Tier 2: Early -->
+                <div class="tier-pane" id="pane-early" style="display: none;">
+                    <div class="mb-3">
+                        <label for="early_deadline" class="form-label small text-muted mb-1">Deadline</label>
+                        <input type="date" id="early_deadline" name="early_deadline" class="form-control form-control-sm" style="max-width: 250px;"
                                value="{{ fees.early.deadline if fees and fees.early else '' }}">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="early_student">Student Author</label>
-                        <div class="input-group">
-                            <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                            <input type="number" id="early_student" name="early_student" required
-                                   value="{{ fees.early.fees.student_author if fees and fees.early and fees.early.fees else '' }}" 
-                                   step="0.01" min="0">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="early_regular">Regular Author</label>
-                        <div class="input-group">
-                            <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                            <input type="number" id="early_regular" name="early_regular" required
-                                   value="{{ fees.early.fees.regular_author if fees and fees.early and fees.early.fees else '' }}" 
-                                   step="0.01" min="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="early_listener">Listener</label>
-                        <div class="input-group">
-                            <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                            <input type="number" id="early_listener" name="early_listener" 
-                                   value="{{ fees.early.listener if fees and fees.early else '' }}" 
-                                   step="0.01" min="0">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="early_listener">Listener</label>
-                        <div class="input-group">
-                            <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                            <input type="number" id="early_virtual" name="early_virtual" 
-                                   value="{{ fees.early.virtual if fees and fees.early else '' }}" 
-                                   step="0.01" min="0">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Early Registration Benefits -->
-                <div class="form-group mt-4">
-                    <label class="form-label"><i class="fas fa-list-check"></i> Package Benefits</label>
-                    <div class="benefits-container" id="early-benefits">
-                        {% if fees and fees.early and fees.early.benefits %}
-                            {% for benefit in fees.early.benefits %}
-                            <div class="benefit-item input-group mb-2">
-                                <input type="text" class="form-control" name="early_benefits[]" value="{{ benefit }}" placeholder="Enter a benefit">
-                                <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
-                            </div>
-                            {% endfor %}
-                        {% endif %}
-                        <div class="benefit-item input-group mb-2">
-                            <input type="text" class="form-control" name="early_benefits[]" placeholder="Enter a benefit">
-                            <button type="button" class="btn btn-outline-danger remove-benefit"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm add-benefit" data-target="early-benefits">
-                        <i class="fas fa-plus"></i> Add Benefit
-                    </button>
-                </div>
-            </div>
-
-            <!-- Regular Registration -->
-            <div class="bento-item">
-                <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-calendar"></i> Regular Registration</h2>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="regular_deadline">Deadline</label>
-                            <input type="date" id="regular_deadline" name="regular_deadline" 
-                                   value="{{ fees.regular.deadline if fees and fees.regular else '' }}">
-                        </div>
                     </div>
 
-                    <!-- Registration Fees -->
-                    <div class="form-section nested">
-                        <h3><i class="fas fa-money-bill"></i> Registration Fees</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="regular_student">Student Author</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="regular_student" name="regular_student" 
-                                           value="{{ fees.regular.fees.student_author if fees and fees.regular and fees.regular.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="regular_regular">Regular Author</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="regular_regular" name="regular_regular" 
-                                           value="{{ fees.regular.fees.regular_author if fees and fees.regular and fees.regular.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
+                    <!-- 4. Fee Rate Grid (Strict 2-Column) -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label for="early_student" class="form-label small text-muted mb-1">Student Author</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="early_student" name="early_student" class="form-control"
+                                       value="{{ fees.early.fees.student_author if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="regular_physical">Physical Delegate</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="regular_physical" name="regular_physical" 
-                                           value="{{ fees.regular.fees.physical_delegate if fees and fees.regular and fees.regular.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
+                        <div class="col-6">
+                            <label for="early_regular" class="form-label small text-muted mb-1">Regular Author</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="early_regular" name="early_regular" class="form-control"
+                                       value="{{ fees.early.fees.regular_author if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
                             </div>
-                            <div class="form-group">
-                                <label for="regular_listener">Listener</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="regular_listener" name="regular_listener" 
-                                           value="{{ fees.regular.fees.listener if fees and fees.regular and fees.regular.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="early_physical" class="form-label small text-muted mb-1">Physical Delegate</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="early_physical" name="early_physical" class="form-control"
+                                       value="{{ fees.early.fees.physical_delegate if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="early_listener" class="form-label small text-muted mb-1">Listener</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="early_listener" name="early_listener" class="form-control"
+                                       value="{{ fees.early.fees.listener if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="early_virtual" class="form-label small text-muted mb-1">Virtual Attendee</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="early_virtual" name="early_virtual" class="form-control"
+                                       value="{{ fees.early.fees.virtual if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Benefits -->
-                    <div class="form-section nested">
-                        <h3><i class="fas fa-gift"></i> Regular Registration Benefits</h3>
-                        <div class="benefits-list" id="regular_benefits">
+                    <!-- 6. Benefits List Section -->
+                    <div class="pt-3 mt-3 border-top" style="border-top-color: #E2E8F0 !important;">
+                        <div class="small text-muted fw-semibold mb-2"><i class="fas fa-gift me-1"></i> Early Benefits</div>
+                        <div id="early_benefits">
+                            {% if fees and fees.early and fees.early.benefits %}
+                                {% for benefit in fees.early.benefits %}
+                                    <div class="benefit-row">
+                                        <input type="text" name="early_benefits[]" value="{{ benefit }}" class="form-control form-control-sm" placeholder="Enter benefit">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addBenefit('early_benefits')">
+                            <i class="fas fa-plus me-1"></i> Add Benefit
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tier 3: Regular -->
+                <div class="tier-pane" id="pane-regular" style="display: none;">
+                    <div class="mb-3">
+                        <label for="regular_deadline" class="form-label small text-muted mb-1">Deadline</label>
+                        <input type="date" id="regular_deadline" name="regular_deadline" class="form-control form-control-sm" style="max-width: 250px;"
+                               value="{{ fees.regular.deadline if fees and fees.regular else '' }}">
+                    </div>
+
+                    <!-- 4. Fee Rate Grid (Strict 2-Column) -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label for="regular_student" class="form-label small text-muted mb-1">Student Author</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="regular_student" name="regular_student" class="form-control"
+                                       value="{{ fees.regular.fees.student_author if fees and fees.regular and fees.regular.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="regular_regular" class="form-label small text-muted mb-1">Regular Author</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="regular_regular" name="regular_regular" class="form-control"
+                                       value="{{ fees.regular.fees.regular_author if fees and fees.regular and fees.regular.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="regular_physical" class="form-label small text-muted mb-1">Physical Delegate</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="regular_physical" name="regular_physical" class="form-control"
+                                       value="{{ fees.regular.fees.physical_delegate if fees and fees.regular and fees.regular.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="regular_listener" class="form-label small text-muted mb-1">Listener</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="regular_listener" name="regular_listener" class="form-control"
+                                       value="{{ fees.regular.fees.listener if fees and fees.regular and fees.regular.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Benefits List Section -->
+                    <div class="pt-3 mt-3 border-top" style="border-top-color: #E2E8F0 !important;">
+                        <div class="small text-muted fw-semibold mb-2"><i class="fas fa-gift me-1"></i> Regular Benefits</div>
+                        <div id="regular_benefits">
                             {% if fees and fees.regular and fees.regular.benefits %}
                                 {% for benefit in fees.regular.benefits %}
-                                    <div class="benefit-item">
-                                        <input type="text" name="regular_benefits[]" value="{{ benefit }}" 
-                                               class="form-control" placeholder="Enter a benefit">
-                                        <button type="button" class="btn-icon remove-benefit" onclick="removeBenefit(this)">
-                                            <i class="fas fa-times"></i>
-                                        </button>
+                                    <div class="benefit-row">
+                                        <input type="text" name="regular_benefits[]" value="{{ benefit }}" class="form-control form-control-sm" placeholder="Enter benefit">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
                                     </div>
                                 {% endfor %}
                             {% endif %}
                         </div>
-                        <button type="button" class="btn-secondary" onclick="addBenefit('regular_benefits')">
-                            <i class="fas fa-plus"></i> Add Benefit
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addBenefit('regular_benefits')">
+                            <i class="fas fa-plus me-1"></i> Add Benefit
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Late Registration -->
-            <div class="bento-item">
-                <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-calendar-xmark"></i> Late Registration</h2>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="late_deadline">Deadline</label>
-                            <input type="date" id="late_deadline" name="late_deadline" 
-                                   value="{{ fees.late.deadline if fees and fees.late else '' }}">
-                        </div>
+                <!-- Tier 4: Late -->
+                <div class="tier-pane" id="pane-late" style="display: none;">
+                    <div class="mb-3">
+                        <label for="late_deadline" class="form-label small text-muted mb-1">Deadline</label>
+                        <input type="date" id="late_deadline" name="late_deadline" class="form-control form-control-sm" style="max-width: 250px;"
+                               value="{{ fees.late.deadline if fees and fees.late else '' }}">
                     </div>
 
-                    <!-- Registration Fees -->
-                    <div class="form-section nested">
-                        <h3><i class="fas fa-money-bill"></i> Registration Fees</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="late_student">Student Author</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="late_student" name="late_student" 
-                                           value="{{ fees.late.fees.student_author if fees and fees.late and fees.late.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="late_regular">Regular Author</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="late_regular" name="late_regular" 
-                                           value="{{ fees.late.fees.regular_author if fees and fees.late and fees.late.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
+                    <!-- 4. Fee Rate Grid (Strict 2-Column) -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label for="late_student" class="form-label small text-muted mb-1">Student Author</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="late_student" name="late_student" class="form-control"
+                                       value="{{ fees.late.fees.student_author if fees and fees.late and fees.late.fees else '' }}" step="0.01" min="0">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="late_physical">Physical Delegate</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="late_physical" name="late_physical" 
-                                           value="{{ fees.late.fees.physical_delegate if fees and fees.late and fees.late.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="late_listener">Listener</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="late_listener" name="late_listener" 
-                                           value="{{ fees.late.fees.listener if fees and fees.late and fees.late.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
+                        <div class="col-6">
+                            <label for="late_regular" class="form-label small text-muted mb-1">Regular Author</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="late_regular" name="late_regular" class="form-control"
+                                       value="{{ fees.late.fees.regular_author if fees and fees.late and fees.late.fees else '' }}" step="0.01" min="0">
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="late_listener">Listener</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="late_listener" name="late_listener" required
-                                           value="{{ fees.late.fees.listener if fees and fees.late and fees.late.fees else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
+                        <div class="col-6">
+                            <label for="late_physical" class="form-label small text-muted mb-1">Physical Delegate</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="late_physical" name="late_physical" class="form-control"
+                                       value="{{ fees.late.fees.physical_delegate if fees and fees.late and fees.late.fees else '' }}" step="0.01" min="0">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="late_listener" class="form-label small text-muted mb-1">Listener</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                                <input type="number" id="late_listener" name="late_listener" class="form-control"
+                                       value="{{ fees.late.fees.listener if fees and fees.late and fees.late.fees else '' }}" step="0.01" min="0">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Benefits -->
-                    <div class="form-section nested">
-                        <h3><i class="fas fa-gift"></i> Late Registration Benefits</h3>
-                        <div class="benefits-list" id="late_benefits">
+                    <!-- 6. Benefits List Section -->
+                    <div class="pt-3 mt-3 border-top" style="border-top-color: #E2E8F0 !important;">
+                        <div class="small text-muted fw-semibold mb-2"><i class="fas fa-gift me-1"></i> Late Benefits</div>
+                        <div id="late_benefits">
                             {% if fees and fees.late and fees.late.benefits %}
                                 {% for benefit in fees.late.benefits %}
-                                    <div class="benefit-item">
-                                        <input type="text" name="late_benefits[]" value="{{ benefit }}" 
-                                               class="form-control" placeholder="Enter a benefit">
-                                        <button type="button" class="btn-icon remove-benefit" onclick="removeBenefit(this)">
-                                            <i class="fas fa-times"></i>
-                                        </button>
+                                    <div class="benefit-row">
+                                        <input type="text" name="late_benefits[]" value="{{ benefit }}" class="form-control form-control-sm" placeholder="Enter benefit">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
                                     </div>
                                 {% endfor %}
                             {% endif %}
                         </div>
-                        <button type="button" class="btn-secondary" onclick="addBenefit('late_benefits')">
-                            <i class="fas fa-plus"></i> Add Benefit
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addBenefit('late_benefits')">
+                            <i class="fas fa-plus me-1"></i> Add Benefit
                         </button>
                     </div>
                 </div>
+
             </div>
+        </div>
 
-            <!-- Additional Items -->
-            <div class="bento-item">
-                <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-plus-circle"></i> Additional Items</h2>
+        <!-- Card 3: Additional Items -->
+        <div class="card mb-4 border rounded-3 p-3 shadow-none bg-white" style="border-color: #E2E8F0 !important;">
+            <div class="fw-semibold text-dark mb-3 small"><i class="fas fa-plus-circle text-success me-1"></i> Additional Items & Add-ons</div>
+            <div class="row g-3">
+                <!-- Extra Paper -->
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold small"><i class="fas fa-file-alt me-1 text-primary"></i> Extra Paper</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="extra_paper_enabled" name="extra_paper_enabled" 
+                                       {% if fees and fees.additional_items and fees.additional_items.extra_paper and fees.additional_items.extra_paper.enabled %}checked{% endif %}>
+                            </div>
+                        </div>
+                        <label for="extra_paper_fee" class="form-label small text-muted mb-1">Fee Rate</label>
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-white text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                            <input type="number" id="extra_paper_fee" name="extra_paper_fee" class="form-control"
+                                   value="{{ fees.additional_items.extra_paper.fee if fees and fees.additional_items and fees.additional_items.extra_paper else '' }}" step="0.01" min="0">
+                        </div>
+                        <label for="extra_paper_description" class="form-label small text-muted mb-1">Description</label>
+                        <input type="text" id="extra_paper_description" name="extra_paper_description" class="form-control form-control-sm"
+                               value="{{ fees.additional_items.extra_paper.description if fees and fees.additional_items and fees.additional_items.extra_paper else '' }}">
                     </div>
+                </div>
 
-                    <!-- Extra Paper -->
-                    <div class="form-section nested">
-                        <div class="section-header">
-                            <h3><i class="fas fa-file-alt"></i> Extra Paper</h3>
-                            <div class="form-group switch-container">
-                                <label class="switch">
-                                    <input type="checkbox" id="extra_paper_enabled" name="extra_paper_enabled" 
-                                           {% if fees and fees.additional_items and fees.additional_items.extra_paper and fees.additional_items.extra_paper.enabled %}checked{% endif %}>
-                                    <span class="slider round"></span>
-                                </label>
-                                <label for="extra_paper_enabled">Enable Extra Paper Submission</label>
+                <!-- Workshop -->
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold small"><i class="fas fa-chalkboard-teacher me-1 text-info"></i> Workshop</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="workshop_enabled" name="workshop_enabled" 
+                                       {% if fees and fees.additional_items and fees.additional_items.workshop and fees.additional_items.workshop.enabled %}checked{% endif %}>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="extra_paper_fee">Fee</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="extra_paper_fee" name="extra_paper_fee" 
-                                           value="{{ fees.additional_items.extra_paper.fee if fees and fees.additional_items else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="extra_paper_description">Description</label>
-                                <input type="text" id="extra_paper_description" name="extra_paper_description" 
-                                       value="{{ fees.additional_items.extra_paper.description if fees and fees.additional_items else '' }}" 
-                                       class="form-control" placeholder="Enter description">
-                            </div>
+                        <label for="workshop_fee" class="form-label small text-muted mb-1">Fee Rate</label>
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-white text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                            <input type="number" id="workshop_fee" name="workshop_fee" class="form-control"
+                                   value="{{ fees.additional_items.workshop.fee if fees and fees.additional_items and fees.additional_items.workshop else '' }}" step="0.01" min="0">
                         </div>
+                        <label for="workshop_description" class="form-label small text-muted mb-1">Description</label>
+                        <input type="text" id="workshop_description" name="workshop_description" class="form-control form-control-sm"
+                               value="{{ fees.additional_items.workshop.description if fees and fees.additional_items and fees.additional_items.workshop else '' }}">
                     </div>
+                </div>
 
-                    <!-- Workshop -->
-                    <div class="form-section nested">
-                        <div class="section-header">
-                            <h3><i class="fas fa-chalkboard-teacher"></i> Workshop</h3>
-                            <div class="form-group switch-container">
-                                <label class="switch">
-                                    <input type="checkbox" id="workshop_enabled" name="workshop_enabled" 
-                                           {% if fees and fees.additional_items and fees.additional_items.workshop and fees.additional_items.workshop.enabled %}checked{% endif %}>
-                                    <span class="slider round"></span>
-                                </label>
-                                <label for="workshop_enabled">Enable Workshop Registration</label>
+                <!-- Banquet -->
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold small"><i class="fas fa-glass-cheers me-1 text-warning"></i> Banquet</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="banquet_enabled" name="banquet_enabled" 
+                                       {% if fees and fees.additional_items and fees.additional_items.banquet and fees.additional_items.banquet.enabled %}checked{% endif %}>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="workshop_fee">Fee</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="workshop_fee" name="workshop_fee" 
-                                           value="{{ fees.additional_items.workshop.fee if fees and fees.additional_items else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="workshop_description">Description</label>
-                                <input type="text" id="workshop_description" name="workshop_description" 
-                                       value="{{ fees.additional_items.workshop.description if fees and fees.additional_items else '' }}" 
-                                       class="form-control" placeholder="Enter description">
-                            </div>
+                        <label for="banquet_fee" class="form-label small text-muted mb-1">Fee Rate</label>
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-white text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
+                            <input type="number" id="banquet_fee" name="banquet_fee" class="form-control"
+                                   value="{{ fees.additional_items.banquet.fee if fees and fees.additional_items and fees.additional_items.banquet else '' }}" step="0.01" min="0">
                         </div>
-                    </div>
-
-                    <!-- Banquet -->
-                    <div class="form-section nested">
-                        <div class="section-header">
-                            <h3><i class="fas fa-glass-cheers"></i> Banquet</h3>
-                            <div class="form-group switch-container">
-                                <label class="switch">
-                                    <input type="checkbox" id="banquet_enabled" name="banquet_enabled" 
-                                           {% if fees and fees.additional_items and fees.additional_items.banquet and fees.additional_items.banquet.enabled %}checked{% endif %}>
-                                    <span class="slider round"></span>
-                                </label>
-                                <label for="banquet_enabled">Enable Banquet Registration</label>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="banquet_fee">Fee</label>
-                                <div class="input-group">
-                                    <span class="currency-symbol">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                    <input type="number" id="banquet_fee" name="banquet_fee" 
-                                           value="{{ fees.additional_items.banquet.fee if fees and fees.additional_items else '' }}" 
-                                           step="0.01" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="banquet_description">Description</label>
-                                <input type="text" id="banquet_description" name="banquet_description" 
-                                       value="{{ fees.additional_items.banquet.description if fees and fees.additional_items else '' }}" 
-                                       class="form-control" placeholder="Enter description">
-                            </div>
-                        </div>
-                        <div class="form-group switch-container">
-                            <label class="switch">
-                                <input type="checkbox" id="banquet_virtual_eligible" name="banquet_virtual_eligible" 
-                                       {% if fees and fees.additional_items and fees.additional_items.banquet and fees.additional_items.banquet.virtual_eligible %}checked{% endif %}>
-                                <span class="slider round"></span>
-                            </label>
-                            <label for="banquet_listener_eligible">Available for Listeners</label>
+                        <label for="banquet_description" class="form-label small text-muted mb-1">Description</label>
+                        <input type="text" id="banquet_description" name="banquet_description" class="form-control form-control-sm mb-2"
+                               value="{{ fees.additional_items.banquet.description if fees and fees.additional_items and fees.additional_items.banquet else '' }}">
+                        <div class="form-check small mb-0">
+                            <input class="form-check-input" type="checkbox" id="banquet_virtual_eligible" name="banquet_virtual_eligible" 
+                                   {% if fees and fees.additional_items and fees.additional_items.banquet and fees.additional_items.banquet.virtual_eligible %}checked{% endif %}>
+                            <label class="form-check-label text-muted" for="banquet_virtual_eligible" style="font-size: 0.75rem;">Available for Listeners</label>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Registration Includes -->
-            <div class="bento-item bento-item-medium">
-            <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-list-check"></i> Registration Includes</h2>
-                    </div>
-                <div class="dynamic-list" id="registration-includes">
-                    {% if fees and fees.includes %}
-                        {% for item in fees.includes %}
-                            <div class="list-item">
-                                    <input type="text" name="registration_includes" value="{{ item }}" placeholder="e.g., Conference Programme Booklet">
-                                    <button type="button" class="btn-remove" title="Remove Item">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="list-item">
-                            <input type="text" name="registration_includes" placeholder="e.g., Conference Programme Booklet">
-                                <button type="button" class="btn-remove" title="Remove Item">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+        <!-- Card 4: Registration Includes -->
+        <div class="card mb-4 border rounded-3 p-3 shadow-none bg-white" style="border-color: #E2E8F0 !important;">
+            <div class="fw-semibold text-dark mb-3 small"><i class="fas fa-list-check me-1 text-secondary"></i> Registration Package Includes</div>
+            <div id="registration-includes">
+                {% if fees and fees.includes %}
+                    {% for item in fees.includes %}
+                        <div class="benefit-row">
+                            <input type="text" name="registration_includes[]" value="{{ item }}" class="form-control form-control-sm" placeholder="e.g., Conference Programme Booklet">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
                         </div>
-                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="benefit-row">
+                        <input type="text" name="registration_includes[]" class="form-control form-control-sm" placeholder="e.g., Conference Programme Booklet">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
                     </div>
-                    <button type="button" class="btn-add">
-                        <i class="fas fa-plus"></i> Add Item
-                    </button>
-                </div>
+                {% endif %}
             </div>
-
-            <!-- Payment Details -->
-            <div class="bento-item bento-item-large">
-            <div class="form-section">
-                    <div class="section-header">
-                        <h2><i class="fas fa-university"></i> Payment Details</h2>
-                    </div>
-                    
-                    <!-- Local Bank Details (South Africa) -->
-                    <div class="payment-section">
-                        <h3><i class="fas fa-landmark"></i> South African Bank Details</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="account_name">Account Name</label>
-                                <input type="text" id="account_name" name="account_name" 
-                                       value="{{ fees.payment_details.account_name if fees and fees.payment_details else '' }}"
-                                       placeholder="e.g., Global Conferences">
-                            </div>
-                            <div class="form-group">
-                                <label for="account_number">Account Number</label>
-                                <input type="text" id="account_number" name="account_number" 
-                                       value="{{ fees.payment_details.account_number if fees and fees.payment_details else '' }}"
-                                       placeholder="e.g., 1234567890">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                <div class="form-group">
-                                <label for="bank_name">Bank Name</label>
-                                <input type="text" id="bank_name" name="bank_name" 
-                                       value="{{ fees.payment_details.bank_name if fees and fees.payment_details else '' }}"
-                                       placeholder="e.g., Standard Bank, FNB, ABSA, Nedbank">
-                </div>
-                <div class="form-group">
-                                <label for="universal_branch_code">Universal Branch Code</label>
-                                <input type="text" id="universal_branch_code" name="universal_branch_code" 
-                                       value="{{ fees.payment_details.universal_branch_code if fees and fees.payment_details else '' }}"
-                                       placeholder="e.g., 051001">
-                            </div>
-                </div>
-                <div class="form-group">
-                            <label for="account_type">Account Type</label>
-                            <input type="text" id="account_type" name="account_type" 
-                                   value="{{ fees.payment_details.account_type if fees and fees.payment_details else '' }}"
-                                   placeholder="e.g., Current Account/Cheque Account">
-                        </div>
-                    </div>
-
-                    <!-- International Payment Details -->
-                    <div class="payment-section">
-                        <h3><i class="fas fa-globe"></i> International Payment Details</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="swift_code">SWIFT/BIC Code</label>
-                                <input type="text" id="swift_code" name="swift_code" 
-                                       value="{{ fees.payment_details.swift_code if fees and fees.payment_details else '' }}"
-                                       placeholder="e.g., SBZAZAJJ">
-                </div>
-                <div class="form-group">
-                                <label for="iban">IBAN (If applicable)</label>
-                                <input type="text" id="iban" name="iban" 
-                                       value="{{ fees.payment_details.iban if fees and fees.payment_details else '' }}">
-                            </div>
-                </div>
-                <div class="form-group">
-                            <label for="bank_address">Bank Address (For International Transfers)</label>
-                            <input type="text" id="bank_address" name="bank_address" 
-                                   value="{{ fees.payment_details.bank_address if fees and fees.payment_details else '' }}"
-                                   placeholder="Complete bank address for international transfers">
-                </div>
-                <div class="form-group">
-                            <label for="intermediary_bank">Intermediary Bank Details (If Required)</label>
-                            <textarea id="intermediary_bank" name="intermediary_bank" rows="3" 
-                                      placeholder="Include any necessary intermediary bank information for international transfers">{{ fees.payment_details.intermediary_bank if fees and fees.payment_details else '' }}</textarea>
-                        </div>
-                    </div>
-
-                    <!-- Additional Payment Information -->
-                    <div class="payment-section">
-                        <h3><i class="fas fa-info-circle"></i> Additional Information</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="reference_format">Payment Reference Format</label>
-                                <input type="text" id="reference_format" name="reference_format" 
-                                       placeholder="e.g., GIIR2024_[Your Name]"
-                                       value="{{ fees.payment_details.reference_format if fees and fees.payment_details else '' }}">
-                </div>
-                <div class="form-group">
-                                <label for="contact_email">Finance Contact Email</label>
-                                <input type="email" id="contact_email" name="contact_email" 
-                                       value="{{ fees.payment_details.contact_email if fees and fees.payment_details else '' }}"
-                                       placeholder="e.g., finance@giirconference.com">
-                            </div>
-                </div>
-                <div class="form-group">
-                            <label for="payment_instructions">Special Instructions</label>
-                            <textarea id="payment_instructions" name="payment_instructions" rows="3" 
-                                      placeholder="Any additional payment instructions or notes">{{ fees.payment_details.payment_instructions if fees and fees.payment_details else '' }}</textarea>
-                        </div>
-                    </div>
-                </div>
-                </div>
-            </div>
-
-            <div class="form-actions">
-            <button type="submit" class="btn-submit">
-                <i class="fas fa-save"></i> Save Registration Fees
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addBenefit('registration-includes')">
+                <i class="fas fa-plus me-1"></i> Add Included Item
             </button>
+        </div>
+
+        <!-- Card 5: Payment Details & Inheritance Notice -->
+        <div class="card mb-4 border rounded-3 p-3 shadow-none bg-white" style="border-color: #E2E8F0 !important;">
+            <div class="fw-semibold text-dark mb-2 small"><i class="fas fa-university text-primary me-1"></i> Payment Details</div>
+
+            <!-- 5. Payment Details Inheritance Notice -->
+            <div class="p-2 px-3 mb-3 rounded-2 d-flex align-items-center gap-2" style="background-color: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; font-size: 0.875rem;">
+                <i class="fas fa-info-circle"></i>
+                <span>Payment details are using the global default. Edit below to override for this conference.</span>
             </div>
-        </form>
+
+            <!-- South African Bank Account -->
+            <div class="p-3 border rounded-3 bg-light mb-3">
+                <div class="fw-semibold small text-dark mb-2"><i class="fas fa-landmark me-1"></i> South African Bank Account</div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label for="account_name" class="form-label small text-muted mb-1">Account Name</label>
+                        <input type="text" id="account_name" name="account_name" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.account_name if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="account_number" class="form-label small text-muted mb-1">Account Number</label>
+                        <input type="text" id="account_number" name="account_number" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.account_number if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="bank_name" class="form-label small text-muted mb-1">Bank Name</label>
+                        <input type="text" id="bank_name" name="bank_name" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.bank_name if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="branch_code" class="form-label small text-muted mb-1">Branch Code</label>
+                        <input type="text" id="branch_code" name="branch_code" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.branch_code if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="account_type" class="form-label small text-muted mb-1">Account Type</label>
+                        <input type="text" id="account_type" name="account_type" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.account_type if fees and fees.payment_details else '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- International Transfer Details -->
+            <div class="p-3 border rounded-3 bg-light mb-3">
+                <div class="fw-semibold small text-dark mb-2"><i class="fas fa-globe me-1"></i> International Transfer Details</div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label for="swift_code" class="form-label small text-muted mb-1">SWIFT / BIC Code</label>
+                        <input type="text" id="swift_code" name="swift_code" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.swift_code if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="iban" class="form-label small text-muted mb-1">IBAN Code</label>
+                        <input type="text" id="iban" name="iban" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.iban if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-12">
+                        <label for="bank_address" class="form-label small text-muted mb-1">Bank Address</label>
+                        <input type="text" id="bank_address" name="bank_address" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.bank_address if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-12">
+                        <label for="intermediary_bank" class="form-label small text-muted mb-1">Intermediary Bank Info</label>
+                        <textarea id="intermediary_bank" name="intermediary_bank" class="form-control form-control-sm" rows="2">{{ fees.payment_details.intermediary_bank if fees and fees.payment_details else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reference & Contact Info -->
+            <div class="p-3 border rounded-3 bg-light">
+                <div class="fw-semibold small text-dark mb-2"><i class="fas fa-info-circle me-1"></i> Reference & Contact Info</div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label for="reference_format" class="form-label small text-muted mb-1">Reference Format</label>
+                        <input type="text" id="reference_format" name="reference_format" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.reference_format if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="finance_email" class="form-label small text-muted mb-1">Finance Email</label>
+                        <input type="email" id="finance_email" name="finance_email" class="form-control form-control-sm"
+                               value="{{ fees.payment_details.finance_email if fees and fees.payment_details else '' }}">
+                    </div>
+                    <div class="col-12">
+                        <label for="special_instructions" class="form-label small text-muted mb-1">Special Payment Instructions</label>
+                        <textarea id="special_instructions" name="special_instructions" class="form-control form-control-sm" rows="2">{{ fees.payment_details.special_instructions if fees and fees.payment_details else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </form>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Debug: Log form data on submit
-    const form = document.getElementById('registrationForm');
-    form.addEventListener('submit', function(e) {
-        // Get form data
-        const formData = new FormData(form);
-        
-        // Debug: Log form data
-        console.log('Form data being submitted:');
-        for (let [key, value] of formData.entries()) {
-            console.log(key + ': ' + value);
-        }
-        
-        // Let the form submit normally
-        // No preventDefault() - let it submit via standard POST
-    });
-    
-    // Handle currency selection
-    const currencySelect = document.getElementById('currency_code');
-    const customCurrencyGroup = document.querySelector('.custom-currency-group');
-    
-    currencySelect.addEventListener('change', function() {
-        customCurrencyGroup.style.display = this.value === 'custom' ? 'block' : 'none';
-        updateCurrencySymbols(this.value);
-    });
-    
-    // Initialize custom currency display
-    customCurrencyGroup.style.display = currencySelect.value === 'custom' ? 'block' : 'none';
-    
-    // Handle early bird toggle
-    const earlyBirdToggle = document.getElementById('early_bird_enabled');
-    const earlyBirdSettings = document.getElementById('early_bird_settings');
-    
-    earlyBirdToggle.addEventListener('change', function() {
-        earlyBirdSettings.style.display = this.checked ? 'block' : 'none';
-    });
-    
-    // Function to update currency symbols
-    function updateCurrencySymbols(currencyCode) {
-        const symbols = {
-            'ZAR': 'R',
-            'USD': '$',
-            'EUR': '€',
-            'GBP': '£',
-            'AUD': 'A$',
-            'custom': document.getElementById('custom_currency_symbol').value
-        };
-        
-        const symbol = symbols[currencyCode] || symbols['ZAR'];
-        document.querySelectorAll('.currency-symbol').forEach(el => {
-            el.textContent = symbol;
-        });
-    }
-    
-    // Initialize form state
-    updateCurrencySymbols(currencySelect.value);
-});
-
-// Function to add benefit
 function addBenefit(containerId) {
     const container = document.getElementById(containerId);
-    const benefitItem = document.createElement('div');
-    benefitItem.className = 'benefit-item';
-    benefitItem.innerHTML = `
-        <input type="text" name="${containerId}[]" class="form-control" placeholder="Enter a benefit">
-        <button type="button" class="btn-icon remove-benefit" onclick="removeBenefit(this)">
-            <i class="fas fa-times"></i>
-        </button>
+    const item = document.createElement('div');
+    item.className = 'benefit-row';
+    const fieldName = containerId === 'registration-includes' ? 'registration_includes[]' : containerId.replace('-', '_') + '[]';
+    item.innerHTML = `
+        <input type="text" name="${fieldName}" class="form-control form-control-sm" placeholder="Enter item">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
     `;
-    container.appendChild(benefitItem);
+    container.appendChild(item);
 }
 
-// Function to remove benefit
-function removeBenefit(button) {
-    button.closest('.benefit-item').remove();
-}
-
-// Function to reset form
 function resetForm() {
-    if (confirm('Are you sure you want to reset all changes?')) {
-        window.location.reload();
+    if (confirm('Are you sure you want to reset all unsaved changes?')) {
+        location.reload();
     }
 }
+
+// Toggle early bird settings display based on checkbox
+document.getElementById('early_bird_enabled')?.addEventListener('change', function() {
+    const settings = document.getElementById('early_bird_settings');
+    if (settings) {
+        settings.style.display = this.checked ? 'block' : 'none';
+    }
+});
+
+// Underline Tab Switching Logic
+document.querySelectorAll('#tierTabBar .tier-tab-link').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('#tierTabBar .tier-tab-link').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tier-pane').forEach(p => p.style.display = 'none');
+
+        this.classList.add('active');
+        const targetId = this.getAttribute('data-target');
+        const targetPane = document.querySelector(targetId);
+        if (targetPane) {
+            targetPane.style.display = 'block';
+        }
+    });
+});
 </script>
-
-<style>
-/* Additional styles for enhanced functionality */
-.error {
-    border-color: var(--danger-color) !important;
-    background-color: rgba(234, 67, 53, 0.05);
-}
-
-.error-message {
-    color: var(--danger-color);
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    animation: slideIn 0.2s ease-out;
-}
-
-.fade {
-    opacity: 0;
-    transition: opacity 0.3s ease-out;
-}
-
-.fade.show {
-    opacity: 1;
-}
-
-/* Loading state styles */
-.btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-}
-
-.fa-spin {
-    animation: fa-spin 1s infinite linear;
-}
-
-@keyframes fa-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Additional styles for seats management */
-.seats-management .input-group {
-    display: flex;
-    align-items: center;
-}
-
-.seats-management .form-switch {
-    display: flex;
-    align-items: center;
-    margin-left: 1rem;
-}
-
-.seats-management .btn-outline-primary {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    padding: 0.4rem 1rem;
-}
-
-.seats-management input[readonly] {
-    background-color: var(--background-secondary);
-}
-
-.seats-management small {
-    display: block;
-    margin-top: 0.25rem;
-    color: var(--text-secondary);
-}
-
-@media (max-width: 768px) {
-    .seats-management .form-row {
-        flex-direction: column;
-    }
-    
-    .seats-management .form-group {
-        margin-bottom: 1rem;
-    }
-}
-
-/* Add to your existing styles */
-.currency-symbol {
-    display: inline-block;
-    min-width: 1.5rem;
-    text-align: center;
-    font-weight: bold;
-}
-
-.custom-currency-group {
-    transition: all 0.3s ease;
-}
-
-.custom-currency-group.show {
-    display: block;
-}
-
-.custom-currency-group.hide {
-    display: none;
-}
-</style>
-{% endblock %} 
+{% endblock %}

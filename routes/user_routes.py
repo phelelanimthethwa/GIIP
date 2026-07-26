@@ -250,8 +250,12 @@ def save_registration_to_firebase(registration_data, user_id, payment_metadata):
                                 site_design=get_site_design())
                                 
     # GET request - display registration form
-    # Get registration fees from Firebase
-    fees_ref = firebase_db.reference('registration_fees')
+    # Get registration fees from Firebase (check for conference_id parameter)
+    conference_id = request.args.get('conference_id') or request.form.get('conference_id')
+    if conference_id:
+        fees_ref = firebase_db.reference(f'conferences/{conference_id}/registration_fees')
+    else:
+        fees_ref = firebase_db.reference('registration_fees')
     fees = fees_ref.get()
     
     if not fees:

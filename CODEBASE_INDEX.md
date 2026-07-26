@@ -77,22 +77,29 @@ static/
 ### Templates (Frontend)
 ```
 templates/
-├── base.html              # Base template
-├── admin/                 # Admin interface templates
+├── base.html                        # Base template
+├── admin/                           # Admin interface templates
 │   ├── base_admin.html
 │   ├── dashboard.html
 │   ├── conferences.html
 │   ├── conference_details.html
-│   └── [20+ admin templates]
-├── user/                  # User-facing templates
+│   ├── admin_registration_fees.html # Registration fees & pricing config (1110 lines)
+│   ├── admin_venue.html             # Venue details management
+│   ├── manage_registrations.html    # Registration records management
+│   ├── submissions.html             # Paper submission review
+│   ├── speakers.html                # Speaker management
+│   ├── announcements.html           # Announcements management
+│   ├── home_content.html            # Home page content management
+│   └── [20+ more admin templates]
+├── user/                            # User-facing templates
 │   ├── base.html
 │   ├── home.html
-│   ├── auth/             # Authentication templates
-│   ├── account/          # User account templates
-│   ├── conference/       # Conference-specific templates
-│   ├── papers/          # Paper submission templates
-│   └── components/      # Reusable components
-├── conferences/          # Conference discovery templates
+│   ├── auth/                        # Authentication templates
+│   ├── account/                     # User account templates
+│   ├── conference/                  # Conference-specific templates
+│   ├── papers/                      # Paper submission templates
+│   └── components/                  # Reusable components
+├── conferences/                     # Conference discovery templates
 └── [various other templates]
 ```
 
@@ -264,11 +271,61 @@ docs/
 - `/admin/conferences/<id>` - Conference details
 - `/admin/users` - User management
 - `/admin/registrations` - Registration management
+- `/admin/registration-fees` - Registration fees & pricing management (see below)
 - `/admin/submissions` - Paper submissions
 - `/admin/speakers` - Speaker management
 - `/admin/schedule` - Schedule management
 - `/admin/galleries` - Gallery management
 - `/admin/settings` - System settings
+- `/admin/venue` - Venue details management
+- `/admin/downloads` - Downloadable resources management
+- `/admin/conferences/<conference_id>/registration-fees` — Per-conference registration fees & pricing management (see below)
+
+#### `/admin/conferences/<conference_id>/registration-fees` — Registration Fees Management
+- **Route function**: `admin_registration_fees(conference_id)` ([app.py L2594](file:///c:/Users/ACE/G/GIIP/app.py#L2594-L2753))
+- **Template**: [`admin/admin_registration_fees.html`](file:///c:/Users/ACE/G/GIIP/templates/admin/admin_registration_fees.html)
+- **Custom CSS**: [`static/css/admin_registration.css`](file:///c:/Users/ACE/G/GIIP/static/css/admin_registration.css)
+- **Access**: Admin-only (`@admin_required`)
+- **Methods**: `GET`, `POST`
+- **Firebase Node**: `conferences/{conference_id}/registration_fees`
+
+**Form Sections (POST fields)**:
+| Section | Fields |
+|---|---|
+| Currency | `currency_code` (ZAR, USD, EUR, GBP, AUD, custom), `custom_currency_symbol` |
+| Early Bird | `early_bird_enabled`, `early_bird_deadline`, `early_bird_total_seats`, `early_bird_remaining_seats`, `show_remaining_seats`, `early_bird_student/regular/physical/listener`, `early_bird_benefits[]` |
+| Early Registration | `early_deadline`, `early_student/regular/physical/listener`, `early_benefits[]` |
+| Regular Registration | `regular_deadline`, `regular_student/regular/physical/listener`, `regular_benefits[]` |
+| Late Registration | `late_deadline`, `late_student/regular/physical/listener`, `late_benefits[]` |
+| Additional Items | `extra_paper_enabled`, `extra_paper_fee`, `extra_paper_description`; `workshop_enabled`, `workshop_fee`, `workshop_description`; `banquet_enabled`, `banquet_fee`, `banquet_description`, `banquet_virtual_eligible` |
+
+**Firebase Data Structure** (`registration_fees`):
+```json
+{
+  "currency": { "code": "ZAR", "symbol": "R" },
+  "early_bird": {
+    "enabled": true,
+    "deadline": "YYYY-MM-DD",
+    "seats": { "total": 100, "remaining": 80, "show_remaining": true },
+    "fees": { "student_author": 0, "regular_author": 0, "physical_delegate": 0, "listener": 0 },
+    "benefits": []
+  },
+  "early": { "deadline": "", "fees": { ... }, "benefits": [] },
+  "regular": { "deadline": "", "fees": { ... }, "benefits": [] },
+  "late": { "deadline": "", "fees": { ... }, "benefits": [] },
+  "additional_items": {
+    "extra_paper": { "enabled": false, "fee": 0, "description": "" },
+    "workshop": { "enabled": false, "fee": 0, "description": "" },
+    "banquet": { "enabled": false, "fee": 0, "description": "", "virtual_eligible": false }
+  }
+}
+```
+
+**Registration Types** (used across all fee tiers):
+- `student_author` — Student author fee
+- `regular_author` — Regular/professional author fee
+- `physical_delegate` — Physical (in-person) delegate fee
+- `listener` — Listener/observer fee
 
 ### API Endpoints
 - `/api/conferences` - Conference data API
@@ -370,6 +427,10 @@ python app.py
 - **Admin Dashboard** - Comprehensive management interface
 - **Email System** - Automated notifications
 - **Site Customization** - Dynamic theming
+- **Registration Fees Management** - Full admin UI at `/admin/registration-fees` with currency settings, tiered pricing (Early Bird, Early, Regular, Late), per-type fees (student/regular/physical/listener), and additional items (workshop, banquet, extra paper)
+- **Guest Speaker Applications** - Admin review and approval workflow
+- **Firebase User Purge** - `purge_firebase_users.py` script for bulk user cleanup
+- **Acceptance Letters** - `send_acceptance_letter.py` script for email dispatch
 
 ### 🔴 Critical Incomplete Features
 - **Conference Resources Access** - Users cannot access templates/guidelines
@@ -380,8 +441,7 @@ python app.py
 - **Email Template Management** - Backend complete, UI needs enhancement
 
 ### 🟡 Medium Priority Features
-- **Guest Speaker Workflow** - Forms exist, admin review process incomplete
-- **Debug Code Cleanup** - Extensive debug statements in production code
+- **Debug Code Cleanup** - Extensive debug statements in production code (print statements throughout `admin_registration_fees()` and other routes)
 - **Error Handling** - Some routes need better error handling
 
 ---
