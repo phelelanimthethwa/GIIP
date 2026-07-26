@@ -48,7 +48,6 @@
                 </span>
             </div>
             <h1>{{ conference.basic_info.name }}</h1>
-            <p class="hero-description">{{ conference.basic_info.description }}</p>
             
             <div class="conference-meta">
                 <div class="meta-item">
@@ -124,6 +123,63 @@
                 <div class="content-text">
                     <p>{{ conference.basic_info.description }}</p>
                     <p>This conference brings together researchers, academics, and industry professionals to share innovative research and foster collaboration in various fields of study.</p>
+                </div>
+            </div>
+
+            <!-- Important Dates: Paper Submissions -->
+            <div class="detail-card important-dates-card">
+                <h2><i class="fas fa-calendar-check"></i> Important Dates: Paper Submissions</h2>
+                <div class="important-dates-grid">
+                    <div class="date-item">
+                        <div class="date-item-icon">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <div class="date-item-details">
+                            <span class="date-item-title">Paper Submission Cut-Off</span>
+                            <span class="date-item-value">
+                                {% if important_dates and important_dates.paper_submission_deadline %}
+                                    {{ important_dates.paper_submission_deadline|format_date }}
+                                {% else %}
+                                    To Be Announced
+                                {% endif %}
+                            </span>
+                            <span class="date-item-sub">Deadline for initial manuscript submissions</span>
+                        </div>
+                    </div>
+
+                    <div class="date-item">
+                        <div class="date-item-icon">
+                            <i class="fas fa-file-export"></i>
+                        </div>
+                        <div class="date-item-details">
+                            <span class="date-item-title">Camera-Ready Submission</span>
+                            <span class="date-item-value">
+                                {% if important_dates and important_dates.camera_ready_deadline %}
+                                    {{ important_dates.camera_ready_deadline|format_date }}
+                                {% else %}
+                                    To Be Announced
+                                {% endif %}
+                            </span>
+                            <span class="date-item-sub">Final paper upload for proceedings</span>
+                        </div>
+                    </div>
+
+                    <div class="date-item">
+                        <div class="date-item-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="date-item-details">
+                            <span class="date-item-title">Author Registration Deadline</span>
+                            <span class="date-item-value">
+                                {% if important_dates and important_dates.registration_deadline %}
+                                    {{ important_dates.registration_deadline|format_date }}
+                                {% else %}
+                                    To Be Announced
+                                {% endif %}
+                            </span>
+                            <span class="date-item-sub">Deadline for presenting author registration</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -569,6 +625,68 @@
 .contact-item a {
     color: var(--primary-color);
     text-decoration: none;
+}
+
+.important-dates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+.date-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.date-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.date-item-icon {
+    width: 42px;
+    height: 42px;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-color);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.date-item-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.date-item-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.date-item-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.2rem;
+}
+
+.date-item-sub {
+    font-size: 0.8rem;
+    color: #94a3b8;
 }
 
 @media (max-width: 768px) {

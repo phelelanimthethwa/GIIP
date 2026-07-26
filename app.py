@@ -8560,6 +8560,65 @@ def resolve_conference_programme(conference):
     return text if text else DEFAULT_CONFERENCE_PROGRAMME
 
 
+def resolve_conference_important_dates(conference):
+    """
+    Returns a dictionary of important paper submission dates for a conference:
+    - paper_submission_deadline
+    - camera_ready_deadline
+    - registration_deadline
+    Uses configured values from conference RTDB object, falling back to sensible relative dates
+    based on start_date or registration fees.
+    """
+    if not conference:
+        conference = {}
+
+    basic_info = conference.get('basic_info', {})
+    important_dates = conference.get('important_dates') or basic_info.get('important_dates') or {}
+    fees = conference.get('fees', {})
+
+    start_date_str = basic_info.get('start_date', '')
+    start_date_obj = None
+    if start_date_str:
+        try:
+            start_date_obj = datetime.strptime(start_date_str.strip(), '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    # Paper Submission Deadline
+    sub_deadline = (
+        important_dates.get('paper_submission_deadline')
+        or basic_info.get('paper_submission_deadline')
+        or ''
+    ).strip()
+    if not sub_deadline and start_date_obj:
+        sub_deadline = (start_date_obj - timedelta(days=45)).strftime('%Y-%m-%d')
+
+    # Camera-Ready Deadline
+    cam_deadline = (
+        important_dates.get('camera_ready_deadline')
+        or basic_info.get('camera_ready_deadline')
+        or ''
+    ).strip()
+    if not cam_deadline and start_date_obj:
+        cam_deadline = (start_date_obj - timedelta(days=30)).strftime('%Y-%m-%d')
+
+    # Registration Deadline
+    reg_deadline = (
+        important_dates.get('registration_deadline')
+        or basic_info.get('registration_deadline')
+        or (fees.get('early_bird', {}).get('deadline') if isinstance(fees, dict) else '')
+        or ''
+    ).strip()
+    if not reg_deadline and start_date_obj:
+        reg_deadline = (start_date_obj - timedelta(days=15)).strftime('%Y-%m-%d')
+
+    return {
+        'paper_submission_deadline': sub_deadline,
+        'camera_ready_deadline': cam_deadline,
+        'registration_deadline': reg_deadline
+    }
+
+
 def get_conference_data(conference_id):
     """Get conference data from Firebase"""
     try:
@@ -11609,6 +11668,7 @@ def conference_details(conference_id):
             user_can_register=user_can_register,
             user_submission_status=(user_submission_status or '').lower(),
             conference_programme=resolve_conference_programme(conference),
+            important_dates=resolve_conference_important_dates(conference),
             site_design=get_site_design(),
         )
     except Exception as e:
@@ -13387,6 +13447,9 @@ def edit_conference(conference_id):
                 'end_date': request.form.get('end_date', ''),
                 'location': request.form.get('location', '').strip(),
                 'website': request.form.get('website', '').strip(),
+                'paper_submission_deadline': request.form.get('paper_submission_deadline', '').strip(),
+                'camera_ready_deadline': request.form.get('camera_ready_deadline', '').strip(),
+                'registration_deadline': request.form.get('registration_deadline', '').strip(),
                 'timezone': conference['basic_info'].get('timezone', 'UTC')
             }
             
@@ -13402,6 +13465,13 @@ def edit_conference(conference_id):
             # Update basic info
             basic_info_ref = db.reference(f'conferences/{conference_id}/basic_info')
             basic_info_ref.update(basic_info)
+
+            important_dates_ref = db.reference(f'conferences/{conference_id}/important_dates')
+            important_dates_ref.update({
+                'paper_submission_deadline': request.form.get('paper_submission_deadline', '').strip(),
+                'camera_ready_deadline': request.form.get('camera_ready_deadline', '').strip(),
+                'registration_deadline': request.form.get('registration_deadline', '').strip(),
+            })
 
             programme_ref = db.reference(f'conferences/{conference_id}/programme')
             programme_val = (request.form.get('programme') or '').strip()
