@@ -118,12 +118,40 @@
         <div class="main-content">
             
             <!-- About Section -->
-            <div class="detail-card">
+            <div class="detail-card about-conference-card">
                 <h2><i class="fas fa-info-circle"></i> About This Conference</h2>
-                <div class="content-text">
-                    <p>{{ conference.basic_info.description }}</p>
-                    <p>This conference brings together researchers, academics, and industry professionals to share innovative research and foster collaboration in various fields of study.</p>
+                <div class="content-text about-description {% if conference.basic_info.description and conference.basic_info.description|length > 600 %}collapsed{% endif %}" id="aboutDescription">
+                    {% if conference.basic_info.description %}
+                        {% set paragraphs = conference.basic_info.description.split('\n') %}
+                        {% for paragraph in paragraphs %}
+                            {% set trimmed = paragraph.strip() %}
+                            {% if trimmed %}
+                                {% if trimmed.startswith('Conference Themes:') or trimmed.startswith('Themes:') or trimmed.startswith('Conference Topics:') %}
+                                    <div class="conference-themes-box">
+                                        <div class="themes-title"><i class="fas fa-tags"></i> {{ trimmed.split(':')[0] }}</div>
+                                        <div class="themes-tags">
+                                            {% for theme in trimmed.split(':', 1)[1].split(',') %}
+                                                {% set theme_clean = theme.strip() %}
+                                                {% if theme_clean %}
+                                                    <span class="theme-tag">{{ theme_clean }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <p>{{ trimmed }}</p>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p>Join researchers, academics, and industry professionals to share innovative research and foster collaboration in various fields of study.</p>
+                    {% endif %}
                 </div>
+                {% if conference.basic_info.description and conference.basic_info.description|length > 600 %}
+                <button type="button" class="btn-read-more" id="toggleAboutBtn" onclick="toggleAboutDescription()">
+                    <span class="btn-text">Read More</span> <i class="fas fa-chevron-down"></i>
+                </button>
+                {% endif %}
             </div>
 
             <!-- Key Features -->
@@ -706,5 +734,124 @@
         padding: 1.5rem;
     }
 }
+
+/* About Section Enhanced Formatting */
+.about-description {
+    line-height: 1.8;
+    color: #374151;
+    position: relative;
+    transition: max-height 0.4s ease;
+}
+
+.about-description.collapsed {
+    max-height: 240px;
+    overflow: hidden;
+}
+
+.about-description.collapsed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(transparent, white);
+    pointer-events: none;
+}
+
+.about-description p {
+    margin-bottom: 1.25rem;
+    font-size: 1rem;
+    line-height: 1.8;
+}
+
+.about-description p:first-of-type {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.conference-themes-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+}
+
+.themes-title {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.themes-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.theme-tag {
+    background: white;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.theme-tag:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-read-more {
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0 0;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+}
+
+.btn-read-more:hover {
+    color: var(--secondary-color);
+    text-decoration: underline;
+}
 </style>
+
+<script>
+function toggleAboutDescription() {
+    const desc = document.getElementById('aboutDescription');
+    const btn = document.getElementById('toggleAboutBtn');
+    if (!desc || !btn) return;
+    
+    if (desc.classList.contains('collapsed')) {
+        desc.classList.remove('collapsed');
+        btn.querySelector('.btn-text').textContent = 'Show Less';
+        btn.querySelector('i').className = 'fas fa-chevron-up';
+    } else {
+        desc.classList.add('collapsed');
+        btn.querySelector('.btn-text').textContent = 'Read More';
+        btn.querySelector('i').className = 'fas fa-chevron-down';
+    }
+}
+</script>
 {% endblock %}
