@@ -126,63 +126,6 @@
                 </div>
             </div>
 
-            <!-- Important Dates: Paper Submissions -->
-            <div class="detail-card important-dates-card">
-                <h2><i class="fas fa-calendar-check"></i> Important Dates: Paper Submissions</h2>
-                <div class="important-dates-grid">
-                    <div class="date-item">
-                        <div class="date-item-icon">
-                            <i class="fas fa-file-upload"></i>
-                        </div>
-                        <div class="date-item-details">
-                            <span class="date-item-title">Paper Submission Cut-Off</span>
-                            <span class="date-item-value">
-                                {% if important_dates and important_dates.paper_submission_deadline %}
-                                    {{ important_dates.paper_submission_deadline|format_date }}
-                                {% else %}
-                                    To Be Announced
-                                {% endif %}
-                            </span>
-                            <span class="date-item-sub">Deadline for initial manuscript submissions</span>
-                        </div>
-                    </div>
-
-                    <div class="date-item">
-                        <div class="date-item-icon">
-                            <i class="fas fa-file-export"></i>
-                        </div>
-                        <div class="date-item-details">
-                            <span class="date-item-title">Camera-Ready Submission</span>
-                            <span class="date-item-value">
-                                {% if important_dates and important_dates.camera_ready_deadline %}
-                                    {{ important_dates.camera_ready_deadline|format_date }}
-                                {% else %}
-                                    To Be Announced
-                                {% endif %}
-                            </span>
-                            <span class="date-item-sub">Final paper upload for proceedings</span>
-                        </div>
-                    </div>
-
-                    <div class="date-item">
-                        <div class="date-item-icon">
-                            <i class="fas fa-user-check"></i>
-                        </div>
-                        <div class="date-item-details">
-                            <span class="date-item-title">Author Registration Deadline</span>
-                            <span class="date-item-value">
-                                {% if important_dates and important_dates.registration_deadline %}
-                                    {{ important_dates.registration_deadline|format_date }}
-                                {% else %}
-                                    To Be Announced
-                                {% endif %}
-                            </span>
-                            <span class="date-item-sub">Deadline for presenting author registration</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Key Features -->
             <div class="detail-card">
                 <h2><i class="fas fa-star"></i> Conference Features</h2>
@@ -293,6 +236,43 @@
                     <div class="info-item">
                         <span class="label">Status:</span>
                         <span class="value status-{{ conference.basic_info.status }}">{{ conference.basic_info.status|title }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Important Dates Card -->
+            <div class="sidebar-card">
+                <h3><i class="fas fa-calendar-check"></i> Important Dates: Paper Submissions</h3>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="label">Paper Submission Cut-Off:</span>
+                        <span class="value">
+                            {% if important_dates and important_dates.paper_submission_deadline %}
+                                {{ important_dates.paper_submission_deadline|format_date }}
+                            {% else %}
+                                To Be Announced
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Camera-Ready Submission:</span>
+                        <span class="value">
+                            {% if important_dates and important_dates.camera_ready_deadline %}
+                                {{ important_dates.camera_ready_deadline|format_date }}
+                            {% else %}
+                                To Be Announced
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Author Registration Deadline:</span>
+                        <span class="value">
+                            {% if important_dates and important_dates.registration_deadline %}
+                                {{ important_dates.registration_deadline|format_date }}
+                            {% else %}
+                                To Be Announced
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
             </div>

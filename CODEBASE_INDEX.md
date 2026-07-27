@@ -28,26 +28,31 @@
 ### Root Level Files
 ```
 GIIP/
-├── app.py                    # Main Flask application (8,665+ lines)
-├── config.py                 # Configuration management
+├── app.py                    # Main Flask application (13,819 lines)
+├── config.py                 # Configuration management & Yoco credentials
 ├── requirements.txt          # Python dependencies
 ├── firebase.json            # Firebase configuration
 ├── database.rules.json      # Firebase security rules
 ├── render.yaml              # Render.com deployment config
 ├── Procfile                 # Process configuration
-├── utils.py                 # Utility functions and filters
+├── utils.py                 # Utility functions and Jinja filters
 └── INCOMPLETE_FEATURES_TRACKING.md  # Feature status tracking
 ```
 
-### Core Application Modules
+### Core Application Modules & Services
 ```
 models/
 ├── __init__.py
-├── email_service.py         # Email sending service
-└── email_templates.py       # Email template definitions
+├── email_service.py         # Email sending service (Flask-Mail integration)
+└── email_templates.py       # HTML email templates definition
 
 routes/
-└── user_routes.py           # User-specific route blueprints
+└── user_routes.py           # User profile and paper submission blueprints
+
+services/
+├── __init__.py
+├── yoco_service.py          # Yoco Payment Gateway integration (card processing)
+└── exchange_rate_service.py # Live USD -> ZAR exchange rate caching service
 ```
 
 ### Database & Schema
@@ -99,6 +104,24 @@ templates/
 │   ├── conference/                  # Conference-specific templates
 │   ├── papers/                      # Paper submission templates
 │   └── components/                  # Reusable components
+├── conferences/                     # Conference discovery templates
+└── [various other templates]
+```
+
+### Scripts, Population & Migration
+```
+./
+├── add_all_conferences_2026_2027.py  # Bulk 2026-2027 conference populator
+├── add_conferences_2026_2027.py      # Conference setup script
+├── add_conferences_direct.py         # Direct database injection for conferences
+├── add_organizing_committee.py       # Committee members generator
+├── add_registration_fees.py          # Pricing structure initializers
+├── clean_database.py                 # Utility to scrub test data & orphaned entries
+├── fix_template.py                   # Quick syntax patch tool for HTML templates
+├── migrate_registration_fees.py      # Fee schema migration script
+├── purge_firebase_users.py           # Test user account purging script
+└── send_acceptance_letter.py         # Batch acceptance email dispatch tool
+```                  # Reusable components
 ├── conferences/                     # Conference discovery templates
 └── [various other templates]
 ```
@@ -532,6 +555,6 @@ python app.py
 
 ---
 
-*Last Updated: January 2025*
-*Document Version: 1.0*
+*Last Updated: July 2026*
+*Document Version: 1.1*
 *Maintained by: Development Team*
