@@ -208,12 +208,18 @@ def format_datetime_with_timezone(date_str, time_str, timezone_str):
 # Add this after app initialization but before routes
 @app.template_filter('format_date')
 def format_date(date_str):
+    if not date_str:
+        return ''
     try:
         if isinstance(date_str, str):
-            date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            clean_str = date_str.strip()
+            if len(clean_str) == 10 and clean_str.count('-') == 2:
+                date = datetime.strptime(clean_str, '%Y-%m-%d')
+            else:
+                date = datetime.fromisoformat(clean_str.replace('Z', '+00:00'))
         else:
             date = date_str
-        return date.strftime('%B %d, %Y %I:%M %p')
+        return date.strftime('%B %d, %Y')
     except Exception:
         return date_str  # Return original string if parsing fails
 

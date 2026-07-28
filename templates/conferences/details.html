@@ -273,7 +273,7 @@
                 <h3><i class="fas fa-calendar-check"></i> Important Dates: Paper Submissions</h3>
                 <div class="info-list">
                     <div class="info-item">
-                        <span class="label">Paper Submission Cut-Off:</span>
+                        <span class="label">Paper Submission:</span>
                         <span class="value">
                             {% if important_dates and important_dates.paper_submission_deadline %}
                                 {{ important_dates.paper_submission_deadline|format_date }}
@@ -283,7 +283,7 @@
                         </span>
                     </div>
                     <div class="info-item">
-                        <span class="label">Camera-Ready Submission:</span>
+                        <span class="label">Early Bird:</span>
                         <span class="value">
                             {% if important_dates and important_dates.camera_ready_deadline %}
                                 {{ important_dates.camera_ready_deadline|format_date }}
@@ -293,7 +293,7 @@
                         </span>
                     </div>
                     <div class="info-item">
-                        <span class="label">Author Registration Deadline:</span>
+                        <span class="label">Regular:</span>
                         <span class="value">
                             {% if important_dates and important_dates.registration_deadline %}
                                 {{ important_dates.registration_deadline|format_date }}

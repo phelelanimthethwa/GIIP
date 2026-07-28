@@ -155,26 +155,26 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="paperSubmissionDeadline" class="form-label">Paper Submission Cut-Off</label>
+                                    <label for="paperSubmissionDeadline" class="form-label">Paper Submission</label>
                                     <input type="date" class="form-control" id="paperSubmissionDeadline" name="paper_submission_deadline"
                                            value="{{ (conference.basic_info.paper_submission_deadline if conference.basic_info and conference.basic_info.paper_submission_deadline else (conference.important_dates.paper_submission_deadline if conference.important_dates else '')) }}">
-                                    <div class="form-text">Final cut-off date for paper submissions.</div>
+                                    <div class="form-text">Deadline for paper submissions.</div>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="cameraReadyDeadline" class="form-label">Camera-Ready Submission</label>
+                                    <label for="cameraReadyDeadline" class="form-label">Early Bird</label>
                                     <input type="date" class="form-control" id="cameraReadyDeadline" name="camera_ready_deadline"
                                            value="{{ (conference.basic_info.camera_ready_deadline if conference.basic_info and conference.basic_info.camera_ready_deadline else (conference.important_dates.camera_ready_deadline if conference.important_dates else '')) }}">
-                                    <div class="form-text">Deadline for final manuscript uploads.</div>
+                                    <div class="form-text">Early bird registration & submission deadline.</div>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="registrationDeadline" class="form-label">Author Registration Deadline</label>
+                                    <label for="registrationDeadline" class="form-label">Regular</label>
                                     <input type="date" class="form-control" id="registrationDeadline" name="registration_deadline"
                                            value="{{ (conference.basic_info.registration_deadline if conference.basic_info and conference.basic_info.registration_deadline else (conference.important_dates.registration_deadline if conference.important_dates else '')) }}">
-                                    <div class="form-text">Deadline for presenting author registration.</div>
+                                    <div class="form-text">Regular registration deadline.</div>
                                 </div>
                             </div>
                         </div>
