@@ -1,2963 +1,1794 @@
 {% extends "base.html" %}
 
-{% block title %}My Dashboard - Global Conferences{% endblock %}
+{% block title %}Dashboard — GIIR Conferences{% endblock %}
 
 {% block content %}
-<div class="dashboard-wrapper">
-    <!-- Hero Section -->
-    <div class="dashboard-hero">
-        <div class="hero-content">
-            <div class="welcome-section">
-                <div class="user-avatar">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="welcome-text">
-                    <h1>Welcome back, {{ current_user.full_name }}!</h1>
-                    <p class="subtitle">Manage your conference registrations and track your submissions</p>
-                </div>
+<div class="db-root" id="db-root">
+
+    {# ── Fixed full-height sidebar ── #}
+    <aside class="db-sidebar" id="db-sidebar">
+
+        {# User identity at top #}
+        <div class="db-sb-user">
+            <div class="db-avatar">{{ (current_user.full_name or current_user.email or 'U')[0]|upper }}</div>
+            <div class="db-sb-user-info">
+                <div class="db-sb-name">{{ current_user.full_name or current_user.email }}</div>
+                <div class="db-sb-email">{{ current_user.email }}</div>
             </div>
         </div>
-    </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="container-fluid px-4 mt-3">
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show modern-alert">
-            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
-            {{ message }}
-            <button type="button" class="btn-close" onclick="this.parentElement.remove()">×</button>
+        <div class="db-sb-divider"></div>
+
+        {# Section label #}
+        <p class="db-sidebar-label"><span>My Dashboard</span></p>
+
+        {# Navigation #}
+        <nav class="db-sidenav">
+            <button type="button" class="db-sidelink is-active" data-tab="registrations" title="My Conferences — conferences you have registered for">
+                <i class="fas fa-calendar-check"></i>
+                <span>My Conferences</span>
+                <em class="db-badge">{{ registrations|length }}</em>
+            </button>
+            <button type="button" class="db-sidelink" data-tab="submissions" title="My Papers — abstracts and full papers you have submitted">
+                <i class="fas fa-file-alt"></i>
+                <span>My Papers</span>
+                <em class="db-badge">{{ submissions|length }}</em>
+            </button>
+            <div class="db-sidenav-divider"></div>
+            <a href="{{ url_for('conference_discover') }}" class="db-sidelink db-sidelink-anchor" title="Browse all upcoming conferences">
+                <i class="fas fa-globe"></i>
+                <span>Find a Conference</span>
+            </a>
+            <a href="{{ url_for('call_for_papers') }}" class="db-sidelink db-sidelink-anchor" title="Submit your abstract to a conference">
+                <i class="fas fa-paper-plane"></i>
+                <span>Submit My Abstract</span>
+            </a>
+            <a href="{{ url_for('profile') }}" class="db-sidelink db-sidelink-anchor" title="Update your personal and professional details">
+                <i class="fas fa-id-card"></i>
+                <span>My Account</span>
+            </a>
+            <a href="{{ url_for('logout') }}" class="db-sidelink db-sidelink-anchor db-sidelink-logout" title="Sign out of your account">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sign Out</span>
+            </a>
+        </nav>
+
+        {# Stats #}
+        <div class="db-sidebar-stats">
+            <div class="db-stat">
+                <span class="db-stat-val">{{ approved_count }}</span>
+                <span class="db-stat-lbl">Accepted</span>
+            </div>
+            <div class="db-stat">
+                <span class="db-stat-val">{{ pending_count }}</span>
+                <span class="db-stat-lbl">Under Review</span>
+            </div>
         </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}
 
-    <!-- Main Content -->
-    <div class="container-fluid px-4 py-4">
-        <div class="dashboard-layout">
-            <div class="sidebar-overlay" id="sidebar-overlay"></div>
-            <aside class="dashboard-sidebar" id="dashboard-sidebar">
-                <div class="sidebar-head">
-                    <div class="sidebar-head-copy">
-                        <p class="sidebar-kicker">Dashboard</p>
-                        <h2>Navigate</h2>
-                    </div>
-                    <div class="sidebar-head-actions">
-                        <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle"
-                            title="Collapse sidebar" aria-label="Collapse sidebar" aria-expanded="true">
-                            <i class="fas fa-angle-left"></i>
-                        </button>
-                        <button type="button" class="sidebar-mobile-close" id="sidebar-mobile-close" title="Close menu"
-                            aria-label="Close menu">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <nav class="sidebar-nav">
-                    <button type="button" class="side-link active" data-tab="registrations" title="Registrations">
-                        <span class="side-link-main">
-                            <i class="fas fa-ticket-alt"></i>
-                            <span class="side-link-label">Registrations</span>
-                        </span>
-                        <span class="side-count">{{ registrations|length }}</span>
-                    </button>
-                    <button type="button" class="side-link" data-tab="submissions" title="Submissions">
-                        <span class="side-link-main">
-                            <i class="fas fa-file-alt"></i>
-                            <span class="side-link-label">Submissions</span>
-                        </span>
-                        <span class="side-count">{{ submissions|length }}</span>
-                    </button>
-                    <a href="{{ url_for('conference_discover') }}" class="side-link side-link-anchor"
-                        title="Discover Conferences">
-                        <span class="side-link-main">
-                            <i class="fas fa-search"></i>
-                            <span class="side-link-label">Discover Conferences</span>
-                        </span>
-                    </a>
-                    <a href="{{ url_for('call_for_papers') }}" class="side-link side-link-anchor"
-                        title="Submit New Abstract">
-                        <span class="side-link-main">
-                            <i class="fas fa-upload"></i>
-                            <span class="side-link-label">Submit New Abstract</span>
-                        </span>
-                    </a>
-                    <a href="{{ url_for('profile') }}" class="side-link side-link-anchor" title="Edit Profile">
-                        <span class="side-link-main">
-                            <i class="fas fa-user-edit"></i>
-                            <span class="side-link-label">Edit Profile</span>
-                        </span>
-                    </a>
-                    <a href="{{ url_for('logout') }}" class="side-link side-link-anchor side-link-logout"
-                        title="Logout">
-                        <span class="side-link-main">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span class="side-link-label">Logout</span>
-                        </span>
-                    </a>
+        {# Collapse toggle at bottom #}
+        <button type="button" class="db-sb-collapse" id="db-sb-collapse" title="Collapse sidebar" aria-label="Toggle sidebar">
+            <i class="fas fa-chevron-left" id="db-sb-collapse-icon"></i>
+            <span>Collapse</span>
+        </button>
+    </aside>
+
+    {# Mobile sidebar overlay backdrop #}
+    <div class="db-sb-backdrop" id="db-sb-backdrop"></div>
+
+    {# ── Main content area ── #}
+    <div class="db-main-wrap" id="db-main-wrap">
+
+        {# Topbar inside main wrap #}
+        <header class="db-topbar">
+            <div class="db-topbar-inner">
+                {# Mobile hamburger #}
+                <button type="button" class="db-hamburger" id="db-hamburger" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <span class="db-topbar-title">Dashboard</span>
+                <nav class="db-topbar-nav">
+                    <a href="{{ url_for('conference_discover') }}" class="db-topnav-link">Find a Conference</a>
+                    <a href="{{ url_for('call_for_papers') }}" class="db-topnav-link">Submit My Abstract</a>
+                    <a href="{{ url_for('profile') }}" class="db-topnav-link">My Account</a>
+                    <a href="{{ url_for('logout') }}" class="db-topnav-link db-topnav-logout">Sign Out</a>
                 </nav>
-                <div class="sidebar-summary">
-                    <div class="sidebar-metric">
-                        <span>Approved</span>
-                        <strong>{{ approved_count }}</strong>
+            </div>
+        </header>
+
+        {# Flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="db-flash-wrap">
+            {% for category, message in messages %}
+            <div class="db-flash db-flash--{{ category }}">
+                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }}"></i>
+                <span>{{ message }}</span>
+                <button type="button" onclick="this.parentElement.remove()" aria-label="Dismiss">×</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {# Page shell #}
+        <div class="db-shell">
+
+            {# ── Mobile tab bar ── #}
+            <div class="db-mobile-tabs">
+                <button type="button" class="db-mobile-tab is-active" data-tab="registrations">
+                    Registrations <em class="db-badge">{{ registrations|length }}</em>
+                </button>
+                <button type="button" class="db-mobile-tab" data-tab="submissions">
+                    Submissions <em class="db-badge">{{ submissions|length }}</em>
+                </button>
+            </div>
+
+            {# ── Main area ── #}
+            <main class="db-main">
+
+            {# ══ REGISTRATIONS TAB ══ #}
+            <div class="db-tab-pane is-active" id="tab-registrations">
+                <div class="db-section-header">
+                    <div>
+                        <h1 class="db-page-title">My Registrations</h1>
+                        <p class="db-page-sub">Edit selections before payment. Pay here once admin approval unlocks it.</p>
                     </div>
-                    <div class="sidebar-metric">
-                        <span>Pending</span>
-                        <strong>{{ pending_count }}</strong>
-                    </div>
-                </div>
-            </aside>
-            <div class="dashboard-main">
-                <div class="mobile-sidebar-row">
-                    <button type="button" class="mobile-sidebar-toggle" id="mobile-sidebar-toggle">
-                        <i class="fas fa-bars"></i>
-                        Menu
-                    </button>
-                </div>
-                <!-- Dashboard Tabs -->
-                <div class="dashboard-tabs mb-4">
-                    <button class="tab-btn active" data-tab="registrations">
-                        <i class="fas fa-ticket-alt"></i>
-                        <span>Registrations</span>
-                        <span class="tab-badge">{{ registrations|length }}</span>
-                    </button>
-                    <button class="tab-btn" data-tab="submissions">
-                        <i class="fas fa-file-alt"></i>
-                        <span>Submissions</span>
-                        <span class="tab-badge">{{ submissions|length }}</span>
-                    </button>
                 </div>
 
-                <!-- Registrations Section -->
-                <div class="tab-content active" id="registrations-tab">
-                    <div class="registrations-section">
-                        <div class="section-header">
-                            <h2 class="section-title">
-                                <i class="fas fa-ticket-alt me-2"></i>
-                                My Registered Conferences
-                            </h2>
-                            <p class="section-hint">Edit selections before payment. Pay here once admin approval unlocks
-                                it.</p>
+                {% if registrations %}
+                <div class="db-toolbar">
+                    <div class="db-toolbar-left">
+                        <span class="db-count-pill" id="reg-count">{{ registrations|length }} shown</span>
+                        <label class="db-search-label" for="reg-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="reg-search" placeholder="Search conference…" autocomplete="off">
+                        </label>
+                    </div>
+                    <div class="db-toolbar-right">
+                        <div class="db-filter-group" role="group">
+                            <button type="button" class="db-filter-btn is-active" data-filter="all">All</button>
+                            <button type="button" class="db-filter-btn" data-filter="approved">Ready to Pay</button>
+                            <button type="button" class="db-filter-btn" data-filter="paid">Paid</button>
+                            <button type="button" class="db-filter-btn" data-filter="pending">In Progress</button>
+                            <button type="button" class="db-filter-btn" data-filter="rejected">Rejected</button>
                         </div>
-                        {% if registrations %}
-                        <div class="registrations-toolbar" id="registrations-toolbar">
-                            <div class="reg-toolbar-left">
-                                <span class="results-pill" id="registration-results-count">{{ registrations|length }}
-                                    shown</span>
-                                <label class="registration-search-wrap" for="registration-search">
-                                    <i class="fas fa-search"></i>
-                                    <input type="text" id="registration-search" class="registration-search"
-                                        placeholder="Search by conference name, code, or ID">
-                                </label>
-                            </div>
-                            <div class="reg-toolbar-right">
-                                <div class="registration-filter-group" role="group" aria-label="Filter registrations">
-                                    <button type="button" class="registration-filter-btn active"
-                                        data-filter="all">All</button>
-                                    <button type="button" class="registration-filter-btn" data-filter="approved">Ready
-                                        to Pay</button>
-                                    <button type="button" class="registration-filter-btn"
-                                        data-filter="paid">Paid</button>
-                                    <button type="button" class="registration-filter-btn" data-filter="pending">In
-                                        Progress</button>
-                                    <button type="button" class="registration-filter-btn"
-                                        data-filter="rejected">Rejected</button>
-                                </div>
-                                <label class="registration-sort-wrap" for="registration-sort">
-                                    Sort
-                                    <select id="registration-sort" class="registration-sort">
-                                        <option value="recent">Most Recent</option>
-                                        <option value="name_asc">Name A-Z</option>
-                                        <option value="amount_desc">Amount High-Low</option>
-                                        <option value="amount_asc">Amount Low-High</option>
-                                    </select>
-                                </label>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="registrations-grid">
-                            {% if registrations %}
-                            {% for reg_id, reg in registrations.items() %}
-                            {% set payment_status = (reg.payment_status or 'pending')|lower %}
-                            {% set paper_status = (reg.paper_status or 'not_submitted')|lower %}
-                            {% set payment_unlocked = reg.payment_unlocked in [true, 1, '1', 'true', 'True', 'yes',
-                            'on'] %}
-                            {% set is_paid = payment_status in ['paid', 'waived'] %}
-                            {% set is_payment_started = payment_status == 'payment_initiated' %}
-                            {% set is_ready_to_pay = payment_unlocked or payment_status == 'approved' %}
-                            {% set needs_type_confirmation = reg.get('needs_type_confirmation') in [true, 1, '1', 'true', 'True', 'yes', 'on'] %}
-                            {% set card_status = 'approved' if (is_ready_to_pay or is_paid) else ('rejected' if
-                            paper_status == 'rejected' else 'pending') %}
-                            <div class="registration-card compact-registration" data-status="{{ card_status }}"
-                                data-search="{{ ((reg.conference_name or 'Conference Registration') ~ ' ' ~ (reg.conference_code or '') ~ ' ' ~ reg_id)|lower }}"
-                                data-updated-at="{{ reg.updated_at or reg.created_at or reg.submission_date or '' }}"
-                                data-total-amount="{{ (reg.total_amount or 0)|float }}"
-                                data-conference-name="{{ (reg.conference_name or 'Conference Registration')|lower }}">
-                                <div class="reg-card-header">
-                                    <div class="conference-badge">
-                                        <i class="fas fa-calendar-alt"></i>
-                                    </div>
-                                    <div
-                                        class="status-indicator status-{{ 'paid' if is_paid else ('pending' if is_payment_started else ('approved' if is_ready_to_pay else ('rejected' if paper_status == 'rejected' else 'pending'))) }}">
-                                        <i
-                                            class="fas fa-{{ 'check-circle' if is_paid else ('hourglass-half' if is_payment_started else ('unlock' if is_ready_to_pay else ('times-circle' if paper_status == 'rejected' else 'clock'))) }}"></i>
-                                        {{ 'Waived' if payment_status == 'waived' else ('Paid' if is_paid else ('Payment Started' if is_payment_started else
-                                        ('Approved: Ready to Pay' if is_ready_to_pay else ('Paper Rejected' if
-                                        paper_status == 'rejected' else 'In Progress')) )) }}
-                                    </div>
-                                </div>
+                        <label class="db-sort-label" for="reg-sort">
+                            Sort
+                            <select id="reg-sort">
+                                <option value="recent">Most Recent</option>
+                                <option value="name_asc">Name A–Z</option>
+                                <option value="amount_desc">Amount ↓</option>
+                                <option value="amount_asc">Amount ↑</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
 
-                                <div class="conference-info">
-                                    <h3 class="conference-name">{{ reg.conference_name or 'Conference Registration' }}
-                                    </h3>
-                                    <div class="conference-meta">
+                <div class="db-list" id="regs-list">
+                    {% for reg_id, reg in registrations.items() %}
+                    {% set payment_status = (reg.payment_status or 'pending')|lower %}
+                    {% set paper_status = (reg.paper_status or 'not_submitted')|lower %}
+                    {% set payment_unlocked = reg.payment_unlocked in [true, 1, '1', 'true', 'True', 'yes', 'on'] %}
+                    {% set is_paid = payment_status in ['paid', 'waived'] %}
+                    {% set is_payment_started = payment_status == 'payment_initiated' %}
+                    {% set is_ready_to_pay = payment_unlocked or payment_status == 'approved' %}
+                    {% set needs_type_confirmation = reg.get('needs_type_confirmation') in [true, 1, '1', 'true', 'True', 'yes', 'on'] %}
+                    {% set card_status = 'approved' if (is_ready_to_pay or is_paid) else ('rejected' if paper_status == 'rejected' else 'pending') %}
+
+                    <div class="db-row"
+                         data-status="{{ card_status }}"
+                         data-search="{{ ((reg.conference_name or 'Conference Registration') ~ ' ' ~ (reg.conference_code or '') ~ ' ' ~ reg_id)|lower }}"
+                         data-updated-at="{{ reg.updated_at or reg.created_at or reg.submission_date or '' }}"
+                         data-total-amount="{{ (reg.total_amount or 0)|float }}"
+                         data-conference-name="{{ (reg.conference_name or 'Conference Registration')|lower }}">
+
+                        {# Left: status stripe #}
+                        <div class="db-row-stripe stripe--{{ 'paid' if is_paid else ('started' if is_payment_started else ('approved' if is_ready_to_pay else ('rejected' if paper_status == 'rejected' else 'pending'))) }}"></div>
+
+                        {# Main content #}
+                        <div class="db-row-body">
+                            <div class="db-row-top">
+                                <div class="db-row-titles">
+                                    <h2 class="db-row-title">{{ reg.conference_name or 'Conference Registration' }}</h2>
+                                    <div class="db-row-meta">
                                         {% if reg.conference_code %}
-                                        <span class="meta-item conference-code-badge">
-                                            <i class="fas fa-qrcode"></i>
-                                            {{ reg.conference_code }}
-                                        </span>
+                                        <span class="db-meta-chip db-meta-chip--code">{{ reg.conference_code }}</span>
                                         {% endif %}
-                                        <span class="meta-item">
-                                            <i class="fas fa-fingerprint"></i>
-                                            {{ reg_id }}
-                                        </span>
+                                        <span class="db-meta-chip">ID: {{ reg_id }}</span>
                                     </div>
                                 </div>
-
-                                <div class="quick-status-grid">
-                                    <div class="quick-status-item">
-                                        <span>Registration</span>
-                                        <strong>{{ reg.registration_type|replace('_', ' ')|title }}</strong>
-                                    </div>
-                                    <div class="quick-status-item">
-                                        <span>Abstract</span>
-                                        <strong class="{% if reg.submission_status == 'accepted' %}text-status-accepted{% elif reg.submission_status in ['pending', 'revision'] %}text-status-pending{% elif reg.submission_status == 'rejected' %}text-status-rejected{% else %}text-status-none{% endif %}">
-                                            {{ reg.submission_status|replace('_', ' ')|title if reg.has_submission else 'Not Submitted' }}
-                                        </strong>
-                                    </div>
-                                    <div class="quick-status-item">
-                                        <span>Full Paper</span>
-                                        <strong class="{% if reg.has_full_paper %}text-status-accepted{% elif reg.submission_status == 'accepted' and is_paid %}text-status-pending{% else %}text-status-locked{% endif %}">
-                                            {% if reg.has_full_paper %}
-                                                Submitted
-                                            {% elif reg.submission_status == 'accepted' and is_paid %}
-                                                Pending Upload
-                                            {% elif reg.submission_status == 'accepted' %}
-                                                Awaiting Payment
-                                            {% else %}
-                                                Locked
-                                            {% endif %}
-                                        </strong>
-                                    </div>
-                                    <div class="quick-status-item">
-                                        <span>Total</span>
-                                        <strong>$ {{ '%.2f'|format((reg.total_amount or 0)|float) }}</strong>
-                                    </div>
+                                <div class="db-status-tag tag--{{ 'paid' if is_paid else ('started' if is_payment_started else ('approved' if is_ready_to_pay else ('rejected' if paper_status == 'rejected' else 'pending'))) }}">
+                                    {{ 'Waived' if payment_status == 'waived' else ('Paid' if is_paid else ('Payment Started' if is_payment_started else ('Ready to Pay' if is_ready_to_pay else ('Rejected' if paper_status == 'rejected' else 'In Progress')))) }}
                                 </div>
+                            </div>
 
-                                {% if not is_paid and not is_payment_started and not is_ready_to_pay %}
-                                <p class="payment-lock-note">
-                                    <i class="fas fa-lock"></i>
-                                    Payment unlocks after admin approves your abstract.
-                                </p>
-                                {% endif %}
-
-                                <div class="card-footer registration-actions">
-                                    {% if reg.conference_id %}
-                                    {% if is_paid or is_payment_started %}
-                                    <span class="action-chip muted-chip">
-                                        <i class="fas fa-lock"></i>
-                                        Selections Locked
+                            <div class="db-row-grid">
+                                <div class="db-row-cell">
+                                    <span class="db-cell-lbl">Registration type</span>
+                                    <span class="db-cell-val">{{ reg.registration_type|replace('_', ' ')|title }}</span>
+                                </div>
+                                <div class="db-row-cell">
+                                    <span class="db-cell-lbl">Abstract</span>
+                                    <span class="db-cell-val val--{{ reg.submission_status or 'none' }}">
+                                        {{ reg.submission_status|replace('_', ' ')|title if reg.has_submission else 'Not submitted' }}
                                     </span>
+                                </div>
+                                <div class="db-row-cell">
+                                    <span class="db-cell-lbl">Full paper</span>
+                                    <span class="db-cell-val val--{{ 'ok' if reg.has_full_paper else ('pending' if (reg.submission_status == 'accepted' and is_paid) else 'locked') }}">
+                                        {% if reg.has_full_paper %}Submitted
+                                        {% elif reg.submission_status == 'accepted' and is_paid %}Pending upload
+                                        {% elif reg.submission_status == 'accepted' %}Awaiting payment
+                                        {% else %}Locked{% endif %}
+                                    </span>
+                                </div>
+                                <div class="db-row-cell">
+                                    <span class="db-cell-lbl">Total</span>
+                                    <span class="db-cell-val db-cell-val--amount">$ {{ '%.2f'|format((reg.total_amount or 0)|float) }}</span>
+                                </div>
+                            </div>
+
+                            {% if not is_paid and not is_payment_started and not is_ready_to_pay %}
+                            <p class="db-lock-note">
+                                <i class="fas fa-lock"></i> Payment unlocks after admin approves your abstract.
+                            </p>
+                            {% endif %}
+
+                            <div class="db-row-actions">
+                                {# Edit selections #}
+                                {% if reg.conference_id %}
+                                    {% if is_paid or is_payment_started %}
+                                    <span class="db-action db-action--muted"><i class="fas fa-lock"></i> Locked</span>
                                     {% else %}
-                                    <a href="{{ url_for('conference_registration', conference_id=reg.conference_id) }}?edit=1"
-                                        class="action-chip">
-                                        <i class="fas fa-pen"></i>
-                                        Edit Selections
+                                    <a href="{{ url_for('conference_registration', conference_id=reg.conference_id) }}?edit=1" class="db-action">
+                                        <i class="fas fa-pen"></i> Edit selections
                                     </a>
                                     {% endif %}
-                                    
+
+                                    {# Abstract / revision actions #}
                                     {% if not reg.has_submission %}
-                                    <a href="{{ url_for('conference_paper_submission', conference_id=reg.conference_id) }}"
-                                        class="action-chip highlight-chip" style="background: #eff6ff; color: #1e40af; border-color: #bfdbfe;">
-                                        <i class="fas fa-file-upload"></i>
-                                        Submit Abstract
+                                    <a href="{{ url_for('conference_paper_submission', conference_id=reg.conference_id) }}" class="db-action db-action--primary">
+                                        <i class="fas fa-file-upload"></i> Submit abstract
                                     </a>
                                     {% else %}
                                         {% if reg.submission_status == 'revision' %}
-                                        <a href="{{ url_for('edit_conference_submission', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
-                                            class="action-chip warning-chip" style="background: #fffbeb; color: #92400e; border-color: #fde68a;">
-                                            <i class="fas fa-edit"></i>
-                                            Revise Abstract
+                                        <a href="{{ url_for('edit_conference_submission', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}" class="db-action db-action--warn">
+                                            <i class="fas fa-edit"></i> Revise abstract
                                         </a>
                                         {% elif reg.submission_status == 'accepted' %}
                                             {% if is_paid %}
                                                 {% if reg.has_full_paper %}
-                                                <a href="{{ url_for('download_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
-                                                    class="action-chip success-chip" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">
-                                                    <i class="fas fa-download"></i>
-                                                    Download Paper
+                                                <a href="{{ url_for('download_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}" class="db-action db-action--ok">
+                                                    <i class="fas fa-download"></i> Download paper
                                                 </a>
-                                                <a href="{{ url_for('submit_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
-                                                    class="action-chip" title="Update your full paper submission">
-                                                    <i class="fas fa-edit"></i>
-                                                    Update Paper
+                                                <a href="{{ url_for('submit_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}" class="db-action">
+                                                    <i class="fas fa-edit"></i> Update paper
                                                 </a>
                                                 {% else %}
-                                                <a href="{{ url_for('submit_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
-                                                    class="action-chip success-chip highlight-chip" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0; font-weight: 700; border-width: 2px;">
-                                                    <i class="fas fa-file-upload"></i>
-                                                    Submit Full Paper
+                                                <a href="{{ url_for('submit_full_paper', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}" class="db-action db-action--ok">
+                                                    <i class="fas fa-file-upload"></i> Submit full paper
                                                 </a>
                                                 {% endif %}
                                             {% else %}
-                                            <span class="action-chip muted-chip" title="Pay registration fee to unlock full paper upload">
-                                                <i class="fas fa-lock"></i>
-                                                Pay to Upload Paper
-                                            </span>
+                                            <span class="db-action db-action--muted"><i class="fas fa-lock"></i> Pay to upload paper</span>
                                             {% endif %}
                                         {% else %}
-                                        <a href="{{ url_for('conference_submission_details', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}"
-                                            class="action-chip">
-                                            <i class="fas fa-eye"></i>
-                                            View Abstract
+                                        <a href="{{ url_for('conference_submission_details', conference_id=reg.conference_id, paper_id=reg.latest_submission.paper_id) }}" class="db-action">
+                                            <i class="fas fa-eye"></i> View abstract
                                         </a>
                                         {% endif %}
                                     {% endif %}
-                                    
-                                    <a href="{{ url_for('conference_details', conference_id=reg.conference_id) }}"
-                                        class="action-chip">
-                                        <i class="fas fa-info-circle"></i>
-                                        Conference
-                                    </a>
-                                    {% else %}
-                                    <span class="action-chip muted-chip">
-                                        <i class="fas fa-info-circle"></i>
-                                        No conference link
-                                    </span>
-                                    {% endif %}
 
-                                    {% if reg.conference_id and not is_paid and not is_payment_started and
-                                    is_ready_to_pay %}
+                                    <a href="{{ url_for('conference_details', conference_id=reg.conference_id) }}" class="db-action">
+                                        <i class="fas fa-info-circle"></i> Conference
+                                    </a>
+                                {% else %}
+                                <span class="db-action db-action--muted"><i class="fas fa-info-circle"></i> No conference link</span>
+                                {% endif %}
+
+                                {# Pay button #}
+                                {% if reg.conference_id and not is_paid and not is_payment_started and is_ready_to_pay %}
                                     {% if needs_type_confirmation %}
-                                    <a href="{{ url_for('conference_registration', conference_id=reg.conference_id) }}"
-                                        class="btn pay-now-btn choose-type-btn" role="button">
-                                        <i class="fas fa-user-edit"></i>
-                                        Choose Registration Type
+                                    <a href="{{ url_for('conference_registration', conference_id=reg.conference_id) }}" class="db-pay-btn" role="button">
+                                        <i class="fas fa-user-edit"></i> Choose type
                                     </a>
                                     {% else %}
-                                    <button type="button" class="pay-now-btn"
-                                        data-conference-id="{{ reg.conference_id }}"
-                                        data-registration-id="{{ reg_id }}">
-                                        <i class="fas fa-credit-card"></i>
-                                        Pay Now
+                                    <button type="button" class="db-pay-btn pay-now-btn"
+                                            data-conference-id="{{ reg.conference_id }}"
+                                            data-registration-id="{{ reg_id }}">
+                                        <i class="fas fa-credit-card"></i> Pay now
                                     </button>
                                     {% endif %}
-                                    {% elif is_payment_started %}
-                                    <span class="pay-state pending-state">
-                                        <i class="fas fa-hourglass-half"></i>
-                                        Payment Started
-                                    </span>
-                                    {% elif is_paid %}
-                                    <span class="pay-state paid-state">
-                                        <i class="fas fa-check-circle"></i>
-                                        {{ 'Waived' if payment_status == 'waived' else 'Paid' }}
-                                    </span>
-                                    {% else %}
-                                    <span class="pay-state locked-state">
-                                        <i class="fas fa-lock"></i>
-                                        Locked
-                                    </span>
-                                    {% endif %}
-                                </div>
+                                {% elif is_payment_started %}
+                                <span class="db-pay-state db-pay-state--pending"><i class="fas fa-hourglass-half"></i> Payment started</span>
+                                {% elif is_paid %}
+                                <span class="db-pay-state db-pay-state--paid"><i class="fas fa-check-circle"></i> {{ 'Waived' if payment_status == 'waived' else 'Paid' }}</span>
+                                {% endif %}
                             </div>
-                            {% endfor %}
-                            <div class="empty-state empty-state-filter is-hidden" id="registrations-no-results">
-                                <div class="empty-icon">
-                                    <i class="fas fa-search-minus"></i>
-                                </div>
-                                <h3>No Matching Registrations</h3>
-                                <p>Try a different search term or switch filters.</p>
-                            </div>
-                            {% else %}
-                            <div class="empty-state">
-                                <div class="empty-icon">
-                                    <i class="fas fa-inbox"></i>
-                                </div>
-                                <h3>No Registrations Yet</h3>
-                                <p>You haven't registered for any conferences yet. Discover upcoming events and get
-                                    started!</p>
-                                <a href="{{ url_for('conference_discover') }}" class="btn-empty-action">
-                                    <i class="fas fa-search"></i>
-                                    Discover Conferences
-                                </a>
-                            </div>
-                            {% endif %}
                         </div>
+                    </div>
+                    {% endfor %}
+
+                    <div class="db-empty-filter is-hidden" id="regs-no-results">
+                        <i class="fas fa-search"></i>
+                        <p>No matching registrations. Try a different search or filter.</p>
                     </div>
                 </div>
 
-                <!-- Submissions Section -->
-                <div class="tab-content" id="submissions-tab">
-                    <div class="submissions-section">
-                        <div class="section-header">
-                            <h2 class="section-title">
-                                <i class="fas fa-file-alt me-2"></i>
-                                My Abstract & Paper Submissions
-                            </h2>
-                            {% if submissions %}
-                            <a href="{{ url_for('paper_submission') }}" class="btn btn-primary submit-another-btn">
-                                <i class="fas fa-plus-circle"></i>
-                                Submit Another Abstract
-                            </a>
-                            {% endif %}
-                        </div>
-                        <div class="submissions-grid">
-                            {% if submissions %}
-                            {% for sub_id, submission in submissions.items() %}
-                            <div class="submission-card" data-status="{{ submission.status|default('pending')|lower }}">
-                                <div class="submission-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
-                                    <div class="submission-icon">
-                                        <i class="fas fa-file-invoice"></i>
-                                    </div>
-                                    <div class="submission-status" style="background: rgba(255, 255, 255, 0.15); color: #ffffff; border-radius: 20px; font-size: 0.82rem; padding: 0.4rem 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
-                                        <i class="fas fa-route"></i>
-                                        Submission Tracker
-                                    </div>
-                                </div>
-                                <div class="submission-body">
-                                    <h3 class="submission-title">{{ submission.paper_title or 'Untitled Paper' }}</h3>
-                                    
-                                    <!-- Visual Progress Timeline -->
-                                    {% set submission_status = (submission.status or 'pending')|lower %}
-                                    {% set is_approved = submission_status in ['accepted', 'approved'] %}
-                                    {% set is_pending = submission_status == 'pending' %}
-                                    {% set is_revision = submission_status == 'revision' %}
-                                    {% set is_rejected = submission_status == 'rejected' %}
-                                    
-                                    {% set is_paid = false %}
-                                    {% set has_reg = false %}
-                                    {% set registration_id = submission.get('registration_id') %}
-                                    {% if registration_id and registration_id in registrations %}
-                                        {% set has_reg = true %}
-                                        {% set registration = registrations[registration_id] %}
-                                        {% set is_paid = (registration.get('payment_status') or '')|lower in ['paid', 'waived'] %}
-                                    {% endif %}
-                                    {% set has_full_paper = submission.get('full_paper_submitted_at') %}
+                {% else %}
+                <div class="db-empty">
+                    <i class="fas fa-inbox"></i>
+                    <h2>No registrations yet</h2>
+                    <p>You haven't registered for any conferences. Discover upcoming events and get started.</p>
+                    <a href="{{ url_for('conference_discover') }}" class="db-empty-btn">
+                        <i class="fas fa-search"></i> Discover conferences
+                    </a>
+                </div>
+                {% endif %}
+            </div>
 
-                                    <div class="submission-timeline">
-                                        <div class="timeline-step completed">
-                                            <div class="step-circle">
-                                                <i class="fas fa-check"></i>
-                                            </div>
-                                            <div class="step-label">Abstract Submitted</div>
-                                        </div>
-                                        
-                                        <div class="timeline-step {% if is_approved %}completed{% elif is_revision %}warning{% elif is_rejected %}danger{% else %}active{% endif %}">
-                                            <div class="step-circle">
-                                                {% if is_approved %}
-                                                    <i class="fas fa-check"></i>
-                                                {% elif is_revision %}
-                                                    <i class="fas fa-exclamation-triangle"></i>
-                                                {% elif is_rejected %}
-                                                    <i class="fas fa-times"></i>
-                                                {% else %}
-                                                    <i class="fas fa-spinner fa-spin"></i>
-                                                {% endif %}
-                                            </div>
-                                            <div class="step-label">
-                                                {% if is_approved %}
-                                                    Abstract Approved
-                                                {% elif is_revision %}
-                                                    Revision Needed
-                                                {% elif is_rejected %}
-                                                    Abstract Rejected
-                                                {% else %}
-                                                    Under Review
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="timeline-step {% if is_paid %}completed{% elif is_approved %}active{% else %}disabled{% endif %}">
-                                            <div class="step-circle">
-                                                {% if is_paid %}
-                                                    <i class="fas fa-check"></i>
-                                                {% elif is_approved %}
-                                                    <i class="fas fa-credit-card"></i>
-                                                {% else %}
-                                                    <i class="fas fa-lock"></i>
-                                                {% endif %}
-                                            </div>
-                                            <div class="step-label">
-                                                {% if is_paid %}
-                                                    Fee Paid
-                                                {% elif is_approved %}
-                                                    Payment Pending
-                                                {% else %}
-                                                    Payment Locked
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="timeline-step {% if has_full_paper %}completed{% elif is_paid %}active{% else %}disabled{% endif %}">
-                                            <div class="step-circle">
-                                                {% if has_full_paper %}
-                                                    <i class="fas fa-check"></i>
-                                                {% elif is_paid %}
-                                                    <i class="fas fa-file-upload"></i>
-                                                {% else %}
-                                                    <i class="fas fa-lock"></i>
-                                                {% endif %}
-                                            </div>
-                                            <div class="step-label">
-                                                {% if has_full_paper %}
-                                                    Paper Uploaded
-                                                {% elif is_paid %}
-                                                    Submit Full Paper
-                                                {% else %}
-                                                    Paper Locked
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="submission-meta" style="margin-top: 1rem;">
+            {# ══ SUBMISSIONS TAB ══ #}
+            <div class="db-tab-pane" id="tab-submissions">
+                <div class="db-section-header">
+                    <div>
+                        <h1 class="db-page-title">My Submissions</h1>
+                        <p class="db-page-sub">Abstract and full paper submissions across all conferences.</p>
+                    </div>
+                    {% if submissions %}
+                    <a href="{{ url_for('paper_submission') }}" class="db-cta-btn">
+                        <i class="fas fa-plus"></i> Submit another
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if submissions %}
+                <div class="db-list">
+                    {% for sub_id, submission in submissions.items() %}
+                    {% set submission_status = (submission.status or 'pending')|lower %}
+                    {% set is_approved = submission_status in ['accepted', 'approved'] %}
+                    {% set is_pending = submission_status == 'pending' %}
+                    {% set is_revision = submission_status == 'revision' %}
+                    {% set is_rejected = submission_status == 'rejected' %}
+                    {% set is_paid = false %}
+                    {% set has_reg = false %}
+                    {% set registration_id = submission.get('registration_id') %}
+                    {% if registration_id and registration_id in registrations %}
+                        {% set has_reg = true %}
+                        {% set registration = registrations[registration_id] %}
+                        {% set is_paid = (registration.get('payment_status') or '')|lower in ['paid', 'waived'] %}
+                    {% endif %}
+                    {% set has_full_paper = submission.get('full_paper_submitted_at') %}
+
+                    <div class="db-row" data-status="{{ submission_status }}">
+                        <div class="db-row-stripe stripe--{{ 'ok' if is_approved else ('warn' if is_revision else ('danger' if is_rejected else 'pending')) }}"></div>
+
+                        <div class="db-row-body">
+                            <div class="db-row-top">
+                                <div class="db-row-titles">
+                                    <h2 class="db-row-title">{{ submission.paper_title or 'Untitled submission' }}</h2>
+                                    <div class="db-row-meta">
                                         {% if submission.research_area %}
-                                        <span class="meta-badge">
-                                            <i class="fas fa-microscope"></i>
-                                            {{ submission.research_area|replace('_', ' ')|title }}
-                                        </span>
+                                        <span class="db-meta-chip">{{ submission.research_area|replace('_', ' ')|title }}</span>
                                         {% endif %}
                                         {% if submission.presentation_type %}
-                                        <span class="meta-badge">
-                                            <i class="fas fa-presentation"></i>
-                                            {{ submission.presentation_type|title }}
+                                        <span class="db-meta-chip">{{ submission.presentation_type|title }}</span>
+                                        {% endif %}
+                                        {% if submission.submitted_at %}
+                                        <span class="db-meta-chip">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            {{ submission.submitted_at[:10] if submission.submitted_at|length > 10 else submission.submitted_at }}
+                                        </span>
+                                        {% endif %}
+                                        {% if submission.authors and submission.authors|length > 0 %}
+                                        <span class="db-meta-chip">
+                                            <i class="fas fa-users"></i>
+                                            {{ submission.authors[0].name }}{% if submission.authors|length > 1 %} +{{ submission.authors|length - 1 }}{% endif %}
                                         </span>
                                         {% endif %}
                                     </div>
-                                    {% if submission.submitted_at %}
-                                    <div class="submission-date">
-                                        <i class="fas fa-calendar-alt"></i>
-                                        Submitted: {{ submission.submitted_at[:10] if submission.submitted_at|length >
-                                        10 else submission.submitted_at }}
-                                    </div>
-                                    {% endif %}
-                                    {% if submission.authors %}
-                                    <div class="submission-authors">
-                                        <i class="fas fa-users"></i>
-                                        {% if submission.authors|length > 0 %}
-                                        {{ submission.authors[0].name }}
-                                        {% if submission.authors|length > 1 %}
-                                        + {{ submission.authors|length - 1 }} co-author{{ 's' if
-                                        submission.authors|length > 2 else '' }}
-                                        {% endif %}
-                                        {% endif %}
-                                    </div>
-                                    {% endif %}
                                 </div>
-                                <div class="submission-footer">
-                                    {% set submission_status = (submission.status or 'pending')|lower %}
-                                    
-                                    <!-- Full Paper Status Display -->
-                                    <div class="full-paper-status-section">
-                                        {% if submission_status == 'accepted' %}
-                                            {% set registration_id = submission.get('registration_id') %}
-                                            {% if registration_id and registration_id in registrations %}
-                                                {% set registration = registrations[registration_id] %}
-                                                {% set payment_status = (registration.get('payment_status') or '')|lower %}
-                                                {% set has_full_paper = submission.get('full_paper_submitted_at') %}
-                                                
-                                                {% if payment_status in ['paid', 'waived'] %}
-                                                    <!-- Payment is made - show full paper options -->
-                                                    {% if has_full_paper %}
-                                                        <div class="full-paper-status submitted">
-                                                            <i class="fas fa-check-circle"></i>
-                                                            <span>Full Paper: Submitted</span>
-                                                            <small>{{ submission.full_paper_submitted_at[:10] if submission.full_paper_submitted_at|length > 10 else submission.full_paper_submitted_at }}</small>
-                                                        </div>
-                                                    {% else %}
-                                                        <div class="full-paper-status pending">
-                                                            <i class="fas fa-hourglass-half"></i>
-                                                            <span>Full Paper: Pending Upload</span>
-                                                        </div>
-                                                    {% endif %}
-                                                {% else %}
-                                                    <!-- Payment not made - locked -->
-                                                    <div class="full-paper-status locked">
-                                                        <i class="fas fa-lock"></i>
-                                                        <span>Full Paper: Locked (Awaiting Payment)</span>
-                                                    </div>
-                                                {% endif %}
-                                            {% else %}
-                                                <div class="full-paper-status locked">
-                                                    <i class="fas fa-lock"></i>
-                                                    <span>Full Paper: Locked (No Registration Found)</span>
-                                                </div>
-                                            {% endif %}
-                                        {% else %}
-                                            <!-- Abstract not accepted - locked -->
-                                            <div class="full-paper-status locked">
-                                                <i class="fas fa-lock"></i>
-                                                <span>Full Paper: Locked (Awaiting Acceptance)</span>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    {% if submission.conference_id and submission.paper_id %}
-                                    <div class="submission-footer-actions">
-                                        <a href="{{ url_for('conference_submission_details', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                            class="submission-link">
-                                            <i class="fas fa-eye"></i>
-                                            View
-                                        </a>
-                                        {% if submission_status in ['pending', 'revision', 'rejected'] and not
-                                        submission.is_deleted %}
-                                        <a href="{{ url_for('edit_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                            class="submission-link">
-                                            <i class="fas fa-pen"></i>
-                                            Edit
-                                        </a>
-                                        {% endif %}
-                                        <a href="{{ url_for('download_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                            class="submission-link">
-                                            <i class="fas fa-download"></i>
-                                            PDF
-                                        </a>
-                                        
-                                        <!-- Full Paper Upload Buttons -->
-                                        {% if submission_status == 'accepted' %}
-                                            {% set registration_id = submission.get('registration_id') %}
-                                            {% if registration_id and registration_id in registrations %}
-                                                {% set registration = registrations[registration_id] %}
-                                                {% set payment_status = (registration.get('payment_status') or '')|lower %}
-                                                {% set has_full_paper = submission.get('full_paper_submitted_at') %}
-                                                
-                                                {% if payment_status in ['paid', 'waived'] %}
-                                                    {% if has_full_paper %}
-                                                        <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                                            class="submission-link submission-update">
-                                                            <i class="fas fa-edit"></i>
-                                                            Update Paper
-                                                        </a>
-                                                        <a href="{{ url_for('download_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                                            class="submission-link submission-download">
-                                                            <i class="fas fa-cloud-download-alt"></i>
-                                                            Download Paper
-                                                        </a>
-                                                    {% else %}
-                                                        <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                                            class="submission-link submission-upload">
-                                                            <i class="fas fa-file-upload"></i>
-                                                            Upload Paper
-                                                        </a>
-                                                    {% endif %}
-                                                {% endif %}
-                                            {% endif %}
-                                        {% endif %}
-                                        
-                                        <form method="POST"
-                                            action="{{ url_for('withdraw_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
-                                            onsubmit="return confirm('Withdraw this submission?');">
-                                            <button type="submit" class="submission-link submission-danger">
-                                                <i class="fas fa-times-circle"></i>
-                                                Withdraw
-                                            </button>
-                                        </form>
-                                    </div>
-                                    {% else %}
-                                    <a href="{{ url_for('call_for_papers') }}" class="submission-link">
-                                        <i class="fas fa-eye"></i>
-                                        View Details
-                                    </a>
-                                    {% endif %}
+                                <div class="db-status-tag tag--{{ 'ok' if is_approved else ('warn' if is_revision else ('danger' if is_rejected else 'pending')) }}">
+                                    {{ submission_status|replace('_', ' ')|title }}
                                 </div>
                             </div>
-                            {% endfor %}
-                            {% else %}
-                            <div class="empty-state">
-                                <div class="empty-icon">
-                                    <i class="fas fa-file-alt"></i>
+
+                            {# Progress tracker – inline horizontal steps #}
+                            <div class="db-progress">
+                                <div class="db-progress-step is-done">
+                                    <div class="db-step-dot"><i class="fas fa-check"></i></div>
+                                    <span>Submitted</span>
                                 </div>
-                                <h3>No Submissions Yet</h3>
-                                <p>You haven't submitted any abstracts yet. Start by submitting your research abstract!</p>
-                                <a href="{{ url_for('call_for_papers') }}" class="btn-empty-action">
-                                    <i class="fas fa-file-upload"></i>
-                                    Submit Abstract
-                                </a>
+                                <div class="db-progress-line"></div>
+                                <div class="db-progress-step {{ 'is-done' if is_approved else ('is-warn' if is_revision else ('is-danger' if is_rejected else 'is-active')) }}">
+                                    <div class="db-step-dot">
+                                        {% if is_approved %}<i class="fas fa-check"></i>
+                                        {% elif is_revision %}<i class="fas fa-exclamation"></i>
+                                        {% elif is_rejected %}<i class="fas fa-times"></i>
+                                        {% else %}<i class="fas fa-circle-notch fa-spin"></i>{% endif %}
+                                    </div>
+                                    <span>
+                                        {% if is_approved %}Approved
+                                        {% elif is_revision %}Revision needed
+                                        {% elif is_rejected %}Rejected
+                                        {% else %}Under review{% endif %}
+                                    </span>
+                                </div>
+                                <div class="db-progress-line"></div>
+                                <div class="db-progress-step {{ 'is-done' if is_paid else ('is-active' if is_approved else 'is-locked') }}">
+                                    <div class="db-step-dot">
+                                        {% if is_paid %}<i class="fas fa-check"></i>
+                                        {% elif is_approved %}<i class="fas fa-credit-card"></i>
+                                        {% else %}<i class="fas fa-lock"></i>{% endif %}
+                                    </div>
+                                    <span>{{ 'Fee paid' if is_paid else ('Payment pending' if is_approved else 'Payment locked') }}</span>
+                                </div>
+                                <div class="db-progress-line"></div>
+                                <div class="db-progress-step {{ 'is-done' if has_full_paper else ('is-active' if is_paid else 'is-locked') }}">
+                                    <div class="db-step-dot">
+                                        {% if has_full_paper %}<i class="fas fa-check"></i>
+                                        {% elif is_paid %}<i class="fas fa-file-upload"></i>
+                                        {% else %}<i class="fas fa-lock"></i>{% endif %}
+                                    </div>
+                                    <span>{{ 'Paper uploaded' if has_full_paper else ('Submit paper' if is_paid else 'Paper locked') }}</span>
+                                </div>
+                            </div>
+
+                            {# Full paper status line #}
+                            {% if submission_status == 'accepted' %}
+                            <div class="db-paper-status
+                                {% if registration_id and registration_id in registrations %}
+                                    {% set registration = registrations[registration_id] %}
+                                    {% set ps = (registration.get('payment_status') or '')|lower %}
+                                    {{ 'db-paper-status--ok' if (ps in ['paid','waived'] and has_full_paper) else ('db-paper-status--pending' if ps in ['paid','waived'] else 'db-paper-status--locked') }}
+                                {% else %}db-paper-status--locked{% endif %}">
+                                {% if registration_id and registration_id in registrations %}
+                                    {% set registration = registrations[registration_id] %}
+                                    {% set ps = (registration.get('payment_status') or '')|lower %}
+                                    {% if ps in ['paid','waived'] %}
+                                        {% if has_full_paper %}
+                                        <i class="fas fa-check-circle"></i> Full paper submitted
+                                        <small>{{ submission.full_paper_submitted_at[:10] if submission.full_paper_submitted_at|length > 10 else submission.full_paper_submitted_at }}</small>
+                                        {% else %}
+                                        <i class="fas fa-hourglass-half"></i> Full paper: pending upload
+                                        {% endif %}
+                                    {% else %}
+                                    <i class="fas fa-lock"></i> Full paper locked — awaiting payment
+                                    {% endif %}
+                                {% else %}
+                                <i class="fas fa-lock"></i> Full paper locked — no registration found
+                                {% endif %}
                             </div>
                             {% endif %}
+
+                            {# Actions #}
+                            <div class="db-row-actions">
+                                {% if submission.conference_id and submission.paper_id %}
+                                <a href="{{ url_for('conference_submission_details', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                {% if submission_status in ['pending', 'revision', 'rejected'] and not submission.is_deleted %}
+                                <a href="{{ url_for('edit_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action">
+                                    <i class="fas fa-pen"></i> Edit
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('download_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action">
+                                    <i class="fas fa-download"></i> PDF
+                                </a>
+
+                                {# Full paper upload #}
+                                {% if submission_status == 'accepted' %}
+                                    {% if registration_id and registration_id in registrations %}
+                                        {% set registration = registrations[registration_id] %}
+                                        {% set ps = (registration.get('payment_status') or '')|lower %}
+                                        {% if ps in ['paid','waived'] %}
+                                            {% if has_full_paper %}
+                                            <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action db-action--warn">
+                                                <i class="fas fa-edit"></i> Update paper
+                                            </a>
+                                            <a href="{{ url_for('download_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action db-action--ok">
+                                                <i class="fas fa-cloud-download-alt"></i> Download paper
+                                            </a>
+                                            {% else %}
+                                            <a href="{{ url_for('submit_full_paper', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action db-action--primary">
+                                                <i class="fas fa-file-upload"></i> Upload paper
+                                            </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+
+                                <form method="POST"
+                                      action="{{ url_for('withdraw_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}"
+                                      onsubmit="return confirm('Withdraw this submission?');"
+                                      style="margin:0;">
+                                    <button type="submit" class="db-action db-action--danger">
+                                        <i class="fas fa-times-circle"></i> Withdraw
+                                    </button>
+                                </form>
+                                {% else %}
+                                <a href="{{ url_for('call_for_papers') }}" class="db-action">
+                                    <i class="fas fa-eye"></i> View details
+                                </a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="db-empty">
+                    <i class="fas fa-file-alt"></i>
+                    <h2>No submissions yet</h2>
+                    <p>Submit your research abstract to get started.</p>
+                    <a href="{{ url_for('call_for_papers') }}" class="db-empty-btn">
+                        <i class="fas fa-file-upload"></i> Submit abstract
+                    </a>
+                </div>
+                {% endif %}
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- ZAR Confirmation Modal -->
-<div id="zar-confirm-backdrop">
-    <div id="zar-confirm-modal">
-        <div id="zar-modal-header">
-            <h2>Payment Confirmation</h2>
-            <button type="button" id="zar-modal-close" aria-label="Close modal"><i class="fas fa-times"></i></button>
+            </main>
+        </div>{# /db-shell #}
+    </div>{# /db-main-wrap #}
+</div>{# /db-root #}
+
+{# ── ZAR Confirmation Modal ── #}
+<div id="zar-backdrop">
+    <div id="zar-modal">
+        <div id="zar-modal-head">
+            <h2>Confirm payment</h2>
+            <button type="button" id="zar-close" aria-label="Close"><i class="fas fa-times"></i></button>
         </div>
         <div id="zar-modal-body">
-            <div class="zar-info-badge">
+            <div class="zar-info">
                 <i class="fas fa-info-circle"></i>
                 You will be charged in South African Rands (ZAR).
             </div>
-            <div class="zar-amounts-grid">
+            <div class="zar-amounts">
                 <div class="zar-amount-card">
-                    <div class="zar-amount-label">Registration Total</div>
-                    <div class="zar-amount-value" id="zar-usd-display">...</div>
+                    <div class="zar-amount-lbl">Registration total</div>
+                    <div class="zar-amount-val" id="zar-usd">…</div>
                 </div>
-                <div class="zar-amount-card highlight">
-                    <div class="zar-amount-label">You Pay (ZAR)</div>
-                    <div class="zar-amount-value" id="zar-zar-display"><i class="fas fa-spinner fa-spin"
-                            style="font-size:1rem;"></i></div>
+                <div class="zar-amount-card zar-amount-card--hi">
+                    <div class="zar-amount-lbl">You pay (ZAR)</div>
+                    <div class="zar-amount-val" id="zar-zar"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
             </div>
-            <div class="zar-rate-note" id="zar-rate-note">
-                Fetching live exchange rate...
-            </div>
+            <p class="zar-rate" id="zar-rate">Fetching live exchange rate…</p>
         </div>
-        <div id="zar-modal-actions">
-            <button type="button" id="zar-modal-cancel">Cancel</button>
-            <button type="button" id="zar-modal-proceed">Proceed to Payment</button>
+        <div id="zar-modal-foot">
+            <button type="button" id="zar-cancel">Cancel</button>
+            <button type="button" id="zar-proceed">Proceed to payment</button>
         </div>
     </div>
 </div>
 
 <style>
-    /* ── ZAR Confirmation Modal ─────────────────────────────────────────── */
-    #zar-confirm-backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(10, 20, 40, 0.60);
-        backdrop-filter: blur(4px);
-        z-index: 9999;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
+/* ══════════════════════════════════════════════
+   DASHBOARD – Full-height fixed sidebar layout
+   Palette: #000 primary · #f7f7f5 bg · #e9e9e7 border
+══════════════════════════════════════════════ */
 
-    #zar-confirm-backdrop.open {
+:root {
+    --sb-w: 240px;
+    --sb-w-collapsed: 52px;
+    --sb-transition: 0.22s ease;
+    --topbar-h: 52px;
+}
+
+/* ── Root: flex row ── */
+.db-root {
+    display: flex;
+    min-height: 100vh;
+    background: #f7f7f5;
+}
+
+/* ══════════════════════════════
+   SIDEBAR
+══════════════════════════════ */
+.db-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: var(--sb-w);
+    background: #fff;
+    border-right: 1px solid #e9e9e7;
+    display: flex;
+    flex-direction: column;
+    z-index: 400;
+    transition: width var(--sb-transition);
+    overflow: hidden;          /* clips labels when collapsing */
+}
+
+/* Collapsed state (class on .db-root) */
+.db-root.sb-collapsed .db-sidebar { width: var(--sb-w-collapsed); }
+
+/* ── User identity block ── */
+.db-sb-user {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1rem 0.85rem 0.75rem;
+    flex-shrink: 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.db-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: #000;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.db-sb-user-info { min-width: 0; overflow: hidden; }
+.db-sb-name {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+.db-sb-email {
+    font-size: 0.72rem;
+    color: #9b9b98;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Divider ── */
+.db-sb-divider {
+    height: 1px;
+    background: #e9e9e7;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* ── Section label ── */
+.db-sidebar-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9b9b98;
+    padding: 0.65rem 0.85rem 0.3rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.db-sidebar-label span { display: block; }
+
+/* ── Nav ── */
+.db-sidenav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.db-sidenav-divider {
+    height: 1px;
+    background: #e9e9e7;
+    margin: 0.5rem 0;
+}
+.db-sidelink {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.44rem 0.6rem;
+    border-radius: 7px;
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: #3b3b39;
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s;
+    min-width: 0;
+    overflow: hidden;
+}
+.db-sidelink:hover { background: #f0efed; }
+.db-sidelink.is-active { background: #f0efed; font-weight: 700; color: #000; }
+.db-sidelink i {
+    width: 18px;
+    text-align: center;
+    color: #9b9b98;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.db-sidelink.is-active i { color: #000; }
+.db-sidelink-logout i, .db-sidelink-logout { color: #b91c1c !important; }
+.db-sidelink-logout:hover { background: #fef2f2 !important; }
+.db-sidelink span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.db-badge {
+    font-style: normal;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #e9e9e7;
+    color: #3b3b39;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    min-width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.db-sidelink.is-active .db-badge { background: #000; color: #fff; }
+
+/* ── Stats ── */
+.db-sidebar-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    padding: 0.6rem 0.5rem;
+    border-top: 1px solid #e9e9e7;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.db-root.sb-collapsed .db-sidebar-stats { display: none; }
+.db-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    align-items: center;
+    text-align: center;
+    background: #f7f7f5;
+    border-radius: 6px;
+    padding: 0.45rem 0.3rem;
+    min-width: 0;
+}
+.db-stat-val { font-size: 1rem; font-weight: 700; color: #1a1a1a; }
+.db-stat-lbl { font-size: 0.68rem; color: #9b9b98; font-weight: 500; white-space: nowrap; }
+
+/* ── Collapse toggle ── */
+.db-sb-collapse {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    border: none;
+    border-top: 1px solid #e9e9e7;
+    background: #fff;
+    color: #9b9b98;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: color 0.12s, background 0.12s;
+}
+.db-sb-collapse:hover { background: #f0efed; color: #3b3b39; }
+.db-sb-collapse i { width: 18px; text-align: center; flex-shrink: 0; transition: transform var(--sb-transition); }
+.db-root.sb-collapsed .db-sb-collapse i { transform: rotate(180deg); }
+.db-sb-collapse span { overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Collapsed sidebar: center icons, hide text ── */
+.db-root.sb-collapsed .db-sb-user-info,
+.db-root.sb-collapsed .db-sidebar-label,
+.db-root.sb-collapsed .db-sidelink span,
+.db-root.sb-collapsed .db-badge,
+.db-root.sb-collapsed .db-sb-collapse span { display: none; }
+.db-root.sb-collapsed .db-sb-user { justify-content: center; padding: 0.85rem 0; }
+.db-root.sb-collapsed .db-sidelink { justify-content: center; padding: 0.55rem; }
+.db-root.sb-collapsed .db-sidelink i { width: auto; }
+.db-root.sb-collapsed .db-sb-collapse { justify-content: center; }
+
+/* ── Mobile backdrop ── */
+.db-sb-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 399;
+}
+.db-root.sb-mobile-open .db-sb-backdrop { display: block; }
+
+/* ══════════════════════════════
+   MAIN WRAP
+══════════════════════════════ */
+.db-main-wrap {
+    flex: 1;
+    margin-left: var(--sb-w);
+    min-width: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left var(--sb-transition);
+}
+.db-root.sb-collapsed .db-main-wrap { margin-left: var(--sb-w-collapsed); }
+
+/* ── Topbar ── */
+.db-topbar {
+    background: #fff;
+    border-bottom: 1px solid #e9e9e7;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    flex-shrink: 0;
+}
+.db-topbar-inner {
+    padding: 0 1.5rem;
+    height: var(--topbar-h);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.db-hamburger {
+    display: none;
+    border: none;
+    background: transparent;
+    color: #6b6b6a;
+    font-size: 1rem;
+    padding: 0.35rem;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.db-hamburger:hover { background: #f0efed; color: #000; }
+.db-topbar-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    flex: 1;
+}
+.db-topbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+.db-topnav-link {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #6b6b6a;
+    text-decoration: none;
+    padding: 0.32rem 0.6rem;
+    border-radius: 6px;
+    transition: background 0.12s, color 0.12s;
+}
+.db-topnav-link:hover { background: #f0efed; color: #1a1a1a; }
+.db-topnav-logout { color: #b91c1c; }
+.db-topnav-logout:hover { background: #fef2f2; color: #991b1b; }
+
+/* ── Flash ── */
+.db-flash-wrap {
+    padding: 0.75rem 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.db-flash {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.87rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+.db-flash--success { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.db-flash--error, .db-flash--danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.db-flash--warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.db-flash--info    { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+.db-flash button { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1rem; color: inherit; opacity: 0.6; padding: 0 0.25rem; }
+.db-flash button:hover { opacity: 1; }
+
+/* ── Shell ── */
+.db-shell {
+    padding: 1.25rem 1.5rem 3rem;
+    flex: 1;
+    min-width: 0;
+}
+.db-mobile-tabs { display: none; }
+
+/* ── Main ── */
+.db-main { min-width: 0; }
+
+/* ── Section header ── */
+.db-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+.db-page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 0.2rem;
+}
+.db-page-sub {
+    font-size: 0.85rem;
+    color: #9b9b98;
+    margin: 0;
+}
+.db-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    background: #000;
+    color: #fff;
+    border-radius: 7px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+.db-cta-btn:hover { opacity: 0.85; color: #fff; }
+
+/* ── Toolbar ── */
+.db-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e9e9e7;
+    border-radius: 9px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.db-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex: 1;
+    min-width: 220px;
+}
+.db-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+.db-count-pill {
+    font-size: 0.74rem;
+    font-weight: 700;
+    background: #000;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.22rem 0.6rem;
+    white-space: nowrap;
+}
+.db-search-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #f7f7f5;
+    border: 1px solid #e9e9e7;
+    border-radius: 7px;
+    padding: 0.38rem 0.65rem;
+    flex: 1;
+    max-width: 320px;
+}
+.db-search-label i { color: #9b9b98; font-size: 0.8rem; }
+.db-search-label input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.85rem;
+    color: #1a1a1a;
+    width: 100%;
+}
+.db-search-label input::placeholder { color: #c7c7c4; }
+.db-filter-group {
+    display: inline-flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+.db-filter-btn {
+    border: 1px solid #e9e9e7;
+    background: #fff;
+    color: #6b6b6a;
+    border-radius: 6px;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.db-filter-btn:hover { border-color: #000; color: #000; }
+.db-filter-btn.is-active { background: #000; border-color: #000; color: #fff; }
+.db-sort-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #6b6b6a;
+}
+.db-sort-label select {
+    border: 1px solid #e9e9e7;
+    border-radius: 6px;
+    background: #fff;
+    color: #1a1a1a;
+    font-size: 0.8rem;
+    padding: 0.28rem 0.5rem;
+    cursor: pointer;
+}
+
+/* ── List ── */
+.db-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* ── Row (the card) ── */
+.db-row {
+    background: #fff;
+    border: 1px solid #e9e9e7;
+    border-radius: 10px;
+    display: flex;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.db-row:hover {
+    border-color: #c7c7c4;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* ── Stripe ── */
+.db-row-stripe {
+    width: 4px;
+    flex-shrink: 0;
+}
+.stripe--paid,
+.stripe--ok     { background: #10b981; }
+.stripe--approved { background: #10b981; }
+.stripe--pending  { background: #f59e0b; }
+.stripe--started  { background: #3b82f6; }
+.stripe--rejected,
+.stripe--danger   { background: #ef4444; }
+.stripe--warn     { background: #f59e0b; }
+
+/* ── Row body ── */
+.db-row-body {
+    flex: 1;
+    padding: 0.9rem 1rem;
+    min-width: 0;
+}
+.db-row-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+}
+.db-row-titles { flex: 1; min-width: 0; }
+.db-row-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 0.3rem;
+    line-height: 1.4;
+}
+.db-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.db-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.74rem;
+    color: #6b6b6a;
+    background: #f0efed;
+    border-radius: 5px;
+    padding: 0.18rem 0.5rem;
+    font-weight: 500;
+}
+.db-meta-chip--code {
+    background: #1a1a1a;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+/* ── Status tag ── */
+.db-status-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 0.22rem 0.6rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.tag--paid, .tag--approved, .tag--ok { background: #d1fae5; color: #065f46; }
+.tag--pending { background: #fef3c7; color: #92400e; }
+.tag--started { background: #dbeafe; color: #1e40af; }
+.tag--rejected, .tag--danger { background: #fee2e2; color: #7f1d1d; }
+.tag--warn { background: #fef3c7; color: #92400e; }
+
+/* ── Quick data grid ── */
+.db-row-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+.db-row-cell {
+    background: #f7f7f5;
+    border: 1px solid #e9e9e7;
+    border-radius: 6px;
+    padding: 0.4rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.db-cell-lbl {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9b9b98;
+    font-weight: 700;
+}
+.db-cell-val {
+    font-size: 0.84rem;
+    color: #1a1a1a;
+    font-weight: 600;
+}
+.db-cell-val--amount { font-weight: 700; }
+.val--accepted, .val--ok { color: #059669; }
+.val--pending, .val--revision { color: #d97706; }
+.val--rejected, .val--danger { color: #dc2626; }
+.val--locked, .val--none { color: #9b9b98; }
+
+/* ── Lock note ── */
+.db-lock-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 0.35rem 0.65rem;
+    margin-bottom: 0.6rem;
+}
+
+/* ── Actions ── */
+.db-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+.db-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.79rem;
+    font-weight: 600;
+    color: #3b3b39;
+    background: #f0efed;
+    border: 1px solid #e9e9e7;
+    border-radius: 6px;
+    padding: 0.32rem 0.65rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+}
+.db-action:hover { background: #e9e9e7; border-color: #c7c7c4; color: #1a1a1a; }
+.db-action--muted { color: #9b9b98; background: #fafafa; }
+.db-action--primary { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.db-action--primary:hover { background: #dbeafe; color: #1e40af; }
+.db-action--ok { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.db-action--ok:hover { background: #dcfce7; color: #15803d; }
+.db-action--warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.db-action--warn:hover { background: #fef3c7; color: #78350f; }
+.db-action--danger {
+    background: transparent;
+    border-color: transparent;
+    color: #b91c1c;
+    padding-left: 0.3rem;
+}
+.db-action--danger:hover { text-decoration: underline; }
+
+/* ── Pay button ── */
+.db-pay-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.38rem 0.85rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.db-pay-btn:hover { opacity: 0.85; color: #fff; }
+.db-pay-btn:disabled { opacity: 0.5; cursor: wait; }
+.db-pay-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.79rem;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 0.32rem 0.65rem;
+}
+.db-pay-state--paid    { background: #d1fae5; color: #065f46; }
+.db-pay-state--pending { background: #fef3c7; color: #92400e; }
+
+/* ── Progress tracker ── */
+.db-progress {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 0.6rem 0;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+}
+.db-progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 72px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.db-progress-step span {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #9b9b98;
+    line-height: 1.2;
+    max-width: 72px;
+}
+.db-progress-line {
+    flex: 1;
+    min-width: 16px;
+    height: 2px;
+    background: #e9e9e7;
+    margin-bottom: 1.2rem;
+    flex-shrink: 0;
+}
+.db-step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #e9e9e7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: #9b9b98;
+}
+/* Step states */
+.db-progress-step.is-done .db-step-dot { background: #10b981; border-color: #10b981; color: #fff; }
+.db-progress-step.is-done span { color: #065f46; }
+.db-progress-step.is-active .db-step-dot { border-color: #3b82f6; color: #3b82f6; }
+.db-progress-step.is-active span { color: #1d4ed8; }
+.db-progress-step.is-warn .db-step-dot { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+.db-progress-step.is-warn span { color: #b45309; }
+.db-progress-step.is-danger .db-step-dot { background: #ef4444; border-color: #ef4444; color: #fff; }
+.db-progress-step.is-danger span { color: #b91c1c; }
+.db-progress-step.is-locked .db-step-dot { background: #f7f7f5; color: #c7c7c4; }
+
+/* ── Full paper status ── */
+.db-paper-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    border-radius: 6px;
+    margin-bottom: 0.6rem;
+    border: 1px solid transparent;
+}
+.db-paper-status--ok { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.db-paper-status--pending { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.db-paper-status--locked { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.db-paper-status small { font-weight: 400; opacity: 0.8; }
+
+/* ── Tab panes ── */
+.db-tab-pane { display: none; }
+.db-tab-pane.is-active { display: block; }
+
+/* ── Empty states ── */
+.db-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border: 1px solid #e9e9e7;
+    border-radius: 10px;
+}
+.db-empty > i {
+    font-size: 2.5rem;
+    color: #c7c7c4;
+    margin-bottom: 1rem;
+    display: block;
+}
+.db-empty h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 0.5rem;
+}
+.db-empty p {
+    font-size: 0.88rem;
+    color: #9b9b98;
+    margin: 0 0 1.5rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.db-empty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    background: #000;
+    color: #fff;
+    border-radius: 7px;
+    font-size: 0.87rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+.db-empty-btn:hover { opacity: 0.85; color: #fff; }
+
+.db-empty-filter {
+    text-align: center;
+    padding: 2rem;
+    background: #fafafa;
+    border: 1px dashed #d1d5db;
+    border-radius: 9px;
+    color: #9b9b98;
+    font-size: 0.87rem;
+}
+.db-empty-filter > i { display: block; font-size: 1.5rem; margin-bottom: 0.5rem; }
+.db-empty-filter p { margin: 0; }
+.is-hidden { display: none !important; }
+
+/* ── ZAR Modal ── */
+#zar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+#zar-backdrop.open { display: flex; }
+#zar-modal {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 440px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+    overflow: hidden;
+    animation: zarIn 0.2s ease both;
+}
+@keyframes zarIn {
+    from { opacity:0; transform: scale(0.95) translateY(8px); }
+    to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+#zar-modal-head {
+    padding: 1.1rem 1.25rem 0.9rem;
+    border-bottom: 1px solid #e9e9e7;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#zar-modal-head h2 { margin:0; font-size:1rem; font-weight:700; color:#1a1a1a; }
+#zar-close {
+    background:none; border:none; cursor:pointer;
+    color:#9b9b98; font-size:1rem; padding:0.25rem;
+    border-radius:5px; transition: background 0.12s;
+}
+#zar-close:hover { background:#f0efed; }
+#zar-modal-body { padding: 1.1rem 1.25rem; }
+.zar-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 7px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.84rem;
+    color: #1e40af;
+    margin-bottom: 1rem;
+}
+.zar-amounts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin-bottom: 0.75rem;
+}
+.zar-amount-card {
+    background: #f7f7f5;
+    border: 1px solid #e9e9e7;
+    border-radius: 8px;
+    padding: 0.8rem;
+    text-align: center;
+}
+.zar-amount-card--hi {
+    border-color: #000;
+    background: #f0efed;
+}
+.zar-amount-lbl {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9b9b98;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.zar-amount-val {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1a1a1a;
+}
+.zar-rate {
+    font-size: 0.76rem;
+    color: #9b9b98;
+    text-align: center;
+    margin: 0;
+}
+.zar-rate span { font-weight: 600; color: #6b6b6a; }
+#zar-modal-foot {
+    display: flex;
+    gap: 0.65rem;
+    padding: 0.9rem 1.25rem;
+    border-top: 1px solid #e9e9e7;
+}
+#zar-cancel {
+    flex: 1;
+    padding: 0.6rem;
+    border: 1px solid #e9e9e7;
+    background: #fff;
+    color: #6b6b6a;
+    border-radius: 7px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+#zar-cancel:hover { background: #f0efed; }
+#zar-proceed {
+    flex: 2;
+    padding: 0.6rem;
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: opacity 0.15s;
+}
+#zar-proceed:hover { opacity: 0.85; }
+#zar-proceed:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    /* Sidebar off-canvas on mobile */
+    .db-sidebar {
+        transform: translateX(-100%);
+        transition: transform var(--sb-transition), width var(--sb-transition);
+        width: var(--sb-w) !important;  /* always full-width when open */
+        box-shadow: 2px 0 20px rgba(0,0,0,0.12);
+    }
+    .db-root.sb-mobile-open .db-sidebar { transform: translateX(0); }
+    .db-root.sb-collapsed .db-sidebar   { transform: translateX(-100%); }
+    .db-main-wrap {
+        margin-left: 0 !important;
+    }
+    .db-hamburger { display: flex; }
+    .db-mobile-tabs {
         display: flex;
-    }
-
-    #zar-confirm-modal {
-        background: #ffffff;
-        border-radius: 18px;
-        max-width: 460px;
-        width: 100%;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
-        overflow: hidden;
-        animation: zarModalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    }
-
-    @keyframes zarModalIn {
-        from {
-            opacity: 0;
-            transform: scale(0.88) translateY(24px);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-        }
-    }
-
-    #zar-modal-header {
-        background: linear-gradient(135deg, #0f2f62 0%, #1a56a8 100%);
-        padding: 1.5rem 1.75rem 1.25rem;
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-
-    #zar-modal-header h2 {
-        margin: 0;
-        color: #fff;
-        font-size: 1.2rem;
-        font-weight: 700;
-        line-height: 1.3;
-    }
-
-    #zar-modal-close {
-        background: rgba(255, 255, 255, 0.15);
-        border: none;
-        color: #fff;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        transition: background 0.2s;
-    }
-
-    #zar-modal-close:hover {
-        background: rgba(255, 255, 255, 0.30);
-    }
-
-    #zar-modal-body {
-        padding: 1.5rem 1.75rem;
-    }
-
-    .zar-info-badge {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 10px;
-        padding: 0.85rem 1.1rem;
-        margin-bottom: 1.25rem;
-        font-size: 0.88rem;
-        color: #1e40af;
-        line-height: 1.45;
-    }
-
-    .zar-info-badge i {
-        font-size: 1.1rem;
-        flex-shrink: 0;
-    }
-
-    .zar-amounts-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.85rem;
-        margin-bottom: 1.25rem;
-    }
-
-    .zar-amount-card {
-        background: #f8fafc;
-        border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1rem;
-        text-align: center;
-    }
-
-    .zar-amount-card.highlight {
-        border-color: #0f2f62;
-        background: #eef2ff;
-    }
-
-    .zar-amount-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: #64748b;
-        font-weight: 600;
-        margin-bottom: 0.35rem;
-    }
-
-    .zar-amount-value {
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: #0f2f62;
-    }
-
-    .zar-amount-card.highlight .zar-amount-value {
-        color: #1a56a8;
-    }
-
-    .zar-rate-note {
-        font-size: 0.78rem;
-        color: #94a3b8;
-        text-align: center;
-        margin-bottom: 1.25rem;
-    }
-
-    .zar-rate-note span {
-        font-weight: 600;
-        color: #64748b;
-    }
-
-    #zar-modal-actions {
-        display: flex;
-        gap: 0.75rem;
-        padding: 0 1.75rem 1.5rem;
-    }
-
-    #zar-modal-cancel {
-        flex: 1;
-        padding: 0.75rem;
-        border: 2px solid #e2e8f0;
+        gap: 0.4rem;
         background: #fff;
-        color: #475569;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    #zar-modal-cancel:hover {
-        border-color: #94a3b8;
-        background: #f8fafc;
-    }
-
-    #zar-modal-proceed {
-        flex: 2;
-        padding: 0.75rem;
-        background: linear-gradient(135deg, #d01616, #b91c1c);
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 0.95rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        transition: opacity 0.2s;
-    }
-
-    #zar-modal-proceed:hover {
-        opacity: 0.9;
-    }
-
-    #zar-modal-proceed:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-    }
-
-    /* ========== Dashboard Wrapper ========== */
-    .dashboard-wrapper {
-        min-height: 100vh;
-        background: #f5f5f5;
-    }
-
-    .dashboard-layout {
-        display: grid;
-        grid-template-columns: 280px minmax(0, 1fr);
-        gap: 1.5rem;
-        align-items: start;
-        position: relative;
-        transition: grid-template-columns 0.25s ease;
-    }
-
-    .dashboard-layout.sidebar-collapsed {
-        grid-template-columns: 84px minmax(0, 1fr);
-    }
-
-    .dashboard-main {
-        min-width: 0;
-    }
-
-    .dashboard-sidebar {
-        background: #111827;
-        color: #e5e7eb;
-        border-radius: 16px;
-        padding: 1.25rem;
-        position: sticky;
-        top: 130px;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
-        z-index: 3;
-    }
-
-    .sidebar-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-
-    .sidebar-head-copy {
-        min-width: 0;
-    }
-
-    .sidebar-head-actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-
-    .sidebar-collapse-toggle,
-    .sidebar-mobile-close {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.24);
-        background: rgba(255, 255, 255, 0.08);
-        color: #ffffff;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background 0.2s ease, border-color 0.2s ease;
-    }
-
-    .sidebar-collapse-toggle:hover,
-    .sidebar-mobile-close:hover {
-        background: rgba(59, 130, 246, 0.26);
-        border-color: rgba(147, 197, 253, 0.95);
-    }
-
-    .sidebar-mobile-close {
-        display: none;
-    }
-
-    .sidebar-kicker {
-        margin: 0 0 0.35rem 0;
-        text-transform: uppercase;
-        letter-spacing: 0.09em;
-        font-size: 0.72rem;
-        color: #93c5fd;
-        font-weight: 700;
-    }
-
-    .sidebar-head h2 {
-        margin: 0;
-        font-size: 1.25rem;
-        color: #ffffff;
-    }
-
-    .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .side-link {
-        appearance: none;
-        -webkit-appearance: none;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.03);
-        color: #d1d5db;
-        text-decoration: none;
-        font: inherit;
-        text-align: left;
-        width: 100%;
-        border-radius: 12px;
-        padding: 0.75rem 0.85rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        transition: all 0.25s ease;
-        cursor: pointer;
-        font-size: 0.92rem;
-        font-weight: 600;
-    }
-
-    .side-link-main {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.65rem;
-    }
-
-    .side-link-label {
-        white-space: nowrap;
-    }
-
-    .side-link:hover {
-        border-color: rgba(147, 197, 253, 0.85);
-        color: #ffffff;
-        background: rgba(59, 130, 246, 0.22);
-    }
-
-    .side-link-logout {
-        border-color: rgba(248, 113, 113, 0.45);
-        color: #fecaca;
-    }
-
-    .side-link-logout:hover {
-        border-color: rgba(248, 113, 113, 0.8);
-        background: rgba(239, 68, 68, 0.18);
-        color: #ffffff;
-    }
-
-    .side-link.active {
-        background: #ffffff;
-        color: #111827;
-        border-color: #ffffff;
-    }
-
-    .side-count {
-        min-width: 26px;
-        padding: 0.1rem 0.5rem;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.15);
-        color: inherit;
-        text-align: center;
-        font-size: 0.74rem;
-        font-weight: 700;
-    }
-
-    .side-link.active .side-count {
-        background: #111827;
-        color: #ffffff;
-    }
-
-    .sidebar-summary {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px dashed rgba(255, 255, 255, 0.25);
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.6rem;
-    }
-
-    .dashboard-layout.sidebar-collapsed .dashboard-sidebar {
-        padding: 1rem 0.6rem;
-    }
-
-    .dashboard-layout.sidebar-collapsed .sidebar-head {
-        justify-content: center;
-    }
-
-    .dashboard-layout.sidebar-collapsed .sidebar-head-copy {
-        display: none;
-    }
-
-    .dashboard-layout.sidebar-collapsed .sidebar-head-actions {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .dashboard-layout.sidebar-collapsed .side-link {
-        justify-content: center;
-        padding: 0.7rem 0.55rem;
-    }
-
-    .dashboard-layout.sidebar-collapsed .side-link-main {
-        justify-content: center;
-        width: auto;
-    }
-
-    .dashboard-layout.sidebar-collapsed .side-link-label,
-    .dashboard-layout.sidebar-collapsed .side-count,
-    .dashboard-layout.sidebar-collapsed .sidebar-summary {
-        display: none;
-    }
-
-    .sidebar-metric {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 10px;
-        padding: 0.65rem 0.7rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .sidebar-metric span {
-        color: #9ca3af;
-        font-size: 0.74rem;
-        font-weight: 600;
-    }
-
-    .sidebar-metric strong {
-        color: #ffffff;
-        font-size: 1.05rem;
-    }
-
-    .mobile-sidebar-row {
-        display: none;
-        margin-bottom: 1rem;
-    }
-
-    .mobile-sidebar-toggle {
-        border: none;
-        border-radius: 10px;
-        background: #111827;
-        color: #ffffff;
-        padding: 0.65rem 1rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.6rem;
-        cursor: pointer;
-    }
-
-    .sidebar-overlay {
-        display: none;
-    }
-
-    /* ========== Hero Section ========== */
-    .dashboard-hero {
-        background: #000000;
-        color: white;
-        padding: 1.5rem 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .hero-content {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 2rem;
-    }
-
-    .welcome-section {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .user-avatar {
-        font-size: 2.2rem;
-        opacity: 0.9;
-    }
-
-    .welcome-text h1 {
-        font-size: 1.55rem;
-        margin: 0 0 0.35rem 0;
-        font-weight: 700;
-    }
-
-    .welcome-text .subtitle {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin: 0;
-    }
-
-    /* ========== Modern Alert ========== */
-    .modern-alert {
-        border-radius: 12px;
-        border: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #2d3748;
-        margin: 0 0 1rem 0;
-        display: flex;
-        align-items: center;
-    }
-
-    /* ========== Registrations Section ========== */
-    .registrations-section {
-        background: white;
-        border-radius: 16px;
-        padding: 1.25rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-    }
-
-    .registrations-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-
-    /* ========== Registration Card ========== */
-    .registration-card {
-        background: white;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-        position: relative;
-    }
-
-    .registration-card::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: #000000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .registration-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        border-color: #000000;
-    }
-
-    .registration-card:hover::after {
-        opacity: 1;
-    }
-
-    .reg-card-header {
-        background: #000000;
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .conference-badge {
-        width: 38px;
-        height: 38px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        color: white;
-    }
-
-    .status-indicator {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .status-pending {
-        background: #fbbf24;
-        color: #78350f;
-    }
-
-    .status-approved {
-        background: #34d399;
-        color: #065f46;
-    }
-
-    .status-paid {
-        background: #34d399;
-        color: #065f46;
-    }
-
-    .status-rejected {
-        background: #f87171;
-        color: #7f1d1d;
-    }
-
-    .conference-info {
-        padding: 1rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .conference-name {
-        font-size: 1.05rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin: 0 0 0.5rem 0;
-    }
-
-    .conference-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.4rem 0.8rem;
-        background: #f3f4f6;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        color: #4b5563;
-    }
-
-    .conference-code-badge {
-        background: #000000;
-        color: white !important;
-        font-weight: 600;
-    }
-
-    .reg-type-badge {
-        margin: 0 1rem;
-        padding: 0.6rem 0.75rem;
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        color: #374151;
-    }
-
-    .key-details {
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.8rem;
-    }
-
-    .detail-item {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-    }
-
-    .detail-item i {
-        width: 30px;
-        height: 30px;
-        background: #000000;
-        color: white;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .detail-content {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .detail-label {
-        font-size: 0.75rem;
-        color: #6b7280;
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-
-    .detail-value {
-        font-size: 0.95rem;
-        color: #1f2937;
-        font-weight: 500;
-    }
-
-    .amount-section {
-        margin: 0.75rem 1rem;
-        padding: 0.9rem;
-        background: #f5f5f5;
-        border: 2px solid #000000;
-        border-radius: 12px;
-        text-align: center;
-    }
-
-    .amount-label {
-        font-size: 0.85rem;
-        color: #000000;
-        font-weight: 600;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-    }
-
-    .amount-value {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #000000;
-    }
-
-    .additional-options {
-        padding: 0.85rem 1rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-    }
-
-    .options-label {
-        font-size: 0.85rem;
-        color: #6b7280;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .options-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    .option-tag {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.4rem 0.8rem;
-        background: white;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        color: #374151;
-        font-weight: 500;
-    }
-
-    .payment-proof {
-        padding: 0.85rem 1rem;
-        background: #ecfdf5;
-        border-top: 1px solid #d1fae5;
-    }
-
-    .proof-header {
-        font-size: 0.85rem;
-        color: #065f46;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .proof-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .proof-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: #000000;
-        color: white;
-        text-decoration: none;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .proof-btn:hover {
-        background: #333333;
-        transform: translateY(-2px);
-        color: white;
-    }
-
-    .proof-size {
-        font-size: 0.8rem;
-        color: #000000;
-    }
-
-    .card-footer {
-        padding: 0.85rem 1rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        text-align: center;
-    }
-
-    .footer-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #000000;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-
-    .footer-link:hover {
-        color: #333333;
-        text-decoration: underline;
-    }
-
-    .section-hint {
-        margin: 0;
-        color: #6b7280;
-        font-size: 0.88rem;
-    }
-
-    .registrations-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.85rem;
-        flex-wrap: wrap;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 0.7rem 0.75rem;
-    }
-
-    .reg-toolbar-left {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex: 1;
-        min-width: 280px;
-    }
-
-    .results-pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.32rem 0.65rem;
-        border-radius: 999px;
-        background: #111827;
-        color: #ffffff;
-        font-size: 0.76rem;
-        font-weight: 700;
-        white-space: nowrap;
-    }
-
-    .registration-search-wrap {
-        margin: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: #ffffff;
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        padding: 0.45rem 0.65rem;
-        flex: 1;
-    }
-
-    .registration-search-wrap i {
-        color: #6b7280;
-        font-size: 0.8rem;
-    }
-
-    .registration-search {
-        border: none;
-        outline: none;
-        width: 100%;
-        background: transparent;
-        font-size: 0.85rem;
-        color: #111827;
-    }
-
-    .registration-search::placeholder {
-        color: #9ca3af;
-    }
-
-    .reg-toolbar-right {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-    }
-
-    .registration-filter-group {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        flex-wrap: wrap;
-    }
-
-    .registration-filter-btn {
-        border: 1px solid #d1d5db;
-        background: #ffffff;
-        color: #374151;
-        border-radius: 999px;
-        padding: 0.33rem 0.7rem;
-        font-size: 0.76rem;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .registration-filter-btn:hover {
-        border-color: #111827;
-        color: #111827;
-    }
-
-    .registration-filter-btn.active {
-        background: #111827;
-        color: #ffffff;
-        border-color: #111827;
-    }
-
-    .registration-sort-wrap {
-        margin: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        font-size: 0.76rem;
-        font-weight: 700;
-        color: #4b5563;
-    }
-
-    .registration-sort {
-        border: 1px solid #d1d5db;
+        border: 1px solid #e9e9e7;
         border-radius: 9px;
-        background: #ffffff;
-        color: #111827;
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 0.35rem 0.5rem;
-    }
-
-    .quick-status-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.6rem;
-        padding: 0.9rem 1rem 0.8rem;
-    }
-
-    .quick-status-item {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 0.55rem 0.65rem;
-        display: grid;
-        gap: 0.2rem;
-    }
-
-    .quick-status-item span {
-        font-size: 0.73rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #6b7280;
-        font-weight: 600;
-    }
-
-    .quick-status-item strong {
-        font-size: 0.88rem;
-        color: #111827;
-        font-weight: 700;
-    }
-
-    .payment-lock-note {
-        margin: 0 1rem 0.9rem;
-        padding: 0.6rem 0.75rem;
-        border-radius: 10px;
-        border: 1px solid #fde68a;
-        background: #fffbeb;
-        color: #92400e;
-        font-size: 0.82rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-    }
-
-    .registration-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        align-items: center;
-        justify-content: space-between;
-        text-align: left;
-    }
-
-    .action-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        text-decoration: none;
-        border: 1px solid #d1d5db;
-        background: #ffffff;
-        color: #111827;
-        border-radius: 999px;
-        padding: 0.35rem 0.7rem;
-        font-size: 0.78rem;
-        font-weight: 600;
-    }
-
-    .action-chip:hover {
-        border-color: #111827;
-        color: #111827;
-    }
-
-    .muted-chip {
-        color: #6b7280;
-        border-color: #e5e7eb;
-        background: #f9fafb;
-    }
-
-    .pay-now-btn {
-        border: none;
-        background: #111827;
-        color: #ffffff;
-        border-radius: 999px;
-        padding: 0.42rem 0.85rem;
-        font-size: 0.8rem;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        cursor: pointer;
-    }
-
-    .pay-now-btn:disabled {
-        opacity: 0.6;
-        cursor: wait;
-    }
-
-    .pay-state {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        border-radius: 999px;
-        padding: 0.35rem 0.7rem;
-        font-size: 0.78rem;
-        font-weight: 700;
-    }
-
-    .paid-state {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .locked-state {
-        background: #f3f4f6;
-        color: #374151;
-    }
-
-    .pending-state {
-        background: #fffbeb;
-        color: #92400e;
-    }
-
-    /* ========== Empty State ========== */
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        grid-column: 1 / -1;
-        animation: fadeIn 0.5s ease;
-    }
-
-    .empty-icon {
-        font-size: 5rem;
-        color: #cbd5e0;
-        margin-bottom: 1.5rem;
-        animation: float 3s ease-in-out infinite;
-    }
-
-    @keyframes float {
-
-        0%,
-        100% {
-            transform: translateY(0px);
-        }
-
-        50% {
-            transform: translateY(-10px);
-        }
-    }
-
-    .empty-state h3 {
-        font-size: 1.5rem;
-        color: #2d3748;
+        padding: 0.4rem;
         margin-bottom: 0.75rem;
-        font-weight: 700;
     }
-
-    .empty-state p {
-        color: #718096;
-        margin-bottom: 2rem;
-        max-width: 500px;
-        margin-left: auto;
-        margin-right: auto;
-        line-height: 1.6;
-    }
-
-    .btn-empty-action {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 1rem 2rem;
-        background: #000000;
-        color: white;
-        text-decoration: none;
-        border-radius: 12px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn-empty-action:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-        color: white;
-        background: #333333;
-    }
-
-    .btn-empty-action:active {
-        transform: translateY(-1px);
-    }
-
-    /* ========== Dashboard Tabs ========== */
-    .dashboard-tabs {
-        display: none;
-    }
-
-    .tab-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        background: transparent;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: 600;
-        color: #718096;
-        transition: all 0.3s ease;
-        white-space: nowrap;
-        position: relative;
-    }
-
-    .tab-btn:hover {
-        background: #f5f5f5;
-        color: #000000;
-    }
-
-    .tab-btn.active {
-        background: #000000;
-        color: white;
-    }
-
-    .tab-badge {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
-    .tab-btn.active .tab-badge {
-        background: rgba(255, 255, 255, 0.3);
-    }
-
-    /* ========== Tab Content ========== */
-    .tab-content {
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-
-    .tab-content.active {
-        display: block;
-    }
-
-    /* ========== Section Header ========== */
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    .submit-another-btn {
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        font-size: 0.95rem;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    }
-
-    .submit-another-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        color: white;
-        text-decoration: none;
-    }
-
-    .submit-another-btn i {
-        font-size: 1.1rem;
-    }
-
-    .section-filters {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .filter-btn {
-        padding: 0.5rem 1rem;
-        border: 2px solid #e5e7eb;
-        background: white;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 500;
-        color: #6b7280;
-        transition: all 0.3s ease;
-        font-size: 0.9rem;
-    }
-
-    .filter-btn:hover {
-        border-color: #000000;
-        color: #000000;
-    }
-
-    .filter-btn.active {
-        background: #000000;
-        border-color: transparent;
-        color: white;
-    }
-
-    /* ========== Submissions Section ========== */
-    .submissions-section {
-        background: white;
-        border-radius: 16px;
-        padding: 1.25rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-    }
-
-    .submissions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-
-    .submission-card {
-        background: white;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-
-    .submission-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        border-color: #000000;
-    }
-
-    .submission-header {
-        background: #000000;
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .submission-icon {
-        width: 38px;
-        height: 38px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        color: white;
-    }
-
-    .submission-status {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .submission-status.status-approved {
-        background: #34d399;
-        color: #065f46;
-    }
-
-    .submission-status.status-pending {
-        background: #fbbf24;
-        color: #78350f;
-    }
-
-    .submission-status.status-rejected {
-        background: #f87171;
-        color: #7f1d1d;
-    }
-
-    .submission-status.status-revision {
-        background: #fde68a;
-        color: #92400e;
-    }
-
-    .submission-status.status-withdrawn {
-        background: #e5e7eb;
-        color: #374151;
-    }
-
-    .submission-body {
-        padding: 1rem;
-    }
-
-    .submission-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin: 0 0 1rem 0;
-        line-height: 1.4;
-    }
-
-    .submission-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .meta-badge {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.4rem 0.8rem;
-        background: #f3f4f6;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        color: #4b5563;
-    }
-
-    .submission-date,
-    .submission-authors {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .submission-footer {
-        padding: 1rem 1.5rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        text-align: center;
-    }
-
-    .submission-footer-actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
-    .submission-footer-actions form {
-        margin: 0;
-    }
-
-    .submission-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #000000;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-
-    .submission-link:hover {
-        color: #333333;
-        text-decoration: underline;
-    }
-
-    .submission-link.submission-danger {
-        border: none;
-        background: transparent;
-        padding: 0;
-        cursor: pointer;
-        color: #b91c1c;
-    }
-
-    /* ========== Full Paper Status ========== */
-    .full-paper-status-section {
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .full-paper-status {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-
-    .full-paper-status i {
-        font-size: 1.1rem;
-    }
-
-    .full-paper-status small {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: normal;
-        margin-top: 0.25rem;
-    }
-
-    .full-paper-status.submitted {
-        background: #d1fae5;
-        color: #065f46;
-        border-left: 4px solid #34d399;
-    }
-
-    .full-paper-status.pending {
-        background: #fef3c7;
-        color: #78350f;
-        border-left: 4px solid #fbbf24;
-    }
-
-    .full-paper-status.locked {
-        background: #fee2e2;
-        color: #7f1d1d;
-        border-left: 4px solid #f87171;
-    }
-
-    .submission-link.submission-upload {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        transition: all 0.3s ease;
-    }
-
-    .submission-link.submission-upload:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        color: white;
-        text-decoration: none;
-    }
-
-    .submission-link.submission-update {
-        background: #fbbf24;
-        color: #78350f;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        transition: all 0.3s ease;
-    }
-
-    .submission-link.submission-update:hover {
-        background: #f59e0b;
-        color: #78350f;
-        text-decoration: none;
-    }
-
-    .submission-link.submission-download {
-        background: #34d399;
-        color: #065f46;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        transition: all 0.3s ease;
-    }
-
-    .submission-link.submission-download:hover {
-        background: #10b981;
-        color: #065f46;
-        text-decoration: none;
-    }
-
-    /* ========== Abstract Status Badge ========== */
-    .meta-badge.abstract-status-badge {
-        background: #ffffff;
-        border: 2px solid #e5e7eb;
-        font-weight: 600;
-    }
-
-    .meta-badge.abstract-status-badge.status-accepted {
-        border-color: #34d399;
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .meta-badge.abstract-status-badge.status-pending {
-        border-color: #fbbf24;
-        background: #fef3c7;
-        color: #78350f;
-    }
-
-    .meta-badge.abstract-status-badge.status-rejected {
-        border-color: #f87171;
-        background: #fee2e2;
-        color: #7f1d1d;
-    }
-
-    .meta-badge.abstract-status-badge.status-revision {
-        border-color: #fde68a;
-        background: #fef08a;
-        color: #92400e;
-    }
-
-    /* Status text colors for registrations tab */
-    .text-status-accepted { color: #059669 !important; }
-    .text-status-pending { color: #d97706 !important; }
-    .text-status-rejected { color: #dc2626 !important; }
-    .text-status-locked { color: #6b7280 !important; }
-    .text-status-none { color: #6b7280 !important; }
-
-    /* ========== Submission Timeline Tracker ========== */
-    .submission-timeline {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin: 1.5rem 0 1rem;
-        position: relative;
-        padding-bottom: 0.5rem;
-    }
-
-    .submission-timeline::before {
-        content: '';
-        position: absolute;
-        top: 15px;
-        left: 20px;
-        right: 20px;
-        height: 3px;
-        background: #e2e8f0;
-        z-index: 1;
-    }
-
-    .timeline-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
+    .db-mobile-tab {
         flex: 1;
-        position: relative;
-        z-index: 2;
-    }
-
-    .step-circle {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: #ffffff;
-        border: 3px solid #cbd5e1;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6b6b6a;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
-        color: #64748b;
-        transition: all 0.3s ease;
-        font-weight: bold;
+        gap: 0.4rem;
     }
-
-    .step-label {
-        margin-top: 0.5rem;
-        font-size: 0.72rem;
-        font-weight: 600;
-        color: #64748b;
-        max-width: 80px;
-        line-height: 1.2;
-    }
-
-    /* Completed state */
-    .timeline-step.completed .step-circle {
-        background: #10b981;
-        border-color: #10b981;
-        color: #ffffff;
-    }
-
-    .timeline-step.completed .step-label {
-        color: #065f46;
-        font-weight: 700;
-    }
-
-    /* Active state */
-    .timeline-step.active .step-circle {
-        background: #ffffff;
-        border-color: #3b82f6;
-        color: #3b82f6;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-    }
-
-    .timeline-step.active .step-label {
-        color: #1d4ed8;
-        font-weight: 700;
-    }
-
-    /* Warning state (e.g. revision) */
-    .timeline-step.warning .step-circle {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: #ffffff;
-        box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
-    }
-
-    .timeline-step.warning .step-label {
-        color: #b45309;
-        font-weight: 700;
-    }
-
-    /* Danger state (e.g. rejected) */
-    .timeline-step.danger .step-circle {
-        background: #ef4444;
-        border-color: #ef4444;
-        color: #ffffff;
-        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
-    }
-
-    .timeline-step.danger .step-label {
-        color: #b91c1c;
-        font-weight: 700;
-    }
-
-    /* Disabled/Locked state */
-    .timeline-step.disabled .step-circle {
-        background: #f1f5f9;
-        border-color: #e2e8f0;
-        color: #94a3b8;
-    }
-
-    .timeline-step.disabled .step-label {
-        color: #94a3b8;
-        opacity: 0.8;
-    }
-
-    /* ========== Registration Card Filtering ========== */
-    .registration-card[data-filter-status] {
-        display: block;
-    }
-
-    .registration-card.hidden {
-        display: none;
-    }
-
-    .is-hidden {
-        display: none !important;
-    }
-
-    .empty-state-filter {
-        margin-top: 0.9rem;
-        border: 2px dashed #d1d5db;
-        border-radius: 12px;
-        background: #f9fafb;
-        padding: 1.8rem 1rem;
-    }
-
-    /* ========== Responsive Design ========== */
-    @media (max-width: 768px) {
-        .welcome-section {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .welcome-text h1 {
-            font-size: 1.35rem;
-        }
-
-        .registrations-grid,
-        .submissions-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .registrations-toolbar {
-            align-items: stretch;
-        }
-
-        .reg-toolbar-left {
-            min-width: 0;
-            width: 100%;
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .registration-search-wrap {
-            width: 100%;
-        }
-
-        .reg-toolbar-right {
-            width: 100%;
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .registration-filter-group {
-            width: 100%;
-        }
-
-        .registration-sort-wrap {
-            width: 100%;
-            justify-content: space-between;
-        }
-
-        .registration-sort {
-            width: 100%;
-        }
-
-        .proof-actions {
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: stretch;
-        }
-
-        .section-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .section-filters {
-            width: 100%;
-        }
-
-        .quick-status-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .registration-actions {
-            justify-content: flex-start;
-        }
-
-        .filter-btn {
-            flex: 1;
-            min-width: 80px;
-        }
-
-        .dashboard-tabs {
-            padding: 0.75rem;
-        }
-
-        .tab-btn {
-            padding: 0.6rem 1rem;
-            font-size: 0.9rem;
-        }
-    }
-
-    @media (max-width: 1024px) {
-        .dashboard-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .dashboard-layout.sidebar-collapsed {
-            grid-template-columns: 1fr;
-        }
-
-        .dashboard-layout.sidebar-collapsed .sidebar-head-copy {
-            display: block;
-        }
-
-        .dashboard-layout.sidebar-collapsed .side-link {
-            justify-content: space-between;
-            padding: 0.75rem 0.85rem;
-        }
-
-        .dashboard-layout.sidebar-collapsed .side-link-main {
-            justify-content: flex-start;
-            width: auto;
-        }
-
-        .dashboard-layout.sidebar-collapsed .side-link-label {
-            display: inline;
-        }
-
-        .dashboard-layout.sidebar-collapsed .side-count {
-            display: inline-block;
-        }
-
-        .dashboard-layout.sidebar-collapsed .sidebar-summary {
-            display: grid;
-        }
-
-        .dashboard-tabs {
-            display: flex;
-            gap: 0.5rem;
-            overflow-x: auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
-
-        .mobile-sidebar-row {
-            display: flex;
-        }
-
-        .sidebar-collapse-toggle {
-            display: none;
-        }
-
-        .sidebar-mobile-close {
-            display: inline-flex;
-        }
-
-        .dashboard-sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: min(320px, 88vw);
-            max-height: 100vh;
-            overflow-y: auto;
-            border-radius: 0 16px 16px 0;
-            transform: translateX(-105%);
-            transition: transform 0.25s ease;
-            z-index: 1101;
-            padding-top: 2rem;
-        }
-
-        .dashboard-layout.sidebar-open .dashboard-sidebar {
-            transform: translateX(0);
-        }
-
-        .dashboard-layout.sidebar-open .sidebar-overlay {
-            display: block;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 1100;
-        }
-
-        body.sidebar-lock {
-            overflow: hidden;
-        }
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
+    .db-mobile-tab.is-active { background: #000; color: #fff; }
+    .db-mobile-tab .db-badge { background: rgba(255,255,255,0.25); color: #fff; }
+    /* Hide topbar nav links on mobile — sidebar has them */
+    .db-topnav-link { display: none; }
+    .db-topnav-logout { display: none; }
+}
+@media (max-width: 768px) {
+    .db-topbar-inner { padding: 0 1rem; }
+    .db-shell { padding: 0.75rem 1rem 2rem; }
+    .db-row-grid { grid-template-columns: 1fr 1fr; }
+    .db-toolbar { flex-direction: column; align-items: stretch; }
+    .db-toolbar-left,
+    .db-toolbar-right { width: 100%; }
+    .db-search-label { max-width: none; }
+}
+@media (max-width: 480px) {
+    .db-row-grid { grid-template-columns: 1fr; }
+    .db-topbar-inner { height: 44px; }
+    .db-shell { padding: 0.5rem 0.75rem 2rem; }
+}
+/* ── Neutralise base.html <main> wrapper when logged in ── */
+body.clean-shell > main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+}
 </style>
 
 <script>
-    // Tab switching functionality
-    document.addEventListener('DOMContentLoaded', function () {
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        const sideTabButtons = document.querySelectorAll('.side-link[data-tab]');
-        const tabContents = document.querySelectorAll('.tab-content');
-        const dashboardLayout = document.querySelector('.dashboard-layout');
-        const sidebarToggle = document.getElementById('mobile-sidebar-toggle');
-        const sidebarCollapseToggle = document.getElementById('sidebar-collapse-toggle');
-        const sidebarMobileClose = document.getElementById('sidebar-mobile-close');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const SIDEBAR_PREF_KEY = 'user_dashboard_sidebar_collapsed';
+document.addEventListener('DOMContentLoaded', function () {
 
-        function isMobileSidebarMode() {
-            return window.innerWidth <= 1024;
+    const root        = document.getElementById('db-root');
+    const collapseBtn = document.getElementById('db-sb-collapse');
+    const hamburger   = document.getElementById('db-hamburger');
+    const sbBackdrop  = document.getElementById('db-sb-backdrop');
+    const SB_KEY      = 'db_sidebar_collapsed';
+
+    /* ── Helpers ── */
+    function isMobile() { return window.innerWidth <= 1024; }
+
+    function setCollapsed(on) {
+        if (on) {
+            root.classList.add('sb-collapsed');
+        } else {
+            root.classList.remove('sb-collapsed');
         }
+        try { localStorage.setItem(SB_KEY, on ? '1' : '0'); } catch(e) {}
+    }
 
-        function setSidebarToggleExpanded(isOpen) {
-            if (sidebarToggle) {
-                sidebarToggle.setAttribute('aria-expanded', String(Boolean(isOpen)));
-            }
-        }
+    function restoreCollapse() {
+        if (isMobile()) return;
+        try {
+            setCollapsed(localStorage.getItem(SB_KEY) === '1');
+        } catch(e) {}
+    }
 
-        function closeSidebar() {
-            if (!dashboardLayout) return;
-            dashboardLayout.classList.remove('sidebar-open');
-            document.body.classList.remove('sidebar-lock');
-            setSidebarToggleExpanded(false);
-        }
+    /* Collapse toggle — desktop only */
+    collapseBtn?.addEventListener('click', function () {
+        if (isMobile()) return;
+        setCollapsed(!root.classList.contains('sb-collapsed'));
+    });
 
-        function openSidebar() {
-            if (!dashboardLayout) return;
-            dashboardLayout.classList.add('sidebar-open');
-            document.body.classList.add('sidebar-lock');
-            setSidebarToggleExpanded(true);
-        }
-
-        function getSidebarCollapsedPreference() {
-            try {
-                return localStorage.getItem(SIDEBAR_PREF_KEY) === '1';
-            } catch (error) {
-                return false;
-            }
-        }
-
-        function setSidebarCollapsed(collapsed, persist = true) {
-            if (!dashboardLayout) return;
-            const shouldCollapse = !isMobileSidebarMode() && Boolean(collapsed);
-            dashboardLayout.classList.toggle('sidebar-collapsed', shouldCollapse);
-
-            if (sidebarCollapseToggle) {
-                sidebarCollapseToggle.setAttribute('aria-expanded', String(!shouldCollapse));
-                sidebarCollapseToggle.setAttribute('aria-label', shouldCollapse ? 'Expand sidebar' : 'Collapse sidebar');
-                sidebarCollapseToggle.setAttribute('title', shouldCollapse ? 'Expand sidebar' : 'Collapse sidebar');
-
-                const icon = sidebarCollapseToggle.querySelector('i');
-                if (icon) {
-                    icon.classList.toggle('fa-angle-left', !shouldCollapse);
-                    icon.classList.toggle('fa-angle-right', shouldCollapse);
-                }
-            }
-
-            if (persist) {
-                try {
-                    localStorage.setItem(SIDEBAR_PREF_KEY, shouldCollapse ? '1' : '0');
-                } catch (error) {
-                    // Ignore storage issues in restricted browsers
-                }
-            }
-        }
-
-        function syncSidebarMode() {
-            if (isMobileSidebarMode()) {
-                setSidebarCollapsed(false, false);
-            } else {
-                setSidebarCollapsed(getSidebarCollapsedPreference(), false);
-            }
-        }
-
-        function activateTab(tabName) {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            sideTabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-
-            const activeTopBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
-            const activeSideBtn = document.querySelector(`.side-link[data-tab="${tabName}"]`);
-            const activeContent = document.getElementById(tabName + '-tab');
-
-            if (activeTopBtn) activeTopBtn.classList.add('active');
-            if (activeSideBtn) activeSideBtn.classList.add('active');
-            if (activeContent) activeContent.classList.add('active');
-        }
-
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', function () {
-                activateTab(this.getAttribute('data-tab'));
-            });
-        });
-
-        sideTabButtons.forEach(btn => {
-            btn.addEventListener('click', function () {
-                activateTab(this.getAttribute('data-tab'));
-                closeSidebar();
-            });
-        });
-
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', function () {
-                if (!dashboardLayout) return;
-                if (dashboardLayout.classList.contains('sidebar-open')) {
-                    closeSidebar();
-                } else {
-                    openSidebar();
-                }
-            });
-        }
-
-        if (sidebarCollapseToggle) {
-            sidebarCollapseToggle.addEventListener('click', function () {
-                if (!dashboardLayout) return;
-                const nextCollapsed = !dashboardLayout.classList.contains('sidebar-collapsed');
-                setSidebarCollapsed(nextCollapsed, true);
-            });
-        }
-
-        if (sidebarMobileClose) {
-            sidebarMobileClose.addEventListener('click', closeSidebar);
-        }
-
-        if (sidebarOverlay) {
-            sidebarOverlay.addEventListener('click', closeSidebar);
-        }
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                closeSidebar();
-            }
-        });
-
-        window.addEventListener('resize', function () {
-            syncSidebarMode();
-            if (!isMobileSidebarMode()) closeSidebar();
-        });
-
-        syncSidebarMode();
-        setSidebarToggleExpanded(false);
-
-        const initiallyActiveTab = document.querySelector('.tab-btn.active')?.getAttribute('data-tab') || 'registrations';
-        activateTab(initiallyActiveTab);
-
-        // Registrations search/filter/sort
-        const registrationsGrid = document.querySelector('.registrations-grid');
-        const registrationCards = Array.from(document.querySelectorAll('.registration-card'));
-        const registrationFilterButtons = document.querySelectorAll('.registration-filter-btn');
-        const registrationSearch = document.getElementById('registration-search');
-        const registrationSort = document.getElementById('registration-sort');
-        const registrationResultsCount = document.getElementById('registration-results-count');
-        const registrationsNoResults = document.getElementById('registrations-no-results');
-
-        let activeRegistrationFilter = 'all';
-
-        function parseDateToTimestamp(value) {
-            if (!value) return 0;
-            const parsed = Date.parse(value);
-            return Number.isNaN(parsed) ? 0 : parsed;
-        }
-
-        function parseAmount(value) {
-            const amount = Number(value);
-            return Number.isFinite(amount) ? amount : 0;
-        }
-
-        function normalizeSearch(value) {
-            return (value || '').toString().trim().toLowerCase();
-        }
-
-        function updateRegistrationView() {
-            if (!registrationsGrid || !registrationCards.length) return;
-
-            const query = normalizeSearch(registrationSearch ? registrationSearch.value : '');
-            const sortKey = registrationSort ? registrationSort.value : 'recent';
-
-            const visibleCards = registrationCards.filter(card => {
-                const status = (card.dataset.status || '').toLowerCase();
-                const searchHaystack = normalizeSearch(card.dataset.search || '');
-
-                const matchesFilter = activeRegistrationFilter === 'all' || status === activeRegistrationFilter;
-                const matchesSearch = !query || searchHaystack.includes(query);
-                const shouldShow = matchesFilter && matchesSearch;
-
-                card.classList.toggle('hidden', !shouldShow);
-                return shouldShow;
-            });
-
-            const sortedVisibleCards = [...visibleCards].sort((a, b) => {
-                if (sortKey === 'name_asc') {
-                    return (a.dataset.conferenceName || '').localeCompare(b.dataset.conferenceName || '');
-                }
-
-                if (sortKey === 'amount_desc') {
-                    return parseAmount(b.dataset.totalAmount) - parseAmount(a.dataset.totalAmount);
-                }
-
-                if (sortKey === 'amount_asc') {
-                    return parseAmount(a.dataset.totalAmount) - parseAmount(b.dataset.totalAmount);
-                }
-
-                return parseDateToTimestamp(b.dataset.updatedAt) - parseDateToTimestamp(a.dataset.updatedAt);
-            });
-
-            const hiddenCards = registrationCards.filter(card => !visibleCards.includes(card));
-            [...sortedVisibleCards, ...hiddenCards].forEach(card => registrationsGrid.appendChild(card));
-
-            if (registrationResultsCount) {
-                registrationResultsCount.textContent = `${visibleCards.length} shown`;
-            }
-
-            if (registrationsNoResults) {
-                registrationsNoResults.classList.toggle('is-hidden', visibleCards.length > 0);
-            }
-        }
-
-        registrationFilterButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                activeRegistrationFilter = this.dataset.filter || 'all';
-                registrationFilterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                updateRegistrationView();
-            });
-        });
-
-        if (registrationSearch) {
-            registrationSearch.addEventListener('input', updateRegistrationView);
-        }
-
-        if (registrationSort) {
-            registrationSort.addEventListener('change', updateRegistrationView);
-        }
-
-        updateRegistrationView();
-
-        // ── ZAR Confirmation Modal logic ───────────────────────────────────────
-        const backdrop = document.getElementById('zar-confirm-backdrop');
-        const modalClose = document.getElementById('zar-modal-close');
-        const modalCancel = document.getElementById('zar-modal-cancel');
-        const modalProceed = document.getElementById('zar-modal-proceed');
-        const usdDisplay = document.getElementById('zar-usd-display');
-        const zarDisplay = document.getElementById('zar-zar-display');
-        const rateNote = document.getElementById('zar-rate-note');
-
-        let _pendingPayCallback = null;
-
-        function openZarModal(usdAmount, payCallback) {
-            _pendingPayCallback = payCallback;
-            if (usdDisplay) usdDisplay.textContent = `$${usdAmount.toFixed(2)}`;
-            if (zarDisplay) zarDisplay.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1rem;"></i>';
-            if (rateNote) rateNote.textContent = 'Fetching live exchange rate…';
-            if (modalProceed) modalProceed.disabled = true;
-            if (backdrop) {
-                backdrop.classList.add('open');
-                document.body.style.overflow = 'hidden';
-            }
-
-            fetch('/api/fx-rate')
-                .then(r => r.json())
-                .then(data => {
-                    const rate = data.usd_to_zar || 18.5;
-                    const zarAmt = usdAmount * rate;
-                    if (zarDisplay) zarDisplay.textContent = `R${zarAmt.toFixed(2)}`;
-                    const liveLabel = data.live ? 'live rate' : 'estimated rate';
-                    if (rateNote) rateNote.innerHTML = `Exchange rate: <span>1 USD = R${rate.toFixed(4)}</span> (${liveLabel}). Actual charge may differ slightly.`;
-                    if (modalProceed) modalProceed.disabled = false;
-                })
-                .catch(() => {
-                    const fallbackRate = 18.5;
-                    if (zarDisplay) zarDisplay.textContent = `R${(usdAmount * fallbackRate).toFixed(2)}`;
-                    if (rateNote) rateNote.innerHTML = `Estimated rate: <span>1 USD ≈ R${fallbackRate}</span>. Actual charge may differ.`;
-                    if (modalProceed) modalProceed.disabled = false;
-                });
-        }
-
-        function closeZarModal() {
-            if (backdrop) backdrop.classList.remove('open');
+    window.addEventListener('resize', function () {
+        if (isMobile()) {
+            root.classList.remove('sb-collapsed');
+        } else {
+            root.classList.remove('sb-mobile-open');
             document.body.style.overflow = '';
-            _pendingPayCallback = null;
+            restoreCollapse();
         }
+    });
 
-        if (modalClose) modalClose.addEventListener('click', closeZarModal);
-        if (modalCancel) modalCancel.addEventListener('click', closeZarModal);
-        if (backdrop) backdrop.addEventListener('click', e => { if (e.target === backdrop) closeZarModal(); });
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZarModal(); });
+    restoreCollapse();
 
-        if (modalProceed) {
-            modalProceed.addEventListener('click', async function () {
-                if (!_pendingPayCallback) return;
-                modalProceed.disabled = true;
-                modalProceed.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
-                await _pendingPayCallback();
-            });
-        }
+    /* ── Mobile sidebar (hamburger) ── */
+    function openMobileSidebar() {
+        root.classList.add('sb-mobile-open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeMobileSidebar() {
+        root.classList.remove('sb-mobile-open');
+        document.body.style.overflow = '';
+    }
 
-        const payNowButtons = document.querySelectorAll('button.pay-now-btn');
-        payNowButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                const conferenceId = this.dataset.conferenceId;
-                const registrationId = this.dataset.registrationId;
-                const cardElement = this.closest('.registration-card');
-                const totalAmount = parseFloat(cardElement?.dataset?.totalAmount) || 0;
+    hamburger?.addEventListener('click', openMobileSidebar);
+    sbBackdrop?.addEventListener('click', closeMobileSidebar);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeMobileSidebar();
+    });
 
-                if (!conferenceId || !registrationId || totalAmount <= 0) return;
+    /* ── Tab switching ── */
+    function activateTab(name) {
+        document.querySelectorAll('.db-sidelink[data-tab]').forEach(el => el.classList.toggle('is-active', el.dataset.tab === name));
+        document.querySelectorAll('.db-mobile-tab').forEach(el => el.classList.toggle('is-active', el.dataset.tab === name));
+        document.querySelectorAll('.db-tab-pane').forEach(pane => pane.classList.toggle('is-active', pane.id === 'tab-' + name));
+    }
 
-                const originalHtml = this.innerHTML;
-
-                async function doPayment() {
-                    button.disabled = true;
-                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
-                    closeZarModal();
-
-                    try {
-                        const response = await fetch(`/conferences/${conferenceId}/payment/create`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ registration_id: registrationId })
-                        });
-                        const result = await response.json();
-
-                        if (result.success && result.payment_url) {
-                            window.location.href = result.payment_url;
-                            return;
-                        }
-
-                        alert(result.error || 'Could not start payment.');
-                    } catch (error) {
-                        console.error('Dashboard payment start error:', error);
-                        alert('An error occurred while starting payment.');
-                    } finally {
-                        button.disabled = false;
-                        button.innerHTML = originalHtml;
-                        if (modalProceed) {
-                            modalProceed.disabled = false;
-                            modalProceed.innerHTML = 'Proceed to Payment';
-                        }
-                    }
-                }
-
-                openZarModal(totalAmount, doPayment);
-            });
+    document.querySelectorAll('[data-tab]').forEach(el => {
+        el.addEventListener('click', function () {
+            activateTab(this.dataset.tab);
+            if (isMobile()) closeMobileSidebar();
         });
     });
+
+    /* ── Registrations filter / sort / search ── */
+    const regsList   = document.getElementById('regs-list');
+    const regCards   = regsList ? Array.from(regsList.querySelectorAll('.db-row')) : [];
+    const countPill  = document.getElementById('reg-count');
+    const noResults  = document.getElementById('regs-no-results');
+    let activeFilter = 'all';
+
+    function parseDate(v)   { const p = Date.parse(v||''); return isNaN(p) ? 0 : p; }
+    function parseAmt(v)    { const n = Number(v); return isFinite(n) ? n : 0; }
+    function normalise(v)   { return (v||'').toString().trim().toLowerCase(); }
+
+    function applyView() {
+        if (!regsList || !regCards.length) return;
+        const query   = normalise(document.getElementById('reg-search')?.value);
+        const sortKey = document.getElementById('reg-sort')?.value || 'recent';
+
+        const visible = regCards.filter(card => {
+            const status   = normalise(card.dataset.status);
+            const haystack = normalise(card.dataset.search);
+            const matchF   = activeFilter === 'all' || status === activeFilter;
+            const matchS   = !query || haystack.includes(query);
+            card.classList.toggle('is-hidden', !(matchF && matchS));
+            return matchF && matchS;
+        });
+
+        const sorted = [...visible].sort((a, b) => {
+            if (sortKey === 'name_asc')    return (a.dataset.conferenceName||'').localeCompare(b.dataset.conferenceName||'');
+            if (sortKey === 'amount_desc') return parseAmt(b.dataset.totalAmount) - parseAmt(a.dataset.totalAmount);
+            if (sortKey === 'amount_asc')  return parseAmt(a.dataset.totalAmount) - parseAmt(b.dataset.totalAmount);
+            return parseDate(b.dataset.updatedAt) - parseDate(a.dataset.updatedAt);
+        });
+
+        const hidden = regCards.filter(c => !visible.includes(c));
+        [...sorted, ...hidden, ...(noResults ? [noResults] : [])].forEach(el => regsList.appendChild(el));
+
+        if (countPill) countPill.textContent = `${visible.length} shown`;
+        if (noResults) noResults.classList.toggle('is-hidden', visible.length > 0);
+    }
+
+    document.querySelectorAll('.db-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            activeFilter = this.dataset.filter || 'all';
+            document.querySelectorAll('.db-filter-btn').forEach(b => b.classList.remove('is-active'));
+            this.classList.add('is-active');
+            applyView();
+        });
+    });
+    document.getElementById('reg-search')?.addEventListener('input', applyView);
+    document.getElementById('reg-sort')?.addEventListener('change', applyView);
+    applyView();
+
+    /* ── ZAR Payment Modal ── */
+    const backdrop   = document.getElementById('zar-backdrop');
+    const zarClose   = document.getElementById('zar-close');
+    const zarCancel  = document.getElementById('zar-cancel');
+    const zarProceed = document.getElementById('zar-proceed');
+    const zarUsd     = document.getElementById('zar-usd');
+    const zarZar     = document.getElementById('zar-zar');
+    const zarRate    = document.getElementById('zar-rate');
+    let _payFn = null;
+
+    function openZarModal(usdAmt, payFn) {
+        _payFn = payFn;
+        if (zarUsd) zarUsd.textContent = `$${usdAmt.toFixed(2)}`;
+        if (zarZar) zarZar.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        if (zarRate) zarRate.textContent = 'Fetching live exchange rate…';
+        if (zarProceed) zarProceed.disabled = true;
+        if (backdrop)  { backdrop.classList.add('open'); document.body.style.overflow = 'hidden'; }
+
+        fetch('/api/fx-rate')
+            .then(r => r.json())
+            .then(data => {
+                const rate = data.usd_to_zar || 18.5;
+                if (zarZar)  zarZar.textContent = `R${(usdAmt * rate).toFixed(2)}`;
+                if (zarRate) zarRate.innerHTML  = `Rate: <span>1 USD = R${rate.toFixed(4)}</span> (${data.live ? 'live' : 'estimated'}). Actual charge may differ slightly.`;
+                if (zarProceed) zarProceed.disabled = false;
+            })
+            .catch(() => {
+                const fb = 18.5;
+                if (zarZar)  zarZar.textContent = `R${(usdAmt * fb).toFixed(2)}`;
+                if (zarRate) zarRate.innerHTML  = `Estimated rate: <span>1 USD ≈ R${fb}</span>. Actual charge may differ.`;
+                if (zarProceed) zarProceed.disabled = false;
+            });
+    }
+
+    function closeZarModal() {
+        if (backdrop) backdrop.classList.remove('open');
+        document.body.style.overflow = '';
+        _payFn = null;
+    }
+
+    zarClose?.addEventListener('click', closeZarModal);
+    zarCancel?.addEventListener('click', closeZarModal);
+    backdrop?.addEventListener('click', e => { if (e.target === backdrop) closeZarModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZarModal(); });
+
+    zarProceed?.addEventListener('click', async function () {
+        if (!_payFn) return;
+        zarProceed.disabled = true;
+        zarProceed.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
+        await _payFn();
+    });
+
+    document.querySelectorAll('button.pay-now-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const confId  = this.dataset.conferenceId;
+            const regId   = this.dataset.registrationId;
+            const card    = this.closest('.db-row');
+            const amount  = parseFloat(card?.dataset?.totalAmount) || 0;
+            if (!confId || !regId || amount <= 0) return;
+
+            const origHtml = this.innerHTML;
+            const self = this;
+
+            async function doPayment() {
+                self.disabled = true;
+                self.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting…';
+                closeZarModal();
+                try {
+                    const res    = await fetch(`/conferences/${confId}/payment/create`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ registration_id: regId })
+                    });
+                    const result = await res.json();
+                    if (result.success && result.payment_url) {
+                        window.location.href = result.payment_url;
+                        return;
+                    }
+                    alert(result.error || 'Could not start payment.');
+                } catch (err) {
+                    console.error(err);
+                    alert('An error occurred while starting payment.');
+                } finally {
+                    self.disabled = false;
+                    self.innerHTML = origHtml;
+                    if (zarProceed) { zarProceed.disabled = false; zarProceed.innerHTML = 'Proceed to payment'; }
+                }
+            }
+
+            openZarModal(amount, doPayment);
+        });
+    });
+});
 </script>
 {% endblock %}

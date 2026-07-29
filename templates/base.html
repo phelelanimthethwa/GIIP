@@ -402,22 +402,10 @@
     </style>
 </head>
 
-{% set show_global_nav = not (current_user.is_authenticated and not (current_user.is_admin|default(false))) %}
+{% set show_global_nav = not current_user.is_authenticated %}
 <body class="{% if not show_global_nav %}clean-shell{% endif %}">
     {% if show_global_nav %}
     {% include 'user/components/header.html' %}
-    {% endif %}
-    {% if not show_global_nav and current_user.is_authenticated %}
-    <div class="clean-user-utility">
-        <div class="clean-user-identity">
-            {{ current_user.full_name or current_user.email }}
-        </div>
-        <div class="clean-user-links">
-            <a class="clean-user-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a class="clean-user-link" href="{{ url_for('profile') }}">Profile</a>
-            <a class="clean-user-link logout" href="{{ url_for('logout') }}">Logout</a>
-        </div>
-    </div>
     {% endif %}
 
     <main>
