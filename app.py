@@ -2701,17 +2701,6 @@ def admin_registration_fees(conference_id=None):
                     },
                     'benefits': [b for b in request.form.getlist('early_bird_benefits[]') if b and b.strip()]
                 } if request.form.get('early_bird_enabled') == 'on' else None,
-                'early': {
-                    'deadline': request.form.get('early_deadline', ''),
-                    'fees': {
-                        'student_author': get_float('early_student'),
-                        'regular_author': get_float('early_regular'),
-                        'physical_delegate': get_float('early_physical'),
-                        'listener': get_float('early_listener'),
-                        'virtual': get_float('early_virtual')
-                    },
-                    'benefits': [b for b in request.form.getlist('early_benefits[]') if b and b.strip()]
-                },
                 'regular': {
                     'deadline': request.form.get('regular_deadline', ''),
                     'fees': {
@@ -5560,16 +5549,6 @@ def get_registration_fees(conference_id=None):
                     'remaining': 100,
                     'show_remaining': True
                 },
-                'fees': {
-                    'student_author': 0,
-                    'regular_author': 0,
-                    'physical_delegate': 0,
-                    'listener': 0
-                },
-                'benefits': []
-            },
-            'early': {
-                'deadline': '',
                 'fees': {
                     'student_author': 0,
                     'regular_author': 0,

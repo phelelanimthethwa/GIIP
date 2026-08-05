@@ -200,30 +200,7 @@ firebase.initializeApp(firebaseConfig);
                     </div>
                     {% endif %}
 
-                    {% if fees.early %}
-                    <div class="period-card">
-                        <input type="radio" name="registration_period" id="early" value="early">
-                        <label for="early">
-                            <div class="period-header">
-                                <i class="fas fa-calendar-check"></i>
-                                <h4>Early Registration</h4>
-                                {% if fees.early.deadline %}
-                                <span class="deadline">Until {{ fees.early.deadline }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="benefits-list">
-                                {% if fees.early.benefits %}
-                                <h5>Benefits:</h5>
-                                <ul>
-                                    {% for benefit in fees.early.benefits %}
-                                    <li>{{ benefit }}</li>
-                                    {% endfor %}
-                                </ul>
-                                {% endif %}
-                            </div>
-                        </label>
-                    </div>
-                    {% endif %}
+
 
                     {% if fees.regular %}
                     <div class="period-card">

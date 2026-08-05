@@ -149,9 +149,6 @@
                 <button type="button" class="tier-tab-link active" data-target="#pane-early-bird">
                     <i class="fas fa-star me-1 text-warning"></i> Early Bird
                 </button>
-                <button type="button" class="tier-tab-link" data-target="#pane-early">
-                    <i class="fas fa-calendar-check me-1 text-info"></i> Early
-                </button>
                 <button type="button" class="tier-tab-link" data-target="#pane-regular">
                     <i class="fas fa-calendar me-1 text-primary"></i> Regular
                 </button>
@@ -261,76 +258,7 @@
                     </div>
                 </div>
 
-                <!-- Tier 2: Early -->
-                <div class="tier-pane" id="pane-early" style="display: none;">
-                    <div class="mb-3">
-                        <label for="early_deadline" class="form-label small text-muted mb-1">Deadline</label>
-                        <input type="date" id="early_deadline" name="early_deadline" class="form-control form-control-sm" style="max-width: 250px;"
-                               value="{{ fees.early.deadline if fees and fees.early else '' }}">
-                    </div>
 
-                    <!-- 4. Fee Rate Grid (Strict 2-Column) -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-6">
-                            <label for="early_student" class="form-label small text-muted mb-1">Student Author</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                <input type="number" id="early_student" name="early_student" class="form-control"
-                                       value="{{ fees.early.fees.student_author if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label for="early_regular" class="form-label small text-muted mb-1">Regular Author</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                <input type="number" id="early_regular" name="early_regular" class="form-control"
-                                       value="{{ fees.early.fees.regular_author if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label for="early_physical" class="form-label small text-muted mb-1">Physical Delegate</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                <input type="number" id="early_physical" name="early_physical" class="form-control"
-                                       value="{{ fees.early.fees.physical_delegate if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label for="early_listener" class="form-label small text-muted mb-1">Listener</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                <input type="number" id="early_listener" name="early_listener" class="form-control"
-                                       value="{{ fees.early.fees.listener if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label for="early_virtual" class="form-label small text-muted mb-1">Virtual Attendee</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-light text-muted">{{ fees.currency.symbol if fees and fees.currency else 'R' }}</span>
-                                <input type="number" id="early_virtual" name="early_virtual" class="form-control"
-                                       value="{{ fees.early.fees.virtual if fees and fees.early and fees.early.fees else '' }}" step="0.01" min="0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 6. Benefits List Section -->
-                    <div class="pt-3 mt-3 border-top" style="border-top-color: #E2E8F0 !important;">
-                        <div class="small text-muted fw-semibold mb-2"><i class="fas fa-gift me-1"></i> Early Benefits</div>
-                        <div id="early_benefits">
-                            {% if fees and fees.early and fees.early.benefits %}
-                                {% for benefit in fees.early.benefits %}
-                                    <div class="benefit-row">
-                                        <input type="text" name="early_benefits[]" value="{{ benefit }}" class="form-control form-control-sm" placeholder="Enter benefit">
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="addBenefit('early_benefits')">
-                            <i class="fas fa-plus me-1"></i> Add Benefit
-                        </button>
-                    </div>
-                </div>
 
                 <!-- Tier 3: Regular -->
                 <div class="tier-pane" id="pane-regular" style="display: none;">
