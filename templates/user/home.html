@@ -61,70 +61,66 @@
                 {% for conf in home_featured_conferences %}
                 {% set conf_info = conf.basic_info %}
                 {% set venue_val = conf_info.venue_name or conf_info.venue %}
-                <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if not loop.first %}display: none;{% endif %}">
-                    <div class="d-flex justify-content-between align-items-stretch flex-column flex-lg-row gap-4 w-100">
-                        
-                        {# Left: Title = Conference Name, Subtitle = Abbreviation & Year, Date = Dates #}
-                        <div class="title-content flex-grow-1">
-                            <h1>{{ conf_info.name }}</h1>
-                            <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
-                                <span>{{ conf_info.abbreviation or 'GIIR Conference' }} &bull; {{ conf_info.year }}</span>
-                            </p>
-                            <p class="conference-date">
-                                <i class="fas fa-calendar-alt me-1.5 text-warning"></i>
-                                {{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}
-                            </p>
+                <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if loop.first %}display: flex;{% else %}display: none;{% endif %} flex-direction: column; align-items: center; justify-content: center; gap: 2rem;">
+                    {# Top: Title = Conference Name, Subtitle = Abbreviation & Year, Date = Dates #}
+                    <div class="title-content">
+                        <h1>{{ conf_info.name }}</h1>
+                        <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
+                            <span>{{ conf_info.abbreviation or 'GIIR Conference' }} &bull; {{ conf_info.year }}</span>
+                        </p>
+                        <p class="conference-date">
+                            <i class="fas fa-calendar-alt me-1.5 text-warning"></i>
+                            {{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}
+                        </p>
+                    </div>
+
+                    {# Bottom: Conference Info Details Box (Positioned exactly as in Manual mode) #}
+                    <div class="conference-info-content">
+                        <div class="info-grid mb-2">
+                            <div class="info-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>{{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>{{ conf_info.location or 'Virtual' }}</span>
+                            </div>
+                            {% if venue_val %}
+                            <div class="info-item">
+                                <i class="fas fa-building"></i>
+                                <span>Venue: <strong>{{ venue_val }}</strong></span>
+                            </div>
+                            {% endif %}
                         </div>
 
-                        {# Right: Conference Details Box & Action Buttons #}
-                        <div class="conference-info-content">
-                            <div class="info-grid mb-2">
-                                <div class="info-item">
-                                    <i class="fas fa-calendar"></i>
-                                    <span>{{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}</span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span>{{ conf_info.location or 'Virtual' }}</span>
-                                </div>
-                                {% if venue_val %}
-                                <div class="info-item">
-                                    <i class="fas fa-building"></i>
-                                    <span>Venue: <strong>{{ venue_val }}</strong></span>
-                                </div>
+                        <div class="conference-highlights">
+                            <h3>Highlights</h3>
+                            <ul>
+                                {% if conf_info.description %}
+                                    {% for sent in conf_info.description.split('.')[:2] %}
+                                        {% set trimmed = sent.strip() %}
+                                        {% if trimmed %}
+                                            <li>{{ trimmed|truncate(80) }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <li>Keynote &amp; Technical Sessions</li>
+                                    <li>Networking &amp; Global Exchange</li>
                                 {% endif %}
-                            </div>
-
-                            <div class="conference-highlights">
-                                <h3>Highlights</h3>
-                                <ul>
-                                    {% if conf_info.description %}
-                                        {% for sent in conf_info.description.split('.')[:2] %}
-                                            {% set trimmed = sent.strip() %}
-                                            {% if trimmed %}
-                                                <li>{{ trimmed|truncate(80) }}</li>
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% else %}
-                                        <li>Keynote &amp; Technical Sessions</li>
-                                        <li>Networking &amp; Global Exchange</li>
-                                    {% endif %}
-                                </ul>
-                            </div>
-
-                            {# Actions #}
-                            <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top border-white border-opacity-25">
-                                <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="btn btn-sm btn-light fw-bold text-dark px-3 py-1.5 rounded-2">
-                                    <i class="fas fa-eye me-1"></i> View Event
-                                </a>
-                                {% if conf.settings.paper_submission_enabled %}
-                                <a href="{{ url_for('conference_paper_submission', conference_id=conf.id) }}" class="btn btn-sm btn-primary fw-bold px-3 py-1.5 rounded-2">
-                                    <i class="fas fa-file-upload me-1"></i> Submit Abstract
-                                </a>
-                                {% endif %}
-                            </div>
+                            </ul>
                         </div>
 
+                        {# Actions #}
+                        <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top border-white border-opacity-25">
+                            <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="btn btn-sm btn-light fw-bold text-dark px-3 py-1.5 rounded-2">
+                                <i class="fas fa-eye me-1"></i> View Event
+                            </a>
+                            {% if conf.settings.paper_submission_enabled %}
+                            <a href="{{ url_for('conference_paper_submission', conference_id=conf.id) }}" class="btn btn-sm btn-primary fw-bold px-3 py-1.5 rounded-2">
+                                <i class="fas fa-file-upload me-1"></i> Submit Abstract
+                            </a>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -1868,10 +1864,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         updateDots();
 
-        // Synchronize Left Title, Subtitle, Date and Right Details Box
+        // Synchronize Left Title, Subtitle, Date and Highlights Box
         if (syncSlides.length > 0) {
             syncSlides.forEach((slide, idx) => {
-                slide.style.display = (idx === currentSlide) ? 'block' : 'none';
+                slide.style.display = (idx === currentSlide) ? 'flex' : 'none';
             });
         }
 
