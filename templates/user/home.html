@@ -19,7 +19,16 @@
 <div class="hero-section">
     <div class="hero-slider">
         <div class="slider-container">
-            {% if home_content.hero.images and home_content.hero.images|length > 0 %}
+            {% if display_mode in ['selected', 'all_active'] and home_featured_conferences and home_featured_conferences|length > 0 %}
+                {# Dynamic Conference Background Slider Images #}
+                {% for conf in home_featured_conferences %}
+                {% set conf_info = conf.basic_info %}
+                {% set conf_img = conf_info.image_url or conf_info.thumbnail_url or url_for('static', filename='images/default-hero.jpg') %}
+                <div class="slide">
+                    <img src="{{ conf_img }}" alt="{{ conf_info.name }}" onError="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                </div>
+                {% endfor %}
+            {% elif home_content.hero.images and home_content.hero.images|length > 0 %}
                 {% for image in home_content.hero.images %}
                 <div class="slide">
                     {% set default_image = url_for('static', filename='images/default-hero.jpg') %}
@@ -35,7 +44,9 @@
                 </div>
             {% endif %}
         </div>
-        {% if home_content.hero.images and home_content.hero.images|length > 1 %}
+        
+        {% set total_slides = (home_featured_conferences|length) if (display_mode in ['selected', 'all_active'] and home_featured_conferences and home_featured_conferences|length > 0) else (home_content.hero.images|length if home_content.hero.images else 1) %}
+        {% if total_slides > 1 %}
         <div class="slider-nav">
             <button class="prev-slide"><i class="fas fa-chevron-left"></i></button>
             <button class="next-slide"><i class="fas fa-chevron-right"></i></button>
@@ -45,61 +56,41 @@
 
         <!-- Hero Content Overlay -->
         <div class="hero-overlay">
-            <div class="title-content">
-                <h1>{{ home_content.welcome.title|default('Welcome to Global Conferences') }}</h1>
-                <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
-                    <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
-                </p>
-                <p class="conference-date">{{ home_content.welcome.conference_date|default('Global Conferences') }}</p>
-                {% if home_content.hero.conference.show_countdown %}
-                <div class="countdown-container">
-                    <div class="countdown-item">
-                        <span id="countdown-days">00</span>
-                        <span class="countdown-label">Days</span>
-                    </div>
-                    <div class="countdown-item">
-                        <span id="countdown-hours">00</span>
-                        <span class="countdown-label">Hours</span>
-                    </div>
-                    <div class="countdown-item">
-                        <span id="countdown-minutes">00</span>
-                        <span class="countdown-label">Minutes</span>
-                    </div>
-                    <div class="countdown-item">
-                        <span id="countdown-seconds">00</span>
-                        <span class="countdown-label">Seconds</span>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
+            {% if display_mode in ['selected', 'all_active'] and home_featured_conferences and home_featured_conferences|length > 0 %}
+                {# Synchronized Dynamic Overlay Slides #}
+                {% for conf in home_featured_conferences %}
+                {% set conf_info = conf.basic_info %}
+                {% set venue_val = conf_info.venue_name or conf_info.venue %}
+                <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if not loop.first %}display: none;{% endif %}">
+                    <div class="d-flex justify-content-between align-items-stretch flex-column flex-lg-row gap-4 w-100">
+                        
+                        {# Left: Title = Conference Name, Subtitle = Abbreviation & Year, Date = Dates #}
+                        <div class="title-content flex-grow-1">
+                            <h1>{{ conf_info.name }}</h1>
+                            <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
+                                <span>{{ conf_info.abbreviation or 'GIIR Conference' }} &bull; {{ conf_info.year }}</span>
+                            </p>
+                            <p class="conference-date">
+                                <i class="fas fa-calendar-alt me-1.5 text-warning"></i>
+                                {{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}
+                            </p>
+                        </div>
 
-            <div class="conference-info-content">
-                {% if display_mode in ['selected', 'all_active'] and home_featured_conferences and home_featured_conferences|length > 0 %}
-                    {# Dynamic Rotating Hero Conferences #}
-                    <div class="hero-conf-rotator position-relative">
-                        {% for conf in home_featured_conferences %}
-                        {% set conf_info = conf.basic_info %}
-                        {% set venue_val = conf_info.venue_name or conf_info.venue %}
-                        <div class="hero-conf-slide {% if loop.first %}active{% endif %}" data-conf-index="{{ loop.index0 }}" style="{% if not loop.first %}display: none;{% endif %} transition: opacity 0.4s ease;">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                        {# Right: Conference Details Box & Action Buttons #}
+                        <div class="conference-info-content">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge bg-primary px-2.5 py-1 rounded-pill extra-small text-uppercase">
-                                    {{ conf_info.abbreviation or 'Featured Event' }} &bull; {{ conf_info.year }}
+                                    {{ conf_info.status|title }} Event
                                 </span>
                                 {% if home_featured_conferences|length > 1 %}
-                                <div class="hero-conf-nav d-flex align-items-center gap-1">
-                                    <span class="small opacity-75 me-1" style="font-size: 0.72rem;">{{ loop.index }} / {{ home_featured_conferences|length }}</span>
-                                    <button type="button" class="btn btn-xs btn-outline-light p-0 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 22px; height: 22px;" onclick="prevHeroConf(event)">
-                                        <i class="fas fa-chevron-left" style="font-size: 0.65rem;"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-xs btn-outline-light p-0 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 22px; height: 22px;" onclick="nextHeroConf(event)">
-                                        <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
-                                    </button>
-                                </div>
+                                <span class="small opacity-75 text-white" style="font-size: 0.72rem;">{{ loop.index }} of {{ home_featured_conferences|length }}</span>
                                 {% endif %}
                             </div>
 
-                            <h2 class="mb-2"><a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="text-white text-decoration-none">{{ conf_info.name }}</a></h2>
-                            
+                            <h2 class="mb-2" style="font-size: 1.15rem;">
+                                <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="text-white text-decoration-none">{{ conf_info.name }}</a>
+                            </h2>
+
                             <div class="info-grid mb-2">
                                 <div class="info-item">
                                     <i class="fas fa-calendar"></i>
@@ -134,7 +125,7 @@
                                 </ul>
                             </div>
 
-                            {# Actions inside Hero Overlay #}
+                            {# Actions #}
                             <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top border-white border-opacity-25">
                                 <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="btn btn-sm btn-light fw-bold text-dark px-3 py-1.5 rounded-2">
                                     <i class="fas fa-eye me-1"></i> View Event
@@ -146,10 +137,41 @@
                                 {% endif %}
                             </div>
                         </div>
-                        {% endfor %}
+
                     </div>
-                {% else %}
-                    {# Manual Default Single Conference Display #}
+                </div>
+                {% endfor %}
+            {% else %}
+                {# Manual Option (Default) #}
+                <div class="title-content">
+                    <h1>{{ home_content.welcome.title|default('Welcome to Global Conferences') }}</h1>
+                    <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
+                        <span>{{ home_content.welcome.subtitle|default('Global Institute on Innovative Research') }}</span>
+                    </p>
+                    <p class="conference-date">{{ home_content.welcome.conference_date|default('Global Conferences') }}</p>
+                    {% if home_content.hero.conference.show_countdown %}
+                    <div class="countdown-container">
+                        <div class="countdown-item">
+                            <span id="countdown-days">00</span>
+                            <span class="countdown-label">Days</span>
+                        </div>
+                        <div class="countdown-item">
+                            <span id="countdown-hours">00</span>
+                            <span class="countdown-label">Hours</span>
+                        </div>
+                        <div class="countdown-item">
+                            <span id="countdown-minutes">00</span>
+                            <span class="countdown-label">Minutes</span>
+                        </div>
+                        <div class="countdown-item">
+                            <span id="countdown-seconds">00</span>
+                            <span class="countdown-label">Seconds</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="conference-info-content">
                     <h2>{{ home_content.hero.conference.name|default('Global Institute on Innovative Research') }}</h2>
                     <div class="info-grid">
                         <div class="info-item">
@@ -182,8 +204,9 @@
                             {% endif %}
                         </ul>
                     </div>
-                {% endif %}
-            </div>
+                </div>
+            {% endif %}
+        </div>
         </div>
     </div>
 </div>
@@ -1814,51 +1837,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Dynamic Hero Conference Rotator
-    (function() {
-        const heroSlides = document.querySelectorAll('.hero-conf-slide');
-        if (heroSlides.length > 1) {
-            let currentIndex = 0;
-            
-            function showHeroConf(index) {
-                heroSlides.forEach((slide, i) => {
-                    slide.style.display = (i === index) ? 'block' : 'none';
-                });
-                currentIndex = index;
-            }
-
-            window.nextHeroConf = function(e) {
-                if (e) e.stopPropagation();
-                let nextIndex = (currentIndex + 1) % heroSlides.length;
-                showHeroConf(nextIndex);
-            };
-
-            window.prevHeroConf = function(e) {
-                if (e) e.stopPropagation();
-                let prevIndex = (currentIndex - 1 + heroSlides.length) % heroSlides.length;
-                showHeroConf(prevIndex);
-            };
-
-            setInterval(function() {
-                let nextIndex = (currentIndex + 1) % heroSlides.length;
-                showHeroConf(nextIndex);
-            }, 6000);
-        }
-    })();
-
+    // Synchronized Hero Slider Logic
     const slider = document.querySelector('.slider-container');
     const slides = document.querySelectorAll('.slide');
+    const syncSlides = document.querySelectorAll('.hero-sync-slide');
     const dotsContainer = document.querySelector('.slider-dots');
     let currentSlide = 0;
     
-    // Create dots
-    slides.forEach((_, index) => {
-        const dot = document.createElement('div');
-        dot.classList.add('dot');
-        if (index === 0) dot.classList.add('active');
-        dot.addEventListener('click', () => goToSlide(index));
-        dotsContainer.appendChild(dot);
-    });
+    // Create dots if container exists
+    if (dotsContainer && slides.length > 1) {
+        slides.forEach((_, index) => {
+            const dot = document.createElement('div');
+            dot.classList.add('dot');
+            if (index === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(index));
+            dotsContainer.appendChild(dot);
+        });
+    }
     
     // Update dots
     function updateDots() {
@@ -1867,32 +1862,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Go to specific slide
+    // Go to specific slide and sync overlay
     function goToSlide(n) {
         currentSlide = n;
-        slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+        if (slider) {
+            slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+        }
         updateDots();
+
+        // Synchronize Left Title, Subtitle, Date and Right Details Box
+        if (syncSlides.length > 0) {
+            syncSlides.forEach((slide, idx) => {
+                slide.style.display = (idx === currentSlide) ? 'block' : 'none';
+            });
+        }
     }
     
     // Next slide
     function nextSlide() {
-        currentSlide = (currentSlide + 1) % slides.length;
-        goToSlide(currentSlide);
+        if (slides.length > 0) {
+            currentSlide = (currentSlide + 1) % slides.length;
+            goToSlide(currentSlide);
+        }
     }
     
     // Previous slide
     function prevSlide() {
-        currentSlide = (currentSlide - 1 + slides.length) % slides.length;
-        goToSlide(currentSlide);
+        if (slides.length > 0) {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            goToSlide(currentSlide);
+        }
     }
     
-    // Add click handlers
-    document.querySelector('.next-slide').addEventListener('click', nextSlide);
-    document.querySelector('.prev-slide').addEventListener('click', prevSlide);
+    // Add click handlers for nav buttons if present
+    const nextBtn = document.querySelector('.next-slide');
+    const prevBtn = document.querySelector('.prev-slide');
+    if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+    if (prevBtn) prevBtn.addEventListener('click', prevSlide);
     
-    // Auto advance slides
+    // Auto-advance slides every 6 seconds if multiple slides exist
     if (slides.length > 1) {
-        setInterval(nextSlide, 5000);
+        setInterval(nextSlide, 6000);
     }
 
     // Countdown Timer
