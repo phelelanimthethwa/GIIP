@@ -2556,10 +2556,22 @@ def setup_second_admin():
         return "Error creating second admin user. Check server logs for details."
 
 @app.route('/admin/venue', methods=['GET', 'POST'])
+@app.route('/admin/venue/', methods=['GET', 'POST'])
+@login_required
 @admin_required
 def admin_venue():
     if request.method == 'POST':
         try:
+            import re
+            import urllib.parse
+
+            map_url_raw = request.form.get('map_url', '').strip()
+            # Extract URL if whole <iframe> code was pasted
+            if '<iframe' in map_url_raw.lower():
+                iframe_match = re.search(r'src=["\']([^"\']+)["\']', map_url_raw, re.IGNORECASE)
+                if iframe_match:
+                    map_url_raw = iframe_match.group(1).strip()
+
             # Get and validate form data
             venue_data = {
                 'name': request.form.get('name', '').strip(),
@@ -2569,7 +2581,7 @@ def admin_venue():
                 'postal_code': request.form.get('postal_code', '').strip(),
                 'phone': request.form.get('phone', '').strip(),
                 'email': request.form.get('email', '').strip(),
-                'map_url': request.form.get('map_url', '').strip()
+                'map_url': map_url_raw
             }
             
             # Validate required fields
@@ -2585,10 +2597,10 @@ def admin_venue():
                 flash('Invalid email format', 'danger')
                 return redirect(url_for('admin_venue'))
             
-            # Generate map URL if not provided or invalid
-            if not venue_data['map_url'] or 'maps/embed' not in venue_data['map_url']:
-                address = f"{venue_data['address']}, {venue_data['city']}, {venue_data['country']}"
-                venue_data['map_url'] = f"https://www.google.com/maps/embed/v1/place?key={app.config.get('GOOGLE_MAPS_API_KEY', '')}&q={address}"
+            # Generate fallback map URL if not provided
+            if not venue_data['map_url']:
+                address_query = urllib.parse.quote(f"{venue_data['address']}, {venue_data['city']}, {venue_data['country']}")
+                venue_data['map_url'] = f"https://maps.google.com/maps?q={address_query}&output=embed"
             
             # Update venue details in Firebase
             venue_ref = db.reference('venue_details')
