@@ -70,6 +70,13 @@
                 <i class="fas fa-map-marker-alt"></i>
                 <span>{{ conference.basic_info.location }}</span>
             </div>
+            {% set venue = conference.basic_info.venue_name or conference.basic_info.venue %}
+            {% if venue %}
+            <div class="meta-item">
+                <i class="fas fa-building"></i>
+                <span>Venue: <strong>{{ venue }}</strong></span>
+            </div>
+            {% endif %}
             <div class="meta-item">
                 <i class="fas fa-clock"></i>
                 <span>{{ conference.basic_info.timezone }}</span>
@@ -151,6 +158,13 @@
                     <i class="fas fa-map-marker-alt"></i>
                     <span>{{ conference.basic_info.location }}</span>
                 </div>
+                {% set venue = conference.basic_info.venue_name or conference.basic_info.venue %}
+                {% if venue %}
+                <div class="meta-item">
+                    <i class="fas fa-building"></i>
+                    <span>Venue: <strong>{{ venue }}</strong></span>
+                </div>
+                {% endif %}
                 <div class="meta-item">
                     <i class="fas fa-clock"></i>
                     <span>{{ conference.basic_info.timezone }}</span>
@@ -351,6 +365,13 @@
                         <span class="label">Location:</span>
                         <span class="value">{{ conference.basic_info.location }}</span>
                     </div>
+                    {% set venue = conference.basic_info.venue_name or conference.basic_info.venue %}
+                    {% if venue %}
+                    <div class="info-item">
+                        <span class="label">Venue:</span>
+                        <span class="value">{{ venue }}</span>
+                    </div>
+                    {% endif %}
                     <div class="info-item">
                         <span class="label">Time Zone:</span>
                         <span class="value">{{ conference.basic_info.timezone }}</span>

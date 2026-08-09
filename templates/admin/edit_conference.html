@@ -94,10 +94,22 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="conferenceLocation" class="form-label">Location</label>
+                                    <label for="conferenceLocation" class="form-label">Location (City, Country)</label>
                                     <input type="text" class="form-control" id="conferenceLocation" name="location" 
                                            value="{{ conference.basic_info.location|default('') }}"
-                                           placeholder="Conference venue or online platform">
+                                           placeholder="e.g., Paris, France">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="conferenceVenue" class="form-label">Venue Name (Building / Hotel / Center Name)</label>
+                                    <input type="text" class="form-control" id="conferenceVenue" name="venue_name" 
+                                           value="{{ conference.basic_info.venue_name|default(conference.basic_info.venue|default('')) }}"
+                                           placeholder="e.g., Palais des Congrès de Paris">
+                                    <div class="form-text">Name of the venue where the conference takes place (no map displays).</div>
                                 </div>
                             </div>
                         </div>

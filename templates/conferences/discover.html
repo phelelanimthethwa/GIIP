@@ -100,6 +100,13 @@
                         <i class="fas fa-map-marker-alt"></i>
                         <strong style="color: #2563eb;">{{ conference.basic_info.location or 'Location TBD' }}</strong>
                     </div>
+                    {% set venue = conference.basic_info.venue_name or conference.basic_info.venue %}
+                    {% if venue %}
+                    <div class="detail-item">
+                        <i class="fas fa-building"></i>
+                        <span>Venue: <strong style="color: #2563eb;">{{ venue }}</strong></span>
+                    </div>
+                    {% endif %}
                     <div class="detail-item">
                         <i class="fas fa-clock"></i>
                         <strong style="color: #2563eb;">{{ conference.basic_info.timezone }}</strong>
