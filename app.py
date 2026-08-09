@@ -13133,6 +13133,8 @@ def create_conference():
                 'end_date': request.form.get('end_date', ''),
                 'location': request.form.get('location', '').strip(),
                 'website': request.form.get('website', '').strip(),
+                'image_url': request.form.get('image_url', '').strip(),
+                'hero_style': request.form.get('hero_style', 'background').strip(),
                 'timezone': 'UTC'
             },
             'settings': {
@@ -13432,12 +13434,37 @@ def edit_conference(conference_id):
                 'end_date': request.form.get('end_date', ''),
                 'location': request.form.get('location', '').strip(),
                 'website': request.form.get('website', '').strip(),
+                'image_url': request.form.get('image_url', '').strip(),
+                'thumbnail_url': request.form.get('thumbnail_url', '').strip(),
+                'hero_style': request.form.get('hero_style', 'background').strip(),
                 'paper_submission_deadline': request.form.get('paper_submission_deadline', '').strip(),
                 'camera_ready_deadline': request.form.get('camera_ready_deadline', '').strip(),
                 'registration_deadline': request.form.get('registration_deadline', '').strip(),
                 'timezone': conference['basic_info'].get('timezone', 'UTC')
             }
             
+            # Handle direct file upload for cover image to Firebase Storage if provided
+            image_file = request.files.get('image_file')
+            if image_file and image_file.filename:
+                try:
+                    filename = secure_filename(f"{conference_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{image_file.filename}")
+                    public_url = upload_conference_image_to_firebase(image_file, filename)
+                    basic_info['image_url'] = public_url
+                except Exception as upload_err:
+                    print(f"Error uploading cover image to Firebase Storage: {upload_err}")
+                    flash(f"Warning: Failed to upload image to Firebase Storage: {str(upload_err)}", 'warning')
+
+            # Handle direct file upload for standalone card thumbnail image to Firebase Storage if provided
+            thumbnail_file = request.files.get('thumbnail_file')
+            if thumbnail_file and thumbnail_file.filename:
+                try:
+                    thumb_filename = secure_filename(f"thumb_{conference_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{thumbnail_file.filename}")
+                    thumb_public_url = upload_conference_image_to_firebase(thumbnail_file, thumb_filename)
+                    basic_info['thumbnail_url'] = thumb_public_url
+                except Exception as upload_err:
+                    print(f"Error uploading card thumbnail to Firebase Storage: {upload_err}")
+                    flash(f"Warning: Failed to upload thumbnail to Firebase Storage: {str(upload_err)}", 'warning')
+
             # Validate required fields
             if not basic_info['name']:
                 flash('Conference name is required.', 'error')
@@ -14148,6 +14175,21 @@ def upload_speaker_image_to_firebase(file, filename):
     except Exception as e:
         print(f"Error uploading speaker image: {str(e)}")
         raise
+
+def upload_conference_image_to_firebase(file, filename):
+    """Upload conference cover image to Firebase Storage under conferences/ and return public URL"""
+    try:
+        bucket = get_firebase_storage_bucket()
+        blob = bucket.blob(f'conferences/{filename}')
+        content_type = getattr(file, 'content_type', getattr(file, 'mimetype', 'image/jpeg')) or 'image/jpeg'
+        file.seek(0)
+        blob.upload_from_file(file, content_type=content_type)
+        blob.make_public()
+        return blob.public_url
+    except Exception as e:
+        print(f"Error uploading conference image to Firebase Storage: {str(e)}")
+        raise
+
 
 
 def get_conference_data(conference_id):

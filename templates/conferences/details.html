@@ -30,8 +30,101 @@
 {% endblock %}
 
 {% block content %}
-<!-- Conference Hero Section -->
-<div class="conference-hero">
+{% set hero_style = conference.basic_info.hero_style|default('background') %}
+{% set conference_img = conference.basic_info.image_url or url_for('static', filename='images/default-hero.jpg') %}
+
+{% if hero_style == 'top_banner' %}
+<!-- Main Standalone Picture Mode (Details Underneath) -->
+<div class="conference-main-image-container">
+    <div class="conference-main-img-card">
+        <img src="{{ conference_img }}" 
+             alt="{{ conference.basic_info.name }}" 
+             class="conference-main-featured-img"
+             onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+    </div>
+</div>
+
+<div class="conference-details-underneath-card">
+    <div class="hero-content">
+        <div class="conference-badge mb-2">
+            <span class="status-badge status-{{ conference.basic_info.status }}">
+                {% if conference.basic_info.status == 'active' %}
+                    🟢 Registration Open
+                {% elif conference.basic_info.status == 'upcoming' %}
+                    🟡 Upcoming Event
+                {% elif conference.basic_info.status == 'closed' %}
+                    🔴 Registration Closed
+                {% else %}
+                    ⚪ {{ conference.basic_info.status|title }}
+                {% endif %}
+            </span>
+        </div>
+        <h1 class="text-dark-title">{{ conference.basic_info.name }}</h1>
+        
+        <div class="conference-meta meta-dark">
+            <div class="meta-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</span>
+            </div>
+            <div class="meta-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ conference.basic_info.location }}</span>
+            </div>
+            <div class="meta-item">
+                <i class="fas fa-clock"></i>
+                <span>{{ conference.basic_info.timezone }}</span>
+            </div>
+            {% if conference.basic_info.website %}
+            <div class="meta-item">
+                <i class="fas fa-globe"></i>
+                <a href="{{ conference.basic_info.website }}" target="_blank">Official Website</a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="hero-actions mt-4">
+            {% if conference.basic_info.status == 'active' %}
+                {% if conference.settings.paper_submission_enabled %}
+                <a href="{{ url_for('conference_paper_submission', conference_id=conference_id) }}" class="btn btn-secondary btn-lg">
+                    <i class="fas fa-file-upload"></i> Submit Paper
+                </a>
+                {% endif %}
+                {% if conference.settings.registration_enabled %}
+                    {% if current_user.is_authenticated %}
+                        {% if user_can_register %}
+                        <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-ticket-alt"></i> Register Now
+                        </a>
+                        {% else %}
+                        <button type="button" class="btn btn-primary btn-lg btn-disabled" disabled>
+                            <i class="fas fa-lock"></i> Register (After Acceptance)
+                        </button>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('conference_registration', conference_id=conference_id) }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-ticket-alt"></i> Register (After Acceptance)
+                    </a>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+            <a href="{{ url_for('conference_discover') }}" class="btn btn-outline btn-lg text-dark-btn">
+                <i class="fas fa-arrow-left"></i> All Conferences
+            </a>
+        </div>
+        {% if conference.basic_info.status == 'active' and current_user.is_authenticated and not user_can_register %}
+        <p class="hero-note text-dark-note">
+            {% if user_submission_status %}
+                Registration unlocks after paper acceptance. Current status: {{ user_submission_status|replace('_', ' ')|title }}.
+            {% else %}
+                Submit your paper first. Registration unlocks after admin accepts your submission.
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Background Image Hero Style (Default) -->
+<div class="conference-hero hero-layout-background" style="background-image: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url('{{ conference_img }}');">
     <div class="hero-overlay">
         <div class="hero-content">
             <div class="conference-badge">
@@ -111,6 +204,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <div class="content-section">
     <div class="conference-details-grid">
@@ -834,6 +928,103 @@
 .btn-read-more:hover {
     color: var(--secondary-color);
     text-decoration: underline;
+}
+
+.conference-main-image-container {
+    max-width: 1200px;
+    margin: 2rem auto 0 auto;
+    padding: 0 1.5rem;
+}
+
+.conference-main-img-card {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+    background: #0f172a;
+    max-height: 440px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.conference-main-featured-img {
+    width: 100%;
+    max-height: 440px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+}
+
+.conference-main-featured-img:hover {
+    transform: scale(1.02);
+}
+
+.conference-details-underneath-card {
+    max-width: 1200px;
+    margin: 1.5rem auto 2.5rem auto;
+    padding: 2.25rem 2.5rem;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+    border: 1px solid #e2e8f0;
+}
+
+.conference-details-underneath-card .text-dark-title {
+    color: #0f172a;
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin-bottom: 1.25rem;
+    line-height: 1.2;
+}
+
+.conference-details-underneath-card .meta-dark {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    color: #475569;
+    font-size: 0.95rem;
+}
+
+.conference-details-underneath-card .meta-dark .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.conference-details-underneath-card .meta-dark .meta-item i {
+    color: var(--primary-color, #2563eb);
+    font-size: 1.1rem;
+}
+
+.conference-details-underneath-card .meta-dark a {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.conference-details-underneath-card .meta-dark a:hover {
+    text-decoration: underline;
+}
+
+.conference-details-underneath-card .text-dark-btn {
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+.conference-details-underneath-card .text-dark-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.conference-details-underneath-card .text-dark-note {
+    color: #64748b;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+.conference-hero.hero-layout-background {
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    min-height: 400px;
 }
 </style>
 

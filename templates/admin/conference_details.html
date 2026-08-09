@@ -125,6 +125,40 @@
         </div>
 
         <div class="col-md-4">
+            <!-- Conference Media & Hero Layout Card -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-image me-2"></i>
+                        Cover Photo & Hero Layout
+                    </h6>
+                    <a href="{{ url_for('edit_conference', conference_id=conference_id) }}#media-section" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% set current_img = conference.basic_info.image_url or url_for('static', filename='images/default-hero.jpg') %}
+                    <div class="mb-3">
+                        <img src="{{ current_img }}" 
+                             alt="Conference Cover" 
+                             class="img-fluid rounded border shadow-sm"
+                             style="max-height: 160px; width: 100%; object-fit: cover;"
+                             onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                    </div>
+                    <div class="small mb-2">
+                        <strong>Hero Layout:</strong> 
+                        {% if conference.basic_info.hero_style == 'top_banner' %}
+                            <span class="badge bg-secondary">📌 Top Banner Image</span>
+                        {% else %}
+                            <span class="badge bg-primary">🖼️ Big Background Hero Image</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted text-break">
+                        <strong>Image URL:</strong> {{ current_img }}
+                    </div>
+                </div>
+            </div>
+
             <!-- Quick Stats -->
             <div class="card mb-3">
                 <div class="card-header">

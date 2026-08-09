@@ -56,7 +56,15 @@
     <!-- Conferences Grid -->
     <div class="conferences-grid" id="conferencesGrid">
         {% for conference_id, conference in conferences.items() %}
+        {% set card_image = conference.basic_info.thumbnail_url or conference.basic_info.image_url or url_for('static', filename='images/default-hero.jpg') %}
         <div class="conference-card" data-status="{{ conference.basic_info.status }}" data-year="{{ conference.basic_info.year }}" data-location="{{ conference.basic_info.location }}" data-conference="{{ conference_id }}">
+            <div class="conference-card-media">
+                <img src="{{ card_image }}" 
+                     alt="{{ conference.basic_info.name }}" 
+                     class="conference-card-img"
+                     onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+            </div>
+
             <div class="conference-header">
                 <div class="conference-badge">
                     <span class="badge status-{{ conference.basic_info.status }}">
@@ -72,17 +80,18 @@
                             ⚪ {{ conference.basic_info.status|title }}
                         {% endif %}
                     </span>
-                    {% if conference.conference_code %}
-                    <span class="badge conference-code" title="Conference Code">
-                        <i class="fas fa-qrcode"></i> {{ conference.conference_code }}
-                    </span>
-                    {% endif %}
                 </div>
                 <div class="conference-year"><strong style="color: #2563eb;">{{ conference.basic_info.year }}</strong></div>
             </div>
 
             <div class="conference-content">
                 <div class="conference-details">
+                    {% if conference.conference_code %}
+                    <div class="detail-item">
+                        <i class="fas fa-qrcode"></i>
+                        <span>Code: <strong style="color: #2563eb;">{{ conference.conference_code }}</strong></span>
+                    </div>
+                    {% endif %}
                     <div class="detail-item">
                         <i class="fas fa-calendar-alt"></i>
                         <strong style="color: #2563eb;">{{ conference.basic_info.start_date|format_date }} - {{ conference.basic_info.end_date|format_date }}</strong>
@@ -292,17 +301,32 @@
     border: 1px solid #e1e8ed;
 }
 
-.conference-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+.conference-card-media {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    background: #0f172a;
+}
+
+.conference-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.conference-card:hover .conference-card-img {
+    transform: scale(1.06);
 }
 
 .conference-header {
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid #e1e8ed;
 }
 
 .conference-badge .badge {

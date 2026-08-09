@@ -31,7 +31,7 @@
     <!-- Edit Form -->
     <div class="row">
         <div class="col-lg-8">
-            <form method="POST" id="editConferenceForm">
+            <form method="POST" id="editConferenceForm" enctype="multipart/form-data">
                 <!-- Basic Information -->
                 <div class="card mb-4">
                     <div class="card-header">
@@ -146,6 +146,142 @@
                                     <label for="conferenceWebsite" class="form-label">Website</label>
                                     <input type="url" class="form-control" id="conferenceWebsite" name="website" 
                                            value="{{ conference.basic_info.website|default('') }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h6 class="fw-bold mb-3" id="media-section"><i class="fas fa-image me-2 text-primary"></i>Conference Media & Hero Layout</h6>
+                        
+                        {% set current_img = conference.basic_info.image_url or url_for('static', filename='images/default-hero.jpg') %}
+                        {% set current_style = conference.basic_info.hero_style|default('background') %}
+                        
+                        <div class="row">
+                            <!-- Image URL & File Upload with Live Preview -->
+                            <div class="col-lg-6 mb-4 mb-lg-0">
+                                <div class="card h-100 border-light bg-light">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold text-dark mb-3"><i class="fas fa-camera me-1 text-secondary"></i> Cover Photo Selection</h6>
+                                        
+                                        <!-- Live Image Preview Box -->
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small fw-bold">Live Cover Image Preview</label>
+                                            <div class="ratio ratio-16x9 rounded overflow-hidden shadow-sm border bg-dark">
+                                                <img id="liveImagePreview" src="{{ current_img }}" 
+                                                     alt="Live Cover Preview" 
+                                                     style="object-fit: cover; width: 100%; height: 100%;"
+                                                     onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="imageUrl" class="form-label fw-bold">Cover / Banner Image URL</label>
+                                            <input type="text" class="form-control" id="imageUrl" name="image_url" 
+                                                   value="{{ conference.basic_info.image_url|default('') }}"
+                                                   placeholder="/static/images/default-hero.jpg or https://...">
+                                            <div class="form-text mt-1">
+                                                Quick Presets: 
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" onclick="setPresetUrl('/static/images/default-hero.jpg')">Default</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" onclick="setPresetUrl('/static/images/conference_tech.jpg')">Tech / AI</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-1" onclick="setPresetUrl('/static/images/conference_biz.jpg')">Business</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="imageFile" class="form-label fw-bold">Or Upload Main Cover Image (Firebase Storage)</label>
+                                            <input type="file" class="form-control" id="imageFile" name="image_file" accept="image/*">
+                                            <div class="form-text small">Uploads main cover image directly to Firebase Storage.</div>
+                                        </div>
+
+                                        <hr class="my-3">
+
+                                        <h6 class="fw-bold text-dark mb-2"><i class="fas fa-th-large me-1 text-secondary"></i> Standalone Card Mini Picture (/conferences)</h6>
+                                        <p class="small text-muted mb-2">Optional standalone thumbnail picture for the discovery card grid. Uses main cover image if empty.</p>
+                                        
+                                        {% set current_thumb = conference.basic_info.thumbnail_url|default('') %}
+                                        {% set active_card_thumb = current_thumb or current_img %}
+
+                                        <!-- Live Card Thumbnail Preview Box -->
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted extra-small fw-bold mb-1">Live Card Picture Preview (/conferences)</label>
+                                            <div class="border rounded overflow-hidden shadow-sm bg-dark" style="height: 130px; width: 100%;">
+                                                <img id="liveThumbnailPreview" src="{{ active_card_thumb }}" 
+                                                     alt="Live Card Thumbnail Preview" 
+                                                     style="object-fit: cover; width: 100%; height: 100%;"
+                                                     onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <label for="thumbnailUrl" class="form-label fw-bold small mb-1">Card Thumbnail URL</label>
+                                            <input type="text" class="form-control form-control-sm" id="thumbnailUrl" name="thumbnail_url" 
+                                                   value="{{ current_thumb }}"
+                                                   placeholder="Optional: /static/images/... or https://...">
+                                        </div>
+
+                                        <div class="mb-0">
+                                            <label for="thumbnailFile" class="form-label fw-bold small mb-1">Or Upload Standalone Card Image (Firebase Storage)</label>
+                                            <input type="file" class="form-control form-control-sm" id="thumbnailFile" name="thumbnail_file" accept="image/*">
+                                            <div class="form-text extra-small" style="font-size: 0.72rem;">Uploads standalone mini picture to Firebase Storage.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hero Layout Previews Side-by-Side (Selectable Cards) -->
+                            <div class="col-lg-6">
+                                <div class="card h-100 border-light bg-light">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold text-dark mb-1"><i class="fas fa-sliders-h me-1 text-secondary"></i> Detail Hero Display Layout</h6>
+                                        <p class="small text-muted mb-3">Click a layout card below to select how the cover image appears on the conference details page.</p>
+
+                                        <div class="row g-3">
+                                            <!-- Layout Option 1: Background Image -->
+                                            <div class="col-6">
+                                                <div class="hero-style-card {% if current_style != 'top_banner' %}active{% endif %}" id="cardStyleBackground" onclick="selectHeroStyle('background')">
+                                                    <input class="form-check-input d-none" type="radio" name="hero_style" id="styleBackground" value="background" {% if current_style != 'top_banner' %}checked{% endif %}>
+                                                    
+                                                    <!-- Mockup Preview 1 -->
+                                                    <div class="hero-mockup-box mb-2 border rounded overflow-hidden shadow-sm" style="height: 110px; position: relative;">
+                                                        <img class="dynamic-mockup-img" src="{{ current_img }}" alt="Background Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                                                        <div style="position: absolute; inset: 0; background: linear-gradient(rgba(15,23,42,0.75), rgba(15,23,42,0.85)); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0.5rem; color: white; text-align: center;">
+                                                            <span style="font-size: 0.65rem; font-weight: 700; line-height: 1.1;">CONFERENCE TITLE OVER IMAGE</span>
+                                                            <span style="font-size: 0.55rem; opacity: 0.8; margin-top: 4px;">📅 Dates & Location</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <span class="fw-bold text-dark small">🖼️ Big Background Hero</span>
+                                                        <i class="fas fa-check-circle check-icon text-primary small"></i>
+                                                    </div>
+                                                    <p class="text-muted extra-small mb-0 mt-1" style="font-size: 0.72rem;">Full-width background image with overlay behind title.</p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Layout Option 2: Main Image Mode (Details Underneath) -->
+                                            <div class="col-6">
+                                                <div class="hero-style-card {% if current_style == 'top_banner' %}active{% endif %}" id="cardStyleTopBanner" onclick="selectHeroStyle('top_banner')">
+                                                    <input class="form-check-input d-none" type="radio" name="hero_style" id="styleTopBanner" value="top_banner" {% if current_style == 'top_banner' %}checked{% endif %}>
+                                                    
+                                                    <!-- Mockup Preview 2 -->
+                                                    <div class="hero-mockup-box mb-2 border rounded overflow-hidden shadow-sm" style="height: 110px; background: #f8fafc; display: flex; flex-direction: column; padding: 4px;">
+                                                        <div style="height: 65px; border-radius: 6px; overflow: hidden; width: 100%; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                                                            <img class="dynamic-mockup-img" src="{{ current_img }}" alt="Main Image Standalone Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                                                        </div>
+                                                        <div style="flex: 1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 4px; color: #0f172a; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0.2rem;">
+                                                            <span style="font-size: 0.58rem; font-weight: 800; line-height: 1;">Details Card Underneath</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <span class="fw-bold text-dark small">🖼️ Main Image Mode</span>
+                                                        <i class="fas fa-check-circle check-icon text-primary small"></i>
+                                                    </div>
+                                                    <p class="text-muted extra-small mb-0 mt-1" style="font-size: 0.72rem;">Standalone main feature photo with details card placed underneath.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -501,5 +637,109 @@ function regenerateCode() {
         });
     }
 }
+</script>
+
+<style>
+.hero-style-card {
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 0.85rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: #ffffff;
+    height: 100%;
+}
+.hero-style-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15);
+}
+.hero-style-card.active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+.hero-style-card .check-icon {
+    display: none;
+}
+.hero-style-card.active .check-icon {
+    display: inline-block;
+}
+.btn-xs {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+}
+</style>
+
+<script>
+// Hero Style Card Selection
+function selectHeroStyle(style) {
+    document.querySelectorAll('.hero-style-card').forEach(card => card.classList.remove('active'));
+    if (style === 'background') {
+        document.getElementById('styleBackground').checked = true;
+        document.getElementById('cardStyleBackground').classList.add('active');
+    } else {
+        document.getElementById('styleTopBanner').checked = true;
+        document.getElementById('cardStyleTopBanner').classList.add('active');
+    }
+}
+
+// Live Image Preview Updates
+function updateLiveImagePreview(url) {
+    const mainPreview = document.getElementById('liveImagePreview');
+    if (mainPreview) {
+        mainPreview.src = url || '/static/images/default-hero.jpg';
+    }
+    const mockImgs = document.querySelectorAll('.dynamic-mockup-img');
+    mockImgs.forEach(img => {
+        img.src = url || '/static/images/default-hero.jpg';
+    });
+}
+
+function setPresetUrl(url) {
+    document.getElementById('imageUrl').value = url;
+    updateLiveImagePreview(url);
+}
+
+document.getElementById('imageUrl').addEventListener('input', function() {
+    updateLiveImagePreview(this.value.trim());
+});
+
+document.getElementById('imageFile').addEventListener('change', function(e) {
+    if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            updateLiveImagePreview(evt.target.result);
+        };
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+
+// Live Card Thumbnail Preview Updates
+function updateLiveThumbnailPreview(url) {
+    const thumbPreview = document.getElementById('liveThumbnailPreview');
+    if (thumbPreview) {
+        if (!url) {
+            const mainImgUrl = document.getElementById('imageUrl').value.trim();
+            url = mainImgUrl || '/static/images/default-hero.jpg';
+        }
+        thumbPreview.src = url;
+    }
+}
+
+document.getElementById('thumbnailUrl').addEventListener('input', function() {
+    updateLiveThumbnailPreview(this.value.trim());
+});
+
+document.getElementById('thumbnailFile').addEventListener('change', function(e) {
+    if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            updateLiveThumbnailPreview(evt.target.result);
+        };
+        reader.readAsDataURL(this.files[0]);
+    }
+});
 </script>
 {% endblock %}

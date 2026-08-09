@@ -189,14 +189,14 @@
                                        class="btn btn-outline-primary" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <a href="{{ url_for('edit_conference', conference_id=conference_id) }}" 
+                                       class="btn btn-outline-warning" title="Edit Conference & Cover Media">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
                                     <a href="{{ url_for('admin_registration_fees', conference_id=conference_id) }}" 
                                        class="btn btn-outline-success" title="Manage Pricing & Fees">
                                         <i class="fas fa-dollar-sign"></i>
                                     </a>
-                                    <button class="btn btn-outline-secondary" 
-                                            onclick="editConference('{{ conference_id }}')" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
                                     <button class="btn btn-outline-danger" 
                                             onclick="deleteConference('{{ conference_id }}', '{{ conference.basic_info.name }}')" 
                                             title="Delete">
