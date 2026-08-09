@@ -74,38 +74,115 @@
             </div>
 
             <div class="conference-info-content">
-                <h2>{{ home_content.hero.conference.name|default('Global Institute on Innovative Research') }}</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <i class="fas fa-calendar"></i>
-                        <span>{{ home_content.hero.conference.date|default('TBA') }}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="fas fa-clock"></i>
-                        <span>{{ home_content.hero.conference.time|default('TBA') }}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>{{ home_content.hero.conference.city|default('TBA') }}</span>
-                    </div>
-                </div>
-                <div class="conference-highlights">
-                    <h3>Conference Highlights</h3>
-                    <ul>
-                        {% if home_content.hero.conference.highlights %}
-                            {% for highlight in home_content.hero.conference.highlights.split('\n') %}
-                                {% if highlight.strip() %}
-                                    <li>{{ highlight.strip() }}</li>
+                {% if display_mode in ['selected', 'all_active'] and home_featured_conferences and home_featured_conferences|length > 0 %}
+                    {# Dynamic Rotating Hero Conferences #}
+                    <div class="hero-conf-rotator position-relative">
+                        {% for conf in home_featured_conferences %}
+                        {% set conf_info = conf.basic_info %}
+                        {% set venue_val = conf_info.venue_name or conf_info.venue %}
+                        <div class="hero-conf-slide {% if loop.first %}active{% endif %}" data-conf-index="{{ loop.index0 }}" style="{% if not loop.first %}display: none;{% endif %} transition: opacity 0.4s ease;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-primary px-2.5 py-1 rounded-pill extra-small text-uppercase">
+                                    {{ conf_info.abbreviation or 'Featured Event' }} &bull; {{ conf_info.year }}
+                                </span>
+                                {% if home_featured_conferences|length > 1 %}
+                                <div class="hero-conf-nav d-flex align-items-center gap-1">
+                                    <span class="small opacity-75 me-1" style="font-size: 0.72rem;">{{ loop.index }} / {{ home_featured_conferences|length }}</span>
+                                    <button type="button" class="btn btn-xs btn-outline-light p-0 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 22px; height: 22px;" onclick="prevHeroConf(event)">
+                                        <i class="fas fa-chevron-left" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-light p-0 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 22px; height: 22px;" onclick="nextHeroConf(event)">
+                                        <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
+                                    </button>
+                                </div>
                                 {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            <li>Keynote Speakers</li>
-                            <li>Technical Sessions</li>
-                            <li>Workshops</li>
-                            <li>Networking Events</li>
-                        {% endif %}
-                    </ul>
-                </div>
+                            </div>
+
+                            <h2 class="mb-2"><a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="text-white text-decoration-none">{{ conf_info.name }}</a></h2>
+                            
+                            <div class="info-grid mb-2">
+                                <div class="info-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>{{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>{{ conf_info.location or 'Virtual' }}</span>
+                                </div>
+                                {% if venue_val %}
+                                <div class="info-item">
+                                    <i class="fas fa-building"></i>
+                                    <span>Venue: <strong>{{ venue_val }}</strong></span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="conference-highlights">
+                                <h3>Conference Highlights</h3>
+                                <ul>
+                                    {% if conf_info.description %}
+                                        {% for sent in conf_info.description.split('.')[:3] %}
+                                            {% if sent.strip() %}
+                                                <li>{{ sent.strip() }}.</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <li>Keynote Speakers</li>
+                                        <li>Technical Sessions</li>
+                                        <li>Networking Events</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+
+                            {# Actions inside Hero Overlay #}
+                            <div class="d-flex align-items-center gap-2 mt-3 pt-2 border-top border-white border-opacity-25">
+                                <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="btn btn-sm btn-light fw-bold text-dark px-3 py-1.5 rounded-2">
+                                    <i class="fas fa-eye me-1"></i> View Event
+                                </a>
+                                {% if conf.settings.paper_submission_enabled %}
+                                <a href="{{ url_for('conference_paper_submission', conference_id=conf.id) }}" class="btn btn-sm btn-primary fw-bold px-3 py-1.5 rounded-2">
+                                    <i class="fas fa-file-upload me-1"></i> Submit Abstract
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {# Manual Default Single Conference Display #}
+                    <h2>{{ home_content.hero.conference.name|default('Global Institute on Innovative Research') }}</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <i class="fas fa-calendar"></i>
+                            <span>{{ home_content.hero.conference.date|default('TBA') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-clock"></i>
+                            <span>{{ home_content.hero.conference.time|default('TBA') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>{{ home_content.hero.conference.city|default('TBA') }}</span>
+                        </div>
+                    </div>
+                    <div class="conference-highlights">
+                        <h3>Conference Highlights</h3>
+                        <ul>
+                            {% if home_content.hero.conference.highlights %}
+                                {% for highlight in home_content.hero.conference.highlights.split('\n') %}
+                                    {% if highlight.strip() %}
+                                        <li>{{ highlight.strip() }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <li>Keynote Speakers</li>
+                                <li>Technical Sessions</li>
+                                <li>Workshops</li>
+                                <li>Networking Events</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -120,80 +197,7 @@
     </div>
 </div>
 
-<!-- Dynamic Featured Conferences Section (When Enabled by Admin) -->
-{% if display_mode in ['selected', 'all_active'] and home_featured_conferences %}
-<div class="featured-conferences-section py-5 bg-light border-top border-bottom">
-    <div class="container">
-        <div class="text-center mb-4">
-            <span class="badge bg-primary px-3 py-2 rounded-pill text-uppercase mb-2" style="letter-spacing: 0.05em;">Featured Conferences</span>
-            <h2 class="fw-bold text-dark">Upcoming &amp; Active Global Conferences</h2>
-            <p class="text-muted small mx-auto" style="max-width: 600px;">Explore premiere international academic events, submit abstracts, and participate in global research exchange.</p>
-        </div>
 
-        <div class="row g-4">
-            {% for conf in home_featured_conferences %}
-            {% set conf_info = conf.basic_info %}
-            {% set conf_img = conf_info.thumbnail_url or conf_info.image_url or url_for('static', filename='images/default-hero.jpg') %}
-            {% set venue_val = conf_info.venue_name or conf_info.venue %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden d-flex flex-column position-relative" style="transition: transform 0.2s ease, box-shadow 0.2s ease;">
-                    
-                    {# Cover Image & Badge #}
-                    <div class="position-relative" style="height: 180px; overflow: hidden; background: #0f172a;">
-                        <img src="{{ conf_img }}" alt="{{ conf_info.name }}" class="w-100 h-100 object-fit-cover" onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
-                        <div class="position-absolute top-0 end-0 m-3">
-                            <span class="badge rounded-pill shadow-sm {% if conf_info.status == 'active' %}bg-success{% elif conf_info.status == 'upcoming' %}bg-info text-dark{% else %}bg-secondary{% endif %}" style="font-size: 0.75rem;">
-                                {{ conf_info.status|title }}
-                            </span>
-                        </div>
-                    </div>
-
-                    {# Card Body #}
-                    <div class="card-body p-4 d-flex flex-column flex-grow-1">
-                        <div class="text-uppercase fw-bold text-primary mb-1" style="font-size: 0.72rem; letter-spacing: 0.04em;">
-                            {{ conf_info.abbreviation or 'GIIR Conference' }} &bull; {{ conf_info.year }}
-                        </div>
-                        <h3 class="h6 fw-bold text-dark mb-2 line-clamp-2" style="font-size: 1rem; min-height: 2.8rem;">
-                            {{ conf_info.name }}
-                        </h3>
-
-                        <div class="d-flex flex-column gap-1.5 my-3 small text-secondary" style="font-size: 0.82rem;">
-                            <div>
-                                <i class="fas fa-calendar-alt text-primary me-2"></i>
-                                <span>{{ conf_info.start_date|format_date }} - {{ conf_info.end_date|format_date }}</span>
-                            </div>
-                            <div>
-                                <i class="fas fa-map-marker-alt text-danger me-2"></i>
-                                <span>{{ conf_info.location or 'Virtual' }}</span>
-                            </div>
-                            {% if venue_val %}
-                            <div>
-                                <i class="fas fa-building text-info me-2"></i>
-                                <span>Venue: <strong>{{ venue_val }}</strong></span>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        {# Actions Toolbar #}
-                        <div class="mt-auto pt-3 border-top d-flex align-items-center gap-2">
-                            <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="btn btn-sm btn-dark fw-semibold flex-grow-1 rounded-3">
-                                View Event
-                            </a>
-                            {% if conf.settings.paper_submission_enabled %}
-                            <a href="{{ url_for('conference_paper_submission', conference_id=conf.id) }}" class="btn btn-sm btn-outline-primary fw-semibold rounded-3">
-                                Submit Abstract
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <!-- Vision, Mission & Objectives -->
 <div class="vmo-section">
@@ -1809,6 +1813,38 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Dynamic Hero Conference Rotator
+    (function() {
+        const heroSlides = document.querySelectorAll('.hero-conf-slide');
+        if (heroSlides.length > 1) {
+            let currentIndex = 0;
+            
+            function showHeroConf(index) {
+                heroSlides.forEach((slide, i) => {
+                    slide.style.display = (i === index) ? 'block' : 'none';
+                });
+                currentIndex = index;
+            }
+
+            window.nextHeroConf = function(e) {
+                if (e) e.stopPropagation();
+                let nextIndex = (currentIndex + 1) % heroSlides.length;
+                showHeroConf(nextIndex);
+            };
+
+            window.prevHeroConf = function(e) {
+                if (e) e.stopPropagation();
+                let prevIndex = (currentIndex - 1 + heroSlides.length) % heroSlides.length;
+                showHeroConf(prevIndex);
+            };
+
+            setInterval(function() {
+                let nextIndex = (currentIndex + 1) % heroSlides.length;
+                showHeroConf(nextIndex);
+            }, 6000);
+        }
+    })();
 
     const slider = document.querySelector('.slider-container');
     const slides = document.querySelectorAll('.slide');
