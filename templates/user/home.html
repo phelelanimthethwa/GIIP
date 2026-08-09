@@ -61,7 +61,7 @@
                 {% for conf in home_featured_conferences %}
                 {% set conf_info = conf.basic_info %}
                 {% set venue_val = conf_info.venue_name or conf_info.venue %}
-                <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if loop.first %}display: flex;{% else %}display: none;{% endif %} flex-direction: column; align-items: center; justify-content: center; gap: 2rem;">
+                <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if loop.first %}display: flex;{% else %}display: none;{% endif %} flex-direction: column; align-items: flex-start; justify-content: center; gap: 2rem;">
                     {# Top: Title = Conference Name, Subtitle = Abbreviation & Year, Date = Dates #}
                     <div class="title-content">
                         <h1>{{ conf_info.name }}</h1>
@@ -405,10 +405,11 @@
     z-index: 10;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     gap: 2rem;
     padding: 2rem;
+    padding-left: 4rem;
     padding-top: 140px; /* Account for navbar + hero pull-up */
     padding-bottom: 2rem;
     overflow: hidden; /* Prevent cards from spilling outside hero bounds */
