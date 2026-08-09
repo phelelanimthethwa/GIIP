@@ -109,18 +109,18 @@
                             </div>
 
                             <div class="conference-highlights">
-                                <h3>Conference Highlights</h3>
+                                <h3>Highlights</h3>
                                 <ul>
                                     {% if conf_info.description %}
-                                        {% for sent in conf_info.description.split('.')[:3] %}
-                                            {% if sent.strip() %}
-                                                <li>{{ sent.strip() }}.</li>
+                                        {% for sent in conf_info.description.split('.')[:2] %}
+                                            {% set trimmed = sent.strip() %}
+                                            {% if trimmed %}
+                                                <li>{{ trimmed|truncate(80) }}</li>
                                             {% endif %}
                                         {% endfor %}
                                     {% else %}
-                                        <li>Keynote Speakers</li>
-                                        <li>Technical Sessions</li>
-                                        <li>Networking Events</li>
+                                        <li>Keynote &amp; Technical Sessions</li>
+                                        <li>Networking &amp; Global Exchange</li>
                                     {% endif %}
                                 </ul>
                             </div>
@@ -214,9 +214,20 @@
 <!-- Welcome Message Section -->
 <div class="welcome-section">
     <div class="container">
-        <div class="welcome-message">
-            {{ home_content.welcome.message|default('Join us for the premier conference in innovative research') }}
-        </div>
+        {% if display_mode in ['selected', 'all_active'] and home_featured_conferences and home_featured_conferences|length > 0 %}
+            {% for conf in home_featured_conferences %}
+            {% set conf_info = conf.basic_info %}
+            <div class="welcome-msg-slide {% if loop.first %}active{% endif %}" data-welcome-index="{{ loop.index0 }}" style="{% if not loop.first %}display: none;{% endif %}">
+                <div class="welcome-message">
+                    {{ conf_info.description or home_content.welcome.message|default('Join us for the premier conference in innovative research.') }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="welcome-message">
+                {{ home_content.welcome.message|default('Join us for the premier conference in innovative research') }}
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -1873,6 +1884,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Synchronize Left Title, Subtitle, Date and Right Details Box
         if (syncSlides.length > 0) {
             syncSlides.forEach((slide, idx) => {
+                slide.style.display = (idx === currentSlide) ? 'block' : 'none';
+            });
+        }
+
+        // Synchronize Welcome Message Below Hero
+        const welcomeSlides = document.querySelectorAll('.welcome-msg-slide');
+        if (welcomeSlides.length > 0) {
+            welcomeSlides.forEach((slide, idx) => {
                 slide.style.display = (idx === currentSlide) ? 'block' : 'none';
             });
         }
