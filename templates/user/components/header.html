@@ -108,7 +108,7 @@
                 {% if current_user.is_authenticated %}
                 <li class="nav-item dropdown user-menu">
                     <a href="#" class="nav-link dropdown-toggle" role="button" aria-haspopup="true" aria-expanded="false">
-                        <i class="fas fa-user-circle"></i> {{ current_user.full_name or current_user.email.split('@')[0] }}
+                        <i class="fas fa-user-circle"></i> {{ current_user.full_name or current_user.email.split('@')[0] }}{% if current_user.is_admin %} <span class="badge bg-danger ms-1" style="font-size: 0.65rem; vertical-align: middle;">Admin</span>{% endif %}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a href="{{ url_for('dashboard') }}" class="dropdown-item">
@@ -120,7 +120,7 @@
                         {% if current_user.is_admin %}
                         <li><div class="dropdown-divider"></div></li>
                         <li><a href="{{ url_for('admin_dashboard') }}" class="dropdown-item">
-                            <i class="fas fa-cog"></i> Admin Panel
+                            <i class="fas fa-user-shield"></i> Admin Panel
                         </a></li>
                         {% endif %}
                         <li><div class="dropdown-divider"></div></li>

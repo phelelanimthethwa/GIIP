@@ -402,7 +402,7 @@
     </style>
 </head>
 
-{% set show_global_nav = not current_user.is_authenticated %}
+{% set show_global_nav = not (hide_global_nav|default(false)) %}
 <body class="{% if not show_global_nav %}clean-shell{% endif %}">
     {% if show_global_nav %}
     {% include 'user/components/header.html' %}

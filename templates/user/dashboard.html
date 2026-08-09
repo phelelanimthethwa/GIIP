@@ -1,3 +1,4 @@
+{% set hide_global_nav = true %}
 {% extends "base.html" %}
 
 {% block title %}Dashboard — GIIR Conferences{% endblock %}
@@ -35,6 +36,10 @@
                 <em class="db-badge">{{ submissions|length }}</em>
             </button>
             <div class="db-sidenav-divider"></div>
+            <a href="{{ url_for('home') }}" class="db-sidelink db-sidelink-anchor" title="Return to Home Page">
+                <i class="fas fa-home"></i>
+                <span>Home Page</span>
+            </a>
             <a href="{{ url_for('conference_discover') }}" class="db-sidelink db-sidelink-anchor" title="Browse all upcoming conferences">
                 <i class="fas fa-globe"></i>
                 <span>Find a Conference</span>
@@ -47,6 +52,12 @@
                 <i class="fas fa-id-card"></i>
                 <span>My Account</span>
             </a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('admin_dashboard') }}" class="db-sidelink db-sidelink-anchor" title="Go to Admin Panel">
+                <i class="fas fa-user-shield"></i>
+                <span>Admin Panel</span>
+            </a>
+            {% endif %}
             <a href="{{ url_for('logout') }}" class="db-sidelink db-sidelink-anchor db-sidelink-logout" title="Sign out of your account">
                 <i class="fas fa-sign-out-alt"></i>
                 <span>Sign Out</span>
@@ -87,9 +98,13 @@
                 </button>
                 <span class="db-topbar-title">Dashboard</span>
                 <nav class="db-topbar-nav">
+                    <a href="{{ url_for('home') }}" class="db-topnav-link">Home Page</a>
                     <a href="{{ url_for('conference_discover') }}" class="db-topnav-link">Find a Conference</a>
                     <a href="{{ url_for('call_for_papers') }}" class="db-topnav-link">Submit My Abstract</a>
                     <a href="{{ url_for('profile') }}" class="db-topnav-link">My Account</a>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="db-topnav-link">Admin Panel</a>
+                    {% endif %}
                     <a href="{{ url_for('logout') }}" class="db-topnav-link db-topnav-logout">Sign Out</a>
                 </nav>
             </div>
