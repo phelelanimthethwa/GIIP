@@ -78,19 +78,6 @@
 
                         {# Right: Conference Details Box & Action Buttons #}
                         <div class="conference-info-content">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-primary px-2.5 py-1 rounded-pill extra-small text-uppercase">
-                                    {{ conf_info.status|title }} Event
-                                </span>
-                                {% if home_featured_conferences|length > 1 %}
-                                <span class="small opacity-75 text-white" style="font-size: 0.72rem;">{{ loop.index }} of {{ home_featured_conferences|length }}</span>
-                                {% endif %}
-                            </div>
-
-                            <h2 class="mb-2" style="font-size: 1.15rem;">
-                                <a href="{{ url_for('conference_details', conference_id=conf.id) }}" class="text-white text-decoration-none">{{ conf_info.name }}</a>
-                            </h2>
-
                             <div class="info-grid mb-2">
                                 <div class="info-item">
                                     <i class="fas fa-calendar"></i>
