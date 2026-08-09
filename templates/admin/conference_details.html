@@ -181,6 +181,87 @@
                 </div>
             </div>
 
+            <!-- Session Chairs Card (Minimal Notion/shadcn style) -->
+            <div class="card mb-3 border shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h6 class="mb-0 fw-semibold text-dark">
+                        <i class="fas fa-crown me-2 text-secondary"></i>
+                        Session Chairs Applications
+                    </h6>
+                    <span class="badge bg-light text-dark border">{{ session_chairs|length }} Total</span>
+                </div>
+                <div class="card-body">
+                    {% if session_chairs %}
+                        <div class="list-group list-group-flush">
+                            {% for sc_id, sc in session_chairs.items() %}
+                            <div class="list-group-item px-0 py-3 border-bottom">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <strong class="d-block text-dark small fw-semibold">
+                                            {{ sc.salutation|default('') }} {{ sc.user_name or sc.user_email }}
+                                        </strong>
+                                        <small class="text-muted d-block extra-small">{{ sc.user_email }}</small>
+                                        {% if sc.institution or sc.department %}
+                                        <small class="text-secondary d-block extra-small mt-0.5"><i class="fas fa-university me-1"></i>{{ sc.institution }}{% if sc.department %} ({{ sc.department }}){% endif %}</small>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge rounded-2" style="font-size: 0.75rem; font-weight: 500; {% if sc.status == 'approved' %}background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;{% elif sc.status == 'pending_approval' %}background: #fffbeb; color: #92400e; border: 1px solid #fde68a;{% elif sc.status == 'rejected' %}background: #fff1f2; color: #be123c; border: 1px solid #fecdd3;{% else %}background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;{% endif %}">
+                                        {% if sc.status == 'pending_approval' %}
+                                            Pending Review
+                                        {% elif sc.status == 'approved' %}
+                                            Approved
+                                        {% elif sc.status == 'rejected' %}
+                                            Rejected
+                                        {% else %}
+                                            {{ sc.status|title }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+
+                                {% if sc.expertise_areas %}
+                                <div class="small mb-1 text-secondary" style="font-size: 0.82rem;">
+                                    <strong>Expertise:</strong> {{ sc.expertise_areas }}
+                                </div>
+                                {% endif %}
+
+                                {% if sc.bio %}
+                                <div class="small text-muted mb-2 bg-light p-2 rounded-2" style="font-size: 0.8rem; border: 1px solid #e2e8f0;">
+                                    "{{ sc.bio }}"
+                                </div>
+                                {% endif %}
+
+                                {% if sc.linkedin_url %}
+                                <div class="mb-2">
+                                    <a href="{{ sc.linkedin_url }}" target="_blank" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;">
+                                        <i class="fab fa-linkedin me-1"></i> Profile Link
+                                    </a>
+                                </div>
+                                {% endif %}
+
+                                <!-- Admin Approval Action Buttons -->
+                                <div class="d-flex gap-2 mt-2">
+                                    <form method="POST" action="{{ url_for('admin_update_session_chair_status', conference_id=conference_id, user_id=sc.user_id or sc_id) }}" class="d-inline">
+                                        <input type="hidden" name="status" value="approved">
+                                        <button type="submit" class="btn btn-sm btn-dark py-1 px-3" style="font-size: 0.8rem; background: #0f172a; border-color: #0f172a;" {{ 'disabled' if sc.status == 'approved' else '' }}>
+                                            <i class="fas fa-check me-1"></i> Approve
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin_update_session_chair_status', conference_id=conference_id, user_id=sc.user_id or sc_id) }}" class="d-inline">
+                                        <input type="hidden" name="status" value="rejected">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-3" style="font-size: 0.8rem;" {{ 'disabled' if sc.status == 'rejected' else '' }}>
+                                            <i class="fas fa-times me-1"></i> Reject
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="small text-muted mb-0">No Session Chair applications recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Settings -->
             <div class="card">
                 <div class="card-header">

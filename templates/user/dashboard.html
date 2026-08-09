@@ -35,6 +35,13 @@
                 <span>My Papers</span>
                 <em class="db-badge">{{ submissions|length }}</em>
             </button>
+            {% if session_chair_invitations %}
+            <button type="button" class="db-sidelink" data-tab="session_chairs" title="Session Chair Roles & Invitations">
+                <i class="fas fa-crown"></i>
+                <span>Session Chair</span>
+                <em class="db-badge" style="background: #eab308; color: #0f172a;">{{ session_chair_invitations|length }}</em>
+            </button>
+            {% endif %}
             <div class="db-sidenav-divider"></div>
             <a href="{{ url_for('home') }}" class="db-sidelink db-sidelink-anchor" title="Return to Home Page">
                 <i class="fas fa-home"></i>
@@ -136,10 +143,18 @@
                 <button type="button" class="db-mobile-tab" data-tab="submissions">
                     Submissions <em class="db-badge">{{ submissions|length }}</em>
                 </button>
+                {% if session_chair_invitations %}
+                <button type="button" class="db-mobile-tab" data-tab="session_chairs">
+                    Session Chair <em class="db-badge" style="background: #eab308; color: #0f172a;">{{ session_chair_invitations|length }}</em>
+                </button>
+                {% endif %}
             </div>
 
             {# ── Main area ── #}
             <main class="db-main">
+
+            {# ── Session Chair Top Notification Banner ── #}
+            {% include 'user/components/session_chair_notif.html' %}
 
             {# ══ REGISTRATIONS TAB ══ #}
             <div class="db-tab-pane is-active" id="tab-registrations">
@@ -541,6 +556,9 @@
                 </div>
                 {% endif %}
             </div>
+
+            {# ══ SESSION CHAIRS TAB ══ #}
+            {% include 'user/components/session_chair_tab.html' %}
 
             </main>
         </div>{# /db-shell #}

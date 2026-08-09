@@ -1,0 +1,134 @@
+{# ══ SESSION CHAIRS TAB — MATCHES MY REGISTRATIONS UI ══ #}
+<div class="db-tab-pane" id="tab-session_chairs">
+    {# Section Header #}
+    <div class="db-section-header">
+        <div>
+            <h1 class="db-page-title">Session Chair Roles</h1>
+            <p class="db-page-sub">Opt-in to serve as a Session Chair for conferences where your paper has been accepted.</p>
+        </div>
+    </div>
+
+    {% if session_chair_invitations %}
+    {# Toolbar #}
+    <div class="db-toolbar">
+        <div class="db-toolbar-left">
+            <span class="db-count-pill">{{ session_chair_invitations|length }} shown</span>
+        </div>
+    </div>
+
+    {# List of Session Chair Rows (matching My Registrations) #}
+    <div class="db-list" id="session-chairs-list">
+        {% for sc in session_chair_invitations %}
+        {% set is_approved = sc.status == 'approved' %}
+        {% set is_pending = sc.status == 'pending_approval' %}
+        {% set is_rejected = sc.status == 'rejected' %}
+        {% set is_declined = sc.status == 'declined' %}
+        {% set stripe_class = 'paid' if is_approved else ('started' if is_pending else ('rejected' if is_rejected else 'pending')) %}
+        {% set tag_class = 'paid' if is_approved else ('started' if is_pending else ('rejected' if is_rejected else 'pending')) %}
+
+        <div class="db-row">
+            {# Left status stripe #}
+            <div class="db-row-stripe stripe--{{ stripe_class }}"></div>
+
+            {# Main content #}
+            <div class="db-row-body">
+                <div class="db-row-top">
+                    <div class="db-row-titles">
+                        <h2 class="db-row-title">{{ sc.conference_name }}</h2>
+                        <div class="db-row-meta">
+                            <span class="db-meta-chip db-meta-chip--code">Session Chair</span>
+                            {% if sc.paper_id %}
+                            <span class="db-meta-chip">Paper ID: {{ sc.paper_id }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="db-status-tag tag--{{ tag_class }}">
+                        {% if is_approved %}
+                            Approved Session Chair
+                        {% elif is_pending %}
+                            Pending Approval
+                        {% elif is_rejected %}
+                            Not Selected
+                        {% elif is_declined %}
+                            Role Declined
+                        {% else %}
+                            Invitation Open
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="db-row-grid">
+                    <div class="db-row-cell" style="grid-column: span 2;">
+                        <span class="db-cell-lbl">Accepted Paper</span>
+                        <span class="db-cell-val">"{{ sc.paper_title }}"</span>
+                    </div>
+                    <div class="db-row-cell">
+                        <span class="db-cell-lbl">Role Status</span>
+                        <span class="db-cell-val val--{{ 'ok' if is_approved else ('pending' if is_pending else 'none') }}">
+                            {% if is_approved %}
+                                Approved by Admin
+                            {% elif is_pending %}
+                                Under Admin Review
+                            {% elif is_rejected %}
+                                Finalized
+                            {% elif is_declined %}
+                                Declined
+                            {% else %}
+                                Response Needed
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {# Actions #}
+                <div class="db-row-actions">
+                    {% if is_rejected %}
+                        <span class="db-action db-action--muted"><i class="fas fa-lock"></i> Finalized</span>
+                    {% elif is_declined %}
+                        <form method="POST" action="{{ url_for('respond_session_chair') }}" style="margin:0;">
+                            <input type="hidden" name="conference_id" value="{{ sc.conference_id }}">
+                            <input type="hidden" name="paper_id" value="{{ sc.paper_id }}">
+                            <button type="submit" name="response" value="apply" class="db-action db-action--primary">
+                                <i class="fas fa-check-circle"></i> Agree &amp; Opt-in
+                            </button>
+                        </form>
+                    {% elif is_approved or is_pending %}
+                        <form method="POST" action="{{ url_for('respond_session_chair') }}" style="margin:0;">
+                            <input type="hidden" name="conference_id" value="{{ sc.conference_id }}">
+                            <input type="hidden" name="paper_id" value="{{ sc.paper_id }}">
+                            <button type="submit" name="response" value="declined" formnovalidate class="db-action db-action--danger" onclick="return confirm('Withdraw your Session Chair request?');">
+                                <i class="fas fa-times-circle"></i> Decline / Withdraw
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="POST" action="{{ url_for('respond_session_chair') }}" style="margin:0;">
+                            <input type="hidden" name="conference_id" value="{{ sc.conference_id }}">
+                            <input type="hidden" name="paper_id" value="{{ sc.paper_id }}">
+                            <button type="submit" name="response" value="apply" class="db-action db-action--primary">
+                                <i class="fas fa-check-circle"></i> Agree &amp; Opt-in
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('respond_session_chair') }}" style="margin:0;">
+                            <input type="hidden" name="conference_id" value="{{ sc.conference_id }}">
+                            <input type="hidden" name="paper_id" value="{{ sc.paper_id }}">
+                            <button type="submit" name="response" value="declined" formnovalidate class="db-action">
+                                <i class="fas fa-times"></i> Decline
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="db-empty">
+        <i class="fas fa-crown"></i>
+        <h2>No Session Chair invitations yet</h2>
+        <p>When your paper submission is accepted for a conference, an invitation will appear here allowing you to opt-in as a Session Chair.</p>
+        <a href="{{ url_for('call_for_papers') }}" class="db-empty-btn">
+            <i class="fas fa-paper-plane"></i> Submit abstract
+        </a>
+    </div>
+    {% endif %}
+</div>

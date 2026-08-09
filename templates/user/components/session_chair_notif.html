@@ -1,0 +1,21 @@
+{% if session_chair_invitations %}
+<!-- Notion-Style Minimal Notification Banner for Session Chair Invitations -->
+<div class="sc-notif-notion alert border rounded-3 mb-4 p-3 position-relative" id="sc-notif-banner" style="background: #f8fafc; border-color: #e2e8f0 !important; color: #0f172a;">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 pe-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center justify-content-center rounded-2" style="width: 36px; height: 36px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; flex-shrink: 0;">
+                <i class="fas fa-crown" style="font-size: 0.9rem;"></i>
+            </div>
+            <div>
+                <strong class="d-block" style="font-size: 0.875rem; font-weight: 600; color: #0f172a;">Session Chair Invitation</strong>
+                <span class="small" style="color: #64748b; font-size: 0.82rem;">Your paper was accepted. Apply to serve as a Session Chair for your conference track.</span>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm text-white fw-medium px-3 py-1.5 rounded-2 d-inline-flex align-items-center gap-2" onclick="activateTab('session_chairs')" style="background: #0f172a; border: 1px solid #0f172a; font-size: 0.82rem; transition: background 0.15s ease;">
+            <span>Complete Application</span>
+            <i class="fas fa-arrow-right" style="font-size: 0.75rem;"></i>
+        </button>
+    </div>
+    <button type="button" class="btn-close position-absolute top-0 end-0 m-3 shadow-none" onclick="document.getElementById('sc-notif-banner').remove()" aria-label="Dismiss notification" style="font-size: 0.7rem; opacity: 0.5;"></button>
+</div>
+{% endif %}

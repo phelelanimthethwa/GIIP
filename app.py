@@ -13326,11 +13326,14 @@ def admin_conference_details(conference_id):
                 reg_data['_author_papers'] = []
                 reg_data['_author_submission_count'] = 0
         
+        session_chairs = db.reference(f'conferences/{conference_id}/session_chairs').get() or {}
+
         return render_template(
             'admin/conference_details.html',
             conference=conference,
             conference_id=conference_id,
             registrations=conference_registrations,
+            session_chairs=session_chairs,
             conference_programme_display=resolve_conference_programme(conference),
             conference_programme_is_custom=bool(
                 str(conference.get('programme') or '').strip()
@@ -13870,6 +13873,46 @@ def dashboard():
                 registration['full_paper_submitted_at'] = None
 
 
+        # Collect Session Chair invitations / roles for current user
+        session_chair_invitations = []
+        seen_sc = set()
+        for sub_key, sub in user_submissions.items():
+            sub_status = (sub.get('status') or '').lower()
+            if sub_status in ['accepted', 'approved']:
+                cid = sub.get('conference_id')
+                pid = sub.get('paper_id') or sub_key.split('::')[-1]
+                
+                sc_key = f"{cid}_{current_user.id}"
+                if sc_key in seen_sc:
+                    continue
+                seen_sc.add(sc_key)
+                
+                sc_status = sub.get('session_chair_status') or 'invited'
+                
+                sc_details = {}
+                if cid:
+                    sc_db = db.reference(f'conferences/{cid}/session_chairs/{current_user.id}').get()
+                    if sc_db and isinstance(sc_db, dict):
+                        sc_details = sc_db
+                        sc_status = sc_db.get('status', sc_status)
+                        
+                conf_data = get_conference_data(cid) if cid else None
+                conf_name = conf_data.get('basic_info', {}).get('name', 'Conference') if conf_data else sub.get('conference_name', 'Conference')
+                
+                session_chair_invitations.append({
+                    'conference_id': cid,
+                    'paper_id': pid,
+                    'paper_title': sub.get('paper_title') or sub.get('title') or 'Accepted Paper',
+                    'conference_name': conf_name,
+                    'status': sc_status,
+                    'salutation': sc_details.get('salutation', ''),
+                    'institution': sc_details.get('institution', getattr(current_user, 'institution', '') or ''),
+                    'department': sc_details.get('department', getattr(current_user, 'department', '') or ''),
+                    'expertise_areas': sc_details.get('expertise_areas', ''),
+                    'bio': sc_details.get('bio', ''),
+                    'linkedin_url': sc_details.get('linkedin_url', '')
+                })
+
         approved_count = sum(
             1
             for registration in user_registrations.values()
@@ -13886,6 +13929,7 @@ def dashboard():
         return render_template('user/dashboard.html',
                              registrations=user_registrations,
                              submissions=user_submissions,
+                             session_chair_invitations=session_chair_invitations,
                              approved_count=approved_count,
                              pending_count=pending_count,
                              site_design=get_site_design())
@@ -13898,9 +13942,116 @@ def dashboard():
         return render_template('user/dashboard.html',
                              registrations={},
                              submissions={},
+                             session_chair_invitations=[],
                              approved_count=0,
                              pending_count=0,
                              site_design=get_site_design())
+
+@app.route('/session-chair/respond', methods=['POST'])
+@login_required
+def respond_session_chair():
+    """Handle author 1-click opt-in or decline for Session Chair invitation"""
+    try:
+        conference_id = request.form.get('conference_id', '').strip()
+        paper_id = request.form.get('paper_id', '').strip()
+        response_action = request.form.get('response', '').strip().lower()
+
+        if not conference_id or not response_action or response_action not in ['apply', 'accepted', 'pending_approval', 'declined']:
+            flash('Invalid Session Chair response submission.', 'error')
+            return redirect(request.referrer or url_for('dashboard'))
+
+        updated_at = datetime.now().isoformat()
+
+        if response_action == 'declined':
+            status_val = 'declined'
+            session_chair_data = {
+                'user_id': current_user.id,
+                'user_name': getattr(current_user, 'full_name', '') or current_user.email,
+                'user_email': current_user.email,
+                'paper_id': paper_id,
+                'conference_id': conference_id,
+                'status': status_val,
+                'updated_at': updated_at
+            }
+            flash('Your response declining the Session Chair role has been recorded.', 'info')
+        else:
+            status_val = 'pending_approval'
+            session_chair_data = {
+                'user_id': current_user.id,
+                'user_name': getattr(current_user, 'full_name', '') or current_user.email,
+                'user_email': current_user.email,
+                'institution': getattr(current_user, 'institution', '') or '',
+                'department': getattr(current_user, 'department', '') or '',
+                'paper_id': paper_id,
+                'conference_id': conference_id,
+                'status': status_val,
+                'applied_at': updated_at,
+                'updated_at': updated_at
+            }
+            flash('Thank you for agreeing! Your request to serve as a Session Chair has been submitted and is pending admin approval.', 'success')
+
+        # Save in Firebase
+        db.reference(f'conferences/{conference_id}/session_chairs/{current_user.id}').update(session_chair_data)
+
+        if paper_id:
+            db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').update({
+                'session_chair_status': status_val
+            })
+            db.reference(f'user_paper_submissions/{current_user.id}/{paper_id}').update({
+                'session_chair_status': status_val
+            })
+
+    except Exception as e:
+        print(f"Error saving Session Chair response: {e}")
+        flash('An error occurred while saving your response.', 'error')
+
+    return redirect(request.referrer or url_for('dashboard'))
+
+@app.route('/admin/conferences/<conference_id>/session-chairs/<user_id>/status', methods=['POST'])
+@login_required
+@admin_required
+def admin_update_session_chair_status(conference_id, user_id):
+    """Admin endpoint to approve or reject a Session Chair application"""
+    try:
+        new_status = request.form.get('status', '').strip().lower()
+        if new_status not in ['approved', 'rejected', 'pending_approval', 'declined']:
+            flash('Invalid Session Chair status.', 'error')
+            return redirect(url_for('admin_conference_details', conference_id=conference_id))
+
+        sc_ref = db.reference(f'conferences/{conference_id}/session_chairs/{user_id}')
+        sc_data = sc_ref.get() or {}
+        if not sc_data:
+            flash('Session Chair application record not found.', 'error')
+            return redirect(url_for('admin_conference_details', conference_id=conference_id))
+
+        sc_data['status'] = new_status
+        sc_data['reviewed_at'] = datetime.now().isoformat()
+        sc_data['reviewed_by'] = current_user.email
+        sc_ref.update(sc_data)
+
+        # Update paper node if paper_id exists
+        paper_id = sc_data.get('paper_id')
+        if paper_id:
+            db.reference(f'conferences/{conference_id}/paper_submissions/{paper_id}').update({
+                'session_chair_status': new_status
+            })
+            db.reference(f'user_paper_submissions/{user_id}/{paper_id}').update({
+                'session_chair_status': new_status
+            })
+
+        user_name = sc_data.get('user_name') or user_id
+        if new_status == 'approved':
+            flash(f'Successfully APPROVED {user_name} as a Session Chair for this conference.', 'success')
+        elif new_status == 'rejected':
+            flash(f'Session Chair application for {user_name} has been rejected.', 'info')
+        else:
+            flash(f'Session Chair status updated to {new_status}.', 'info')
+
+    except Exception as e:
+        print(f"Error updating Session Chair status: {e}")
+        flash('An error occurred while updating Session Chair status.', 'error')
+
+    return redirect(url_for('admin_conference_details', conference_id=conference_id))
 
 @app.route('/admin/conference-proceedings', methods=['GET'])
 @login_required
