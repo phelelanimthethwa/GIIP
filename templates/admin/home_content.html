@@ -535,6 +535,58 @@
                 </div>
             </div>
 
+            <!-- Featured Conferences Selection Mode -->
+            <div class="admin-card mb-4">
+                <h2><i class="fas fa-layer-group text-primary me-2"></i> Featured Conferences Display Settings</h2>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Choose whether to display the single manually configured featured conference below, or dynamically display selected active/upcoming conferences on the home page.</p>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-2">Display Mode</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="featured_conferences_display_mode" id="modeManual" value="manual" {% if home_content.featured_conferences_display_mode|default('manual') == 'manual' %}checked{% endif %} onchange="toggleConferenceSelectionMode()">
+                            <label class="form-check-label" for="modeManual">
+                                <strong>Manual Option (Default)</strong> — Display the single manually configured featured conference details below.
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="featured_conferences_display_mode" id="modeSelected" value="selected" {% if home_content.featured_conferences_display_mode == 'selected' %}checked{% endif %} onchange="toggleConferenceSelectionMode()">
+                            <label class="form-check-label" for="modeSelected">
+                                <strong>Selected Conferences (Dynamic)</strong> — Select specific conferences from your database to feature on the home page.
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="featured_conferences_display_mode" id="modeAllActive" value="all_active" {% if home_content.featured_conferences_display_mode == 'all_active' %}checked{% endif %} onchange="toggleConferenceSelectionMode()">
+                            <label class="form-check-label" for="modeAllActive">
+                                <strong>All Active &amp; Upcoming Conferences (Dynamic)</strong> — Automatically feature all active and upcoming conferences.
+                            </label>
+                        </div>
+                    </div>
+
+                    {# Dynamic Conference Selection Checkboxes #}
+                    <div id="conferenceSelectionContainer" class="p-3 border rounded bg-light mt-3" style="display: {% if home_content.featured_conferences_display_mode == 'selected' %}block{% else %}none{% endif %};">
+                        <label class="form-label fw-bold mb-2">Select Conferences to Show on Homepage:</label>
+                        {% if available_conferences %}
+                            <div class="row g-2">
+                                {% for conf_id, conf in available_conferences.items() %}
+                                <div class="col-md-6">
+                                    <div class="form-check p-2.5 bg-white border rounded">
+                                        <input class="form-check-input" type="checkbox" name="selected_conference_ids[]" value="{{ conf_id }}" id="conf_check_{{ conf_id }}" {% if conf_id in home_content.selected_conference_ids|default([]) %}checked{% endif %}>
+                                        <label class="form-check-label ms-1" for="conf_check_{{ conf_id }}">
+                                            <strong>{{ conf.name }}</strong> ({{ conf.year }})
+                                            <small class="d-block text-muted">{{ conf.location or 'Virtual' }}</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted small mb-0">No active or upcoming conferences created yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
             <!-- Hero Slider Section -->
             <div class="admin-card mb-4">
                 <h2><i class="fas fa-images"></i> Hero Slider</h2>
@@ -1499,6 +1551,14 @@ document.addEventListener('DOMContentLoaded', function() {
             img.src = URL.createObjectURL(file);
         });
     }
+    // Toggle Conference Selection Mode
+    window.toggleConferenceSelectionMode = function() {
+        const selectedRadio = document.querySelector('input[name="featured_conferences_display_mode"]:checked');
+        const container = document.getElementById('conferenceSelectionContainer');
+        if (container && selectedRadio) {
+            container.style.display = (selectedRadio.value === 'selected') ? 'block' : 'none';
+        }
+    };
 });
 </script>
-{% endblock scripts %} 
+{% endblock scripts %}

@@ -706,17 +706,40 @@ def home():
         featured_speakers = featured_speakers[:2]  # Only show up to 2 speakers on home page
         
         site_design = get_site_design()
+
+        # Process dynamic featured conferences for home page display
+        display_mode = home_content.get('featured_conferences_display_mode', 'manual')
+        selected_ids = home_content.get('selected_conference_ids', [])
+        all_conferences = get_all_conferences()
+        
+        home_featured_conferences = []
+        if display_mode == 'selected':
+            for cid, cdata in all_conferences.items():
+                if cid in selected_ids and cdata and cdata.get('basic_info'):
+                    cdata['id'] = cid
+                    home_featured_conferences.append(cdata)
+        elif display_mode == 'all_active':
+            for cid, cdata in all_conferences.items():
+                if cdata and cdata.get('basic_info'):
+                    status = cdata['basic_info'].get('status', '').lower()
+                    if status in ['active', 'upcoming', 'open']:
+                        cdata['id'] = cid
+                        home_featured_conferences.append(cdata)
         
         return render_template('user/home.html', 
                             home_content=home_content,
                             site_design=site_design,
                             featured_speakers=featured_speakers,
+                            home_featured_conferences=home_featured_conferences,
+                            display_mode=display_mode,
                             page_name='home')
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
         return render_template('user/home.html', 
                             home_content=default_content,
                             featured_speakers=[],
+                            home_featured_conferences=[],
+                            display_mode='manual',
                             site_design=DEFAULT_THEME,
                             page_name='home')
 
@@ -4818,6 +4841,8 @@ def admin_home_content():
                             'show_countdown': 'conference[show_countdown]' in request.form
                         }
                     },
+                    'featured_conferences_display_mode': request.form.get('featured_conferences_display_mode', 'manual'),
+                    'selected_conference_ids': request.form.getlist('selected_conference_ids[]'),
                     'vmo': {
                         'vision': request.form.get('vmo[vision]', ''),
                         'mission': request.form.get('vmo[mission]', ''),
