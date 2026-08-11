@@ -726,12 +726,15 @@ def home():
                         cdata['id'] = cid
                         home_featured_conferences.append(cdata)
         
+        name_overrides = home_content.get('conference_name_overrides', {})
+
         return render_template('user/home.html', 
                             home_content=home_content,
                             site_design=site_design,
                             featured_speakers=featured_speakers,
                             home_featured_conferences=home_featured_conferences,
                             display_mode=display_mode,
+                            conference_name_overrides=name_overrides,
                             page_name='home')
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
@@ -4843,6 +4846,7 @@ def admin_home_content():
                     },
                     'featured_conferences_display_mode': request.form.get('featured_conferences_display_mode', 'manual'),
                     'selected_conference_ids': request.form.getlist('selected_conference_ids[]'),
+                    'conference_name_overrides': {},  # filled after current_content is fetched below
                     'vmo': {
                         'vision': request.form.get('vmo[vision]', ''),
                         'mission': request.form.get('vmo[mission]', ''),
@@ -4862,8 +4866,17 @@ def admin_home_content():
                     }
                 }
 
-                # Get current content for existing images
+                # Get current content for existing images and preserved overrides
                 current_content = content_ref.get() or {}
+
+                # Merge conference name overrides: keep existing, apply edited name if a conference was loaded
+                existing_overrides = current_content.get('conference_name_overrides') or {}
+                loaded_conf_id = request.form.get('loaded_conference_id', '').strip()
+                edited_name = request.form.get('conference[name]', '').strip()
+                if loaded_conf_id and edited_name:
+                    existing_overrides[loaded_conf_id] = edited_name
+                update_data['conference_name_overrides'] = existing_overrides
+
                 if 'hero' in current_content and 'images' in current_content['hero']:
                     update_data['hero']['images'] = current_content['hero']['images']
 

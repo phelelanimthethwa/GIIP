@@ -23,9 +23,10 @@
                 {# Dynamic Conference Background Slider Images #}
                 {% for conf in home_featured_conferences %}
                 {% set conf_info = conf.basic_info %}
+                {% set conf_display_name = (conference_name_overrides or {})[conf.id] if (conference_name_overrides or {})[conf.id] is defined and (conference_name_overrides or {})[conf.id] else conf_info.name %}
                 {% set conf_img = conf_info.image_url or conf_info.thumbnail_url or url_for('static', filename='images/default-hero.jpg') %}
                 <div class="slide">
-                    <img src="{{ conf_img }}" alt="{{ conf_info.name }}" onError="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                    <img src="{{ conf_img }}" alt="{{ conf_display_name }}" onError="this.onerror=null; this.src='/static/images/default-hero.jpg';">
                 </div>
                 {% endfor %}
             {% elif home_content.hero.images and home_content.hero.images|length > 0 %}
@@ -60,11 +61,12 @@
                 {# Synchronized Dynamic Overlay Slides #}
                 {% for conf in home_featured_conferences %}
                 {% set conf_info = conf.basic_info %}
+                {% set conf_display_name = (conference_name_overrides or {}).get(conf.id, '') or conf_info.name %}
                 {% set venue_val = conf_info.venue_name or conf_info.venue %}
                 <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if loop.first %}display: flex;{% else %}display: none;{% endif %} flex-direction: column; align-items: stretch; justify-content: center; gap: 2rem;">
                     {# Top: Title = Conference Name, Subtitle = Abbreviation & Year, Date = Dates #}
                     <div class="title-content">
-                        <h1>{{ conf_info.name }}</h1>
+                        <h1>{{ conf_display_name }}</h1>
                         <p class="subtitle {% if home_content.welcome.subtitle_marquee %}marquee{% endif %}">
                             <span>{{ conf_info.abbreviation or 'GIIR Conference' }} &bull; {{ conf_info.year }}</span>
                         </p>
@@ -76,6 +78,7 @@
 
                     {# Bottom: Conference Info Details Box (Positioned exactly as in Manual mode) #}
                     <div class="conference-info-content">
+                        <h2>{{ conf_display_name }}</h2>
                         <div class="info-grid mb-2">
                             <div class="info-item">
                                 <i class="fas fa-calendar"></i>
@@ -94,7 +97,7 @@
                         </div>
 
                         <div class="conference-highlights">
-                            <h3>Highlights</h3>
+                            <h3>Conference Highlights</h3>
                             <ul>
                                 {% if conf_info.description %}
                                     {% for sent in conf_info.description.split('.')[:2] %}

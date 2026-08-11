@@ -570,7 +570,7 @@
                             <div class="row g-2">
                                 {% for conf_id, conf in available_conferences.items() %}
                                 <div class="col-md-6">
-                                    <div class="form-check p-2.5 bg-white border rounded">
+                                    <div class="form-check p-2 bg-white border rounded">
                                         <input class="form-check-input" type="checkbox" name="selected_conference_ids[]" value="{{ conf_id }}" id="conf_check_{{ conf_id }}" {% if conf_id in home_content.selected_conference_ids|default([]) %}checked{% endif %}>
                                         <label class="form-check-label ms-1" for="conf_check_{{ conf_id }}">
                                             <strong>{{ conf.name }}</strong> ({{ conf.year }})
@@ -618,21 +618,50 @@
                     </div>
 
                     <div class="conference-details">
+                        <input type="hidden" id="loadedConferenceId" name="loaded_conference_id" value="">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h3 class="mb-0">Conference Details</h3>
                             {% if available_conferences %}
                             <div class="d-flex gap-2">
                                 <select id="conferenceSelector" class="form-select form-select-sm" style="width: auto;">
                                     <option value="">Select a conference to load...</option>
+                                    {% set selected_ids = home_content.selected_conference_ids | default([]) %}
+                                    {# Featured / selected conferences shown first #}
+                                    {% set ns = namespace(has_selected=false, has_other=false) %}
                                     {% for conf_id, conf in available_conferences.items() %}
-                                    <option value="{{ conf_id }}" data-name="{{ conf.name }}" 
-                                            data-start-date="{{ conf.start_date }}" 
-                                            data-end-date="{{ conf.end_date }}"
-                                            data-location="{{ conf.location }}"
-                                            data-description="{{ conf.description }}">
-                                        {{ conf.name }} ({{ conf.year }})
-                                    </option>
+                                        {% if conf_id in selected_ids %}{% set ns.has_selected = true %}{% endif %}
+                                        {% if conf_id not in selected_ids %}{% set ns.has_other = true %}{% endif %}
                                     {% endfor %}
+                                    {% if ns.has_selected %}
+                                    <optgroup label="⭐ Featured on Homepage">
+                                        {% for conf_id, conf in available_conferences.items() %}
+                                        {% if conf_id in selected_ids %}
+                                        <option value="{{ conf_id }}" data-name="{{ conf.name }}"
+                                                data-start-date="{{ conf.start_date }}"
+                                                data-end-date="{{ conf.end_date }}"
+                                                data-location="{{ conf.location }}"
+                                                data-description="{{ conf.description }}">
+                                            {{ conf.name }} ({{ conf.year }})
+                                        </option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endif %}
+                                    {% if ns.has_other %}
+                                    <optgroup label="Other Conferences">
+                                        {% for conf_id, conf in available_conferences.items() %}
+                                        {% if conf_id not in selected_ids %}
+                                        <option value="{{ conf_id }}" data-name="{{ conf.name }}"
+                                                data-start-date="{{ conf.start_date }}"
+                                                data-end-date="{{ conf.end_date }}"
+                                                data-location="{{ conf.location }}"
+                                                data-description="{{ conf.description }}">
+                                            {{ conf.name }} ({{ conf.year }})
+                                        </option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endif %}
                                 </select>
                                 <button type="button" class="btn btn-sm btn-outline-primary" id="loadConferenceBtn" style="display: none;">
                                     <i class="fas fa-download"></i> Load Conference Data
@@ -646,6 +675,10 @@
                                     <label for="conferenceName" class="form-label">Conference Name</label>
                                     <input type="text" class="form-control" id="conferenceName" name="conference[name]"
                                            value="{{ home_content.hero.conference.name }}" required>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        When using dynamic mode, load a conference above then edit this name — it will override that conference's display name on the homepage.
+                                    </small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -1420,6 +1453,10 @@ document.addEventListener('DOMContentLoaded', function() {
             loadConferenceBtn.addEventListener('click', function() {
                 const selectedOption = conferenceSelector.options[conferenceSelector.selectedIndex];
                 if (!selectedOption.value) return;
+
+                // Track which conference was loaded so name edits save as an override
+                const loadedIdField = document.getElementById('loadedConferenceId');
+                if (loadedIdField) loadedIdField.value = selectedOption.value;
                 
                 const name = selectedOption.dataset.name || '';
                 const startDate = selectedOption.dataset.startDate || '';
