@@ -60,8 +60,12 @@
                 {# Synchronized Dynamic Overlay Slides #}
                 {% for conf in home_featured_conferences %}
                 {% set conf_info = conf.basic_info %}
-                {# conf_theme: per-conference theme override, then global theme field, then DB name as last resort #}
-                {% set conf_theme = (conference_theme_overrides or {}).get(conf.id, '') or home_content.hero.conference.theme or conf_info.name %}
+                {# conf_theme resolution order:
+                   1. conference_theme_overrides[conf.id]  — set from Home Content admin
+                   2. conf_info.theme                      — set directly on the conference record
+                   3. home_content.hero.conference.theme   — global theme fallback from Home Content
+                   4. conf_info.name                       — final fallback to the DB conference name #}
+                {% set conf_theme = (conference_theme_overrides or {}).get(conf.id, '') or conf_info.theme or home_content.hero.conference.theme or conf_info.name %}
                 {% set venue_val = conf_info.venue_name or conf_info.venue %}
                 <div class="hero-sync-slide w-100 {% if loop.first %}active{% endif %}" data-sync-index="{{ loop.index0 }}" style="{% if loop.first %}display: flex;{% else %}display: none;{% endif %} flex-direction: column; align-items: stretch; justify-content: center; gap: 2rem;">
                     {# Top: Title = Conference Name from DB (not editable here), Subtitle = Abbreviation & Year #}

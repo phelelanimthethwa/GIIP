@@ -120,6 +120,14 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="conferenceTheme" class="form-label">Conference Theme</label>
+                            <input type="text" class="form-control" id="conferenceTheme" name="theme"
+                                   value="{{ conference.basic_info.theme|default('') }}"
+                                   placeholder="e.g., Advancing Innovation in Education">
+                            <div class="form-text">Short tagline shown inside the Conference Highlights card on the home page (the &lt;h2&gt; heading). Leave blank to default to the conference name.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="conferenceProgramme" class="form-label">Conference programme</label>
                             <textarea class="form-control font-monospace small" id="conferenceProgramme" name="programme" rows="14" placeholder="Leave empty to use the default GIIR tentative programme on the public conference page.">{{ conference.programme|default('') }}</textarea>
                             <div class="form-text">

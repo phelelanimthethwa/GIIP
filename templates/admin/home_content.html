@@ -641,6 +641,7 @@
                                         {% for conf_id, conf in available_conferences.items() %}
                                         {% if conf_id in selected_ids %}
                                         <option value="{{ conf_id }}" data-name="{{ conf.name }}"
+                                                data-theme="{{ conf.theme }}"
                                                 data-start-date="{{ conf.start_date }}"
                                                 data-end-date="{{ conf.end_date }}"
                                                 data-location="{{ conf.location }}"
@@ -656,6 +657,7 @@
                                         {% for conf_id, conf in available_conferences.items() %}
                                         {% if conf_id not in selected_ids %}
                                         <option value="{{ conf_id }}" data-name="{{ conf.name }}"
+                                                data-theme="{{ conf.theme }}"
                                                 data-start-date="{{ conf.start_date }}"
                                                 data-end-date="{{ conf.end_date }}"
                                                 data-location="{{ conf.location }}"
@@ -1528,7 +1530,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const highlightsField = document.getElementById('conferenceHighlights');
                 const welcomeDateField = document.getElementById('welcomeConferenceDate'); // Welcome section date
                 
-                if (themeField) themeField.value = name;
+                // Pre-fill theme from the conference's own DB record; fall back to name
+                const confTheme = selectedOption.dataset.theme || '';
+                if (themeField) themeField.value = confTheme || name;
                 if (dateField && startDate) {
                     // Use start date for the date input (single date field)
                     dateField.value = startDate;

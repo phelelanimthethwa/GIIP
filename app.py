@@ -4888,6 +4888,11 @@ def admin_home_content():
                 if loaded_conf_id and edited_theme:
                     # Single conference was explicitly loaded — override just that one
                     existing_overrides[loaded_conf_id] = edited_theme
+                    # Also write the theme back to the conference's own DB record
+                    try:
+                        db.reference(f'conferences/{loaded_conf_id}/basic_info/theme').set(edited_theme)
+                    except Exception as theme_err:
+                        print(f"Warning: could not write theme back to conference record: {theme_err}")
                 elif edited_theme:
                     # No specific conference was loaded via the dropdown but a theme was typed.
                     # Apply the override to every currently selected conference so dynamic
@@ -4896,6 +4901,11 @@ def admin_home_content():
                     for cid in selected_ids:
                         if cid:
                             existing_overrides[cid] = edited_theme
+                            # Also write back to each selected conference's DB record
+                            try:
+                                db.reference(f'conferences/{cid}/basic_info/theme').set(edited_theme)
+                            except Exception as theme_err:
+                                print(f"Warning: could not write theme back to conference {cid}: {theme_err}")
                 update_data['conference_theme_overrides'] = existing_overrides
 
                 if 'hero' in current_content and 'images' in current_content['hero']:
@@ -5169,6 +5179,7 @@ def admin_home_content():
                             available_conferences[conf_id] = {
                                 'id': conf_id,
                                 'name': basic_info.get('name', ''),
+                                'theme': basic_info.get('theme', ''),
                                 'year': year,
                                 'start_date': basic_info.get('start_date', ''),
                                 'end_date': basic_info.get('end_date', ''),
@@ -13204,6 +13215,7 @@ def create_conference():
             'basic_info': {
                 'name': request.form.get('name', '').strip(),
                 'description': request.form.get('description', '').strip(),
+                'theme': request.form.get('theme', '').strip(),
                 'year': int(request.form.get('year', datetime.now().year)),
                 'abbreviation': request.form.get('abbreviation', '').strip(),
                 'status': request.form.get('status', 'draft'),
@@ -13509,6 +13521,7 @@ def edit_conference(conference_id):
             basic_info = {
                 'name': request.form.get('name', '').strip(),
                 'description': request.form.get('description', '').strip(),
+                'theme': request.form.get('theme', '').strip(),
                 'year': int(request.form.get('year', conference['basic_info'].get('year', datetime.now().year))),
                 'abbreviation': request.form.get('abbreviation', '').strip(),
                 'status': request.form.get('status', conference['basic_info'].get('status', 'draft')),
