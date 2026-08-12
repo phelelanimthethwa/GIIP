@@ -325,6 +325,7 @@ default_content = {
     'hero': {
         'conference': {
             'name': 'Global Institute on Innovative Research',
+            'theme': 'Global Institute on Innovative Research',
             'date': 'TBA',
             'time': 'TBA',
             'city': 'TBA',
@@ -716,17 +717,24 @@ def home():
         if display_mode == 'selected':
             for cid, cdata in all_conferences.items():
                 if cid in selected_ids and cdata and cdata.get('basic_info'):
-                    cdata['id'] = cid
-                    home_featured_conferences.append(cdata)
+                    conf_entry = dict(cdata)   # shallow copy — prevents all entries sharing the same dict
+                    conf_entry['id'] = cid
+                    home_featured_conferences.append(conf_entry)
         elif display_mode == 'all_active':
             for cid, cdata in all_conferences.items():
                 if cdata and cdata.get('basic_info'):
                     status = cdata['basic_info'].get('status', '').lower()
                     if status in ['active', 'upcoming', 'open']:
-                        cdata['id'] = cid
-                        home_featured_conferences.append(cdata)
+                        conf_entry = dict(cdata)   # shallow copy — prevents all entries sharing the same dict
+                        conf_entry['id'] = cid
+                        home_featured_conferences.append(conf_entry)
         
-        name_overrides = home_content.get('conference_name_overrides', {})
+        # Support both new 'conference_theme_overrides' and migrated old 'conference_name_overrides'
+        theme_overrides = (
+            home_content.get('conference_theme_overrides')
+            or home_content.get('conference_name_overrides')
+            or {}
+        )
 
         return render_template('user/home.html', 
                             home_content=home_content,
@@ -734,7 +742,7 @@ def home():
                             featured_speakers=featured_speakers,
                             home_featured_conferences=home_featured_conferences,
                             display_mode=display_mode,
-                            conference_name_overrides=name_overrides,
+                            conference_theme_overrides=theme_overrides,
                             page_name='home')
     except Exception as e:
         print(f"Error loading home content: {str(e)}")
@@ -4836,7 +4844,7 @@ def admin_home_content():
                     'hero': {
                         'images': [],
                         'conference': {
-                            'name': request.form.get('conference[name]', ''),
+                            'theme': request.form.get('conference[theme]', ''),
                             'date': request.form.get('conference[date]', ''),
                             'time': request.form.get('conference[time]', ''),
                             'city': request.form.get('conference[city]', ''),
@@ -4846,7 +4854,7 @@ def admin_home_content():
                     },
                     'featured_conferences_display_mode': request.form.get('featured_conferences_display_mode', 'manual'),
                     'selected_conference_ids': request.form.getlist('selected_conference_ids[]'),
-                    'conference_name_overrides': {},  # filled after current_content is fetched below
+                    'conference_theme_overrides': {},  # filled after current_content is fetched below
                     'vmo': {
                         'vision': request.form.get('vmo[vision]', ''),
                         'mission': request.form.get('vmo[mission]', ''),
@@ -4869,13 +4877,26 @@ def admin_home_content():
                 # Get current content for existing images and preserved overrides
                 current_content = content_ref.get() or {}
 
-                # Merge conference name overrides: keep existing, apply edited name if a conference was loaded
-                existing_overrides = current_content.get('conference_name_overrides') or {}
+                # Merge conference theme overrides: keep existing, apply edited theme if a conference was loaded
+                existing_overrides = (
+                    current_content.get('conference_theme_overrides')
+                    or current_content.get('conference_name_overrides')  # migrate old key
+                    or {}
+                )
                 loaded_conf_id = request.form.get('loaded_conference_id', '').strip()
-                edited_name = request.form.get('conference[name]', '').strip()
-                if loaded_conf_id and edited_name:
-                    existing_overrides[loaded_conf_id] = edited_name
-                update_data['conference_name_overrides'] = existing_overrides
+                edited_theme = request.form.get('conference[theme]', '').strip()
+                if loaded_conf_id and edited_theme:
+                    # Single conference was explicitly loaded — override just that one
+                    existing_overrides[loaded_conf_id] = edited_theme
+                elif edited_theme:
+                    # No specific conference was loaded via the dropdown but a theme was typed.
+                    # Apply the override to every currently selected conference so dynamic
+                    # mode reflects the change (handles the multi-select case).
+                    selected_ids = request.form.getlist('selected_conference_ids[]')
+                    for cid in selected_ids:
+                        if cid:
+                            existing_overrides[cid] = edited_theme
+                update_data['conference_theme_overrides'] = existing_overrides
 
                 if 'hero' in current_content and 'images' in current_content['hero']:
                     update_data['hero']['images'] = current_content['hero']['images']
@@ -4989,6 +5010,10 @@ def admin_home_content():
         if 'conference' not in home_content['hero']:
             home_content['hero']['conference'] = {}
         home_content['hero']['conference'].setdefault('name', '')
+        # Migrate: populate 'theme' from old 'name' field if 'theme' not yet saved
+        if not home_content['hero']['conference'].get('theme'):
+            home_content['hero']['conference']['theme'] = home_content['hero']['conference'].get('name', '')
+        home_content['hero']['conference'].setdefault('theme', '')
         home_content['hero']['conference'].setdefault('date', '')
         home_content['hero']['conference'].setdefault('time', '')
         home_content['hero']['conference'].setdefault('city', '')
@@ -7831,6 +7856,10 @@ def inject_home_content():
         if 'conference' not in home_content['hero']:
             home_content['hero']['conference'] = {}
         home_content['hero']['conference'].setdefault('name', default_content['hero']['conference']['name'])
+        # Migrate: populate 'theme' from old 'name' field if 'theme' not yet saved
+        if not home_content['hero']['conference'].get('theme'):
+            home_content['hero']['conference']['theme'] = home_content['hero']['conference'].get('name', default_content['hero']['conference']['theme'])
+        home_content['hero']['conference'].setdefault('theme', default_content['hero']['conference']['theme'])
         home_content['hero']['conference'].setdefault('date', default_content['hero']['conference']['date'])
         home_content['hero']['conference'].setdefault('time', default_content['hero']['conference']['time'])
         home_content['hero']['conference'].setdefault('city', default_content['hero']['conference']['city'])

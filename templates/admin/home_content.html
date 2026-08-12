@@ -618,7 +618,11 @@
                     </div>
 
                     <div class="conference-details">
-                        <input type="hidden" id="loadedConferenceId" name="loaded_conference_id" value="">
+                        {# Pre-populate loaded_conference_id when there is exactly one featured conference
+                           so that editing the Conference Name field always saves the override in dynamic mode #}
+                        {% set selected_ids = home_content.selected_conference_ids | default([]) %}
+                        {% set preload_id = selected_ids[0] if selected_ids|length == 1 else '' %}
+                        <input type="hidden" id="loadedConferenceId" name="loaded_conference_id" value="{{ preload_id }}">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h3 class="mb-0">Conference Details</h3>
                             {% if available_conferences %}
@@ -671,13 +675,13 @@
                         </div>
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="conferenceName" class="form-label">Conference Name</label>
-                                    <input type="text" class="form-control" id="conferenceName" name="conference[name]"
-                                           value="{{ home_content.hero.conference.name }}" required>
+                            <div class="mb-3">
+                                    <label for="conferenceTheme" class="form-label">Conference Theme</label>
+                                    <input type="text" class="form-control" id="conferenceTheme" name="conference[theme]"
+                                           value="{{ home_content.hero.conference.theme }}" required>
                                     <small class="form-text text-muted">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        When using dynamic mode, load a conference above then edit this name — it will override that conference's display name on the homepage.
+                                        Shown as the heading inside the Conference Highlights card on the home page. The <strong>Conference Name</strong> on the main title is always pulled directly from the conference record.
                                     </small>
                                 </div>
                             </div>
@@ -1442,10 +1446,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (conferenceSelector) {
         conferenceSelector.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value && loadConferenceBtn) {
-                loadConferenceBtn.style.display = 'inline-block';
-            } else if (loadConferenceBtn) {
-                loadConferenceBtn.style.display = 'none';
+            const loadedIdField = document.getElementById('loadedConferenceId');
+            if (selectedOption.value) {
+                if (loadConferenceBtn) loadConferenceBtn.style.display = 'inline-block';
+                // Track the selected conference immediately so that editing the
+                // Conference Name field always saves the override — even if the
+                // admin never clicks "Load Conference Data".
+                if (loadedIdField) loadedIdField.value = selectedOption.value;
+            } else {
+                if (loadConferenceBtn) loadConferenceBtn.style.display = 'none';
+                if (loadedIdField) loadedIdField.value = '';
             }
         });
         
@@ -1512,13 +1522,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // Populate form fields
-                const nameField = document.getElementById('conferenceName');
+                const themeField = document.getElementById('conferenceTheme');
                 const dateField = document.getElementById('heroConferenceDate');
                 const cityField = document.getElementById('conferenceCity');
                 const highlightsField = document.getElementById('conferenceHighlights');
                 const welcomeDateField = document.getElementById('welcomeConferenceDate'); // Welcome section date
                 
-                if (nameField) nameField.value = name;
+                if (themeField) themeField.value = name;
                 if (dateField && startDate) {
                     // Use start date for the date input (single date field)
                     dateField.value = startDate;
