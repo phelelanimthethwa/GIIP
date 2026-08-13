@@ -2608,6 +2608,8 @@ def admin_venue():
 
             # Get and validate form data
             venue_data = {
+                'page_title': request.form.get('page_title', '').strip() or 'Conference Venue',
+                'page_subtitle': request.form.get('page_subtitle', '').strip() or 'Join us at our carefully selected venue for an enriching conference experience',
                 'name': request.form.get('name', '').strip(),
                 'address': request.form.get('address', '').strip(),
                 'city': request.form.get('city', '').strip(),

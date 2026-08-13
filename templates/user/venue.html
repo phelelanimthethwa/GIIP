@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Conference Venue</h1>
-    <p>Join us at our carefully selected venue for an enriching conference experience</p>
+    <h1>{{ venue_details.page_title if venue_details and venue_details.page_title else 'Conference Venue' }}</h1>
+    <p>{{ venue_details.page_subtitle if venue_details and venue_details.page_subtitle else 'Join us at our carefully selected venue for an enriching conference experience' }}</p>
 </div>
 
 <div class="content-section">

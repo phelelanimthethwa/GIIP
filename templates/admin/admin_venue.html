@@ -966,6 +966,55 @@
         <div class="venue-form-card">
             <form method="POST" action="{{ url_for('admin_venue') }}" id="venueForm">
                 
+                <!-- Page Header Settings Section -->
+                <div class="v-section">
+                    <div class="v-section-header">
+                        <div class="v-section-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">
+                            <i class="fas fa-heading"></i>
+                        </div>
+                        <div class="v-section-text">
+                            <h2>Page Header & Banner</h2>
+                            <p>Customize the title and subtitle displayed at the top of the venue page</p>
+                        </div>
+                    </div>
+
+                    <div class="v-form-grid">
+                        <!-- Header Title -->
+                        <div class="v-form-group full">
+                            <label class="v-label">
+                                <i class="fas fa-heading"></i>
+                                Header Title
+                            </label>
+                            <div class="v-input-wrap">
+                                <input type="text" 
+                                       id="page_title" 
+                                       name="page_title" 
+                                       class="v-input"
+                                       value="{{ venue_details.page_title if venue_details and venue_details.page_title else 'Conference Venue' }}" 
+                                       placeholder="e.g., Conference Venue">
+                                <i class="fas fa-heading v-input-icon"></i>
+                            </div>
+                        </div>
+
+                        <!-- Header Subtitle / Description -->
+                        <div class="v-form-group full">
+                            <label class="v-label">
+                                <i class="fas fa-align-left"></i>
+                                Header Subtitle / Description
+                            </label>
+                            <div class="v-input-wrap">
+                                <input type="text" 
+                                       id="page_subtitle" 
+                                       name="page_subtitle" 
+                                       class="v-input"
+                                       value="{{ venue_details.page_subtitle if venue_details and venue_details.page_subtitle else 'Join us at our carefully selected venue for an enriching conference experience' }}" 
+                                       placeholder="e.g., Join us at our carefully selected venue for an enriching conference experience">
+                                <i class="fas fa-align-left v-input-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Venue Information Section -->
                 <div class="v-section">
                     <div class="v-section-header">

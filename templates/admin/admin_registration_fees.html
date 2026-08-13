@@ -187,7 +187,7 @@
                                 <span class="fw-bold text-dark">{{ rem }} of {{ total }} available</span>
                             </div>
                             <div class="progress mb-2" style="height: 8px; border-radius: 9999px; background-color: #E2E8F0;">
-                                <div class="progress-bar" role="progressbar" style="width: {{ pct }}%; background-color: #16a34a; border-radius: 9999px;"></div>
+                                <div class="progress-bar" id="early_bird_progress_bar" role="progressbar" style="width: 100%; background-color: #16a34a; border-radius: 9999px;"></div>
                             </div>
                             <!-- Editable seat inputs (secondary) -->
                             <div class="row g-2 align-items-center pt-2 border-top" style="border-top-color: #E2E8F0 !important;">
@@ -601,6 +601,22 @@ function resetForm() {
         location.reload();
     }
 }
+
+// Update seat capacity progress bar dynamically
+function updateEarlyBirdProgress() {
+    const totalInput = document.getElementById('early_bird_total_seats');
+    const remInput = document.getElementById('early_bird_remaining_seats');
+    const progressBar = document.getElementById('early_bird_progress_bar');
+    if (totalInput && remInput && progressBar) {
+        const total = parseFloat(totalInput.value) || 1;
+        const rem = parseFloat(remInput.value) || 0;
+        const pct = Math.max(0, Math.min(100, Math.round((rem / total) * 100)));
+        progressBar.style.width = pct + '%';
+    }
+}
+document.getElementById('early_bird_total_seats')?.addEventListener('input', updateEarlyBirdProgress);
+document.getElementById('early_bird_remaining_seats')?.addEventListener('input', updateEarlyBirdProgress);
+updateEarlyBirdProgress();
 
 // Toggle early bird settings display based on checkbox
 document.getElementById('early_bird_enabled')?.addEventListener('change', function() {
