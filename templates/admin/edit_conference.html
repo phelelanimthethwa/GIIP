@@ -54,7 +54,7 @@
                                     <label for="conferenceYear" class="form-label">Year *</label>
                                     <input type="number" class="form-control" id="conferenceYear" name="year" 
                                            value="{{ conference.basic_info.year|default(current_year) }}" 
-                                           min="2024" max="2030" required>
+                                           required>
                                 </div>
                             </div>
                         </div>
@@ -65,7 +65,7 @@
                                     <label for="conferenceAbbreviation" class="form-label">Abbreviation</label>
                                     <input type="text" class="form-control" id="conferenceAbbreviation" name="abbreviation" 
                                            value="{{ conference.basic_info.abbreviation|default('') }}" 
-                                           placeholder="e.g., GIIR" maxlength="10">
+                                           placeholder="e.g., GIIR">
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -537,12 +537,30 @@ document.getElementById('eventType').addEventListener('change', function() {
     }
 });
 
-// Auto-generate abbreviation from name
-document.getElementById('conferenceName').addEventListener('input', function() {
-    const name = this.value;
-    const abbreviation = name.replace(/[^A-Za-z]/g, '').substring(0, 10).toUpperCase();
-    document.getElementById('conferenceAbbreviation').value = abbreviation;
-});
+// Auto-generate abbreviation from name if not manually modified
+let editAbbrManuallyEdited = false;
+const editAbbrInput = document.getElementById('conferenceAbbreviation');
+const editNameInput = document.getElementById('conferenceName');
+
+if (editAbbrInput) {
+    editAbbrInput.addEventListener('input', function() {
+        editAbbrManuallyEdited = this.value.trim().length > 0;
+    });
+}
+
+if (editNameInput && editAbbrInput) {
+    editNameInput.addEventListener('input', function() {
+        if (!editAbbrManuallyEdited && !editAbbrInput.value) {
+            const name = this.value.trim();
+            const words = name.split(/\s+/).filter(Boolean);
+            if (words.length > 1) {
+                editAbbrInput.value = words.map(w => w[0]).join('').toUpperCase();
+            } else {
+                editAbbrInput.value = name.toUpperCase();
+            }
+        }
+    });
+}
 
 // Form validation
 document.getElementById('editConferenceForm').addEventListener('submit', function(e) {
@@ -557,9 +575,9 @@ document.getElementById('editConferenceForm').addEventListener('submit', functio
         return false;
     }
     
-    if (!year || year < 2024 || year > 2030) {
+    if (!year) {
         e.preventDefault();
-        alert('Please enter a valid year between 2024 and 2030.');
+        alert('Please enter a valid year.');
         return false;
     }
     

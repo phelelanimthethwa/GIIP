@@ -248,7 +248,7 @@
                             <div class="mb-3">
                                 <label for="conferenceYear" class="form-label">Year *</label>
                                 <input type="number" class="form-control" id="conferenceYear" name="year" 
-                                       min="2024" max="2030" value="{{ current_year }}" required>
+                                       value="{{ current_year }}" required>
                             </div>
                         </div>
                     </div>
@@ -258,7 +258,7 @@
                             <div class="mb-3">
                                 <label for="conferenceAbbreviation" class="form-label">Abbreviation</label>
                                 <input type="text" class="form-control" id="conferenceAbbreviation" name="abbreviation" 
-                                       placeholder="e.g., GIIR" maxlength="10">
+                                       placeholder="e.g., GIIR">
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -541,12 +541,30 @@ document.getElementById('eventType').addEventListener('change', function() {
     }
 });
 
-// Auto-generate abbreviation from name
-document.getElementById('conferenceName').addEventListener('input', function() {
-    const name = this.value;
-    const abbreviation = name.replace(/[^A-Za-z]/g, '').substring(0, 10).toUpperCase();
-    document.getElementById('conferenceAbbreviation').value = abbreviation;
-});
+// Auto-generate abbreviation from name if not manually modified
+let abbreviationManuallyEdited = false;
+const conferenceAbbrInput = document.getElementById('conferenceAbbreviation');
+const conferenceNameInput = document.getElementById('conferenceName');
+
+if (conferenceAbbrInput) {
+    conferenceAbbrInput.addEventListener('input', function() {
+        abbreviationManuallyEdited = this.value.trim().length > 0;
+    });
+}
+
+if (conferenceNameInput && conferenceAbbrInput) {
+    conferenceNameInput.addEventListener('input', function() {
+        if (!abbreviationManuallyEdited) {
+            const name = this.value.trim();
+            const words = name.split(/\s+/).filter(Boolean);
+            if (words.length > 1) {
+                conferenceAbbrInput.value = words.map(w => w[0]).join('').toUpperCase();
+            } else {
+                conferenceAbbrInput.value = name.toUpperCase();
+            }
+        }
+    });
+}
 
 // Set current year as default
 document.addEventListener('DOMContentLoaded', function() {
