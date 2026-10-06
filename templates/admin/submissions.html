@@ -584,7 +584,7 @@
                                 <div class="file-status-badge">
                                     {% if paper.get('full_paper_submitted_at') %}
                                     <div class="file-info submitted">
-                                        <i class="fas fa-file-alt"></i>
+                                        <i class="fas {% if paper.full_paper_name and (paper.full_paper_name.lower().endswith('.doc') or paper.full_paper_name.lower().endswith('.docx') or paper.full_paper_name.lower().endswith('.odt') or paper.full_paper_name.lower().endswith('.rtf') or paper.full_paper_name.lower().endswith('.docm') or paper.full_paper_name.lower().endswith('.dot') or paper.full_paper_name.lower().endswith('.dotx')) %}fa-file-word{% elif paper.full_paper_name and paper.full_paper_name.lower().endswith('.pdf') %}fa-file-pdf{% else %}fa-file-alt{% endif %}"></i>
                                         <span class="file-label">Submitted</span>
                                         <span class="file-date">{{ paper.full_paper_submitted_at[:10] }}</span>
                                         {% if paper.get('full_paper_size') %}
@@ -595,13 +595,13 @@
                                         {% if paper._conference_id %}
                                         <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
                                             class="btn btn-sm btn-success"
-                                            title="Download full paper PDF">
+                                            title="Download full paper file">
                                             <i class="fas fa-download"></i> Download
                                         </a>
                                         {% else %}
                                         <a href="{{ url_for('download_full_paper', paper_id=paper._paper_id) }}"
                                             class="btn btn-sm btn-success"
-                                            title="Download full paper PDF">
+                                            title="Download full paper file">
                                             <i class="fas fa-download"></i> Download
                                         </a>
                                         {% endif %}

@@ -470,20 +470,20 @@
             <form id="fullPaperForm" method="POST" enctype="multipart/form-data" class="form-content">
                 <div class="form-group">
                     <label for="full_paper_file">
-                        <i class="fas fa-file-pdf"></i> Full Paper (PDF only) *
+                        <i class="fas fa-file-alt"></i> Full Paper (PDF or Word document) *
                     </label>
                     <small>Upload your complete paper manuscript</small>
                     
                     <div class="file-input-wrapper">
-                        <input type="file" id="full_paper_file" name="full_paper_file" accept=".pdf" required>
+                        <input type="file" id="full_paper_file" name="full_paper_file" accept=".pdf,.doc,.docx,.odt,.rtf,.docm,.dot,.dotx" required>
                         <label for="full_paper_file" class="file-input-label">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <span id="uploadText">Click to browse or drag and drop your PDF here</span>
+                            <span id="uploadText">Click to browse or drag and drop your document here</span>
                         </label>
                     </div>
 
                     <div class="file-selected {% if paper.full_paper_name %}show{% endif %}" id="fileSelected">
-                        <i class="fas fa-file-pdf"></i>
+                        <i class="fas {% if paper.full_paper_name and (paper.full_paper_name.lower().endswith('.doc') or paper.full_paper_name.lower().endswith('.docx') or paper.full_paper_name.lower().endswith('.odt') or paper.full_paper_name.lower().endswith('.rtf') or paper.full_paper_name.lower().endswith('.docm') or paper.full_paper_name.lower().endswith('.dot') or paper.full_paper_name.lower().endswith('.dotx')) %}fa-file-word{% elif paper.full_paper_name and paper.full_paper_name.lower().endswith('.pdf') %}fa-file-pdf{% else %}fa-file-alt{% endif %}" id="selectedFileIcon"></i>
                         <div class="file-info">
                             <div class="filename" id="fileName">
                                 {{ paper.full_paper_name or '' }}
@@ -502,7 +502,7 @@
                     <small style="display: block; margin-top: 1rem;">
                         <strong>Requirements:</strong>
                         <ul style="margin: 0.5rem 0 0 1.5rem;">
-                            <li>File format: PDF only</li>
+                            <li>Accepted formats: PDF, Word (.doc, .docx), and equivalent documents (.odt, .rtf)</li>
                             <li>Maximum size: 10MB</li>
                             <li>Complete manuscript with all sections</li>
                         </ul>
@@ -578,8 +578,11 @@
             const file = fileInput.files[0];
             
             // Validate file type
-            if (!file.name.toLowerCase().endsWith('.pdf')) {
-                showError('Please select a PDF file');
+            const allowedExtensions = ['.pdf', '.doc', '.docx', '.odt', '.rtf', '.docm', '.dot', '.dotx'];
+            const lowerName = file.name.toLowerCase();
+            const hasValidExt = allowedExtensions.some(ext => lowerName.endsWith(ext));
+            if (!hasValidExt) {
+                showError('Invalid file format. Please upload a PDF or Word document (.pdf, .doc, .docx, .odt, .rtf). Excel and other unrelated formats are not accepted.');
                 fileInput.value = '';
                 fileSelected.classList.remove('show');
                 return;
@@ -592,6 +595,13 @@
                 fileInput.value = '';
                 fileSelected.classList.remove('show');
                 return;
+            }
+
+            // Update icon based on file extension
+            const isWord = ['.doc', '.docx', '.odt', '.rtf', '.docm', '.dot', '.dotx'].some(ext => lowerName.endsWith(ext));
+            const iconElem = document.getElementById('selectedFileIcon') || fileSelected.querySelector('i');
+            if (iconElem) {
+                iconElem.className = isWord ? 'fas fa-file-word' : (lowerName.endsWith('.pdf') ? 'fas fa-file-pdf' : 'fas fa-file-alt');
             }
 
             fileName.textContent = file.name;

@@ -635,7 +635,7 @@
             </button>
         </div>
 
-        {% if not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha %}
+        {% if recaptcha_site_key and (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha) %}
         <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
         {% endif %}
 
@@ -654,7 +654,9 @@
     </div>
 </div>
 
+{% if recaptcha_site_key %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endif %}
 <style>
     /* Co-Author Styling */
     .author-header {
@@ -719,7 +721,7 @@
     {
         "userSubmissionCounts": {{ (user_submission_counts or {}) | tojson | safe }},
         "extraPaperFee": {{ (extra_paper_fee | default(50)) | tojson | safe }},
-        "isRecaptchaEnabled": {{ (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha) | tojson | safe }}
+        "isRecaptchaEnabled": {{ (recaptcha_site_key and (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha)) | tojson | safe }}
     }
 </script>
 <script>
@@ -1038,10 +1040,11 @@
             submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
             submitButton.disabled = true;
 
-            // Check if reCAPTCHA is completed (only if enabled)
+            // Check if reCAPTCHA is completed (only if enabled and configured)
             if (isRecaptchaEnabled) {
                 try {
-                    if (typeof grecaptcha !== 'undefined') {
+                    const recaptchaElem = document.querySelector('.g-recaptcha');
+                    if (recaptchaElem && recaptchaElem.getAttribute('data-sitekey') && typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
                         const recaptchaResponse = grecaptcha.getResponse();
                         if (!recaptchaResponse) {
                             showError('Please complete the reCAPTCHA verification.');

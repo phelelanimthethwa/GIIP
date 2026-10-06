@@ -240,7 +240,9 @@
             </div>
         </div>
 
+        {% if recaptcha_site_key %}
         <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+        {% endif %}
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary" data-default-label="{{ 'Update Abstract' if is_edit else 'Submit Abstract' }}">
@@ -261,7 +263,9 @@
     </div>
 </div>
 
+{% if recaptcha_site_key %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endif %}
 <style>
 /* Co-Author Styling */
 .author-header {
@@ -446,6 +450,7 @@ function updateCoAuthorNumbers() {
 // Enhanced form validation
 function validateAuthorFields() {
     let isValid = true;
+    let firstInvalid = null;
     const authorEntries = document.querySelectorAll('.author-entry');
     
     authorEntries.forEach((entry, entryIndex) => {
@@ -454,12 +459,18 @@ function validateAuthorFields() {
             if (!input.value.trim()) {
                 input.classList.add('is-invalid');
                 isValid = false;
+                if (!firstInvalid) firstInvalid = input;
             } else {
                 input.classList.remove('is-invalid');
                 input.classList.add('is-valid');
             }
         });
     });
+    
+    if (!isValid && firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid.focus();
+    }
     
     return isValid;
 }
@@ -504,7 +515,8 @@ document.getElementById('abstractSubmissionForm').addEventListener('submit', fun
     if (isProcessing) return;
     isProcessing = true;
     
-    const submitButton = this.querySelector('button[type="submit"]');
+    const form = this;
+    const submitButton = form.querySelector('button[type="submit"]');
     const originalText = submitButton.innerHTML;
     const defaultLabel = submitButton.dataset.defaultLabel || 'Submit Paper';
     
@@ -513,17 +525,22 @@ document.getElementById('abstractSubmissionForm').addEventListener('submit', fun
         submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
         submitButton.disabled = true;
         
-        // Check if reCAPTCHA is completed
-        const recaptchaResponse = grecaptcha.getResponse();
-        if (!recaptchaResponse) {
-            showError('Please complete the reCAPTCHA verification.');
-            return;
+        // Check if reCAPTCHA is completed (only if configured and present)
+        const recaptchaElem = document.querySelector('.g-recaptcha');
+        if (recaptchaElem && recaptchaElem.getAttribute('data-sitekey')) {
+            if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+                const recaptchaResponse = grecaptcha.getResponse();
+                if (!recaptchaResponse) {
+                    showError('Please complete the reCAPTCHA verification.');
+                    return;
+                }
+            }
         }
         
         // Check file size and format
         const fileInput = document.getElementById('paper_file');
         const maxSize = 10 * 1024 * 1024; // 10MB in bytes
-        if (fileInput.files[0]) {
+        if (fileInput && fileInput.files && fileInput.files[0]) {
             if (fileInput.files[0].size > maxSize) {
                 showError('File size exceeds 10MB limit. Please choose a smaller file.');
                 return;
@@ -544,12 +561,14 @@ document.getElementById('abstractSubmissionForm').addEventListener('submit', fun
         }
         
         // Validate all other required fields
-        const requiredFields = this.querySelectorAll('[required]:not(.author-entry input)');
+        const requiredFields = Array.from(form.querySelectorAll('[required]')).filter(field => !field.closest('.author-entry'));
         let isValid = true;
+        let firstInvalidField = null;
         requiredFields.forEach(field => {
             if (!field.value.trim()) {
                 isValid = false;
                 field.classList.add('is-invalid');
+                if (!firstInvalidField) firstInvalidField = field;
             } else {
                 field.classList.remove('is-invalid');
                 field.classList.add('is-valid');
@@ -558,23 +577,29 @@ document.getElementById('abstractSubmissionForm').addEventListener('submit', fun
 
         if (!isValid) {
             showError('Please fill in all required fields.');
+            if (firstInvalidField) {
+                firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalidField.focus();
+            }
             return;
         }
         
         // Final validation passed, show submitting state
         submitButton.innerHTML = '<i class="fas fa-paper-plane"></i> Submitting Paper...';
-        document.querySelector('.loading-overlay').style.display = 'flex';
+        const overlay = document.querySelector('.loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
         
         // Submit the form
-        setTimeout(() => {
-            this.submit();
-        }, 500);
+        HTMLFormElement.prototype.submit.call(form);
         
     } catch (error) {
         console.error('Form submission error:', error);
         showError('An error occurred while submitting the form. Please try again.');
     } finally {
-        if (document.querySelector('.loading-overlay').style.display !== 'flex') {
+        const overlay = document.querySelector('.loading-overlay');
+        if (!overlay || overlay.style.display !== 'flex') {
             submitButton.innerHTML = originalText || `<i class="fas fa-paper-plane"></i> ${defaultLabel}`;
             submitButton.disabled = false;
             isProcessing = false;
@@ -600,20 +625,29 @@ function showError(message) {
     
     // Insert at top of form
     const form = document.getElementById('abstractSubmissionForm');
-    form.insertBefore(alertDiv, form.firstChild);
+    if (form) {
+        form.insertBefore(alertDiv, form.firstChild);
+        alertDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     
-    // Auto-dismiss after 5 seconds
+    // Auto-dismiss after 8 seconds
     setTimeout(() => {
         if (alertDiv.parentNode) {
             alertDiv.remove();
         }
-    }, 5000);
+    }, 8000);
     
     // Reset submit button
-    const submitButton = form.querySelector('button[type="submit"]');
-    const defaultLabel = submitButton.dataset.defaultLabel || 'Submit Paper';
-    submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> ${defaultLabel}`;
-    submitButton.disabled = false;
+    const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+    if (submitButton) {
+        const defaultLabel = submitButton.dataset.defaultLabel || 'Submit Paper';
+        submitButton.innerHTML = `<i class="fas fa-paper-plane"></i> ${defaultLabel}`;
+        submitButton.disabled = false;
+    }
+    const overlay = document.querySelector('.loading-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
     isProcessing = false;
 }
 </script>

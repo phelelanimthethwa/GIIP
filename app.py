@@ -7860,6 +7860,10 @@ def inject_year():
     return {'now': datetime.now()}
 
 @app.context_processor
+def inject_recaptcha():
+    return {'recaptcha_site_key': Config.RECAPTCHA_SITE_KEY or ''}
+
+@app.context_processor
 def inject_home_content():
     try:
         # Get home content from Firebase
@@ -12984,13 +12988,18 @@ def submit_full_paper(conference_id, paper_id):
         if not file or not file.filename:
             return jsonify({'success': False, 'message': 'Please select a file'}), 400
 
-        if not file.filename.lower().endswith('.pdf'):
-            return jsonify({'success': False, 'message': 'Only PDF files are allowed'}), 400
+        if not allowed_abstract_file(file.filename):
+            return jsonify({'success': False, 'message': 'Only PDF and Word documents (.pdf, .doc, .docx, .odt, .rtf) are allowed'}), 400
 
         file_data = file.read()
         max_size = 10 * 1024 * 1024  # 10MB
         if len(file_data) > max_size:
             return jsonify({'success': False, 'message': 'File size must be less than 10MB'}), 400
+
+        file_content_type = file.content_type
+        if not file_content_type or file_content_type == 'application/octet-stream':
+            guessed_ct, _ = mimetypes.guess_type(file.filename)
+            file_content_type = guessed_ct or 'application/octet-stream'
 
         now_iso = datetime.now().isoformat()
 
@@ -12999,7 +13008,7 @@ def submit_full_paper(conference_id, paper_id):
             bucket = storage.bucket()
             storage_path = f"full_papers/{conference_id}/{paper_id}/{secure_filename(file.filename)}"
             blob = bucket.blob(storage_path)
-            blob.upload_from_string(file_data, content_type=file.content_type)
+            blob.upload_from_string(file_data, content_type=file_content_type)
             blob.make_public()
             
             # Update database with full paper details
@@ -13008,6 +13017,7 @@ def submit_full_paper(conference_id, paper_id):
                 'full_paper_url': blob.public_url,
                 'full_paper_storage_path': storage_path,
                 'full_paper_name': secure_filename(file.filename),
+                'full_paper_type': file_content_type,
                 'full_paper_size': len(file_data),
                 'full_paper_submitted_at': now_iso
             })
@@ -13092,9 +13102,14 @@ def download_full_paper(conference_id, paper_id):
         original_filename = paper.get('full_paper_name', 'full_paper.pdf')
         safe_filename = secure_filename(original_filename)
 
+        mimetype = paper.get('full_paper_type')
+        if not mimetype or mimetype == 'application/octet-stream':
+            guessed_mimetype, _ = mimetypes.guess_type(original_filename)
+            mimetype = guessed_mimetype or 'application/pdf'
+
         response = send_file(
             file_obj,
-            mimetype='application/pdf',
+            mimetype=mimetype,
             as_attachment=True,
             download_name=safe_filename,
             max_age=0

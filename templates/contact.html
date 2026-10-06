@@ -139,7 +139,9 @@
                 </div>
             </div>
 
+            {% if recaptcha_site_key %}
             <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+            {% endif %}
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Send Message</button>
@@ -150,16 +152,23 @@
 {% endblock %}
 
 {% block scripts %}
+{% if recaptcha_site_key %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{% endif %}
 <script>
 document.getElementById('contactForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    // Check if reCAPTCHA is completed
-    const recaptchaResponse = grecaptcha.getResponse();
-    if (!recaptchaResponse) {
-        alert('Please complete the reCAPTCHA verification.');
-        return;
+    // Check if reCAPTCHA is completed (only if configured and present)
+    const recaptchaElem = document.querySelector('.g-recaptcha');
+    if (recaptchaElem && recaptchaElem.getAttribute('data-sitekey')) {
+        if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+            const recaptchaResponse = grecaptcha.getResponse();
+            if (!recaptchaResponse) {
+                alert('Please complete the reCAPTCHA verification.');
+                return;
+            }
+        }
     }
 
     // Validate all required fields
