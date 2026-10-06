@@ -11,7 +11,7 @@ import google.generativeai as genai
 from config import Config
 
 # Constants
-ALLOWED_PAPER_EXTENSIONS = {'pdf', 'doc', 'docx'}
+ALLOWED_PAPER_EXTENSIONS = {'pdf', 'doc', 'docx', 'odt', 'rtf', 'docm', 'dot', 'dotx'}
 ALLOWED_PAYMENT_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png'}
 MAX_PAYMENT_PROOF_SIZE = 5 * 1024 * 1024  # 5MB in bytes
 
@@ -133,8 +133,8 @@ def save_registration_to_firebase(registration_data, user_id, payment_metadata):
 
 # Commented out - using the /registration route from app.py instead which has multi-conference support
 # @user_routes.route('/registration', methods=['GET', 'POST'])
-# def registration():
-#     if request.method == 'POST':
+def deprecated_registration():
+    if request.method == 'POST':
         try:
             # Ensure upload directories exist
             ensure_upload_dirs()

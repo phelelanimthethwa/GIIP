@@ -227,6 +227,7 @@ def format_date(date_str):
 app.config['UPLOAD_FOLDER'] = 'static/uploads/documents'
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max file size
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'tex'}
+ALLOWED_ABSTRACT_EXTENSIONS = {'pdf', 'doc', 'docx', 'odt', 'rtf', 'docm', 'dot', 'dotx'}
 
 # Add these constants near the top of the file
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif'}
@@ -350,6 +351,10 @@ app.config['FIREBASE_API_KEY'] = os.environ.get('FIREBASE_API_KEY')
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_abstract_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_ABSTRACT_EXTENSIONS
 
 def allowed_image_file(filename):
     return '.' in filename and \
@@ -1010,8 +1015,8 @@ def paper_submission():
                     flash(f'Please select a file for Paper {paper_count + 1}.', 'error')
                     return redirect(url_for('paper_submission'))
 
-                if not file.filename.lower().endswith('.pdf'):
-                    flash(f'Only PDF files are allowed for Paper {paper_count + 1}.', 'error')
+                if not allowed_abstract_file(file.filename):
+                    flash(f'Only PDF and Word documents (.pdf, .doc, .docx, .odt, .rtf) are allowed for Paper {paper_count + 1}.', 'error')
                     return redirect(url_for('paper_submission'))
 
                 # Enforce max papers constraint
@@ -1021,6 +1026,11 @@ def paper_submission():
 
                 # Read file data
                 file_data = file.read()
+
+                file_content_type = file.content_type
+                if not file_content_type or file_content_type == 'application/octet-stream':
+                    guessed_ct, _ = mimetypes.guess_type(file.filename)
+                    file_content_type = guessed_ct or 'application/octet-stream'
 
                 # Create paper data
                 paper_data = {
@@ -1040,7 +1050,7 @@ def paper_submission():
                     'updated_at': datetime.now().isoformat(),
                     'file_data': None,
                     'file_name': secure_filename(file.filename),
-                    'file_type': file.content_type,
+                    'file_type': file_content_type,
                     'file_size': len(file_data),
                     'registration_type': registration_type
                 }
@@ -1062,7 +1072,7 @@ def paper_submission():
                     storage_path = f"{folder}/{safe_filename}"
                     
                     blob = bucket.blob(storage_path)
-                    blob.upload_from_string(file_data, content_type=file.content_type)
+                    blob.upload_from_string(file_data, content_type=file_content_type)
                     blob.make_public()
                     
                     # Update database with storage details
@@ -7103,14 +7113,17 @@ def submit_paper():
             return redirect(url_for('submit'))
             
         # Check file type
-        allowed_extensions = {'pdf', 'doc', 'docx'}
-        if '.' not in paper_file.filename or \
-           paper_file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
-            flash('Invalid file type. Allowed types: PDF, DOC, DOCX', 'error')
+        if not allowed_abstract_file(paper_file.filename):
+            flash('Invalid file type. Allowed types: PDF, Word documents (.doc, .docx), and equivalents (.odt, .rtf)', 'error')
             return redirect(url_for('submit'))
         
         # Read file data
         file_data = paper_file.read()
+
+        paper_file_ct = paper_file.content_type
+        if not paper_file_ct or paper_file_ct == 'application/octet-stream':
+            guessed_ct, _ = mimetypes.guess_type(paper_file.filename)
+            paper_file_ct = guessed_ct or 'application/octet-stream'
         
         # Create paper submission data
         paper_data = {
@@ -7122,7 +7135,7 @@ def submit_paper():
             'authors': authors,
             'file_data': None,
             'file_name': secure_filename(paper_file.filename),
-            'file_type': paper_file.content_type,
+            'file_type': paper_file_ct,
             'file_size': len(file_data),
             'status': 'pending',
             'submitted_at': datetime.utcnow().isoformat(),
@@ -12396,8 +12409,8 @@ def conference_paper_submission(conference_id):
                                      form_action=url_for('conference_paper_submission', conference_id=conference_id),
                                      site_design=get_site_design())
 
-            if not file.filename.lower().endswith('.pdf'):
-                flash('Only PDF files are allowed.', 'error')
+            if not allowed_abstract_file(file.filename):
+                flash('Only PDF and Word documents (.pdf, .doc, .docx, .odt, .rtf) are allowed.', 'error')
                 return render_template('conferences/paper_submission.html',
                                      conference=conference,
                                      conference_id=conference_id,
@@ -12409,11 +12422,16 @@ def conference_paper_submission(conference_id):
             # Read file data
             file_data = file.read()
 
+            file_content_type = file.content_type
+            if not file_content_type or file_content_type == 'application/octet-stream':
+                guessed_ct, _ = mimetypes.guess_type(file.filename)
+                file_content_type = guessed_ct or 'application/octet-stream'
+
             # Add file details to paper_data (without base64 content)
             paper_data.update({
                 'file_data': None,
                 'file_name': secure_filename(file.filename),
-                'file_type': file.content_type,
+                'file_type': file_content_type,
                 'file_size': len(file_data)
             })
 
@@ -12427,7 +12445,7 @@ def conference_paper_submission(conference_id):
                 bucket = storage.bucket()
                 storage_path = f"papers/{conference_id}/{paper_id}/{secure_filename(file.filename)}"
                 blob = bucket.blob(storage_path)
-                blob.upload_from_string(file_data, content_type=file.content_type)
+                blob.upload_from_string(file_data, content_type=file_content_type)
                 blob.make_public()
                 
                 # Update database with storage details
@@ -12677,8 +12695,8 @@ def edit_conference_submission(conference_id, paper_id):
         new_file = request.files.get('paper_file')
         file_update = {}
         if new_file and new_file.filename:
-            if not new_file.filename.lower().endswith('.pdf'):
-                flash('Only PDF files are allowed.', 'error')
+            if not allowed_abstract_file(new_file.filename):
+                flash('Only PDF and Word documents (.pdf, .doc, .docx, .odt, .rtf) are allowed.', 'error')
                 return render_template(
                     'conferences/paper_submission.html',
                     conference=conference,
@@ -12707,13 +12725,17 @@ def edit_conference_submission(conference_id, paper_id):
                 })
 
             file_bytes = new_file.read()
-            
+            new_content_type = new_file.content_type
+            if not new_content_type or new_content_type == 'application/octet-stream':
+                guessed_ct, _ = mimetypes.guess_type(new_file.filename)
+                new_content_type = guessed_ct or 'application/octet-stream'
+
             # Upload the revision file to Storage
             try:
                 bucket = storage.bucket()
                 storage_path = f"papers/{conference_id}/{paper_id}/{secure_filename(new_file.filename)}"
                 blob = bucket.blob(storage_path)
-                blob.upload_from_string(file_bytes, content_type=new_file.content_type)
+                blob.upload_from_string(file_bytes, content_type=new_content_type)
                 blob.make_public()
                 
                 file_update = {
@@ -12721,7 +12743,7 @@ def edit_conference_submission(conference_id, paper_id):
                     'file_storage_path': storage_path,
                     'file_url': blob.public_url,
                     'file_name': secure_filename(new_file.filename),
-                    'file_type': new_file.content_type,
+                    'file_type': new_content_type,
                     'file_size': len(file_bytes),
                     'file_history': file_history
                 }

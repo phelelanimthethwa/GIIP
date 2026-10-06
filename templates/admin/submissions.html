@@ -545,7 +545,7 @@
                                 <div class="file-status-badge">
                                     {% if paper.file_data or paper.file_storage_path or paper.file_url %}
                                     <div class="file-info submitted">
-                                        <i class="fas fa-file-pdf"></i>
+                                        <i class="fas {% if paper.file_name and (paper.file_name.lower().endswith('.doc') or paper.file_name.lower().endswith('.docx') or paper.file_name.lower().endswith('.odt') or paper.file_name.lower().endswith('.rtf') or paper.file_name.lower().endswith('.docm') or paper.file_name.lower().endswith('.dot') or paper.file_name.lower().endswith('.dotx')) %}fa-file-word{% elif paper.file_name and paper.file_name.lower().endswith('.pdf') %}fa-file-pdf{% else %}fa-file-alt{% endif %}"></i>
                                         <span class="file-label">Submitted</span>
                                         {% if paper.file_size %}
                                         <span class="file-size">({{ "%.1f"|format(paper.file_size / 1024 / 1024) }} MB)</span>
@@ -555,13 +555,13 @@
                                         {% if paper._conference_id %}
                                         <a href="{{ url_for('download_paper', paper_id=paper._paper_id, conference_id=paper._conference_id) }}"
                                             class="btn btn-sm btn-primary"
-                                            title="Download abstract PDF">
+                                            title="Download abstract file">
                                             <i class="fas fa-download"></i> Download
                                         </a>
                                         {% else %}
                                         <a href="{{ url_for('download_paper', paper_id=paper._paper_id) }}"
                                             class="btn btn-sm btn-primary"
-                                            title="Download abstract PDF">
+                                            title="Download abstract file">
                                             <i class="fas fa-download"></i> Download
                                         </a>
                                         {% endif %}

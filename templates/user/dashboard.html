@@ -501,8 +501,8 @@
                                     <i class="fas fa-pen"></i> Edit
                                 </a>
                                 {% endif %}
-                                <a href="{{ url_for('download_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action">
-                                    <i class="fas fa-download"></i> PDF
+                                <a href="{{ url_for('download_conference_submission', conference_id=submission.conference_id, paper_id=submission.paper_id) }}" class="db-action" title="Download abstract">
+                                    <i class="fas {% if submission.file_name and (submission.file_name.lower().endswith('.doc') or submission.file_name.lower().endswith('.docx') or submission.file_name.lower().endswith('.odt') or submission.file_name.lower().endswith('.rtf') or submission.file_name.lower().endswith('.docm') or submission.file_name.lower().endswith('.dot') or submission.file_name.lower().endswith('.dotx')) %}fa-file-word{% elif submission.file_name and submission.file_name.lower().endswith('.pdf') %}fa-file-pdf{% else %}fa-download{% endif %}"></i> Abstract
                                 </a>
 
                                 {# Full paper upload #}

@@ -105,7 +105,7 @@
             </a>
             <a class="btn btn-primary"
                 href="{{ url_for('download_conference_submission', conference_id=conference_id, paper_id=paper_id) }}">
-                Download PDF
+                <i class="fas {% if paper.file_name and (paper.file_name.lower().endswith('.doc') or paper.file_name.lower().endswith('.docx') or paper.file_name.lower().endswith('.odt') or paper.file_name.lower().endswith('.rtf') or paper.file_name.lower().endswith('.docm') or paper.file_name.lower().endswith('.dot') or paper.file_name.lower().endswith('.dotx')) %}fa-file-word{% elif paper.file_name and paper.file_name.lower().endswith('.pdf') %}fa-file-pdf{% else %}fa-download{% endif %}"></i> Download Abstract
             </a>
             {% if can_edit %}
             <a class="btn btn-primary"
