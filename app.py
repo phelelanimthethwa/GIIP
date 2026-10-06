@@ -7159,7 +7159,7 @@ def submit_paper():
             bucket = storage.bucket()
             storage_path = f"papers/global/{paper_id}/{secure_filename(paper_file.filename)}"
             blob = bucket.blob(storage_path)
-            blob.upload_from_string(file_data, content_type=paper_file.content_type)
+            blob.upload_from_string(file_data, content_type=paper_file_ct)
             blob.make_public()
             
             # Update database with storage details
