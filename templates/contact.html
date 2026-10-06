@@ -139,7 +139,7 @@
                 </div>
             </div>
 
-            {% if recaptcha_site_key %}
+            {% if recaptcha_site_key and recaptcha_site_key|trim %}
             <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
             {% endif %}
 
@@ -152,7 +152,7 @@
 {% endblock %}
 
 {% block scripts %}
-{% if recaptcha_site_key %}
+{% if recaptcha_site_key and recaptcha_site_key|trim %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 {% endif %}
 <script>
@@ -161,13 +161,18 @@ document.getElementById('contactForm').addEventListener('submit', function(e) {
     
     // Check if reCAPTCHA is completed (only if configured and present)
     const recaptchaElem = document.querySelector('.g-recaptcha');
-    if (recaptchaElem && recaptchaElem.getAttribute('data-sitekey')) {
-        if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
-            const recaptchaResponse = grecaptcha.getResponse();
-            if (!recaptchaResponse) {
-                alert('Please complete the reCAPTCHA verification.');
-                return;
+    const siteKey = recaptchaElem ? (recaptchaElem.getAttribute('data-sitekey') || '').trim() : '';
+    if (recaptchaElem && siteKey) {
+        try {
+            if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+                const recaptchaResponse = grecaptcha.getResponse();
+                if (!recaptchaResponse) {
+                    alert('Please complete the reCAPTCHA verification.');
+                    return;
+                }
             }
+        } catch (captchaErr) {
+            console.warn('reCAPTCHA validation error:', captchaErr);
         }
     }
 

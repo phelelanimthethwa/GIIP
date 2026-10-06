@@ -635,7 +635,7 @@
             </button>
         </div>
 
-        {% if recaptcha_site_key and (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha) %}
+        {% if recaptcha_site_key and recaptcha_site_key|trim and (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha) %}
         <div class="form-group g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
         {% endif %}
 
@@ -654,7 +654,7 @@
     </div>
 </div>
 
-{% if recaptcha_site_key %}
+{% if recaptcha_site_key and recaptcha_site_key|trim %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 {% endif %}
 <style>
@@ -721,7 +721,7 @@
     {
         "userSubmissionCounts": {{ (user_submission_counts or {}) | tojson | safe }},
         "extraPaperFee": {{ (extra_paper_fee | default(50)) | tojson | safe }},
-        "isRecaptchaEnabled": {{ (recaptcha_site_key and (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha)) | tojson | safe }}
+        "isRecaptchaEnabled": {{ (recaptcha_site_key and recaptcha_site_key|trim and (not paper_settings or not paper_settings.security or paper_settings.security.enable_recaptcha)) | tojson | safe }}
     }
 </script>
 <script>
