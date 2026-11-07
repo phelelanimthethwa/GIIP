@@ -3,1541 +3,1283 @@
 {% block title %}{{ conference.basic_info.name }} Gallery - GIIR{% endblock %}
 
 {% block content %}
-<!-- Enhanced Hero Section -->
-<div class="gallery-hero">
-    <div class="hero-background"></div>
-    <div class="hero-overlay"></div>
-    <div class="container">
-        <div class="hero-content">
-            <div class="hero-icon">
-                <i class="fas fa-images"></i>
-            </div>
-            <h1 class="hero-title">
-                {{ conference.basic_info.name }}
-                <span class="hero-subtitle">Gallery</span>
-            </h1>
-            <p class="hero-description">
-                {% if conference.basic_info.year %}
-                {{ conference.basic_info.year }} Conference Gallery
-                {% else %}
-                Conference Gallery
-                {% endif %}
-            </p>
-            {% if conference.conference_code %}
-            <div class="hero-badge">
-                <i class="fas fa-qrcode me-2"></i>
-                {{ conference.conference_code }}
-            </div>
-            {% endif %}
+<div class="cg-page">
+    <!-- Header Section -->
+    <header class="cg-header">
+        <div class="cg-container">
+            <nav class="cg-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ url_for('galleries') }}" class="cg-back-link">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m12 19-7-7 7-7"></path>
+                        <path d="M19 12H5"></path>
+                    </svg>
+                    <span>All galleries</span>
+                </a>
+            </nav>
 
-            <!-- Gallery Stats -->
-            {% if images or attendees %}
-            <div class="hero-stats">
-                {% if images %}
-                <div class="stat-item">
-                    <span class="stat-number">{{ images|length }}</span>
-                    <span class="stat-label">Photos</span>
-                </div>
-                {% endif %}
-                {% if attendees %}
-                <div class="stat-item">
-                    <span class="stat-number">{{ attendees|length }}</span>
-                    <span class="stat-label">Attendees</span>
-                </div>
-                {% endif %}
-                <div class="stat-item">
-                    <span class="stat-number">{{ (images|length) + (attendees|length) }}</span>
-                    <span class="stat-label">Total Items</span>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Gallery Summary & Description Section -->
-{% if conference.gallery_summary %}
-    {% set show_summary = conference.gallery_summary.show_summary_public if conference.gallery_summary.show_summary_public is defined else (conference.gallery_summary.show_public|default(true)) %}
-    {% set show_description = conference.gallery_summary.show_description_public if conference.gallery_summary.show_description_public is defined else (conference.gallery_summary.show_public|default(true)) %}
-    
-    {% if (show_summary and conference.gallery_summary.summary) or (show_description and conference.gallery_summary.description) %}
-    <div class="gallery-info-section">
-        <div class="container">
-            <div class="gallery-info-card">
-                {% if show_summary and conference.gallery_summary.summary %}
-                <div class="gallery-summary-block">
-                    <h3 class="info-title">
-                        <i class="fas fa-info-circle me-2"></i>
-                        About This Gallery
-                    </h3>
-                    <p class="summary-text">{{ conference.gallery_summary.summary }}</p>
-                </div>
-                {% endif %}
-                
-                {% if show_description and conference.gallery_summary.description %}
-                <div class="gallery-description-block">
-                    {% if show_summary and conference.gallery_summary.summary %}
-                    <hr class="info-divider">
-                    {% endif %}
-                    <div class="description-content">
-                        {{ conference.gallery_summary.description|safe }}
+            <div class="cg-header-main">
+                <div class="cg-header-text">
+                    <div class="cg-meta-bar">
+                        {% if conference.basic_info.year %}
+                        <span class="cg-meta-year">{{ conference.basic_info.year }}</span>
+                        {% else %}
+                        <span class="cg-meta-year">Conference gallery</span>
+                        {% endif %}
+                        {% if conference.conference_code %}
+                        <span class="cg-meta-sep" aria-hidden="true">&middot;</span>
+                        <span class="cg-meta-code">{{ conference.conference_code }}</span>
+                        {% endif %}
                     </div>
+                    <h1 class="cg-title">{{ conference.basic_info.name }}</h1>
+                </div>
+
+                {% if images or attendees %}
+                <div class="cg-stats" role="list" aria-label="Gallery statistics">
+                    {% if images %}
+                    <div class="cg-stat" role="listitem">
+                        <span class="cg-stat-num">{{ images|length }}</span>
+                        <span class="cg-stat-label">{{ 'Photo' if images|length == 1 else 'Photos' }}</span>
+                    </div>
+                    {% endif %}
+                    {% if attendees %}
+                    <div class="cg-stat" role="listitem">
+                        <span class="cg-stat-num">{{ attendees|length }}</span>
+                        <span class="cg-stat-label">{{ 'Attendee' if attendees|length == 1 else 'Attendees' }}</span>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Gallery Summary & Description Section -->
+    {% if conference.gallery_summary %}
+        {% set show_summary = conference.gallery_summary.show_summary_public if conference.gallery_summary.show_summary_public is defined else (conference.gallery_summary.show_public|default(true)) %}
+        {% set show_description = conference.gallery_summary.show_description_public if conference.gallery_summary.show_description_public is defined else (conference.gallery_summary.show_public|default(true)) %}
+
+        {% if (show_summary and conference.gallery_summary.summary) or (show_description and conference.gallery_summary.description) %}
+        <section class="cg-summary-section">
+            <div class="cg-container">
+                <div class="cg-summary-card">
+                    {% if show_summary and conference.gallery_summary.summary %}
+                    <div class="cg-summary-block">
+                        <h2 class="cg-summary-heading">Overview</h2>
+                        <p class="cg-summary-lead">{{ conference.gallery_summary.summary }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if show_description and conference.gallery_summary.description %}
+                    <div class="cg-description-block {% if show_summary and conference.gallery_summary.summary %}has-top-divider{% endif %}">
+                        <div class="cg-description-content">
+                            {{ conference.gallery_summary.description|safe }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    {% endif %}
+
+    {% if images or attendees %}
+    <!-- Controls & Filters -->
+    <div class="cg-controls">
+        <div class="cg-container">
+            <div class="cg-controls-inner">
+                <div class="cg-search">
+                    <svg class="cg-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                    <input type="search" id="gallerySearch" placeholder="Search photos or attendees" class="cg-search-input" aria-label="Search photos or attendees">
+                </div>
+
+                <div class="cg-toolbar">
+                    <div class="cg-filter-group" role="tablist" aria-label="Filter gallery items">
+                        <button type="button" class="filter-btn active" data-filter="all">
+                            All
+                            <span class="cg-filter-count">{{ (images|length) + (attendees|length) }}</span>
+                        </button>
+                        {% if images %}
+                        <button type="button" class="filter-btn" data-filter="photos">
+                            Photos
+                            <span class="cg-filter-count">{{ images|length }}</span>
+                        </button>
+                        {% endif %}
+                        {% if attendees %}
+                        <button type="button" class="filter-btn" data-filter="attendees">
+                            Attendees
+                            <span class="cg-filter-count">{{ attendees|length }}</span>
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {% if images %}
+                    <div class="cg-view-toggle" role="group" aria-label="Layout view">
+                        <button type="button" class="view-btn active" data-view="grid" title="Grid view" aria-label="Grid view">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </button>
+                        <button type="button" class="view-btn" data-view="masonry" title="Masonry view" aria-label="Masonry view">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="3" width="7" height="9"></rect>
+                                <rect x="14" y="3" width="7" height="5"></rect>
+                                <rect x="14" y="12" width="7" height="9"></rect>
+                                <rect x="3" y="16" width="7" height="5"></rect>
+                            </svg>
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
     {% endif %}
-{% endif %}
 
-<!-- Gallery Controls & Filters -->
-<div class="gallery-controls">
-    <div class="container">
-        <div class="controls-header">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="gallerySearch" placeholder="Search gallery..." class="form-control">
-            </div>
-
-            <div class="filter-buttons">
-                <button class="filter-btn active" data-filter="all">
-                    <i class="fas fa-th-large me-1"></i>All
-                </button>
-                <button class="filter-btn" data-filter="photos">
-                    <i class="fas fa-camera me-1"></i>Photos
-                </button>
-                <button class="filter-btn" data-filter="attendees">
-                    <i class="fas fa-users me-1"></i>Attendees
-                </button>
-                <div class="view-toggle">
-                    <button class="view-btn active" data-view="grid" title="Grid View">
-                        <i class="fas fa-th"></i>
-                    </button>
-                    <button class="view-btn" data-view="masonry" title="Masonry View">
-                        <i class="fas fa-th-list"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Main Gallery Content -->
-<div class="gallery-container">
-    <div class="container">
-        {% if images or attendees %}
-        <!-- Gallery Content -->
-        <div class="gallery-content" id="galleryContent">
-            <!-- Photos Section -->
-            <div class="photos-section" data-category="photos">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-camera me-2"></i>
-                        Conference Photos
-                        <span class="item-count">({{ images|length }})</span>
-                    </h2>
-                </div>
-                <div class="photos-grid" id="photosGrid">
-                    {% for image in images %}
-                    <div class="gallery-item" data-title="{{ image.original_name|lower }}" data-category="photos">
-                        <div class="image-container">
-                            <img src="{{ image.url }}" alt="{{ image.original_name }}" loading="lazy">
-                            <div class="image-overlay">
-                                <div class="overlay-actions">
-                                    <a href="{{ image.url }}" data-lightbox="conference-gallery" data-title="{{ image.original_name }}" class="action-btn view-btn">
-                                        <i class="fas fa-search-plus"></i>
-                                    </a>
-                                    <button class="action-btn share-btn" onclick="shareImage('{{ image.url }}', '{{ image.original_name }}')">
-                                        <i class="fas fa-share"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="image-info">
-                            <h4 class="image-title">{{ image.original_name }}</h4>
-                            <div class="image-meta">
-                                <span class="meta-item">
-                                    <i class="fas fa-calendar"></i>
-                                    {{ image.uploaded_at|date if image.uploaded_at else 'Recent' }}
-                                </span>
-                            </div>
-                        </div>
+    <!-- Main Gallery Content -->
+    <div class="cg-body">
+        <div class="cg-container">
+            {% if images or attendees %}
+            <div class="gallery-content" id="galleryContent">
+                {% if images %}
+                <!-- Photos Section -->
+                <section class="photos-section" data-category="photos">
+                    <div class="cg-section-header">
+                        <h2 class="cg-section-title">Conference photographs</h2>
+                        <span class="item-count">{{ images|length }}</span>
                     </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Attendees Section -->
-            {% if attendees %}
-            <div class="attendees-section" data-category="attendees">
-                <div class="section-header">
-                    <h2 class="section-title">
-                        <i class="fas fa-users me-2"></i>
-                        Featured Attendees
-                        <span class="item-count">({{ attendees|length }})</span>
-                    </h2>
-                </div>
-                <div class="attendees-grid" id="attendeesGrid">
-                    {% for attendee in attendees %}
-                    <div class="attendee-card" data-title="{{ attendee.full_name|lower }} {{ attendee.institution|lower if attendee.institution else '' }}" data-category="attendees">
-                        <div class="attendee-header">
-                            <div class="attendee-avatar">
-                                {% if attendee.photo_url %}
-                                <img src="{{ attendee.photo_url }}" alt="{{ attendee.full_name }}" class="avatar-img">
-                                {% else %}
-                                <div class="avatar-placeholder">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                {% endif %}
+                    <div class="photos-grid" id="photosGrid">
+                        {% for image in images %}
+                        <article class="gallery-item" data-title="{{ image.original_name|default('Photo', true)|lower }}" data-category="photos">
+                            <div class="cg-photo-media">
+                                <a href="{{ image.url }}"
+                                   class="cg-photo-trigger"
+                                   data-lightbox-index="{{ loop.index0 }}"
+                                   data-lightbox-src="{{ image.url }}"
+                                   data-lightbox-caption="{{ image.original_name|default('Conference photograph', true) }}">
+                                    <img src="{{ image.url }}" alt="{{ image.original_name|default('Conference photograph', true) }}" loading="lazy">
+                                </a>
                             </div>
-                            <div class="attendee-badges">
+                            <div class="cg-photo-footer">
+                                <div class="cg-photo-meta">
+                                    <h3 class="cg-photo-title">{{ image.original_name|default('Photograph', true) }}</h3>
+                                    <span class="cg-photo-date">{{ image.uploaded_at|date if image.uploaded_at else 'Archive' }}</span>
+                                </div>
+                                <button type="button"
+                                        class="cg-icon-action"
+                                        onclick="shareImage({{ image.url|tojson }}, {{ (image.original_name or 'Conference photograph')|tojson }})"
+                                        title="Copy link to photograph"
+                                        aria-label="Share photograph">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                        <polyline points="16 6 12 2 8 6"></polyline>
+                                        <line x1="12" y1="2" x2="12" y2="15"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if attendees %}
+                <!-- Attendees Section -->
+                <section class="attendees-section" data-category="attendees">
+                    <div class="cg-section-header">
+                        <h2 class="cg-section-title">Featured attendees</h2>
+                        <span class="item-count">{{ attendees|length }}</span>
+                    </div>
+                    <div class="attendees-grid" id="attendeesGrid">
+                        {% for attendee in attendees %}
+                        <article class="attendee-card" data-title="{{ attendee.full_name|default('', true)|lower }} {{ attendee.institution|lower if attendee.institution else '' }}" data-category="attendees">
+                            <div class="cg-attendee-top">
+                                <div class="cg-attendee-avatar">
+                                    {% if attendee.photo_url %}
+                                    <img src="{{ attendee.photo_url }}" alt="{{ attendee.full_name }}" class="avatar-img" loading="lazy">
+                                    {% else %}
+                                    <div class="avatar-placeholder" aria-hidden="true">
+                                        {{ (attendee.full_name or 'A')[:1]|upper }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="cg-attendee-heading">
+                                    <h3 class="attendee-name">{{ attendee.full_name }}</h3>
+                                    {% if attendee.institution %}
+                                    <p class="attendee-affiliation">{{ attendee.institution }}</p>
+                                    {% endif %}
+                                    {% if attendee.department %}
+                                    <p class="attendee-department">{{ attendee.department }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if attendee.title or attendee.country %}
+                            <div class="cg-attendee-tags">
                                 {% if attendee.title %}
-                                <span class="badge badge-primary">{{ attendee.title }}</span>
+                                <span class="cg-tag">{{ attendee.title }}</span>
                                 {% endif %}
                                 {% if attendee.country %}
-                                <span class="badge badge-secondary">
-                                    <i class="fas fa-map-marker-alt me-1"></i>
-                                    {{ attendee.country }}
-                                </span>
+                                <span class="cg-tag">{{ attendee.country }}</span>
                                 {% endif %}
                             </div>
-                        </div>
-                        <div class="attendee-body">
-                            <h3 class="attendee-name">{{ attendee.full_name }}</h3>
-                            {% if attendee.institution %}
-                            <p class="attendee-affiliation">
-                                <i class="fas fa-university me-1"></i>
-                                {{ attendee.institution }}
-                            </p>
                             {% endif %}
-                            {% if attendee.department %}
-                            <p class="attendee-department">{{ attendee.department }}</p>
-                            {% endif %}
+
                             {% if attendee.bio %}
-                            <p class="attendee-bio">{{ attendee.bio[:120] }}{% if attendee.bio|length > 120 %}...{% endif %}</p>
+                            <p class="attendee-bio">{{ attendee.bio[:160] }}{% if attendee.bio|length > 160 %}&hellip;{% endif %}</p>
                             {% endif %}
-                            {% if attendee.website %}
-                            <a href="{{ attendee.website }}" target="_blank" class="attendee-website">
-                                <i class="fas fa-external-link-alt me-1"></i>
-                                Visit Profile
-                            </a>
-                            {% endif %}
-                        </div>
-                        <div class="attendee-footer">
-                            <button class="btn btn-outline-primary btn-sm" onclick="shareAttendee('{{ attendee.full_name }}', '{{ attendee.institution }}')">
-                                <i class="fas fa-share me-1"></i>Share
-                            </button>
-                        </div>
+
+                            <div class="cg-attendee-footer">
+                                {% if attendee.website %}
+                                <a href="{{ attendee.website }}" target="_blank" rel="noopener noreferrer" class="cg-attendee-link">
+                                    <span>Profile</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M7 17 17 7"></path>
+                                        <path d="M7 7h10v10"></path>
+                                    </svg>
+                                </a>
+                                {% else %}
+                                <span></span>
+                                {% endif %}
+                                <button type="button" class="cg-text-action" onclick="shareAttendee({{ (attendee.full_name or '')|tojson }}, {{ (attendee.institution or '')|tojson }})">
+                                    Share
+                                </button>
+                            </div>
+                        </article>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
+                </section>
+                {% endif %}
+            </div>
+
+            <!-- No Results State -->
+            <div class="cg-empty-box" id="noResultsState" style="display: none;">
+                <h3 class="cg-empty-title">No matching items</h3>
+                <p class="cg-empty-desc">No photographs or attendees match your current search and filter selection.</p>
+                <button type="button" class="cg-btn cg-btn-secondary" onclick="clearFilters()">Reset filters</button>
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="cg-empty-box">
+                <h2 class="cg-empty-title">No photographs published yet</h2>
+                <p class="cg-empty-desc">
+                    Photographs and participant records for this conference will be published here once the archive is updated.
+                </p>
+                <div class="cg-empty-actions">
+                    <a href="{{ url_for('galleries') }}" class="cg-btn cg-btn-primary">Browse all galleries</a>
+                    <a href="{{ url_for('conference_discover') }}" class="cg-btn cg-btn-secondary">View conferences</a>
                 </div>
             </div>
             {% endif %}
         </div>
-
-        <!-- Loading State -->
-        <div class="loading-state" id="loadingState" style="display: none;">
-            <div class="skeleton-grid">
-                {% for i in range(6) %}
-                <div class="skeleton-item">
-                    <div class="skeleton-image"></div>
-                    <div class="skeleton-content">
-                        <div class="skeleton-title"></div>
-                        <div class="skeleton-text"></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- No Results State -->
-        <div class="no-results-state" id="noResultsState" style="display: none;">
-            <div class="no-results-content">
-                <div class="no-results-icon">
-                    <i class="fas fa-search"></i>
-                </div>
-                <h3 class="no-results-title">No Items Found</h3>
-                <p class="no-results-description">
-                    Try adjusting your search terms or filter criteria to find what you're looking for.
-                </p>
-                <button class="btn btn-outline-primary" onclick="clearFilters()">
-                    <i class="fas fa-times me-2"></i>
-                    Clear Filters
-                </button>
-            </div>
-        </div>
-
-        {% else %}
-        <!-- Empty State -->
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-images"></i>
-            </div>
-            <h3 class="empty-title">Gallery Coming Soon</h3>
-            <p class="empty-description">
-                Images and attendee profiles will be available after this conference is completed.
-                Check back later for memorable moments and participant highlights.
-            </p>
-            <div class="empty-actions">
-                <a href="{{ url_for('galleries') }}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left me-2"></i>
-                    Browse Other Galleries
-                </a>
-                <a href="{{ url_for('conferences') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-calendar me-2"></i>
-                    View Conferences
-                </a>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
 
-<!-- Back Navigation -->
-<div class="back-navigation">
-    <div class="container">
-        <a href="{{ url_for('galleries') }}" class="back-btn">
-            <i class="fas fa-arrow-left me-2"></i>
-            Back to All Galleries
-        </a>
+<!-- Accessible Lightbox Modal -->
+<div class="cg-lightbox" id="cgLightbox" role="dialog" aria-modal="true" aria-label="Photograph viewer" hidden>
+    <div class="cg-lightbox-backdrop" data-lightbox-close></div>
+    <div class="cg-lightbox-stage">
+        <button type="button" class="cg-lightbox-close" data-lightbox-close aria-label="Close viewer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        <button type="button" class="cg-lightbox-nav cg-lightbox-prev" id="cgLightboxPrev" aria-label="Previous photograph">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+        <figure class="cg-lightbox-figure">
+            <img src="" alt="" id="cgLightboxImg" class="cg-lightbox-img">
+            <figcaption class="cg-lightbox-caption">
+                <span id="cgLightboxTitle"></span>
+                <span id="cgLightboxCount" class="cg-lightbox-count"></span>
+            </figcaption>
+        </figure>
+        <button type="button" class="cg-lightbox-nav cg-lightbox-next" id="cgLightboxNext" aria-label="Next photograph">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
     </div>
 </div>
-
-<!-- Lightbox CSS -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css">
 
 <style>
-/* ===== GALLERY HERO SECTION ===== */
-.gallery-hero {
-    position: relative;
+.cg-page {
+    --cg-bg: #f8f9fa;
+    --cg-surface: #ffffff;
+    --cg-surface-raised: #f3f4f6;
+    --cg-border: rgba(17, 24, 39, 0.08);
+    --cg-border-hover: rgba(17, 24, 39, 0.18);
+    --cg-text-primary: var(--text-color, #111827);
+    --cg-text-secondary: #4b5563;
+    --cg-text-muted: #6b7280;
+    --cg-accent: var(--primary-color, #007bff);
+    --cg-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    background-color: var(--cg-bg);
+    color: var(--cg-text-primary);
     min-height: 60vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    padding-bottom: 64px;
 }
 
-.hero-background {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image:
-        radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
-        radial-gradient(circle at 40% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+.cg-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
 }
 
-.hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
+/* Header */
+.cg-header {
+    background-color: var(--cg-surface);
+    border-bottom: 1px solid var(--cg-border);
+    padding: 28px 0 32px;
 }
 
-.hero-content {
-    position: relative;
-    z-index: 2;
-    text-align: center;
-    color: white;
-    padding: 4rem 0;
+.cg-breadcrumb {
+    margin-bottom: 16px;
 }
 
-.hero-icon {
-    font-size: 4rem;
-    margin-bottom: 1.5rem;
-    opacity: 0.9;
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
-
-.hero-title {
-    font-size: 3.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-}
-
-.hero-subtitle {
-    display: block;
-    font-size: 1.5rem;
-    font-weight: 300;
-    opacity: 0.9;
-    margin-top: 0.5rem;
-}
-
-.hero-description {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
-    opacity: 0.9;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.hero-badge {
+.cg-back-link {
     display: inline-flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    font-size: 0.9rem;
-    margin-bottom: 2rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    gap: 8px;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-text-secondary);
+    text-decoration: none;
+    transition: color 160ms var(--cg-ease);
 }
 
-.hero-stats {
+.cg-back-link:hover {
+    color: var(--cg-accent);
+}
+
+.cg-header-main {
     display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-top: 2rem;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
 }
 
-.stat-item {
-    text-align: center;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+.cg-header-text {
+    max-width: 820px;
 }
 
-.stat-number {
-    display: block;
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-}
-
-.stat-label {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* ===== GALLERY INFO SECTION ===== */
-.gallery-info-section {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-    padding: 3rem 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.gallery-info-card {
-    background: white;
-    border-radius: 16px;
-    padding: 2.5rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    border-left: 4px solid var(--primary-color);
-}
-
-.gallery-summary-block {
-    margin-bottom: 1.5rem;
-}
-
-.info-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
+.cg-meta-bar {
     display: flex;
     align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 8px;
 }
 
-.summary-text {
-    font-size: 1.1rem;
-    line-height: 1.7;
-    color: #495057;
+.cg-meta-year {
+    color: var(--cg-text-secondary);
+}
+
+.cg-title {
+    font-size: 32px;
+    line-height: 1.15;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    letter-spacing: -0.01em;
     margin: 0;
-    font-style: italic;
 }
 
-.gallery-description-block {
-    margin-top: 1.5rem;
+.cg-stats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.info-divider {
-    border: none;
-    border-top: 2px solid #e9ecef;
-    margin: 1.5rem 0;
+.cg-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: var(--cg-surface-raised);
+    border: 1px solid var(--cg-border);
+    border-radius: 8px;
 }
 
-.description-content {
-    color: #495057;
-    line-height: 1.8;
-    font-size: 1rem;
+.cg-stat-num {
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    font-variant-numeric: tabular-nums;
 }
 
-.description-content p {
-    margin-bottom: 1rem;
+.cg-stat-label {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 400;
+    color: var(--cg-text-muted);
 }
 
-.description-content p:last-child {
+/* Summary Section */
+.cg-summary-section {
+    padding-top: 24px;
+}
+
+.cg-summary-card {
+    background-color: var(--cg-surface);
+    border: 1px solid var(--cg-border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.cg-summary-heading {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-text-muted);
+    margin: 0 0 8px 0;
+}
+
+.cg-summary-lead {
+    font-size: 15px;
+    line-height: 24px;
+    font-weight: 400;
+    color: var(--cg-text-primary);
+    margin: 0;
+}
+
+.cg-description-block.has-top-divider {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--cg-border);
+}
+
+.cg-description-content {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--cg-text-secondary);
+}
+
+.cg-description-content p {
+    margin: 0 0 12px 0;
+}
+
+.cg-description-content p:last-child {
     margin-bottom: 0;
 }
 
-.description-content ul,
-.description-content ol {
-    margin-left: 2rem;
-    margin-bottom: 1rem;
+/* Controls */
+.cg-controls {
+    background-color: var(--cg-surface);
+    border-bottom: 1px solid var(--cg-border);
+    padding: 16px 0;
 }
 
-.description-content ul {
-    list-style-type: disc;
-}
-
-.description-content ol {
-    list-style-type: decimal;
-}
-
-.description-content li {
-    margin-bottom: 0.5rem;
-}
-
-.description-content a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.3s ease;
-}
-
-.description-content a:hover {
-    color: var(--secondary-color);
-    text-decoration: underline;
-}
-
-.description-content h1,
-.description-content h2,
-.description-content h3,
-.description-content h4,
-.description-content h5,
-.description-content h6 {
-    color: #2c3e50;
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-    font-weight: 600;
-}
-
-.description-content h1 { font-size: 2rem; }
-.description-content h2 { font-size: 1.75rem; }
-.description-content h3 { font-size: 1.5rem; }
-.description-content h4 { font-size: 1.25rem; }
-.description-content h5 { font-size: 1.1rem; }
-.description-content h6 { font-size: 1rem; }
-
-.description-content img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin: 1rem 0;
-}
-
-.description-content blockquote {
-    border-left: 4px solid var(--primary-color);
-    padding-left: 1.5rem;
-    margin: 1.5rem 0;
-    color: #6c757d;
-    font-style: italic;
-}
-
-.description-content code {
-    background: #f8f9fa;
-    padding: 0.2rem 0.4rem;
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9em;
-    color: #e83e8c;
-}
-
-.description-content pre {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 1rem 0;
-}
-
-.description-content pre code {
-    background: none;
-    padding: 0;
-    color: #495057;
-}
-
-@media (max-width: 768px) {
-    .gallery-info-section {
-        padding: 2rem 0;
-    }
-
-    .gallery-info-card {
-        padding: 1.5rem;
-    }
-
-    .info-title {
-        font-size: 1.3rem;
-    }
-
-    .summary-text {
-        font-size: 1rem;
-    }
-
-    .description-content {
-        font-size: 0.95rem;
-    }
-}
-
-/* ===== GALLERY CONTROLS ===== */
-.gallery-controls {
-    background: white;
-    border-bottom: 1px solid #e9ecef;
-    padding: 1.5rem 0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.controls-header {
+.cg-controls-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 2rem;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
-.search-box {
+.cg-search {
     position: relative;
-    flex: 1;
-    max-width: 400px;
+    flex: 1 1 280px;
+    max-width: 360px;
 }
 
-.search-box i {
+.cg-search-icon {
     position: absolute;
-    left: 1rem;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #6c757d;
+    color: var(--cg-text-muted);
+    pointer-events: none;
 }
 
-.search-box input {
-    padding-left: 3rem;
-    border-radius: 25px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s ease;
+.cg-search-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 36px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--cg-text-primary);
+    background-color: var(--cg-surface-raised);
+    border: 1px solid var(--cg-border);
+    border-radius: 8px;
+    transition: border-color 160ms var(--cg-ease), background-color 160ms var(--cg-ease);
 }
 
-.search-box input:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+.cg-search-input:focus {
+    outline: none;
+    background-color: var(--cg-surface);
+    border-color: var(--cg-accent);
 }
 
-.filter-buttons {
+.cg-toolbar {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cg-filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--cg-surface-raised);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--cg-border);
 }
 
 .filter-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    padding: 0.75rem 1.5rem;
-    border: 2px solid #e9ecef;
-    background: white;
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    gap: 8px;
+    height: 28px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--cg-text-secondary);
+    font-family: inherit;
+    font-size: 13px;
     font-weight: 500;
+    cursor: pointer;
+    transition: background-color 160ms var(--cg-ease), color 160ms var(--cg-ease);
 }
 
-.filter-btn:hover,
+.filter-btn:hover {
+    color: var(--cg-text-primary);
+}
+
 .filter-btn.active {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
+    background-color: var(--cg-surface);
+    color: var(--cg-text-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-.view-toggle {
-    display: flex;
-    background: #f8f9fa;
-    border-radius: 25px;
-    padding: 0.25rem;
+.cg-filter-count {
+    font-size: 12px;
+    color: var(--cg-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.cg-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--cg-surface-raised);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--cg-border);
 }
 
 .view-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 28px;
+    height: 28px;
     border: none;
+    border-radius: 6px;
     background: transparent;
-    border-radius: 50%;
+    color: var(--cg-text-muted);
     cursor: pointer;
-    transition: all 0.3s ease;
-    color: #6c757d;
+    transition: background-color 160ms var(--cg-ease), color 160ms var(--cg-ease);
 }
 
-.view-btn:hover,
+.view-btn:hover {
+    color: var(--cg-text-primary);
+}
+
 .view-btn.active {
-    background: white;
-    color: var(--primary-color);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background-color: var(--cg-surface);
+    color: var(--cg-text-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-/* ===== GALLERY CONTENT ===== */
-.gallery-container {
-    padding: 3rem 0;
-    background: #f8f9fa;
-}
-
-.gallery-content {
-    animation: fadeInUp 0.6s ease;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.section-header {
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-.section-title {
-    font-size: 2rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
-}
-
-.item-count {
-    font-size: 1rem;
-    font-weight: 400;
-    color: #6c757d;
+/* Main Body & Sections */
+.cg-body {
+    padding-top: 32px;
 }
 
 .photos-section,
 .attendees-section {
-    margin-bottom: 3rem;
-    animation: fadeInUp 0.6s ease;
-    transition: all 0.3s ease;
+    margin-bottom: 48px;
 }
 
-.photos-section.hidden,
-.attendees-section.hidden {
-    opacity: 0;
-    transform: translateY(-20px);
-    pointer-events: none;
+.cg-section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
-/* ===== PHOTOS SECTION ===== */
+.cg-section-title {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    margin: 0;
+}
+
+.item-count {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Photos Grid */
 .photos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
+    gap: 24px;
 }
 
 .photos-grid.masonry {
+    display: block;
     column-count: 3;
-    column-gap: 2rem;
+    column-gap: 24px;
 }
 
-@media (max-width: 1200px) {
+.photos-grid.masonry .gallery-item {
+    break-inside: avoid;
+    margin-bottom: 24px;
+}
+
+.photos-grid.masonry .cg-photo-media {
+    aspect-ratio: auto;
+}
+
+.gallery-item {
+    background-color: var(--cg-surface);
+    border: 1px solid var(--cg-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color 160ms var(--cg-ease), box-shadow 160ms var(--cg-ease);
+}
+
+.gallery-item:hover {
+    border-color: var(--cg-border-hover);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.cg-photo-media {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background-color: var(--cg-surface-raised);
+    overflow: hidden;
+    border-bottom: 1px solid var(--cg-border);
+}
+
+.cg-photo-trigger {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: zoom-in;
+}
+
+.cg-photo-trigger img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 300ms var(--cg-ease);
+}
+
+.gallery-item:hover .cg-photo-trigger img {
+    transform: scale(1.02);
+}
+
+.cg-photo-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.cg-photo-meta {
+    min-width: 0;
+}
+
+.cg-photo-title {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    color: var(--cg-text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cg-photo-date {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--cg-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.cg-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--cg-border);
+    border-radius: 8px;
+    background-color: var(--cg-surface);
+    color: var(--cg-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 160ms var(--cg-ease), border-color 160ms var(--cg-ease), background-color 160ms var(--cg-ease);
+}
+
+.cg-icon-action:hover {
+    color: var(--cg-text-primary);
+    border-color: var(--cg-border-hover);
+    background-color: var(--cg-surface-raised);
+}
+
+/* Attendees Grid */
+.attendees-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.attendee-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--cg-surface);
+    border: 1px solid var(--cg-border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color 160ms var(--cg-ease);
+}
+
+.attendee-card:hover {
+    border-color: var(--cg-border-hover);
+}
+
+.cg-attendee-top {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.cg-attendee-avatar {
+    flex-shrink: 0;
+}
+
+.avatar-img,
+.avatar-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--cg-border);
+}
+
+.avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--cg-surface-raised);
+    color: var(--cg-text-secondary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.cg-attendee-heading {
+    min-width: 0;
+}
+
+.attendee-name {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    margin: 0 0 2px 0;
+}
+
+.attendee-affiliation {
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 500;
+    color: var(--cg-text-secondary);
+    margin: 0;
+}
+
+.attendee-department {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--cg-text-muted);
+    margin: 2px 0 0 0;
+}
+
+.cg-attendee-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.cg-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-text-secondary);
+    background-color: var(--cg-surface-raised);
+    border: 1px solid var(--cg-border);
+    border-radius: 6px;
+}
+
+.attendee-bio {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--cg-text-secondary);
+    margin: 0 0 16px 0;
+}
+
+.cg-attendee-footer {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--cg-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cg-attendee-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-accent);
+    text-decoration: none;
+}
+
+.cg-attendee-link:hover {
+    text-decoration: underline;
+}
+
+.cg-text-action {
+    border: none;
+    background: transparent;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--cg-text-muted);
+    cursor: pointer;
+    transition: color 160ms var(--cg-ease), background-color 160ms var(--cg-ease);
+}
+
+.cg-text-action:hover {
+    color: var(--cg-text-primary);
+    background-color: var(--cg-surface-raised);
+}
+
+/* Empty & No Results States */
+.cg-empty-box {
+    background-color: var(--cg-surface);
+    border: 1px solid var(--cg-border);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    max-width: 520px;
+    margin: 16px auto 0;
+}
+
+.cg-empty-title {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    margin: 0 0 8px 0;
+}
+
+.cg-empty-desc {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--cg-text-secondary);
+    margin: 0 0 24px 0;
+}
+
+.cg-empty-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.cg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 16px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 160ms var(--cg-ease), border-color 160ms var(--cg-ease), color 160ms var(--cg-ease);
+}
+
+.cg-btn-primary {
+    background-color: var(--cg-accent);
+    color: #ffffff;
+    border: 1px solid var(--cg-accent);
+}
+
+.cg-btn-primary:hover {
+    filter: brightness(0.92);
+    color: #ffffff;
+}
+
+.cg-btn-secondary {
+    background-color: var(--cg-surface-raised);
+    color: var(--cg-text-primary);
+    border: 1px solid var(--cg-border);
+}
+
+.cg-btn-secondary:hover {
+    border-color: var(--cg-border-hover);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Lightbox Modal */
+.cg-lightbox[hidden] {
+    display: none !important;
+}
+
+.cg-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cg-lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(15, 15, 16, 0.88);
+}
+
+.cg-lightbox-stage {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 48px 64px;
+}
+
+.cg-lightbox-figure {
+    margin: 0;
+    max-width: 1080px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.cg-lightbox-img {
+    max-width: 100%;
+    max-height: calc(100vh - 140px);
+    object-fit: contain;
+    border-radius: 8px;
+    background-color: #141415;
+}
+
+.cg-lightbox-caption {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    line-height: 18px;
+    color: #ededed;
+}
+
+.cg-lightbox-count {
+    color: #a1a1a6;
+    font-variant-numeric: tabular-nums;
+}
+
+.cg-lightbox-close,
+.cg-lightbox-nav {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background-color: rgba(25, 25, 27, 0.8);
+    color: #ededed;
+    cursor: pointer;
+    transition: background-color 160ms var(--cg-ease);
+}
+
+.cg-lightbox-close:hover,
+.cg-lightbox-nav:hover {
+    background-color: rgba(35, 35, 37, 1);
+}
+
+.cg-lightbox-close {
+    top: 20px;
+    right: 20px;
+}
+
+.cg-lightbox-prev {
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.cg-lightbox-next {
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+@media (max-width: 992px) {
     .photos-grid.masonry {
         column-count: 2;
     }
 }
 
 @media (max-width: 768px) {
+    .cg-container {
+        padding: 0 16px;
+    }
+
+    .cg-title {
+        font-size: 24px;
+    }
+
+    .cg-search {
+        max-width: 100%;
+    }
+
+    .photos-grid,
+    .attendees-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
     .photos-grid.masonry {
         column-count: 1;
     }
-}
 
-.gallery-item {
-    break-inside: avoid;
-    margin-bottom: 2rem;
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-}
-
-.gallery-item:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.gallery-item.hidden {
-    opacity: 0;
-    transform: scale(0.95);
-    pointer-events: none;
-}
-
-.image-container {
-    position: relative;
-    overflow: hidden;
-    aspect-ratio: 4/3;
-}
-
-.image-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.gallery-item:hover .image-container img {
-    transform: scale(1.05);
-}
-
-.image-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.gallery-item:hover .image-overlay {
-    opacity: 1;
-}
-
-.overlay-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.action-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    color: #333;
-    font-size: 1.2rem;
-}
-
-.action-btn:hover {
-    background: white;
-    transform: scale(1.1);
-    color: var(--primary-color);
-}
-
-.image-info {
-    padding: 1.5rem;
-}
-
-.image-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 0.75rem;
-}
-
-.image-meta {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.85rem;
-    color: #6c757d;
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.meta-item i {
-    font-size: 0.8rem;
-}
-
-/* ===== ATTENDEES SECTION ===== */
-.attendees-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 2rem;
-}
-
-.attendee-card {
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    border: 1px solid #e9ecef;
-}
-
-.attendee-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-}
-
-.attendee-card.hidden {
-    opacity: 0;
-    transform: scale(0.95);
-    pointer-events: none;
-}
-
-.attendee-header {
-    display: flex;
-    align-items: center;
-    padding: 1.5rem 1.5rem 1rem;
-    gap: 1rem;
-}
-
-.attendee-avatar {
-    flex-shrink: 0;
-}
-
-.avatar-img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid var(--primary-color);
-}
-
-.avatar-placeholder {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 2rem;
-    border: 3px solid var(--primary-color);
-}
-
-.attendee-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.badge-primary {
-    background: var(--primary-color);
-    color: white;
-}
-
-.badge-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.attendee-body {
-    padding: 0 1.5rem 1.5rem;
-}
-
-.attendee-name {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
-}
-
-.attendee-affiliation {
-    color: #495057;
-    font-weight: 500;
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.attendee-department {
-    color: #6c757d;
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-}
-
-.attendee-bio {
-    color: #495057;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin-bottom: 1rem;
-}
-
-.attendee-website {
-    display: inline-flex;
-    align-items: center;
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.3s ease;
-}
-
-.attendee-website:hover {
-    color: var(--secondary-color);
-}
-
-.attendee-footer {
-    padding: 1rem 1.5rem;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-}
-
-/* ===== LOADING & EMPTY STATES ===== */
-.loading-state {
-    padding: 3rem 0;
-}
-
-.skeleton-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
-}
-
-.skeleton-item {
-    background: white;
-    border-radius: 16px;
-    overflow: hidden;
-    padding: 1.5rem;
-}
-
-.skeleton-image {
-    width: 100%;
-    height: 200px;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
-
-.skeleton-title {
-    height: 20px;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-}
-
-.skeleton-text {
-    height: 14px;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 4px;
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-}
-
-.empty-icon {
-    font-size: 5rem;
-    color: #dee2e6;
-    margin-bottom: 2rem;
-}
-
-.empty-title {
-    font-size: 2rem;
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 1rem;
-}
-
-/* ===== NO RESULTS STATE ===== */
-.no-results-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #6c757d;
-    animation: fadeInUp 0.6s ease;
-}
-
-.no-results-content {
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-.no-results-icon {
-    font-size: 3rem;
-    margin-bottom: 1.5rem;
-    opacity: 0.6;
-    color: #adb5bd;
-}
-
-.no-results-title {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    color: #495057;
-}
-
-.no-results-description {
-    font-size: 1rem;
-    margin-bottom: 2rem;
-    line-height: 1.5;
-}
-
-.empty-description {
-    font-size: 1.1rem;
-    color: #6c757d;
-    max-width: 600px;
-    margin: 0 auto 2rem;
-    line-height: 1.6;
-}
-
-.empty-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-
-/* ===== BACK NAVIGATION ===== */
-.back-navigation {
-    background: white;
-    padding: 2rem 0;
-    border-top: 1px solid #e9ecef;
-}
-
-.back-btn {
-    display: inline-flex;
-    align-items: center;
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: 2px solid var(--primary-color);
-}
-
-.back-btn:hover {
-    background: var(--primary-color);
-    color: white;
-    transform: translateX(-5px);
-}
-
-/* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 992px) {
-    .controls-header {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .filter-buttons {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    .hero-stats {
-        gap: 1rem;
-    }
-
-    .stat-item {
-        padding: 0.75rem 1rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .gallery-hero {
-        min-height: 50vh;
-        text-align: center;
-    }
-
-    .hero-title {
-        font-size: 2.5rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1.2rem;
-    }
-
-    .hero-stats {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .photos-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .attendees-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-
-    .gallery-controls {
-        padding: 1rem 0;
-    }
-
-    .controls-header {
-        gap: 1rem;
-    }
-
-    .search-box {
-        max-width: 100%;
-    }
-}
-
-@media (max-width: 576px) {
-    .gallery-container {
-        padding: 2rem 0;
-    }
-
-    .hero-title {
-        font-size: 2rem;
-    }
-
-    .hero-description {
-        font-size: 1rem;
-    }
-
-    .photos-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .empty-actions {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .filter-buttons {
-        gap: 0.5rem;
-    }
-
-    .filter-btn {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-    }
-}
-
-/* ===== LIGHTBOX CUSTOMIZATIONS ===== */
-.lightbox .lb-image {
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.lightbox .lb-nav a.lb-prev,
-.lightbox .lb-nav a.lb-next {
-    opacity: 0.8;
-    transition: all 0.3s ease;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.lightbox .lb-nav a.lb-prev:hover,
-.lightbox .lb-nav a.lb-next:hover {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-.lightbox .lb-caption {
-    font-size: 1rem;
-    line-height: 1.5;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 1rem;
-    border-radius: 8px;
-}
-
-/* ===== UTILITY CLASSES ===== */
-.hidden {
-    display: none !important;
-}
-
-.fade-in {
-    animation: fadeIn 0.5s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* ===== FOCUS STATES ===== */
-.filter-btn:focus,
-.view-btn:focus,
-.action-btn:focus,
-.back-btn:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* ===== PRINT STYLES ===== */
-@media print {
-    .gallery-controls,
-    .back-navigation,
-    .overlay-actions {
-        display: none !important;
-    }
-
-    .gallery-hero {
-        background: white !important;
-        color: black !important;
-    }
-
-    .hero-title,
-    .section-title {
-        color: black !important;
+    .cg-lightbox-stage {
+        padding: 48px 16px;
     }
 }
 </style>
 
-<!-- Lightbox JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
-
 <script>
-$(document).ready(function() {
-    // Initialize lightbox
-    lightbox.option({
-        'resizeDuration': 200,
-        'wrapAround': true,
-        'albumLabel': '{{ conference.basic_info.name }} Gallery - Image %1 of %2',
-        'fadeDuration': 300,
-        'imageFadeDuration': 300
-    });
-
-    // Gallery filtering and search functionality
-    const galleryItems = $('.gallery-item, .attendee-card');
-    const gallerySections = $('.photos-section, .attendees-section');
-    const searchInput = $('#gallerySearch');
-
-    // Filter items based on category
-    $('.filter-btn').click(function() {
-        const filter = $(this).data('filter');
-
-        $('.filter-btn').removeClass('active');
-        $(this).addClass('active');
-
-        applyFilters();
-    });
-
-    // Search functionality
-    searchInput.on('input', function() {
-        applyFilters();
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('gallerySearch');
+    const filterButtons = Array.from(document.querySelectorAll('.filter-btn'));
+    const viewButtons = Array.from(document.querySelectorAll('.view-btn'));
+    const galleryItems = Array.from(document.querySelectorAll('.gallery-item, .attendee-card'));
+    const gallerySections = Array.from(document.querySelectorAll('.photos-section, .attendees-section'));
+    const noResultsState = document.getElementById('noResultsState');
+    const photosGrid = document.getElementById('photosGrid');
 
     function applyFilters() {
-        const searchTerm = searchInput.val().toLowerCase();
-        const activeFilter = $('.filter-btn.active').data('filter');
+        const searchTerm = (searchInput ? searchInput.value : '').trim().toLowerCase();
+        const activeBtn = document.querySelector('.filter-btn.active');
+        const activeFilter = activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
 
-        galleryItems.each(function() {
-            const title = $(this).data('title') || '';
-            const category = $(this).data('category') || '';
-            
-            let matchesSearch = true;
-            let matchesFilter = true;
+        galleryItems.forEach(function(item) {
+            const title = (item.getAttribute('data-title') || '').toLowerCase();
+            const category = item.getAttribute('data-category') || '';
+            const matchesSearch = !searchTerm || title.includes(searchTerm);
+            const matchesFilter = activeFilter === 'all' || category === activeFilter;
 
-            // Check search term
-            if (searchTerm !== '') {
-                matchesSearch = title.includes(searchTerm);
-            }
-
-            // Check filter
-            if (activeFilter !== 'all') {
-                matchesFilter = category === activeFilter;
-            }
-
-            const isVisible = matchesSearch && matchesFilter;
-            if (isVisible) {
-                $(this).removeClass('hidden').show();
+            if (matchesSearch && matchesFilter) {
+                item.classList.remove('hidden');
             } else {
-                $(this).addClass('hidden');
+                item.classList.add('hidden');
             }
         });
 
-        // Show/hide sections based on whether they have visible items
-        gallerySections.each(function() {
-            const section = $(this);
-            const category = section.data('category');
-            const visibleItems = section.find('.gallery-item:not(.hidden), .attendee-card:not(.hidden)');
-            
-            if (activeFilter === 'all') {
-                // Show section if it has any visible items (considering search)
-                if (visibleItems.length > 0) {
-                    section.removeClass('hidden').show();
-                } else {
-                    section.addClass('hidden');
-                }
+        let totalVisible = 0;
+        gallerySections.forEach(function(section) {
+            const category = section.getAttribute('data-category');
+            const visibleInSection = section.querySelectorAll('.gallery-item:not(.hidden), .attendee-card:not(.hidden)');
+            const countEl = section.querySelector('.item-count');
+            if (countEl) {
+                countEl.textContent = String(visibleInSection.length);
+            }
+
+            const shouldShowSection = (activeFilter === 'all' || category === activeFilter) && visibleInSection.length > 0;
+            if (shouldShowSection) {
+                section.classList.remove('hidden');
+                totalVisible += visibleInSection.length;
             } else {
-                // Show section only if it matches the active filter and has visible items
-                if (category === activeFilter && visibleItems.length > 0) {
-                    section.removeClass('hidden').show();
-                } else {
-                    section.addClass('hidden');
-                }
+                section.classList.add('hidden');
             }
         });
 
-        // Update section headers with visible item counts
-        updateSectionCounts();
-        
-        // Show/hide no results state
-        showNoResultsState();
-    }
-
-    function updateSectionCounts() {
-        $('.photos-section .item-count').text(`(${$('.photos-section .gallery-item:not(.hidden)').length})`);
-        $('.attendees-section .item-count').text(`(${$('.attendees-section .attendee-card:not(.hidden)').length})`);
-    }
-
-    function showNoResultsState() {
-        const totalVisibleItems = $('.gallery-item:not(.hidden), .attendee-card:not(.hidden)').length;
-        const hasVisibleSections = $('.photos-section:not(.hidden), .attendees-section:not(.hidden)').length > 0;
-        
-        if (totalVisibleItems === 0 && hasVisibleSections) {
-            $('#noResultsState').show();
-        } else {
-            $('#noResultsState').hide();
+        if (noResultsState) {
+            noResultsState.style.display = (galleryItems.length > 0 && totalVisible === 0) ? 'block' : 'none';
         }
     }
 
-    // Clear all filters function
+    filterButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            filterButtons.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            applyFilters();
+        });
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', applyFilters);
+    }
+
+    viewButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const view = btn.getAttribute('data-view');
+            viewButtons.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            if (photosGrid) {
+                photosGrid.classList.toggle('masonry', view === 'masonry');
+            }
+        });
+    });
+
     window.clearFilters = function() {
-        searchInput.val('');
-        $('.filter-btn').removeClass('active');
-        $('.filter-btn[data-filter="all"]').addClass('active');
+        if (searchInput) searchInput.value = '';
+        filterButtons.forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-filter') === 'all');
+        });
         applyFilters();
     };
 
-    // Initialize filters
-    applyFilters();
+    // Accessible vanilla JS Lightbox
+    const lightbox = document.getElementById('cgLightbox');
+    const lbImg = document.getElementById('cgLightboxImg');
+    const lbTitle = document.getElementById('cgLightboxTitle');
+    const lbCount = document.getElementById('cgLightboxCount');
+    const lbPrev = document.getElementById('cgLightboxPrev');
+    const lbNext = document.getElementById('cgLightboxNext');
+    const triggers = Array.from(document.querySelectorAll('.cg-photo-trigger'));
+    let currentIndex = 0;
 
-    // View toggle functionality
-    $('.view-btn').click(function() {
-        const view = $(this).data('view');
+    function openLightbox(index) {
+        if (!lightbox || !triggers.length) return;
+        currentIndex = (index + triggers.length) % triggers.length;
+        const trigger = triggers[currentIndex];
+        const src = trigger.getAttribute('data-lightbox-src');
+        const caption = trigger.getAttribute('data-lightbox-caption') || '';
+        lbImg.src = src;
+        lbImg.alt = caption;
+        lbTitle.textContent = caption;
+        lbCount.textContent = (currentIndex + 1) + ' / ' + triggers.length;
+        lightbox.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
 
-        $('.view-btn').removeClass('active');
-        $(this).addClass('active');
+    function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.hidden = true;
+        lbImg.src = '';
+        document.body.style.overflow = '';
+    }
 
-        const photosGrid = $('#photosGrid');
-
-        if (view === 'masonry') {
-            photosGrid.addClass('masonry');
-        } else {
-            photosGrid.removeClass('masonry');
-        }
-    });
-
-    // Image loading and error handling
-    $('.gallery-item img, .avatar-img').each(function() {
-        $(this).on('load', function() {
-            $(this).addClass('loaded');
-        }).on('error', function() {
-            $(this).closest('.gallery-item, .attendee-card').addClass('image-error');
+    triggers.forEach(function(trigger, idx) {
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            openLightbox(idx);
         });
     });
 
-    // Share functionality
+    if (lbPrev) lbPrev.addEventListener('click', function() { openLightbox(currentIndex - 1); });
+    if (lbNext) lbNext.addEventListener('click', function() { openLightbox(currentIndex + 1); });
+
+    document.querySelectorAll('[data-lightbox-close]').forEach(function(el) {
+        el.addEventListener('click', closeLightbox);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (!lightbox || lightbox.hidden) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') openLightbox(currentIndex - 1);
+        if (e.key === 'ArrowRight') openLightbox(currentIndex + 1);
+    });
+
+    // Share helpers
     window.shareImage = function(imageUrl, imageName) {
+        const fullUrl = new URL(imageUrl, window.location.origin).href;
         if (navigator.share) {
             navigator.share({
                 title: imageName,
-                text: `Check out this image from {{ conference.basic_info.name }}`,
-                url: imageUrl
-            }).catch(err => console.log('Error sharing:', err));
-        } else {
-            // Fallback: copy to clipboard
-            navigator.clipboard.writeText(imageUrl).then(() => {
-                alert('Image URL copied to clipboard!');
-            }).catch(() => {
-                alert('Share not supported on this device');
-            });
+                url: fullUrl
+            }).catch(function() {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(fullUrl);
         }
     };
 
     window.shareAttendee = function(attendeeName, institution) {
-        const shareText = `Meet ${attendeeName}${institution ? ` from ${institution}` : ''} at {{ conference.basic_info.name }}`;
-
+        const shareText = attendeeName + (institution ? ' — ' + institution : '');
         if (navigator.share) {
             navigator.share({
                 title: attendeeName,
                 text: shareText,
                 url: window.location.href
-            }).catch(err => console.log('Error sharing:', err));
-        } else {
-            navigator.clipboard.writeText(`${shareText}\n${window.location.href}`).then(() => {
-                alert('Attendee info copied to clipboard!');
-            }).catch(() => {
-                alert('Share not supported on this device');
-            });
+            }).catch(function() {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareText + ' ' + window.location.href);
         }
     };
-
-    // Smooth scroll for back button
-    $('.back-btn').click(function(e) {
-        e.preventDefault();
-        const target = $($(this).attr('href'));
-        if (target.length) {
-            $('html, body').animate({
-                scrollTop: target.offset().top - 100
-            }, 500);
-        }
-    });
-
-    // Add animation delays for staggered loading
-    galleryItems.each(function(index) {
-        $(this).css('animation-delay', `${index * 0.1}s`);
-    });
-
-    // Intersection Observer for lazy loading animations
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('fade-in');
-            }
-        });
-    }, observerOptions);
-
-    $('.gallery-item, .attendee-card').each(function() {
-        observer.observe(this);
-    });
 });
 </script>
 {% endblock %}

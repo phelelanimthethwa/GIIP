@@ -3,240 +3,384 @@
 {% block title %}Conference Galleries - GIIR{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="container">
-        <div class="header-content text-center">
-            <h1 class="display-4">
-                <i class="fas fa-images me-3"></i>
-                Conference Galleries
-            </h1>
-            <p class="lead">Explore memorable moments from our conferences</p>
-        </div>
-    </div>
-</div>
-
-<div class="container py-5">
-    {% if conferences %}
-    <div class="inline-cards-container">
-        {% for conference_id, conference in conferences.items() %}
-        <div class="inline-card-wrapper">
-            <div class="card conference-gallery-card" style="width: 100%; height: auto;">
-                <div class="card-body">
-                    <div class="text-center mb-3">
-                        <h5 class="card-title">{{ conference.basic_info.name }}</h5>
-                        <p class="card-text text-muted">
-                            {% if conference.basic_info.year %}
-                            {{ conference.basic_info.year }}
-                            {% else %}
-                            2024
-                            {% endif %}
-                        </p>
-                    </div>
-
-                    <!-- Gallery Preview -->
-                    <div class="gallery-preview mb-3" data-conference-id="{{ conference_id }}">
-                        {% set hero_images = [
-                            '/static/uploads/hero/20250120_164636_jack-white-Yr5ZZbfJK9k-unsplash.jpg',
-                            '/static/uploads/hero/20250120_164902_alim-DkfnGxoy5NI-unsplash.jpg',
-                            '/static/uploads/hero/20250120_164902_ben-o-bro-wpU4veNGnHg-unsplash.jpg',
-                            '/static/uploads/hero/20250120_164902_meduana-PdnseHuDFZU-unsplash.jpg',
-                            '/static/uploads/hero/20250120_164902_pedro-lastra-Nyvq2juw4_o-unsplash.jpg',
-                            '/static/uploads/hero/20250120_172727_andre-benz-Mn9Fa_wQH-M-unsplash.jpg',
-                            '/static/uploads/hero/20250120_172727_sawyer-bengtson-tnv84LOjes4-unsplash.jpg',
-                            '/static/uploads/hero/20250122_182606_jaime-lopes-0RDBOAdnbWM-unsplash.jpg',
-                            '/static/uploads/hero/20250122_182606_teemu-paananen-bzdhc5b3Bxs-unsplash.jpg',
-                            '/static/uploads/hero/20250122_182606_the-climate-reality-project-Hb6uWq0i4MI-unsplash.jpg'
-                        ] %}
-                        {% set image_index = loop.index0 % hero_images|length %}
-                        <div class="gallery-image" style="background-image: url('{{ conference.hero_image|default(hero_images[image_index]) }}');">
-                            <div class="image-overlay">
-                                <div class="image-content">
-                                    <i class="fas fa-images fa-2x text-white mb-2"></i>
-                                    <p class="text-white small">View Gallery</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Gallery Summary -->
-                    {% if conference.gallery_summary and conference.gallery_summary.summary %}
-                        {% set show_summary = conference.gallery_summary.show_summary_public if conference.gallery_summary.show_summary_public is defined else (conference.gallery_summary.show_public|default(true)) %}
-                        {% if show_summary %}
-                        <div class="gallery-summary mb-3">
-                            <p class="text-muted small text-center">{{ conference.gallery_summary.summary }}</p>
-                        </div>
-                        {% endif %}
-                    {% endif %}
-
-                    <div class="text-center">
-                        <a href="{{ url_for('conference_gallery', conference_id=conference_id) }}" class="btn btn-primary">
-                            <i class="fas fa-eye me-1"></i>
-                            View Gallery
-                        </a>
-                    </div>
+<div class="galleries-page">
+    <header class="galleries-header">
+        <div class="galleries-container">
+            <div class="galleries-header-inner">
+                <div>
+                    <p class="galleries-eyebrow">Archive</p>
+                    <h1 class="galleries-title">Conference Galleries</h1>
+                    <p class="galleries-subtitle">Photographs and participant records from GIIR academic conferences</p>
                 </div>
+                {% if conferences %}
+                <div class="galleries-count-meta">
+                    <span class="galleries-count-num">{{ conferences|length }}</span>
+                    <span class="galleries-count-label">{{ 'edition' if conferences|length == 1 else 'editions' }}</span>
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="text-center py-5">
-        <i class="fas fa-images fa-4x text-muted mb-3"></i>
-        <h3>No Conference Galleries Available</h3>
-        <p class="text-muted">Conference galleries will appear here once they are made public by administrators.</p>
-    </div>
-    {% endif %}
+    </header>
+
+    <section class="galleries-body">
+        <div class="galleries-container">
+            {% if conferences %}
+            {% set hero_images = [
+                '/static/uploads/hero/20250120_164636_jack-white-Yr5ZZbfJK9k-unsplash.jpg',
+                '/static/uploads/hero/20250120_164902_alim-DkfnGxoy5NI-unsplash.jpg',
+                '/static/uploads/hero/20250120_164902_ben-o-bro-wpU4veNGnHg-unsplash.jpg',
+                '/static/uploads/hero/20250120_164902_meduana-PdnseHuDFZU-unsplash.jpg',
+                '/static/uploads/hero/20250120_164902_pedro-lastra-Nyvq2juw4_o-unsplash.jpg',
+                '/static/uploads/hero/20250120_172727_andre-benz-Mn9Fa_wQH-M-unsplash.jpg',
+                '/static/uploads/hero/20250120_172727_sawyer-bengtson-tnv84LOjes4-unsplash.jpg',
+                '/static/uploads/hero/20250122_182606_jaime-lopes-0RDBOAdnbWM-unsplash.jpg',
+                '/static/uploads/hero/20250122_182606_teemu-paananen-bzdhc5b3Bxs-unsplash.jpg',
+                '/static/uploads/hero/20250122_182606_the-climate-reality-project-Hb6uWq0i4MI-unsplash.jpg'
+            ] %}
+            <div class="galleries-grid">
+                {% for conference_id, conference in conferences.items() %}
+                {% set image_index = loop.index0 % hero_images|length %}
+                {% set cover_url = conference.hero_image|default(hero_images[image_index], true) %}
+                {% set conf_name = conference.basic_info.name if conference.basic_info and conference.basic_info.name else 'Academic Conference' %}
+                {% set conf_year = conference.basic_info.year if conference.basic_info and conference.basic_info.year else '' %}
+                {% set conf_code = conference.conference_code if conference.conference_code else (conference.basic_info.acronym if conference.basic_info and conference.basic_info.acronym else '') %}
+                <a href="{{ url_for('conference_gallery', conference_id=conference_id) }}"
+                   class="gallery-card"
+                   data-conference-id="{{ conference_id }}">
+                    <div class="gallery-card-media">
+                        <img src="{{ cover_url }}"
+                             alt="{{ conf_name }}"
+                             loading="lazy"
+                             class="gallery-card-img"
+                             onerror="this.onerror=null; this.src='/static/images/default-hero.jpg';">
+                    </div>
+
+                    <div class="gallery-card-body">
+                        <div class="gallery-card-meta">
+                            {% if conf_year %}
+                            <span class="gallery-meta-year">{{ conf_year }}</span>
+                            {% endif %}
+                            {% if conf_year and conf_code %}
+                            <span class="gallery-meta-sep" aria-hidden="true">&middot;</span>
+                            {% endif %}
+                            {% if conf_code %}
+                            <span class="gallery-meta-code">{{ conf_code }}</span>
+                            {% endif %}
+                            {% if not conf_year and not conf_code %}
+                            <span class="gallery-meta-year">Conference archive</span>
+                            {% endif %}
+                        </div>
+
+                        <h2 class="gallery-card-title">{{ conf_name }}</h2>
+
+                        {% if conference.gallery_summary and conference.gallery_summary.summary %}
+                            {% set show_summary = conference.gallery_summary.show_summary_public if conference.gallery_summary.show_summary_public is defined else (conference.gallery_summary.show_public|default(true)) %}
+                            {% if show_summary %}
+                            <p class="gallery-card-summary">{{ conference.gallery_summary.summary }}</p>
+                            {% endif %}
+                        {% endif %}
+
+                        <div class="gallery-card-footer">
+                            <span class="gallery-card-cta">View gallery</span>
+                            <svg class="gallery-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M5 12h14"></path>
+                                <path d="m12 5 7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="galleries-empty">
+                <h2 class="galleries-empty-title">No conference galleries published yet</h2>
+                <p class="galleries-empty-text">Photographs and attendee records appear here once a conference gallery is published.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
 </div>
 
-<!-- Loading Animation Styles -->
 <style>
-.gallery-image {
-    position: relative;
-    height: 200px;
+.galleries-page {
+    --g-bg: #f8f9fa;
+    --g-surface: #ffffff;
+    --g-surface-raised: #f3f4f6;
+    --g-border: rgba(17, 24, 39, 0.08);
+    --g-border-hover: rgba(17, 24, 39, 0.18);
+    --g-text-primary: var(--text-color, #111827);
+    --g-text-secondary: #4b5563;
+    --g-text-muted: #6b7280;
+    --g-accent: var(--primary-color, #007bff);
+    --g-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+    background-color: var(--g-bg);
+    color: var(--g-text-primary);
+    min-height: 60vh;
+    padding-bottom: 64px;
+}
+
+.galleries-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* Header */
+.galleries-header {
+    background-color: var(--g-surface);
+    border-bottom: 1px solid var(--g-border);
+    padding: 40px 0 32px;
+}
+
+.galleries-header-inner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.galleries-eyebrow {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--g-text-muted);
+    margin: 0 0 8px 0;
+}
+
+.galleries-title {
+    font-size: 32px;
+    line-height: 1.15;
+    font-weight: 600;
+    color: var(--g-text-primary);
+    letter-spacing: -0.01em;
+    margin: 0 0 8px 0;
+}
+
+.galleries-subtitle {
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 400;
+    color: var(--g-text-secondary);
+    margin: 0;
+    max-width: 560px;
+}
+
+.galleries-count-meta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: var(--g-surface-raised);
+    border: 1px solid var(--g-border);
     border-radius: 8px;
+}
+
+.galleries-count-num {
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--g-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.galleries-count-label {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 400;
+    color: var(--g-text-muted);
+}
+
+/* Grid */
+.galleries-body {
+    padding-top: 32px;
+}
+
+.galleries-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+/* Card */
+.gallery-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--g-surface);
+    border: 1px solid var(--g-border);
+    border-radius: 12px;
     overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color 160ms var(--g-ease), box-shadow 160ms var(--g-ease);
 }
 
-.gallery-image:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+.gallery-card:hover {
+    border-color: var(--g-border-hover);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
-.image-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+.gallery-card:focus-visible {
+    outline: 2px solid var(--g-accent);
+    outline-offset: 2px;
+}
+
+.gallery-card-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    background-color: var(--g-surface-raised);
+    overflow: hidden;
+    border-bottom: 1px solid var(--g-border);
+}
+
+.gallery-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 300ms var(--g-ease);
+}
+
+.gallery-card:hover .gallery-card-img {
+    transform: scale(1.02);
+}
+
+.gallery-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 20px;
+}
+
+/* Signature archival index line */
+.gallery-card-meta {
     display: flex;
     align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.gallery-image:hover .image-overlay {
-    opacity: 1;
-}
-
-.image-content {
-    text-align: center;
-    color: white;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-}
-
-.image-content i {
-    margin-bottom: 0.5rem;
-}
-
-.image-content p {
+    gap: 8px;
+    font-size: 12px;
+    line-height: 16px;
     font-weight: 500;
-    margin: 0;
+    color: var(--g-text-muted);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 8px;
 }
 
-.conference-gallery-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    cursor: pointer;
+.gallery-meta-year {
+    color: var(--g-text-secondary);
+    font-weight: 500;
 }
 
-.conference-gallery-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+.gallery-meta-sep {
+    color: var(--g-text-muted);
 }
 
-.gallery-preview {
-    position: relative;
+.gallery-meta-code {
+    color: var(--g-text-muted);
+}
+
+.gallery-card-title {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 600;
+    color: var(--g-text-primary);
+    margin: 0 0 12px 0;
+    text-align: left;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    border-radius: 8px;
-    background-color: #f8f9fa;
 }
 
-/* Gallery Summary Styling */
-.gallery-summary {
-    padding: 8px 12px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 6px;
-    border-left: 3px solid #007bff;
-    transition: all 0.2s ease;
-}
-
-.gallery-summary p {
-    margin: 0;
-    font-style: italic;
+.gallery-card-summary {
     font-size: 14px;
-    line-height: 1.4;
-    color: #495057 !important;
+    line-height: 20px;
+    font-weight: 400;
+    color: var(--g-text-secondary);
+    margin: 0 0 16px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
-.conference-gallery-card:hover .gallery-summary {
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    border-left-color: #0056b3;
-}
-
-.conference-gallery-card:hover .gallery-summary p {
-    color: #2c5282 !important;
-}
-
-/* Inline Cards Layout */
-.inline-cards-container {
+.gallery-card-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--g-border);
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    padding: 1rem 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
-.inline-card-wrapper {
-    flex: 0 0 auto;
-    width: 300px;
-    max-width: 100%;
+.gallery-card-cta {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--g-accent);
+    transition: color 160ms var(--g-ease);
 }
 
-/* Responsive styles */
+.gallery-card-arrow {
+    color: var(--g-accent);
+    flex-shrink: 0;
+    transition: transform 160ms var(--g-ease);
+}
+
+.gallery-card:hover .gallery-card-arrow {
+    transform: translateX(3px);
+}
+
+/* Empty state */
+.galleries-empty {
+    background-color: var(--g-surface);
+    border: 1px solid var(--g-border);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    max-width: 520px;
+    margin: 24px auto 0;
+}
+
+.galleries-empty-title {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 600;
+    color: var(--g-text-primary);
+    margin: 0 0 8px 0;
+}
+
+.galleries-empty-text {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--g-text-secondary);
+    margin: 0;
+}
+
 @media (max-width: 768px) {
-    .gallery-image {
-        height: 150px;
+    .galleries-container {
+        padding: 0 16px;
     }
 
-    .inline-cards-container {
-        flex-direction: column;
-        align-items: center;
+    .galleries-header {
+        padding: 28px 0 24px;
     }
 
-    .inline-card-wrapper {
-        width: 100%;
-        max-width: 400px;
+    .galleries-title {
+        font-size: 24px;
+    }
+
+    .galleries-body {
+        padding-top: 24px;
+    }
+
+    .galleries-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }
 </style>
-
-<script>
-$(document).ready(function() {
-    // Add click handlers to conference cards
-    $('.conference-gallery-card').click(function(e) {
-        // Don't trigger if clicking on the view button
-        if (!$(e.target).hasClass('btn')) {
-            const link = $(this).find('.btn').attr('href');
-            if (link) {
-                window.location.href = link;
-            }
-        }
-    });
-
-    // Add hover effects to image previews
-    $('.gallery-image').hover(
-        function() {
-            $(this).addClass('hover');
-        },
-        function() {
-            $(this).removeClass('hover');
-        }
-    );
-});
-</script>
 {% endblock %}
