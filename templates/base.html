@@ -400,6 +400,7 @@
             }
         }
     </style>
+    {% block styles %}{% endblock %}
 </head>
 
 {% set show_global_nav = not (hide_global_nav|default(false)) %}
@@ -507,7 +508,33 @@
                 }, 5000);
             });
         });
+
+        // Global password visibility toggle helper
+        window.togglePassword = function (inputId, triggerEl) {
+            const input = inputId
+                ? document.getElementById(inputId)
+                : (triggerEl && triggerEl.parentElement ? triggerEl.parentElement.querySelector('input') : document.getElementById('password'));
+            if (!input) return;
+
+            const wrapper = input.closest('.password-input') || input.parentElement;
+            const toggle = triggerEl || (wrapper ? wrapper.querySelector('.password-toggle') : document.querySelector('.password-toggle'));
+            const icon = toggle ? (toggle.tagName.toLowerCase() === 'i' ? toggle : toggle.querySelector('i')) : null;
+
+            const reveal = input.type === 'password';
+            input.type = reveal ? 'text' : 'password';
+
+            if (icon) {
+                icon.classList.toggle('fa-eye', !reveal);
+                icon.classList.toggle('fa-eye-slash', reveal);
+            }
+            if (toggle) {
+                toggle.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+                toggle.setAttribute('title', reveal ? 'Hide password' : 'Show password');
+            }
+        };
     </script>
+
+    {% block scripts %}{% endblock %}
 
     {% if show_global_nav %}
     {% include 'user/components/chatbot.html' %}

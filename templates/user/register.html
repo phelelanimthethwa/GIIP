@@ -86,7 +86,9 @@
                     <div class="password-input">
                         <input type="password" id="password" name="password" required minlength="8"
                                placeholder="Enter your password">
-                        <i class="fas fa-eye password-toggle" onclick="togglePassword('password')"></i>
+                        <button type="button" class="password-toggle" onclick="togglePassword('password', this)" aria-label="Show password" title="Show password">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                     <small class="form-text">Password must be at least 8 characters long</small>
                 </div>
@@ -98,7 +100,9 @@
                     <div class="password-input">
                         <input type="password" id="confirm_password" name="confirm_password" required
                                placeholder="Confirm your password">
-                        <i class="fas fa-eye password-toggle" onclick="togglePassword('confirm_password')"></i>
+                        <button type="button" class="password-toggle" onclick="togglePassword('confirm_password', this)" aria-label="Show password" title="Show password">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="form-group checkbox-group">
@@ -328,6 +332,10 @@
     position: relative;
 }
 
+.password-input input {
+    padding-right: 2.75rem;
+}
+
 .password-toggle {
     position: absolute;
     right: 0.8rem;
@@ -335,6 +343,12 @@
     transform: translateY(-50%);
     color: #666;
     cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .required {

@@ -155,32 +155,33 @@
                     </div>
                     <div class="photos-grid" id="photosGrid">
                         {% for image in images %}
-                        <article class="gallery-item" data-title="{{ image.original_name|default('Photo', true)|lower }}" data-category="photos">
+                        {% set photo_date = image.uploaded_at|date if image.uploaded_at else 'Archive' %}
+                        {% set download_url = url_for('download_gallery_photo', conference_id=conference_id, image_id=image.image_id) if conference_id and image.image_id else image.url %}
+                        <article class="gallery-item" data-title="{{ photo_date|lower }} photograph {{ loop.index }}" data-category="photos">
                             <div class="cg-photo-media">
                                 <a href="{{ image.url }}"
                                    class="cg-photo-trigger"
                                    data-lightbox-index="{{ loop.index0 }}"
                                    data-lightbox-src="{{ image.url }}"
-                                   data-lightbox-caption="{{ image.original_name|default('Conference photograph', true) }}">
-                                    <img src="{{ image.url }}" alt="{{ image.original_name|default('Conference photograph', true) }}" loading="lazy">
+                                   data-lightbox-date="{{ photo_date }}"
+                                   data-lightbox-download="{{ download_url }}">
+                                    <img src="{{ image.url }}" alt="{{ conference.basic_info.name }} photograph {{ loop.index }}" loading="lazy">
                                 </a>
                             </div>
                             <div class="cg-photo-footer">
-                                <div class="cg-photo-meta">
-                                    <h3 class="cg-photo-title">{{ image.original_name|default('Photograph', true) }}</h3>
-                                    <span class="cg-photo-date">{{ image.uploaded_at|date if image.uploaded_at else 'Archive' }}</span>
-                                </div>
-                                <button type="button"
-                                        class="cg-icon-action"
-                                        onclick="shareImage({{ image.url|tojson }}, {{ (image.original_name or 'Conference photograph')|tojson }})"
-                                        title="Copy link to photograph"
-                                        aria-label="Share photograph">
+                                <span class="cg-photo-date">{{ photo_date }}</span>
+                                <a href="{{ download_url }}"
+                                   class="cg-download-action"
+                                   download="conference-photo"
+                                   title="Download photograph"
+                                   aria-label="Download photograph">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-                                        <polyline points="16 6 12 2 8 6"></polyline>
-                                        <line x1="12" y1="2" x2="12" y2="15"></line>
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
                                     </svg>
-                                </button>
+                                    <span>Download</span>
+                                </a>
                             </div>
                         </article>
                         {% endfor %}
@@ -298,8 +299,18 @@
         <figure class="cg-lightbox-figure">
             <img src="" alt="" id="cgLightboxImg" class="cg-lightbox-img">
             <figcaption class="cg-lightbox-caption">
-                <span id="cgLightboxTitle"></span>
-                <span id="cgLightboxCount" class="cg-lightbox-count"></span>
+                <div class="cg-lightbox-meta">
+                    <span id="cgLightboxCount" class="cg-lightbox-count"></span>
+                    <span id="cgLightboxDate" class="cg-lightbox-date"></span>
+                </div>
+                <a href="" id="cgLightboxDownload" class="cg-lightbox-download" download="conference-photo">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Download</span>
+                </a>
             </figcaption>
         </figure>
         <button type="button" class="cg-lightbox-nav cg-lightbox-next" id="cgLightboxNext" aria-label="Next photograph">
@@ -715,21 +726,6 @@
     padding: 12px 16px;
 }
 
-.cg-photo-meta {
-    min-width: 0;
-}
-
-.cg-photo-title {
-    font-size: 14px;
-    line-height: 20px;
-    font-weight: 500;
-    color: var(--cg-text-primary);
-    margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 .cg-photo-date {
     display: block;
     font-size: 12px;
@@ -738,22 +734,31 @@
     font-variant-numeric: tabular-nums;
 }
 
-.cg-icon-action {
+.cg-photo-actions {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 32px;
+    gap: 8px;
+}
+
+.cg-download-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     height: 32px;
+    padding: 0 12px;
     border: 1px solid var(--cg-border);
     border-radius: 8px;
     background-color: var(--cg-surface);
-    color: var(--cg-text-muted);
+    color: var(--cg-text-secondary);
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    text-decoration: none;
     cursor: pointer;
-    flex-shrink: 0;
     transition: color 160ms var(--cg-ease), border-color 160ms var(--cg-ease), background-color 160ms var(--cg-ease);
 }
 
-.cg-icon-action:hover {
+.cg-download-action:hover {
     color: var(--cg-text-primary);
     border-color: var(--cg-border-hover);
     background-color: var(--cg-surface-raised);
@@ -1043,9 +1048,44 @@
     color: #ededed;
 }
 
+.cg-lightbox-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .cg-lightbox-count {
+    color: #ededed;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.cg-lightbox-date {
     color: #a1a1a6;
     font-variant-numeric: tabular-nums;
+}
+
+.cg-lightbox-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background-color: rgba(25, 25, 27, 0.8);
+    color: #ededed;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 160ms var(--cg-ease), border-color 160ms var(--cg-ease);
+}
+
+.cg-lightbox-download:hover {
+    background-color: rgba(35, 35, 37, 1);
+    border-color: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
 }
 
 .cg-lightbox-close,
@@ -1206,8 +1246,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Accessible vanilla JS Lightbox
     const lightbox = document.getElementById('cgLightbox');
     const lbImg = document.getElementById('cgLightboxImg');
-    const lbTitle = document.getElementById('cgLightboxTitle');
+    const lbDate = document.getElementById('cgLightboxDate');
     const lbCount = document.getElementById('cgLightboxCount');
+    const lbDownload = document.getElementById('cgLightboxDownload');
     const lbPrev = document.getElementById('cgLightboxPrev');
     const lbNext = document.getElementById('cgLightboxNext');
     const triggers = Array.from(document.querySelectorAll('.cg-photo-trigger'));
@@ -1218,10 +1259,12 @@ document.addEventListener('DOMContentLoaded', function() {
         currentIndex = (index + triggers.length) % triggers.length;
         const trigger = triggers[currentIndex];
         const src = trigger.getAttribute('data-lightbox-src');
-        const caption = trigger.getAttribute('data-lightbox-caption') || '';
+        const dateText = trigger.getAttribute('data-lightbox-date') || '';
+        const downloadUrl = trigger.getAttribute('data-lightbox-download') || src;
         lbImg.src = src;
-        lbImg.alt = caption;
-        lbTitle.textContent = caption;
+        lbImg.alt = 'Conference photograph ' + (currentIndex + 1);
+        if (lbDate) lbDate.textContent = dateText;
+        if (lbDownload) lbDownload.href = downloadUrl;
         lbCount.textContent = (currentIndex + 1) + ' / ' + triggers.length;
         lightbox.hidden = false;
         document.body.style.overflow = 'hidden';
@@ -1255,19 +1298,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'ArrowRight') openLightbox(currentIndex + 1);
     });
 
-    // Share helpers
-    window.shareImage = function(imageUrl, imageName) {
-        const fullUrl = new URL(imageUrl, window.location.origin).href;
-        if (navigator.share) {
-            navigator.share({
-                title: imageName,
-                url: fullUrl
-            }).catch(function() {});
-        } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(fullUrl);
-        }
-    };
-
+    // Share helper for attendees
     window.shareAttendee = function(attendeeName, institution) {
         const shareText = attendeeName + (institution ? ' — ' + institution : '');
         if (navigator.share) {

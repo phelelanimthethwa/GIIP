@@ -9136,6 +9136,7 @@ def conference_gallery(conference_id):
         attendees_list.sort(key=lambda x: x.get('full_name', ''))
 
         response = make_response(render_template('conference_gallery.html',
+                                               conference_id=conference_id,
                                                conference=conference,
                                                images=images_list,
                                                attendees=attendees_list,
@@ -9153,6 +9154,48 @@ def conference_gallery(conference_id):
         print(f"Error loading conference gallery: {e}")
         flash(f'Error loading gallery: {str(e)}', 'danger')
         return redirect(url_for('galleries'))
+
+@app.route('/galleries/<conference_id>/photos/<image_id>/download')
+def download_gallery_photo(conference_id, image_id):
+    """Download a public conference gallery photo without exposing raw filename/extension"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference or not conference.get('settings', {}).get('gallery_enabled', True):
+            return redirect(url_for('galleries'))
+
+        image_ref = db.reference(f'conferences/{conference_id}/gallery/{image_id}')
+        image_data = image_ref.get()
+        if not image_data:
+            return redirect(url_for('conference_gallery', conference_id=conference_id))
+
+        file_bytes = None
+        filename = image_data.get('filename')
+        if filename:
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(f"gallery/{conference_id}/{filename}")
+                file_bytes = blob.download_as_bytes()
+            except Exception as storage_err:
+                print(f"Storage blob download fallback for {image_id}: {storage_err}")
+
+        if not file_bytes and image_data.get('url'):
+            import urllib.request
+            with urllib.request.urlopen(image_data['url'], timeout=15) as resp:
+                file_bytes = resp.read()
+
+        if not file_bytes:
+            return redirect(url_for('conference_gallery', conference_id=conference_id))
+
+        content_type = image_data.get('content_type') or 'image/jpeg'
+        return send_file(
+            BytesIO(file_bytes),
+            mimetype=content_type,
+            as_attachment=True,
+            download_name='conference-photo'
+        )
+    except Exception as e:
+        print(f"Error downloading gallery photo: {e}")
+        return redirect(url_for('conference_gallery', conference_id=conference_id))
 
 @app.route('/admin/conference-galleries/<conference_id>/toggle-visibility', methods=['POST'])
 @login_required
