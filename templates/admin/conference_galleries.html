@@ -135,6 +135,75 @@
                         <span id="upload-status">Uploading images...</span>
                     </div>
 
+                    <!-- Video Management Area -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-video me-2"></i>
+                                Conference Videos (Upload File or Add YouTube Link)
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <!-- Upload Video File -->
+                                <div class="col-lg-6">
+                                    <div class="p-3 border rounded bg-light h-100">
+                                        <h6 class="mb-2"><i class="fas fa-file-video me-1"></i>Upload Video File</h6>
+                                        <p class="small text-muted mb-3">Upload MP4, WebM, MOV, OGG, or M4V video files to play directly on the website.</p>
+                                        <form id="video-upload-form">
+                                            <div class="mb-2">
+                                                <label for="video-upload-title" class="form-label small mb-1">Video Title (Optional)</label>
+                                                <input type="text" class="form-control form-control-sm" id="video-upload-title" placeholder="e.g. Keynote Address Highlights">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="video-upload-input" class="form-label small mb-1">Select Video File(s)</label>
+                                                <input type="file" class="form-control form-control-sm" id="video-upload-input" accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.mov,.ogg,.m4v" multiple required>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary btn-sm" id="upload-video-btn">
+                                                <i class="fas fa-cloud-upload-alt me-1"></i>
+                                                Upload Video
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Add YouTube Video Link -->
+                                <div class="col-lg-6">
+                                    <div class="p-3 border rounded bg-light h-100">
+                                        <h6 class="mb-2"><i class="fab fa-youtube text-danger me-1"></i>Add YouTube Video Link</h6>
+                                        <p class="small text-muted mb-3">Paste a YouTube link so visitors can play it embedded on the site or open it on YouTube.</p>
+                                        <form id="youtube-video-form">
+                                            <div class="mb-2">
+                                                <label for="youtube-video-title" class="form-label small mb-1">Video Title (Optional)</label>
+                                                <input type="text" class="form-control form-control-sm" id="youtube-video-title" placeholder="e.g. Opening Ceremony Stream">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="youtube-video-url" class="form-label small mb-1">YouTube URL <span class="text-danger">*</span></label>
+                                                <input type="url" class="form-control form-control-sm" id="youtube-video-url" placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." required>
+                                            </div>
+                                            <button type="submit" class="btn btn-danger btn-sm" id="add-youtube-btn">
+                                                <i class="fab fa-youtube me-1"></i>
+                                                Add YouTube Video
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Video Status Alert -->
+                            <div id="video-action-status" class="mt-3" style="display: none;"></div>
+
+                            <!-- Existing Videos Grid -->
+                            <div class="mt-4">
+                                <h6 class="mb-3"><i class="fas fa-film me-1"></i>Added Conference Videos</h6>
+                                <div id="video-gallery-grid" class="row g-3"></div>
+                                <div id="empty-video-gallery" class="text-center py-3 text-muted small" style="display: none;">
+                                    No videos added to this conference gallery yet.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Gallery Summary Management -->
                     <div class="card mb-4">
                         <div class="card-header">
@@ -700,8 +769,9 @@ $(document).ready(function() {
 
         console.log('Loading gallery for conference:', currentConferenceId, currentConferenceName);
 
-        // Load existing images and summary
+        // Load existing images, videos, and summary
         loadGalleryImages();
+        loadGalleryVideos();
         loadGallerySummary(currentConferenceId);
 
         // Scroll to gallery management
@@ -1082,6 +1152,209 @@ $(document).ready(function() {
                 }
             });
         }
+    });
+
+    // Video management functions
+    function showVideoStatus(type, message) {
+        const statusEl = $('#video-action-status');
+        statusEl.html(`
+            <div class="alert alert-${type} alert-dismissible fade show mb-0" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `).show();
+        if (type === 'success') {
+            setTimeout(function() {
+                statusEl.fadeOut();
+            }, 3500);
+        }
+    }
+
+    function loadGalleryVideos() {
+        if (!currentConferenceId) return;
+        $.get(`/admin/conference-galleries/${currentConferenceId}/videos`)
+            .done(function(videos) {
+                const videoGrid = $('#video-gallery-grid');
+                const emptyVideo = $('#empty-video-gallery');
+
+                if (!Array.isArray(videos) || videos.length === 0) {
+                    videoGrid.empty().hide();
+                    emptyVideo.show();
+                    return;
+                }
+
+                emptyVideo.hide();
+                videoGrid.show();
+
+                let html = '';
+                videos.forEach(function(video) {
+                    const uploadDate = video.uploaded_at ? new Date(video.uploaded_at).toLocaleDateString() : '';
+                    const titleText = video.title ? video.title : (video.source_type === 'youtube' ? 'YouTube Video' : 'Uploaded Video');
+                    let mediaHtml = '';
+                    let actionLinks = '';
+
+                    if (video.source_type === 'youtube' && video.embed_url) {
+                        mediaHtml = `
+                            <div class="ratio ratio-16x9 bg-dark rounded-top overflow-hidden">
+                                <iframe src="${video.embed_url}?rel=0" title="${titleText}" allowfullscreen loading="lazy"></iframe>
+                            </div>
+                        `;
+                        actionLinks = `
+                            <a href="${video.watch_url}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-danger btn-sm">
+                                <i class="fab fa-youtube me-1"></i>Watch on YouTube
+                            </a>
+                        `;
+                    } else {
+                        mediaHtml = `
+                            <div class="ratio ratio-16x9 bg-dark rounded-top overflow-hidden">
+                                <video controls preload="metadata" class="w-100 h-100">
+                                    <source src="${video.url}" type="${video.content_type || 'video/mp4'}">
+                                </video>
+                            </div>
+                        `;
+                        actionLinks = `
+                            <span class="badge bg-primary">Uploaded File</span>
+                        `;
+                    }
+
+                    html += `
+                        <div class="col-md-6 col-lg-4 admin-video-item">
+                            <div class="card h-100 shadow-sm">
+                                ${mediaHtml}
+                                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                    <div class="mb-2">
+                                        <div class="fw-semibold text-truncate" title="${titleText}">${titleText}</div>
+                                        <small class="text-muted">${uploadDate}</small>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        ${actionLinks}
+                                        <button type="button" class="btn btn-outline-danger btn-sm delete-video" data-video-id="${video.video_id}" title="Delete Video">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                videoGrid.html(html);
+            })
+            .fail(function(xhr) {
+                console.error('Error loading gallery videos:', xhr.responseText);
+            });
+    }
+
+    // Upload video file form
+    $('#video-upload-form').on('submit', function(e) {
+        e.preventDefault();
+        if (!currentConferenceId) return;
+
+        const fileInput = document.getElementById('video-upload-input');
+        const files = fileInput ? fileInput.files : [];
+        if (!files || files.length === 0) {
+            showVideoStatus('warning', 'Please select at least one video file to upload.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', $('#video-upload-title').val().trim());
+        for (let i = 0; i < files.length; i++) {
+            formData.append('video', files[i]);
+        }
+
+        const btn = $('#upload-video-btn');
+        const origHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Uploading...');
+
+        $.ajax({
+            url: `/admin/conference-galleries/${currentConferenceId}/videos/upload`,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(res) {
+                if (res.success) {
+                    showVideoStatus('success', res.message || 'Video uploaded successfully!');
+                    $('#video-upload-form')[0].reset();
+                    loadGalleryVideos();
+                } else {
+                    showVideoStatus('danger', res.error || 'Failed to upload video.');
+                }
+            },
+            error: function(xhr) {
+                const err = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Upload failed.';
+                showVideoStatus('danger', err);
+            },
+            complete: function() {
+                btn.prop('disabled', false).html(origHtml);
+            }
+        });
+    });
+
+    // Add YouTube video link form
+    $('#youtube-video-form').on('submit', function(e) {
+        e.preventDefault();
+        if (!currentConferenceId) return;
+
+        const youtubeUrl = $('#youtube-video-url').val().trim();
+        const title = $('#youtube-video-title').val().trim();
+        if (!youtubeUrl) return;
+
+        const btn = $('#add-youtube-btn');
+        const origHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Adding...');
+
+        $.ajax({
+            url: `/admin/conference-galleries/${currentConferenceId}/videos/youtube`,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ youtube_url: youtubeUrl, title: title }),
+            success: function(res) {
+                if (res.success) {
+                    showVideoStatus('success', 'YouTube video added to gallery!');
+                    $('#youtube-video-form')[0].reset();
+                    loadGalleryVideos();
+                } else {
+                    showVideoStatus('danger', res.error || 'Failed to add YouTube video.');
+                }
+            },
+            error: function(xhr) {
+                const err = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Invalid YouTube link.';
+                showVideoStatus('danger', err);
+            },
+            complete: function() {
+                btn.prop('disabled', false).html(origHtml);
+            }
+        });
+    });
+
+    // Delete video
+    $(document).on('click', '.delete-video', function() {
+        const videoId = $(this).data('video-id');
+        const cardCol = $(this).closest('.admin-video-item');
+        if (!confirm('Are you sure you want to delete this video?')) return;
+
+        $.ajax({
+            url: `/admin/conference-galleries/${currentConferenceId}/videos/${videoId}`,
+            type: 'DELETE',
+            success: function(res) {
+                if (res.success) {
+                    cardCol.fadeOut(function() {
+                        $(this).remove();
+                        if ($('#video-gallery-grid .admin-video-item').length === 0) {
+                            $('#video-gallery-grid').hide();
+                            $('#empty-video-gallery').show();
+                        }
+                    });
+                } else {
+                    alert('Error deleting video: ' + (res.error || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Error deleting video.');
+            }
+        });
     });
 
     // Initialize TinyMCE for gallery description

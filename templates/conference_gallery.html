@@ -3,6 +3,7 @@
 {% block title %}{{ conference.basic_info.name }} Gallery - GIIR{% endblock %}
 
 {% block content %}
+{% set videos = videos|default([]) %}
 <div class="cg-page">
     <!-- Header Section -->
     <header class="cg-header">
@@ -33,12 +34,18 @@
                     <h1 class="cg-title">{{ conference.basic_info.name }}</h1>
                 </div>
 
-                {% if images or attendees %}
+                {% if images or videos or attendees %}
                 <div class="cg-stats" role="list" aria-label="Gallery statistics">
                     {% if images %}
                     <div class="cg-stat" role="listitem">
                         <span class="cg-stat-num">{{ images|length }}</span>
                         <span class="cg-stat-label">{{ 'Photo' if images|length == 1 else 'Photos' }}</span>
+                    </div>
+                    {% endif %}
+                    {% if videos %}
+                    <div class="cg-stat" role="listitem">
+                        <span class="cg-stat-num">{{ videos|length }}</span>
+                        <span class="cg-stat-label">{{ 'Video' if videos|length == 1 else 'Videos' }}</span>
                     </div>
                     {% endif %}
                     {% if attendees %}
@@ -82,7 +89,7 @@
         {% endif %}
     {% endif %}
 
-    {% if images or attendees %}
+    {% if images or videos or attendees %}
     <!-- Controls & Filters -->
     <div class="cg-controls">
         <div class="cg-container">
@@ -92,19 +99,25 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.3-4.3"></path>
                     </svg>
-                    <input type="search" id="gallerySearch" placeholder="Search photos or attendees" class="cg-search-input" aria-label="Search photos or attendees">
+                    <input type="search" id="gallerySearch" placeholder="Search photos, videos, or attendees" class="cg-search-input" aria-label="Search photos, videos, or attendees">
                 </div>
 
                 <div class="cg-toolbar">
                     <div class="cg-filter-group" role="tablist" aria-label="Filter gallery items">
                         <button type="button" class="filter-btn active" data-filter="all">
                             All
-                            <span class="cg-filter-count">{{ (images|length) + (attendees|length) }}</span>
+                            <span class="cg-filter-count">{{ (images|length) + (videos|length) + (attendees|length) }}</span>
                         </button>
                         {% if images %}
                         <button type="button" class="filter-btn" data-filter="photos">
                             Photos
                             <span class="cg-filter-count">{{ images|length }}</span>
+                        </button>
+                        {% endif %}
+                        {% if videos %}
+                        <button type="button" class="filter-btn" data-filter="videos">
+                            Videos
+                            <span class="cg-filter-count">{{ videos|length }}</span>
                         </button>
                         {% endif %}
                         {% if attendees %}
@@ -144,7 +157,7 @@
     <!-- Main Gallery Content -->
     <div class="cg-body">
         <div class="cg-container">
-            {% if images or attendees %}
+            {% if images or videos or attendees %}
             <div class="gallery-content" id="galleryContent">
                 {% if images %}
                 <!-- Photos Section -->
@@ -182,6 +195,62 @@
                                     </svg>
                                     <span>Download</span>
                                 </a>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if videos %}
+                <!-- Videos Section -->
+                <section class="videos-section" data-category="videos">
+                    <div class="cg-section-header">
+                        <h2 class="cg-section-title">Conference videos</h2>
+                        <span class="item-count">{{ videos|length }}</span>
+                    </div>
+                    <div class="videos-grid" id="videosGrid">
+                        {% for video in videos %}
+                        {% set video_date = video.uploaded_at|date if video.uploaded_at else 'Archive' %}
+                        {% set video_label = video.title if video.title else ('Conference video ' ~ loop.index) %}
+                        <article class="video-card" data-title="{{ video_label|lower }} {{ video_date|lower }} video {{ loop.index }}" data-category="videos">
+                            <div class="cg-video-media">
+                                {% if video.source_type == 'youtube' %}
+                                <iframe src="{{ video.embed_url }}?rel=0"
+                                        title="{{ video_label }}"
+                                        class="cg-video-iframe"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        referrerpolicy="strict-origin-when-cross-origin"
+                                        allowfullscreen
+                                        loading="lazy"></iframe>
+                                {% else %}
+                                <video controls preload="metadata" playsinline class="cg-video-player">
+                                    <source src="{{ video.url }}" type="{{ video.content_type|default('video/mp4', true) }}">
+                                    Your browser does not support video playback.
+                                </video>
+                                {% endif %}
+                            </div>
+                            <div class="cg-video-footer">
+                                <div class="cg-video-meta">
+                                    {% if video.title %}
+                                    <h3 class="cg-video-title">{{ video.title }}</h3>
+                                    {% endif %}
+                                    <span class="cg-photo-date">{{ video_date }}</span>
+                                </div>
+                                {% if video.source_type == 'youtube' and video.watch_url %}
+                                <a href="{{ video.watch_url }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="cg-download-action"
+                                   title="Open video on YouTube"
+                                   aria-label="Open video on YouTube">
+                                    <span>Watch on YouTube</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M7 17 17 7"></path>
+                                        <path d="M7 7h10v10"></path>
+                                    </svg>
+                                </a>
+                                {% endif %}
                             </div>
                         </article>
                         {% endfor %}
@@ -628,6 +697,7 @@
 }
 
 .photos-section,
+.videos-section,
 .attendees-section {
     margin-bottom: 48px;
 }
@@ -762,6 +832,72 @@
     color: var(--cg-text-primary);
     border-color: var(--cg-border-hover);
     background-color: var(--cg-surface-raised);
+}
+
+/* Videos Grid */
+.videos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 24px;
+}
+
+.video-card {
+    background-color: var(--cg-surface);
+    border: 1px solid var(--cg-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: border-color 160ms var(--cg-ease), box-shadow 160ms var(--cg-ease);
+}
+
+.video-card:hover {
+    border-color: var(--cg-border-hover);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.cg-video-media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background-color: #0b0d12;
+    overflow: hidden;
+    border-bottom: 1px solid var(--cg-border);
+}
+
+.cg-video-iframe,
+.cg-video-player {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+}
+
+.cg-video-player {
+    object-fit: contain;
+    background-color: #0b0d12;
+}
+
+.cg-video-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+}
+
+.cg-video-meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.cg-video-title {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    margin: 0 0 4px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Attendees Grid */
@@ -1146,6 +1282,7 @@
     }
 
     .photos-grid,
+    .videos-grid,
     .attendees-grid {
         grid-template-columns: 1fr;
         gap: 16px;
@@ -1166,8 +1303,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('gallerySearch');
     const filterButtons = Array.from(document.querySelectorAll('.filter-btn'));
     const viewButtons = Array.from(document.querySelectorAll('.view-btn'));
-    const galleryItems = Array.from(document.querySelectorAll('.gallery-item, .attendee-card'));
-    const gallerySections = Array.from(document.querySelectorAll('.photos-section, .attendees-section'));
+    const galleryItems = Array.from(document.querySelectorAll('.gallery-item, .video-card, .attendee-card'));
+    const gallerySections = Array.from(document.querySelectorAll('.photos-section, .videos-section, .attendees-section'));
     const noResultsState = document.getElementById('noResultsState');
     const photosGrid = document.getElementById('photosGrid');
 
@@ -1192,7 +1329,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let totalVisible = 0;
         gallerySections.forEach(function(section) {
             const category = section.getAttribute('data-category');
-            const visibleInSection = section.querySelectorAll('.gallery-item:not(.hidden), .attendee-card:not(.hidden)');
+            const visibleInSection = section.querySelectorAll('.gallery-item:not(.hidden), .video-card:not(.hidden), .attendee-card:not(.hidden)');
             const countEl = section.querySelector('.item-count');
             if (countEl) {
                 countEl.textContent = String(visibleInSection.length);

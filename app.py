@@ -360,6 +360,32 @@ def allowed_image_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov', 'm4v'}
+
+def allowed_video_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+
+def extract_youtube_id(url):
+    """Extract 11-character YouTube video ID from watch, short, embed, or live URLs."""
+    if not url:
+        return None
+    import re
+    url = str(url).strip()
+    patterns = [
+        r'(?:youtube\.com\/watch\?.*v=)([A-Za-z0-9_-]{11})',
+        r'(?:youtu\.be\/)([A-Za-z0-9_-]{11})',
+        r'(?:youtube\.com\/embed\/)([A-Za-z0-9_-]{11})',
+        r'(?:youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})',
+        r'(?:youtube\.com\/live\/)([A-Za-z0-9_-]{11})',
+        r'^([A-Za-z0-9_-]{11})$'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
 def compress_image(file, max_size_kb=500):
     """Compress image to reduce file size while maintaining quality"""
     try:
@@ -9010,6 +9036,160 @@ def delete_gallery_image(conference_id, image_id):
         print(f"Error deleting gallery image: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/admin/conference-galleries/<conference_id>/videos', methods=['GET'])
+@login_required
+@admin_required
+def get_gallery_videos(conference_id):
+    """Get all videos for a conference gallery"""
+    try:
+        videos_ref = db.reference(f'conferences/{conference_id}/gallery_videos')
+        videos = videos_ref.get() or {}
+
+        videos_list = []
+        for video_id, video_data in videos.items():
+            if isinstance(video_data, dict):
+                video_data['video_id'] = video_id
+                videos_list.append(video_data)
+
+        videos_list.sort(key=lambda x: x.get('uploaded_at', ''), reverse=True)
+        return jsonify(videos_list)
+    except Exception as e:
+        print(f"Error getting gallery videos: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/videos/upload', methods=['POST'])
+@login_required
+@admin_required
+def upload_gallery_video(conference_id):
+    """Upload one or more video files to a conference gallery"""
+    try:
+        files = request.files.getlist('video')
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'success': False, 'error': 'No video file selected'}), 400
+
+        title = (request.form.get('title') or '').strip()
+        uploaded_videos = []
+        bucket = storage.bucket()
+        videos_ref = db.reference(f'conferences/{conference_id}/gallery_videos')
+
+        for file in files:
+            if not file or file.filename == '':
+                continue
+            if not allowed_video_file(file.filename):
+                return jsonify({'success': False, 'error': f'Unsupported video format: {file.filename}. Allowed: MP4, WebM, MOV, OGG, M4V'}), 400
+
+            filename = secure_filename(f"{conference_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+            file_path = f"gallery/{conference_id}/videos/{filename}"
+
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+
+            content_type = file.content_type or mimetypes.guess_type(file.filename)[0] or 'video/mp4'
+            blob = bucket.blob(file_path)
+            blob.upload_from_file(file, content_type=content_type)
+            blob.make_public()
+            video_url = blob.public_url
+
+            video_data = {
+                'source_type': 'upload',
+                'title': title,
+                'filename': filename,
+                'original_name': file.filename,
+                'url': video_url,
+                'uploaded_by': current_user.email,
+                'uploaded_at': datetime.now().isoformat(),
+                'conference_id': conference_id,
+                'file_size': file_size,
+                'content_type': content_type
+            }
+            new_ref = videos_ref.push(video_data)
+            uploaded_videos.append({'video_id': new_ref.key, 'url': video_url})
+
+        return jsonify({
+            'success': True,
+            'message': f'Uploaded {len(uploaded_videos)} video(s) successfully',
+            'videos': uploaded_videos
+        })
+    except Exception as e:
+        print(f"Error uploading gallery video: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/videos/youtube', methods=['POST'])
+@login_required
+@admin_required
+def add_gallery_youtube_video(conference_id):
+    """Add a YouTube video link to a conference gallery"""
+    try:
+        data = request.get_json(silent=True) or request.form
+        youtube_url = (data.get('youtube_url') or '').strip()
+        title = (data.get('title') or '').strip()
+
+        if not youtube_url:
+            return jsonify({'success': False, 'error': 'Please provide a YouTube link'}), 400
+
+        youtube_id = extract_youtube_id(youtube_url)
+        if not youtube_id:
+            return jsonify({'success': False, 'error': 'Invalid YouTube link. Please paste a valid YouTube video URL.'}), 400
+
+        embed_url = f"https://www.youtube.com/embed/{youtube_id}"
+        watch_url = f"https://www.youtube.com/watch?v={youtube_id}"
+        thumbnail_url = f"https://img.youtube.com/vi/{youtube_id}/hqdefault.jpg"
+
+        video_data = {
+            'source_type': 'youtube',
+            'title': title,
+            'youtube_id': youtube_id,
+            'youtube_url': youtube_url,
+            'embed_url': embed_url,
+            'watch_url': watch_url,
+            'thumbnail_url': thumbnail_url,
+            'uploaded_by': current_user.email,
+            'uploaded_at': datetime.now().isoformat(),
+            'conference_id': conference_id
+        }
+
+        videos_ref = db.reference(f'conferences/{conference_id}/gallery_videos')
+        new_ref = videos_ref.push(video_data)
+
+        return jsonify({
+            'success': True,
+            'message': 'YouTube video added successfully',
+            'video_id': new_ref.key,
+            'youtube_id': youtube_id,
+            'embed_url': embed_url,
+            'watch_url': watch_url
+        })
+    except Exception as e:
+        print(f"Error adding YouTube video: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/conference-galleries/<conference_id>/videos/<video_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_gallery_video(conference_id, video_id):
+    """Delete a video from a conference gallery"""
+    try:
+        video_ref = db.reference(f'conferences/{conference_id}/gallery_videos/{video_id}')
+        video_data = video_ref.get()
+
+        if not video_data:
+            return jsonify({'success': False, 'error': 'Video not found'}), 404
+
+        if video_data.get('source_type') == 'upload' and video_data.get('filename'):
+            try:
+                bucket = storage.bucket()
+                blob = bucket.blob(f"gallery/{conference_id}/videos/{video_data['filename']}")
+                blob.delete()
+            except Exception as e:
+                print(f"Error deleting video from storage: {e}")
+
+        video_ref.delete()
+        return jsonify({'success': True, 'message': 'Video deleted successfully'})
+    except Exception as e:
+        print(f"Error deleting gallery video: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/conference-galleries/<conference_id>/images')
 def get_public_gallery_images(conference_id):
     """Get all images for a conference gallery (public access)"""
@@ -9123,6 +9303,18 @@ def conference_gallery(conference_id):
 
         images_list.sort(key=lambda x: x.get('uploaded_at', ''), reverse=True)
 
+        # Get gallery videos
+        videos_ref = db.reference(f'conferences/{conference_id}/gallery_videos')
+        videos_raw = videos_ref.get() or {}
+
+        videos_list = []
+        for video_id, video_data in videos_raw.items():
+            if isinstance(video_data, dict):
+                video_data['video_id'] = video_id
+                videos_list.append(video_data)
+
+        videos_list.sort(key=lambda x: x.get('uploaded_at', ''), reverse=True)
+
         # Get featured attendees
         attendees_ref = db.reference(f'conferences/{conference_id}/gallery_attendees')
         attendees = attendees_ref.get() or {}
@@ -9139,6 +9331,7 @@ def conference_gallery(conference_id):
                                                conference_id=conference_id,
                                                conference=conference,
                                                images=images_list,
+                                               videos=videos_list,
                                                attendees=attendees_list,
                                                site_design=get_site_design()))
 
@@ -9825,6 +10018,23 @@ def clean_all_galleries():
                 attendees_ref.delete()
                 deleted_count['attendees'] += len(attendees)
             
+            # Delete gallery videos
+            videos_ref = db.reference(f'conferences/{conf_id}/gallery_videos')
+            gallery_videos = videos_ref.get() or {}
+            if gallery_videos:
+                try:
+                    bucket = storage.bucket()
+                    for video_id, video_data in gallery_videos.items():
+                        if isinstance(video_data, dict) and video_data.get('source_type') == 'upload' and video_data.get('filename'):
+                            try:
+                                blob = bucket.blob(f"gallery/{conf_id}/videos/{video_data['filename']}")
+                                blob.delete()
+                            except Exception as e:
+                                print(f"Warning: Could not delete video {video_data.get('filename')} from storage: {e}")
+                except Exception as e:
+                    print(f"Warning: Error accessing storage for videos: {e}")
+                videos_ref.delete()
+
             # Delete gallery summary
             summary_ref = db.reference(f'conferences/{conf_id}/gallery_summary')
             summary_data = summary_ref.get()
