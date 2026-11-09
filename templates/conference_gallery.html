@@ -169,32 +169,18 @@
                     <div class="photos-grid" id="photosGrid">
                         {% for image in images %}
                         {% set photo_date = image.uploaded_at|date if image.uploaded_at else 'Archive' %}
-                        {% set download_url = url_for('download_gallery_photo', conference_id=conference_id, image_id=image.image_id) if conference_id and image.image_id else image.url %}
                         <article class="gallery-item" data-title="{{ photo_date|lower }} photograph {{ loop.index }}" data-category="photos">
                             <div class="cg-photo-media">
                                 <a href="{{ image.url }}"
                                    class="cg-photo-trigger"
                                    data-lightbox-index="{{ loop.index0 }}"
                                    data-lightbox-src="{{ image.url }}"
-                                   data-lightbox-date="{{ photo_date }}"
-                                   data-lightbox-download="{{ download_url }}">
+                                   data-lightbox-date="{{ photo_date }}">
                                     <img src="{{ image.url }}" alt="{{ conference.basic_info.name }} photograph {{ loop.index }}" loading="lazy">
                                 </a>
                             </div>
                             <div class="cg-photo-footer">
                                 <span class="cg-photo-date">{{ photo_date }}</span>
-                                <a href="{{ download_url }}"
-                                   class="cg-download-action"
-                                   download="conference-photo"
-                                   title="Download photograph"
-                                   aria-label="Download photograph">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="7 10 12 15 17 10"></polyline>
-                                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                                    </svg>
-                                    <span>Download</span>
-                                </a>
                             </div>
                         </article>
                         {% endfor %}
@@ -213,22 +199,41 @@
                         {% for video in videos %}
                         {% set video_date = video.uploaded_at|date if video.uploaded_at else 'Archive' %}
                         {% set video_label = video.title if video.title else ('Conference video ' ~ loop.index) %}
+                        {% set video_embed = video.embed_url if video.source_type == 'youtube' else video.url %}
                         <article class="video-card" data-title="{{ video_label|lower }} {{ video_date|lower }} video {{ loop.index }}" data-category="videos">
-                            <div class="cg-video-media">
+                            <div class="cg-video-media cg-video-trigger"
+                                 role="button"
+                                 tabindex="0"
+                                 data-video-index="{{ loop.index0 }}"
+                                 data-video-type="{{ video.source_type }}"
+                                 data-video-src="{{ video_embed }}"
+                                 data-video-title="{{ video_label }}"
+                                 data-video-date="{{ video_date }}"
+                                 data-video-content-type="{{ video.content_type|default('video/mp4', true) }}"
+                                 data-video-watch="{{ video.watch_url|default('', true) }}"
+                                 aria-label="Play video: {{ video_label }}">
                                 {% if video.source_type == 'youtube' %}
-                                <iframe src="{{ video.embed_url }}?rel=0"
-                                        title="{{ video_label }}"
-                                        class="cg-video-iframe"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        referrerpolicy="strict-origin-when-cross-origin"
-                                        allowfullscreen
-                                        loading="lazy"></iframe>
+                                <img src="{{ video.thumbnail_url|default('https://img.youtube.com/vi/' ~ (video.youtube_id|default('', true)) ~ '/hqdefault.jpg', true) }}"
+                                     alt="{{ video_label }}"
+                                     loading="lazy"
+                                     class="cg-video-card-thumb">
+                                <span class="cg-video-source-pill">YouTube</span>
                                 {% else %}
-                                <video controls preload="metadata" playsinline class="cg-video-player">
+                                <video preload="metadata"
+                                       muted
+                                       playsinline
+                                       class="cg-video-card-preview"
+                                       oncontextmenu="return false;"
+                                       ondragstart="return false;">
                                     <source src="{{ video.url }}" type="{{ video.content_type|default('video/mp4', true) }}">
-                                    Your browser does not support video playback.
                                 </video>
+                                <span class="cg-video-source-pill">Video</span>
                                 {% endif %}
+                                <div class="cg-video-play-badge" aria-hidden="true">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="cg-video-footer">
                                 <div class="cg-video-meta">
@@ -237,20 +242,17 @@
                                     {% endif %}
                                     <span class="cg-photo-date">{{ video_date }}</span>
                                 </div>
-                                {% if video.source_type == 'youtube' and video.watch_url %}
-                                <a href="{{ video.watch_url }}"
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   class="cg-download-action"
-                                   title="Open video on YouTube"
-                                   aria-label="Open video on YouTube">
-                                    <span>Watch on YouTube</span>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                        <path d="M7 17 17 7"></path>
-                                        <path d="M7 7h10v10"></path>
-                                    </svg>
-                                </a>
-                                {% endif %}
+                                <div class="cg-video-card-actions">
+                                    <button type="button"
+                                            class="cg-video-play-btn"
+                                            data-video-index="{{ loop.index0 }}"
+                                            aria-label="Play {{ video_label }}">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                            <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                                        </svg>
+                                        <span>Play</span>
+                                    </button>
+                                </div>
                             </div>
                         </article>
                         {% endfor %}
@@ -372,18 +374,47 @@
                     <span id="cgLightboxCount" class="cg-lightbox-count"></span>
                     <span id="cgLightboxDate" class="cg-lightbox-date"></span>
                 </div>
-                <a href="" id="cgLightboxDownload" class="cg-lightbox-download" download="conference-photo">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    <span>Download</span>
-                </a>
             </figcaption>
         </figure>
         <button type="button" class="cg-lightbox-nav cg-lightbox-next" id="cgLightboxNext" aria-label="Next photograph">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<!-- Full-Screen Video Modal -->
+<div class="cg-video-modal" id="cgVideoModal" role="dialog" aria-modal="true" aria-label="Video player" hidden>
+    <div class="cg-video-backdrop" data-video-close></div>
+    <div class="cg-video-stage">
+        <button type="button" class="cg-video-close" data-video-close aria-label="Close video player">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+
+        <button type="button" class="cg-video-nav cg-video-prev" id="cgVideoPrev" aria-label="Previous video">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <div class="cg-video-dialog">
+            <div class="cg-video-screen" id="cgVideoScreen"></div>
+            <div class="cg-video-caption">
+                <div class="cg-video-caption-meta">
+                    <span id="cgVideoCount" class="cg-video-count"></span>
+                    <h3 id="cgVideoModalTitle" class="cg-video-modal-title"></h3>
+                    <span id="cgVideoModalDate" class="cg-video-modal-date"></span>
+                </div>
+                <div class="cg-video-caption-actions" id="cgVideoActions"></div>
+            </div>
+        </div>
+
+        <button type="button" class="cg-video-nav cg-video-next" id="cgVideoNext" aria-label="Next video">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
         </button>
@@ -863,17 +894,85 @@
     border-bottom: 1px solid var(--cg-border);
 }
 
-.cg-video-iframe,
-.cg-video-player {
+.cg-video-trigger {
     width: 100%;
     height: 100%;
-    display: block;
-    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background-color: #0b0d12;
+    overflow: hidden;
+    border: none;
+    padding: 0;
+    color: inherit;
+    text-align: left;
 }
 
-.cg-video-player {
-    object-fit: contain;
-    background-color: #0b0d12;
+.cg-video-card-thumb,
+.cg-video-card-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 280ms var(--cg-ease), opacity 200ms ease;
+}
+
+.cg-video-trigger:hover .cg-video-card-thumb,
+.cg-video-trigger:hover .cg-video-card-preview {
+    transform: scale(1.04);
+    opacity: 0.92;
+}
+
+.cg-video-play-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(17, 24, 39, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    transition: transform 200ms var(--cg-ease), background 200ms ease, border-color 200ms ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.cg-video-play-badge svg {
+    margin-left: 3px;
+}
+
+.cg-video-trigger:hover .cg-video-play-badge {
+    transform: translate(-50%, -50%) scale(1.12);
+    background: #2563eb;
+    border-color: #60a5fa;
+}
+
+.cg-video-source-pill {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: rgba(10, 12, 16, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    pointer-events: none;
+    z-index: 2;
 }
 
 .cg-video-footer {
@@ -898,6 +997,36 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.cg-video-card-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cg-video-play-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--cg-border);
+    border-radius: 8px;
+    background-color: var(--cg-surface);
+    color: var(--cg-text-primary);
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 160ms var(--cg-ease), border-color 160ms var(--cg-ease), background-color 160ms var(--cg-ease);
+}
+
+.cg-video-play-btn:hover {
+    color: #ffffff;
+    background-color: #111827;
+    border-color: #111827;
 }
 
 /* Attendees Grid */
@@ -1176,7 +1305,7 @@
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 16px;
     margin-top: 12px;
     font-size: 13px;
@@ -1199,29 +1328,6 @@
 .cg-lightbox-date {
     color: #a1a1a6;
     font-variant-numeric: tabular-nums;
-}
-
-.cg-lightbox-download {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 32px;
-    padding: 0 12px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background-color: rgba(25, 25, 27, 0.8);
-    color: #ededed;
-    font-size: 13px;
-    line-height: 16px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: background-color 160ms var(--cg-ease), border-color 160ms var(--cg-ease);
-}
-
-.cg-lightbox-download:hover {
-    background-color: rgba(35, 35, 37, 1);
-    border-color: rgba(255, 255, 255, 0.24);
-    color: #ffffff;
 }
 
 .cg-lightbox-close,
@@ -1260,6 +1366,199 @@
     right: 20px;
     top: 50%;
     transform: translateY(-50%);
+}
+
+/* Full-Screen Video Modal */
+.cg-video-modal[hidden] {
+    display: none;
+}
+
+.cg-video-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cg-video-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(5, 7, 10, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.cg-video-stage {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 84px;
+    box-sizing: border-box;
+}
+
+.cg-video-dialog {
+    width: 100%;
+    max-width: 1280px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.cg-video-screen {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: calc(88vh - 70px);
+    background-color: #000000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    position: relative;
+}
+
+.cg-video-screen iframe,
+.cg-video-screen video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+    background-color: #000000;
+    object-fit: contain;
+}
+
+.cg-video-screen video::-webkit-media-controls-download-button,
+.cg-video-screen video::-internal-media-controls-download-button {
+    display: none !important;
+}
+
+.cg-video-caption {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 18px;
+    color: #ededed;
+}
+
+.cg-video-caption-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+
+.cg-video-count {
+    color: #a1a1a6;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+}
+
+.cg-video-modal-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cg-video-modal-date {
+    color: #a1a1a6;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+}
+
+.cg-video-caption-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cg-video-close,
+.cg-video-nav {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background-color: rgba(20, 24, 33, 0.85);
+    color: #ededed;
+    cursor: pointer;
+    transition: background-color 160ms var(--cg-ease), transform 160ms var(--cg-ease), border-color 160ms var(--cg-ease);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 3;
+}
+
+.cg-video-close:hover,
+.cg-video-nav:hover {
+    background-color: rgba(35, 41, 56, 1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    transform: scale(1.06);
+}
+
+.cg-video-close {
+    top: 20px;
+    right: 24px;
+}
+
+.cg-video-prev {
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.cg-video-prev:hover {
+    transform: translateY(-50%) scale(1.06);
+}
+
+.cg-video-next {
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.cg-video-next:hover {
+    transform: translateY(-50%) scale(1.06);
+}
+
+@media (max-width: 768px) {
+    .cg-video-stage {
+        padding: 60px 12px 16px 12px;
+    }
+    .cg-video-prev {
+        left: 8px;
+    }
+    .cg-video-next {
+        right: 8px;
+    }
+    .cg-video-close {
+        top: 12px;
+        right: 12px;
+    }
+    .cg-video-caption {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
 }
 
 @media (max-width: 992px) {
@@ -1385,7 +1684,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const lbImg = document.getElementById('cgLightboxImg');
     const lbDate = document.getElementById('cgLightboxDate');
     const lbCount = document.getElementById('cgLightboxCount');
-    const lbDownload = document.getElementById('cgLightboxDownload');
     const lbPrev = document.getElementById('cgLightboxPrev');
     const lbNext = document.getElementById('cgLightboxNext');
     const triggers = Array.from(document.querySelectorAll('.cg-photo-trigger'));
@@ -1397,11 +1695,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const trigger = triggers[currentIndex];
         const src = trigger.getAttribute('data-lightbox-src');
         const dateText = trigger.getAttribute('data-lightbox-date') || '';
-        const downloadUrl = trigger.getAttribute('data-lightbox-download') || src;
         lbImg.src = src;
         lbImg.alt = 'Conference photograph ' + (currentIndex + 1);
         if (lbDate) lbDate.textContent = dateText;
-        if (lbDownload) lbDownload.href = downloadUrl;
         lbCount.textContent = (currentIndex + 1) + ' / ' + triggers.length;
         lightbox.hidden = false;
         document.body.style.overflow = 'hidden';
@@ -1433,6 +1729,141 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Escape') closeLightbox();
         if (e.key === 'ArrowLeft') openLightbox(currentIndex - 1);
         if (e.key === 'ArrowRight') openLightbox(currentIndex + 1);
+    });
+
+    // Accessible Full-Screen Video Modal
+    const videoModal = document.getElementById('cgVideoModal');
+    const videoScreen = document.getElementById('cgVideoScreen');
+    const videoTitle = document.getElementById('cgVideoModalTitle');
+    const videoDate = document.getElementById('cgVideoModalDate');
+    const videoCount = document.getElementById('cgVideoCount');
+    const videoActions = document.getElementById('cgVideoActions');
+    const videoPrev = document.getElementById('cgVideoPrev');
+    const videoNext = document.getElementById('cgVideoNext');
+    const videoTriggers = Array.from(document.querySelectorAll('.cg-video-trigger'));
+    let currentVideoIndex = 0;
+
+    function openVideoModal(index) {
+        if (!videoModal || !videoTriggers.length) return;
+        currentVideoIndex = (index + videoTriggers.length) % videoTriggers.length;
+        const trigger = videoTriggers[currentVideoIndex];
+        const type = trigger.getAttribute('data-video-type');
+        const src = trigger.getAttribute('data-video-src');
+        const title = trigger.getAttribute('data-video-title') || 'Conference video';
+        const date = trigger.getAttribute('data-video-date') || '';
+        const contentType = trigger.getAttribute('data-video-content-type') || 'video/mp4';
+        const watchUrl = trigger.getAttribute('data-video-watch') || '';
+
+        // Reset stage & stop any playing video
+        videoScreen.innerHTML = '';
+
+        if (type === 'youtube') {
+            const sep = src.indexOf('?') !== -1 ? '&' : '?';
+            const iframe = document.createElement('iframe');
+            iframe.src = src + sep + 'autoplay=1&rel=0';
+            iframe.title = title;
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.allowFullscreen = true;
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+            videoScreen.appendChild(iframe);
+        } else {
+            const videoEl = document.createElement('video');
+            videoEl.controls = true;
+            videoEl.autoplay = true;
+            videoEl.playsInline = true;
+            videoEl.setAttribute('controlsList', 'nodownload');
+            videoEl.setAttribute('oncontextmenu', 'return false;');
+            videoEl.setAttribute('ondragstart', 'return false;');
+            videoEl.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            const sourceEl = document.createElement('source');
+            sourceEl.src = src;
+            sourceEl.type = contentType;
+            videoEl.appendChild(sourceEl);
+            videoScreen.appendChild(videoEl);
+            videoEl.play().catch(function() {});
+        }
+
+        if (videoTitle) videoTitle.textContent = title;
+        if (videoDate) videoDate.textContent = date;
+        if (videoCount) {
+            videoCount.textContent = (currentVideoIndex + 1) + ' / ' + videoTriggers.length;
+        }
+
+        if (videoActions) {
+            videoActions.innerHTML = '';
+            if (type === 'youtube' && watchUrl) {
+                const a = document.createElement('a');
+                a.href = watchUrl;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.className = 'cg-download-action';
+                a.innerHTML = '<span>Watch on YouTube</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"></path><path d="M7 7h10v10"></path></svg>';
+                videoActions.appendChild(a);
+            }
+        }
+
+        if (videoPrev && videoNext) {
+            const multi = videoTriggers.length > 1;
+            videoPrev.style.display = multi ? 'inline-flex' : 'none';
+            videoNext.style.display = multi ? 'inline-flex' : 'none';
+        }
+
+        videoModal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeVideoModal() {
+        if (!videoModal) return;
+        videoModal.hidden = true;
+        videoScreen.innerHTML = '';
+        document.body.style.overflow = '';
+    }
+
+    videoTriggers.forEach(function(trigger, idx) {
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            openVideoModal(idx);
+        });
+        trigger.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openVideoModal(idx);
+            }
+        });
+    });
+
+    document.querySelectorAll('.cg-video-play-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const idx = parseInt(btn.getAttribute('data-video-index'), 10) || 0;
+            openVideoModal(idx);
+        });
+    });
+
+    if (videoPrev) videoPrev.addEventListener('click', function() { openVideoModal(currentVideoIndex - 1); });
+    if (videoNext) videoNext.addEventListener('click', function() { openVideoModal(currentVideoIndex + 1); });
+
+    document.querySelectorAll('[data-video-close]').forEach(function(el) {
+        el.addEventListener('click', closeVideoModal);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (!videoModal || videoModal.hidden) return;
+        if (e.key === 'Escape') closeVideoModal();
+        if (e.key === 'ArrowLeft') openVideoModal(currentVideoIndex - 1);
+        if (e.key === 'ArrowRight') openVideoModal(currentVideoIndex + 1);
+    });
+
+    // Prevent video downloads and right-click context menu on video players
+    document.querySelectorAll('.cg-video-player, .cg-video-card-preview').forEach(function(videoEl) {
+        videoEl.setAttribute('controlsList', 'nodownload');
+        videoEl.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
     });
 
     // Share helper for attendees
