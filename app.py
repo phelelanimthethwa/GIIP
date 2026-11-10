@@ -9599,6 +9599,87 @@ def add_attendee_to_gallery(conference_id):
         print(f"Error adding attendee to gallery: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/admin/conference-galleries/<conference_id>/attendees/create', methods=['POST'])
+@login_required
+@admin_required
+def create_gallery_profile(conference_id):
+    """Create a new attendee/speaker profile with optional photo attachment directly from admin panel"""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+
+        full_name = request.form.get('full_name', '').strip()
+        if not full_name:
+            return jsonify({'success': False, 'error': 'Full name is required'}), 400
+
+        title = request.form.get('title', '').strip()
+        institution = request.form.get('institution', '').strip()
+        department = request.form.get('department', '').strip()
+        country = request.form.get('country', '').strip()
+        city = request.form.get('city', '').strip()
+        bio = request.form.get('bio', '').strip()
+        website = request.form.get('website', '').strip()
+        also_add_to_photos = request.form.get('add_to_photos', 'true').lower() in ('true', '1', 'on', 'yes')
+
+        photo_url = ''
+        file = request.files.get('photo')
+        if file and file.filename != '':
+            if not allowed_image_file(file.filename):
+                return jsonify({'success': False, 'error': 'Invalid image file type. Allowed: png, jpg, jpeg, gif, webp'}), 400
+
+            filename = secure_filename(f"attendee_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+            file_path = f"gallery/{conference_id}/{filename}"
+            file_size = len(file.read())
+            file.seek(0)
+
+            bucket = storage.bucket()
+            blob = bucket.blob(file_path)
+            blob.upload_from_file(file, content_type=file.content_type)
+            blob.make_public()
+            photo_url = blob.public_url
+
+            if also_add_to_photos:
+                photo_entry = {
+                    'filename': filename,
+                    'original_name': f"{full_name} - Profile Photograph",
+                    'url': photo_url,
+                    'uploaded_by': current_user.email,
+                    'uploaded_at': datetime.now().isoformat(),
+                    'conference_id': conference_id,
+                    'file_size': file_size,
+                    'content_type': file.content_type
+                }
+                gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+                gallery_ref.push(photo_entry)
+
+        attendee_data = {
+            'full_name': full_name,
+            'title': title,
+            'institution': institution,
+            'department': department,
+            'country': country,
+            'city': city,
+            'bio': bio,
+            'website': website,
+            'photo_url': photo_url,
+            'added_by': current_user.email,
+            'added_at': datetime.now().isoformat()
+        }
+
+        gallery_attendees_ref = db.reference(f'conferences/{conference_id}/gallery_attendees')
+        new_ref = gallery_attendees_ref.push(attendee_data)
+
+        return jsonify({
+            'success': True,
+            'message': 'Profile added to gallery successfully',
+            'attendee_id': new_ref.key,
+            'photo_url': photo_url
+        })
+    except Exception as e:
+        print(f"Error creating gallery profile: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/admin/conference-galleries/<conference_id>/attendees/<attendee_id>/remove', methods=['POST'])
 @login_required
 @admin_required
@@ -9641,6 +9722,9 @@ def edit_attendee_info(conference_id, attendee_id):
             # Update attendee information
             print(f"DEBUG: Edit attendee request received for conference {conference_id}, attendee {attendee_id}")
 
+            attendee_ref = db.reference(f'conferences/{conference_id}/gallery_attendees/{attendee_id}')
+            attendee_data = attendee_ref.get() or {}
+
             # Get updated data from form
             updated_data = {
                 'full_name': request.form.get('full_name', '').strip(),
@@ -9655,15 +9739,43 @@ def edit_attendee_info(conference_id, attendee_id):
                 'updated_at': datetime.now().isoformat()
             }
 
-            # Remove empty fields
-            updated_data = {k: v for k, v in updated_data.items() if v}
+            # Check if new photo was uploaded
+            file = request.files.get('photo')
+            if file and file.filename != '':
+                if allowed_image_file(file.filename):
+                    filename = secure_filename(f"attendee_{attendee_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+                    file_path = f"gallery/{conference_id}/{filename}"
+                    file_size = len(file.read())
+                    file.seek(0)
+
+                    bucket = storage.bucket()
+                    blob = bucket.blob(file_path)
+                    blob.upload_from_file(file, content_type=file.content_type)
+                    blob.make_public()
+                    updated_data['photo_url'] = blob.public_url
+
+                    try:
+                        gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+                        gallery_ref.push({
+                            'filename': filename,
+                            'original_name': f"{updated_data.get('full_name', 'Attendee')} - Profile Photograph",
+                            'url': blob.public_url,
+                            'uploaded_by': current_user.email,
+                            'uploaded_at': datetime.now().isoformat(),
+                            'conference_id': conference_id,
+                            'file_size': file_size,
+                            'content_type': file.content_type
+                        })
+                    except Exception as ge:
+                        print(f"Warning: could not add to photo gallery: {ge}")
+            elif request.form.get('remove_photo') == 'true':
+                updated_data['photo_url'] = ''
 
             # Update in Firebase
-            attendee_ref = db.reference(f'conferences/{conference_id}/gallery_attendees/{attendee_id}')
             attendee_ref.update(updated_data)
 
             print(f"DEBUG: Attendee {attendee_id} updated successfully")
-            return jsonify({'success': True, 'message': 'Attendee information updated successfully'})
+            return jsonify({'success': True, 'message': 'Attendee information updated successfully', 'photo_url': updated_data.get('photo_url')})
 
     except Exception as e:
         print(f"Error editing attendee information: {e}")
@@ -9693,19 +9805,19 @@ def upload_attendee_photo(conference_id, attendee_id):
                 return jsonify({'success': False, 'error': 'Attendee not found'}), 404
 
             user_id = attendee_data.get('user_id')
-            if not user_id:
-                return jsonify({'success': False, 'error': 'User ID not found for attendee'}), 400
+            identifier = user_id if user_id else attendee_id
 
             # Generate unique filename for attendee photo
-            filename = secure_filename(f"attendee_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
-            file_path = f"attendees/{conference_id}/{filename}"
+            filename = secure_filename(f"attendee_{identifier}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+            file_path = f"gallery/{conference_id}/{filename}"
+            file_size = len(file.read())
+            file.seek(0)
 
             # Upload to Firebase Storage
             bucket = storage.bucket()
             blob = bucket.blob(file_path)
 
             # Read file content
-            file.seek(0)
             blob.upload_from_file(file, content_type=file.content_type)
             blob.make_public()
 
@@ -9720,13 +9832,30 @@ def upload_attendee_photo(conference_id, attendee_id):
                 'photo_updated_at': datetime.now().isoformat()
             })
 
-            # Also update the user's profile photo if they exist
+            # Also push to conference photographs stream
             try:
-                user_ref = db.reference(f'users/{user_id}')
-                user_ref.update({'photo_url': photo_url})
-                print(f"✅ Updated user profile photo for {user_id}")
-            except Exception as user_update_error:
-                print(f"Warning: Could not update user profile photo: {str(user_update_error)}")
+                gallery_ref = db.reference(f'conferences/{conference_id}/gallery')
+                gallery_ref.push({
+                    'filename': filename,
+                    'original_name': f"{attendee_data.get('full_name', 'Attendee')} - Profile Photograph",
+                    'url': photo_url,
+                    'uploaded_by': current_user.email,
+                    'uploaded_at': datetime.now().isoformat(),
+                    'conference_id': conference_id,
+                    'file_size': file_size,
+                    'content_type': file.content_type
+                })
+            except Exception as ge:
+                print(f"Warning: could not add to photo gallery: {ge}")
+
+            # Also update the user's profile photo if they exist as a registered user
+            if user_id:
+                try:
+                    user_ref = db.reference(f'users/{user_id}')
+                    user_ref.update({'photo_url': photo_url})
+                    print(f"✅ Updated user profile photo for {user_id}")
+                except Exception as user_update_error:
+                    print(f"Warning: Could not update user profile photo: {str(user_update_error)}")
 
             print(f"DEBUG: Attendee photo uploaded successfully for attendee {attendee_id}")
             return jsonify({
