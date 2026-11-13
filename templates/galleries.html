@@ -40,7 +40,8 @@
             <div class="galleries-grid">
                 {% for conference_id, conference in conferences.items() %}
                 {% set image_index = loop.index0 % hero_images|length %}
-                {% set cover_url = conference.hero_image|default(hero_images[image_index], true) %}
+                {% set custom_cover = conference.gallery_cover.url if (conference.gallery_cover is mapping and conference.gallery_cover.url) else (conference.gallery_cover if conference.gallery_cover is string else (conference.gallery_cover_image or conference.hero_image)) %}
+                {% set cover_url = custom_cover|default(hero_images[image_index], true) %}
                 {% set conf_name = conference.basic_info.name if conference.basic_info and conference.basic_info.name else 'Academic Conference' %}
                 {% set conf_year = conference.basic_info.year if conference.basic_info and conference.basic_info.year else '' %}
                 {% set conf_code = conference.conference_code if conference.conference_code else (conference.basic_info.acronym if conference.basic_info and conference.basic_info.acronym else '') %}

@@ -9030,10 +9030,244 @@ def delete_gallery_image(conference_id, image_id):
         # Delete from database
         image_ref.delete()
 
+        # If this image was set as the gallery card cover, clear it so the card doesn't break
+        cover_ref = db.reference(f'conferences/{conference_id}/gallery_cover')
+        cover_data = cover_ref.get()
+        if isinstance(cover_data, dict) and cover_data.get('source') == 'gallery_image':
+            if cover_data.get('image_id') == image_id or cover_data.get('url') == image_data.get('url'):
+                cover_ref.delete()
+
         return jsonify({'success': True, 'message': 'Image deleted successfully'})
 
     except Exception as e:
         print(f"Error deleting gallery image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _extract_gallery_cover(conference):
+    """Return (cover_url, source, image_id) for a conference's /galleries card cover."""
+    if not isinstance(conference, dict):
+        return '', 'default', ''
+
+    cover_data = conference.get('gallery_cover')
+    if isinstance(cover_data, dict) and cover_data.get('url'):
+        return (
+            cover_data.get('url', ''),
+            cover_data.get('source') or 'upload',
+            cover_data.get('image_id') or '',
+        )
+    if isinstance(cover_data, str) and cover_data.strip():
+        return cover_data.strip(), 'url', ''
+
+    legacy_cover = conference.get('gallery_cover_image') or conference.get('hero_image') or ''
+    if isinstance(legacy_cover, str) and legacy_cover.strip():
+        return legacy_cover.strip(), 'url', ''
+
+    return '', 'default', ''
+
+
+def _delete_gallery_cover_blob(cover_data):
+    """Delete a dedicated uploaded gallery cover image from Firebase Storage, if any."""
+    if not isinstance(cover_data, dict):
+        return
+    if cover_data.get('source') != 'upload':
+        return
+    storage_path = cover_data.get('storage_path')
+    if not storage_path:
+        return
+    try:
+        bucket = get_firebase_storage_bucket()
+        blob = bucket.blob(storage_path)
+        blob.delete()
+    except Exception as e:
+        print(f"Warning: Could not delete previous gallery cover blob {storage_path}: {e}")
+
+
+def _is_safe_gallery_cover_url(url):
+    """Allow http(s) URLs and site-relative paths, rejecting unsafe schemes."""
+    if not url or not isinstance(url, str):
+        return False
+    cleaned = url.strip()
+    return (
+        cleaned.startswith('https://')
+        or cleaned.startswith('http://')
+        or (cleaned.startswith('/') and not cleaned.startswith('//'))
+    )
+
+
+@app.route('/admin/conference-galleries/<conference_id>/cover', methods=['GET'])
+@login_required
+@admin_required
+def get_gallery_cover(conference_id):
+    """Get the current /galleries card cover image metadata for a conference."""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+
+        cover_url, source, image_id = _extract_gallery_cover(conference)
+        banner_url = ((conference.get('basic_info') or {}).get('image_url') or '').strip()
+
+        return jsonify({
+            'success': True,
+            'has_custom_cover': bool(cover_url),
+            'cover_url': cover_url,
+            'source': source,
+            'image_id': image_id,
+            'conference_banner_url': banner_url,
+        })
+    except Exception as e:
+        print(f"Error getting gallery cover: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/conference-galleries/<conference_id>/cover', methods=['POST'])
+@login_required
+@admin_required
+def set_gallery_cover(conference_id):
+    """Set the /galleries card cover image via file upload, existing gallery photo, or URL."""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+
+        cover_ref = db.reference(f'conferences/{conference_id}/gallery_cover')
+        previous_cover = cover_ref.get()
+        now_iso = datetime.now().isoformat()
+        updated_by = getattr(current_user, 'email', 'admin')
+
+        # 1) Uploaded image file
+        if 'image' in request.files and request.files['image'].filename:
+            file = request.files['image']
+            if not allowed_image_file(file.filename):
+                return jsonify({'success': False, 'error': 'Invalid image file type'}), 400
+
+            filename = secure_filename(
+                f"cover_{conference_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+            )
+            storage_path = f"gallery/{conference_id}/cover/{filename}"
+
+            try:
+                bucket = get_firebase_storage_bucket()
+                blob = bucket.blob(storage_path)
+                file.seek(0)
+                content_type = getattr(file, 'content_type', None) or 'image/jpeg'
+                blob.upload_from_file(file, content_type=content_type)
+                blob.make_public()
+                image_url = blob.public_url
+            except Exception as upload_err:
+                print(f"Firebase Storage upload failed for gallery cover: {upload_err}")
+                return jsonify({'success': False, 'error': f'Storage upload failed: {str(upload_err)}'}), 500
+
+            new_cover = {
+                'url': image_url,
+                'source': 'upload',
+                'storage_path': storage_path,
+                'filename': filename,
+                'original_name': file.filename,
+                'updated_at': now_iso,
+                'updated_by': updated_by,
+            }
+            cover_ref.set(new_cover)
+            _delete_gallery_cover_blob(previous_cover)
+
+            return jsonify({
+                'success': True,
+                'message': 'Gallery card cover uploaded successfully',
+                'cover_url': image_url,
+                'source': 'upload',
+                'image_id': '',
+            })
+
+        # JSON or form payload for existing gallery image or URL
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            payload = request.form.to_dict() if request.form else {}
+
+        image_id = (payload.get('image_id') or '').strip()
+        cover_url = (payload.get('cover_url') or '').strip()
+
+        # 2) Existing gallery image
+        if image_id:
+            image_data = db.reference(f'conferences/{conference_id}/gallery/{image_id}').get()
+            if not isinstance(image_data, dict) or not image_data.get('url'):
+                return jsonify({'success': False, 'error': 'Gallery image not found'}), 404
+
+            new_cover = {
+                'url': image_data['url'],
+                'source': 'gallery_image',
+                'image_id': image_id,
+                'updated_at': now_iso,
+                'updated_by': updated_by,
+            }
+            cover_ref.set(new_cover)
+            _delete_gallery_cover_blob(previous_cover)
+
+            return jsonify({
+                'success': True,
+                'message': 'Gallery card cover updated from gallery photo',
+                'cover_url': image_data['url'],
+                'source': 'gallery_image',
+                'image_id': image_id,
+            })
+
+        # 3) Custom URL
+        if cover_url:
+            if not _is_safe_gallery_cover_url(cover_url):
+                return jsonify({
+                    'success': False,
+                    'error': 'Please provide a valid http(s):// URL or site-relative /static/... path',
+                }), 400
+
+            new_cover = {
+                'url': cover_url,
+                'source': 'url',
+                'updated_at': now_iso,
+                'updated_by': updated_by,
+            }
+            cover_ref.set(new_cover)
+            _delete_gallery_cover_blob(previous_cover)
+
+            return jsonify({
+                'success': True,
+                'message': 'Gallery card cover URL saved successfully',
+                'cover_url': cover_url,
+                'source': 'url',
+                'image_id': '',
+            })
+
+        return jsonify({'success': False, 'error': 'No image file, gallery photo ID, or URL provided'}), 400
+
+    except Exception as e:
+        print(f"Error setting gallery cover: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/admin/conference-galleries/<conference_id>/cover', methods=['DELETE'])
+@login_required
+@admin_required
+def reset_gallery_cover(conference_id):
+    """Reset the /galleries card cover image back to the default fallback."""
+    try:
+        conference = get_conference_data(conference_id)
+        if not conference:
+            return jsonify({'success': False, 'error': 'Conference not found'}), 404
+
+        cover_ref = db.reference(f'conferences/{conference_id}/gallery_cover')
+        previous_cover = cover_ref.get()
+        _delete_gallery_cover_blob(previous_cover)
+        cover_ref.delete()
+
+        # Clear any legacy cover fields if present so reset actually reverts to default
+        db.reference(f'conferences/{conference_id}/gallery_cover_image').delete()
+        db.reference(f'conferences/{conference_id}/hero_image').delete()
+
+        return jsonify({
+            'success': True,
+            'message': 'Gallery card cover reset to default',
+        })
+    except Exception as e:
+        print(f"Error resetting gallery cover: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/admin/conference-galleries/<conference_id>/videos', methods=['GET'])
@@ -10170,6 +10404,13 @@ def clean_all_galleries():
             if summary_data:
                 summary_ref.delete()
                 deleted_count['summaries'] += 1
+
+            # Delete gallery cover image if present
+            cover_ref = db.reference(f'conferences/{conf_id}/gallery_cover')
+            cover_data = cover_ref.get()
+            if cover_data:
+                _delete_gallery_cover_blob(cover_data)
+                cover_ref.delete()
             
             if gallery_images or attendees or summary_data:
                 deleted_count['conferences'] += 1
